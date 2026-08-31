@@ -1,0 +1,19 @@
+# Job artifacts (FL-150 run, fonts, renders) — not the skill
+work/
+_edge-pack/
+fl150_original.pdf
+FL-150_ja.pdf
+comparison.html
+NOTES.md
+/translations.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db

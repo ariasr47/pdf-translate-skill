@@ -1,0 +1,104 @@
+# pdf-translate
+
+Translate a PDF from any language to any language while keeping the visual
+layout pixel-faithful and every fillable form field working.
+
+**Provider-neutral.** Nothing here depends on a particular model, vendor, or
+agent framework. The pipeline is seven plain Python scripts; `SKILL.md` is the
+workflow an agent (or a person) follows. It runs the same in any CLI or
+notebook that can execute Python and read files.
+
+## Why this exists
+
+The obvious approaches all fail on real forms:
+
+| Approach | What goes wrong |
+|---|---|
+| White boxes over the old text | Clips rules and borders; reads like a scanlation |
+| Redaction annotations | **Deletes form-field widgets** that overlap the redaction |
+| Regenerate the document | Never reproduces tables, rules, or field geometry |
+| Swap strings inside the text operators | Original fonts have no glyphs for the target script |
+
+This uses **strip-and-retypeset**: delete the text at the content-stream level
+(which leaves graphics, images, and field widgets untouched), then re-insert
+translated text at the original baselines.
+
+## Install
+
+```bash
+pip install -r requirements.txt      # pymupdf, pikepdf, fonttools
+```
+
+`pyftsubset` ships with fonttools. `prepare_font.py` finds it on PATH, in the
+interpreter's `Scripts` directory, or as `python -m fontTools.subset`.
+
+## Quickstart
+
+```bash
+SK=/path/to/pdf-translate            # this directory
+
+python3 $SK/scripts/strip_text.py      original.pdf stripped.pdf
+python3 $SK/scripts/extract_segments.py original.pdf          # -> segments.json, to_translate.json
+#   ... author translations.json from to_translate.json ...
+python3 $SK/scripts/prepare_font.py    FONT.ttf translations.json font-sub.ttf --instance wght=400
+python3 $SK/scripts/retypeset.py       stripped.pdf segments.json translations.json out.pdf
+python3 $SK/scripts/verify.py          original.pdf out.pdf --source-words-from segments.json
+python3 $SK/scripts/field_fonts.py     out.pdf FULL_FONT.ttf final.pdf     # fillable PDFs only
+python3 $SK/scripts/compare.py         original.pdf final.pdf comparison.html \
+    --labels "Original|Translated"
+```
+
+Hot loop after the first extract (do not re-strip / re-extract / re-subset
+the font, and do not run compare until you are delivering):
+
+```bash
+python3 $SK/scripts/pipeline.py rebuild --work . original.pdf out.pdf \
+    --source-words-from segments.json
+python3 $SK/scripts/pipeline.py render original.pdf out.pdf renders/
+```
+
+From `$SK`, `python3 -m unittest tests.test_pipeline -v` drives the shipped
+stages on tiny constructed PDFs (fillable and non-form).
+
+Then **render every page next to the original and look at them.** The gates
+catch structural failures; roughly half of all real defects are visible only
+in a render. Budget 2–3 build/inspect/fix rounds — the first build is never
+right.
+
+## Layout
+
+```
+SKILL.md                        the workflow, start here
+README.md                       this file
+requirements.txt
+references/
+  failure-modes.md              8 silent failures and their fixes — read before you start
+  translations-format.md        the translations.json contract
+  fonts.md                      per-script font sourcing; the glyf-flavor rule
+scripts/
+  strip_text.py                 remove text + XFA, keep graphics and widgets
+  extract_segments.py           geometry, color, markers, dot leaders -> segments.json
+  prepare_font.py               subset + instance a font, assert it rasterizes
+  retypeset.py                  place translations; shrink-to-fit; colors; merges
+  verify.py                     field parity, fill round-trip, ink density, leak scan
+  field_fonts.py                make typed-in target-script text render in fields
+  compare.py                    self-contained side-by-side HTML
+  render_pages.py               orig/out PNGs for the visual inspect loop
+  pipeline.py                   init / rebuild / render / finish wrappers
+tests/test_pipeline.py          constructed-PDF tests of the shipped stages
+explainer.html                  what this skill pass changed (open in a browser)
+evals/evals.json                optional eval prompts (not required to run)
+```
+
+## The guarantee, and its priority order
+
+When requirements conflict: **structure** (fields, links, bookmarks survive and
+work) > **layout** (only the text changes) > **natural translation in the
+document's register** > file size and everything else.
+
+## Scope
+
+Born-digital PDFs. A scanned PDF needs OCR first — a different problem; say so
+rather than producing a bad overlay. Right-to-left and vertical scripts need
+shaping that plain glyph placement does not do: verify a rendered sample before
+committing, and stop and say so if you cannot (see `references/fonts.md`).

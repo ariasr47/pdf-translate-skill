@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pdf-translate — how the skill runs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --docket: #cfd8e3;
+    --card: #f6f8fb;
+    --ink: #15202b;
+    --mute: #445566;
+    --line: #b7c3d0;
+    --machine: #0a5c62;
+    --machine-soft: #d5eef0;
+    --human: #7a2e4a;
+    --human-soft: #f3dce4;
+    --halt: #b42318;
+    --halt-soft: #fde8e6;
+    --pass: #1b6b4a;
+    --pass-soft: #d8f0e4;
+    --scan: #d4a017;
+    --focus: #0a5c62;
+    --shadow: 0 10px 28px rgba(21, 32, 43, .12);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background:
+      linear-gradient(180deg, rgba(10, 92, 98, .06), transparent 220px),
+      var(--docket);
+    color: var(--ink);
+    font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
+    font-size: 18px;
+    line-height: 1.45;
+    overflow-x: clip;
+  }
+  a { color: var(--machine); }
+  a:focus-visible, button:focus-visible, .beat:focus-visible, .step:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 3px;
+  }
+  .skip {
+    position: absolute;
+    left: -999px;
+    top: 8px;
+    background: var(--ink);
+    color: #fff;
+    padding: 8px 12px;
+  }
+  .skip:focus { left: 8px; z-index: 5; }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 28px 20px 80px;
+  }
+  header.hero {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .kicker {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--machine);
+    font-weight: 500;
+  }
+  h1 {
+    font-family: "Big Shoulders Display", Impact, sans-serif;
+    font-size: clamp(2.6rem, 7vw, 4.4rem);
+    font-weight: 800;
+    letter-spacing: -.03em;
+    line-height: .92;
+    margin: 0;
+    max-width: 14ch;
+  }
+  .lede {
+    margin: 6px 0 0;
+    max-width: 38rem;
+    color: var(--mute);
+    font-size: 1.12rem;
+    overflow-wrap: break-word;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .dot.m { background: var(--machine); }
+  .dot.h { background: var(--human); }
+  .dot.x { background: var(--halt); }
+
+  /* 4-beat hero diagram */
+  .beats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin: 8px 0 36px;
+    position: relative;
+  }
+  .beats::before {
+    content: "";
+    position: absolute;
+    left: 4%;
+    right: 4%;
+    top: 38px;
+    height: 3px;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--ink) 0 10px,
+      transparent 10px 16px
+    );
+    opacity: .22;
+    pointer-events: none;
+  }
+  .beat {
+    appearance: none;
+    border: 2px solid var(--ink);
+    background: var(--card);
+    text-align: left;
+    padding: 14px 14px 16px;
+    cursor: pointer;
+    position: relative;
+    box-shadow: 4px 4px 0 rgba(21, 32, 43, .16);
+    min-height: 168px;
+    font: inherit;
+    color: inherit;
+    white-space: normal;
+    width: 100%;
+  }
+  .beat[aria-pressed="true"] {
+    background: #fff;
+    box-shadow: 6px 6px 0 var(--ink);
+    transform: translate(-1px, -1px);
+  }
+  .beat.human[aria-pressed="true"] { box-shadow: 6px 6px 0 var(--human); }
+  .beat.machine[aria-pressed="true"] { box-shadow: 6px 6px 0 var(--machine); }
+  .n {
+    font-family: "Big Shoulders Display", sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .beat h2 {
+    font-family: "Big Shoulders Display", sans-serif;
+    font-size: 1.7rem;
+    margin: 4px 0 6px;
+    letter-spacing: -.02em;
+  }
+  .beat p {
+    margin: 0;
+    font-size: 15px;
+    color: var(--mute);
+  }
+  .who {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .who.m { color: var(--machine); }
+  .who.h { color: var(--human); }
+
+  .mini {
+    height: 54px;
+    margin: 10px 0 8px;
+    border: 1px solid var(--line);
+    background: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+  .mini .rule {
+    position: absolute; left: 8px; right: 8px; height: 1px; background: #c5ced8;
+  }
+  .mini .t {
+    position: absolute; left: 10px; font-size: 11px; font-weight: 700;
+  }
+  .mini .box {
+    position: absolute; border: 1.5px solid var(--ink); background: #fff;
+  }
+
+  /* detail dock */
+  .dock {
+    display: grid;
+    grid-template-columns: 1.15fr .85fr;
+    gap: 18px;
+    align-items: start;
+    margin-bottom: 40px;
+  }
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--ink);
+    padding: 20px 22px 22px;
+    min-height: 280px;
+    box-shadow: var(--shadow);
+  }
+  .panel h3 {
+    font-family: "Big Shoulders Display", sans-serif;
+    font-size: 2rem;
+    margin: 0 0 8px;
+    letter-spacing: -.02em;
+  }
+  .panel p { margin: 0 0 12px; max-width: 40rem; }
+  .panel .one-line {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  code, .cmd {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 13px;
+  }
+  .cmd {
+    display: block;
+    background: #15202b;
+    color: #e8eef4;
+    padding: 12px 14px;
+    overflow-x: auto;
+    margin: 0 0 12px;
+    white-space: pre-wrap;
+  }
+  .failok {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .failok div {
+    padding: 10px 12px;
+    font-size: 15px;
+  }
+  .ok { background: var(--pass-soft); border-left: 4px solid var(--pass); }
+  .bad { background: var(--halt-soft); border-left: 4px solid var(--halt); }
+  .failok strong { display: block; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+
+  /* step track */
+  .track h2 {
+    font-family: "Big Shoulders Display", sans-serif;
+    font-size: 1.8rem;
+    margin: 0 0 6px;
+  }
+  .hint { color: var(--mute); margin: 0 0 14px; font-size: 15px; }
+  .steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .step {
+    display: grid;
+    grid-template-columns: 52px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+    text-align: left;
+    border: 1px solid var(--line);
+    background: #fff;
+    padding: 8px 10px;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    white-space: normal;
+  }
+  .step[aria-current="step"] {
+    border-color: var(--ink);
+    background: #fff;
+    box-shadow: inset 4px 0 0 var(--scan);
+  }
+  .step.m[aria-current="step"] { box-shadow: inset 4px 0 0 var(--machine); }
+  .step.h[aria-current="step"] { box-shadow: inset 4px 0 0 var(--human); }
+  .idx {
+    font-family: "Big Shoulders Display", sans-serif;
+    font-weight: 800;
+    font-size: 1.4rem;
+    color: var(--mute);
+  }
+  .step[aria-current="step"] .idx { color: var(--ink); }
+  .step .ttl { font-weight: 700; }
+  .step .sub { display: block; font-size: 13px; color: var(--mute); }
+  .tag {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 3px 6px;
+    border: 1px solid currentColor;
+  }
+  .tag.m { color: var(--machine); }
+  .tag.h { color: var(--human); }
+
+  /* layers */
+  .layers {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 0 0 36px;
+  }
+  .layer {
+    background: var(--card);
+    border: 1px solid var(--ink);
+    padding: 14px 16px 16px;
+  }
+  .layer h3 {
+    font-family: "Big Shoulders Display", sans-serif;
+    margin: 0 0 6px;
+    font-size: 1.45rem;
+  }
+  .layer p { margin: 0; font-size: 15px; color: var(--mute); }
+  .stamp {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+  .keep { color: var(--pass); }
+  .peel { color: var(--halt); }
+
+  .loop {
+    border: 2px dashed var(--human);
+    background: var(--human-soft);
+    padding: 18px 20px;
+    margin: 0 0 36px;
+  }
+  .loop h2 {
+    font-family: "Big Shoulders Display", sans-serif;
+    margin: 0 0 6px;
+    font-size: 1.8rem;
+  }
+  .loop p { margin: 0 0 10px; max-width: 42rem; }
+  .loop ol {
+    margin: 0;
+    padding-left: 1.2rem;
+  }
+  .loop li { margin: 0 0 4px; }
+
+  .gates {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 36px;
+  }
+  .gate {
+    background: #fff;
+    border: 1px solid var(--line);
+    padding: 12px 14px;
+  }
+  .gate b {
+    display: block;
+    font-family: "Big Shoulders Display", sans-serif;
+    font-size: 1.25rem;
+    margin-bottom: 4px;
+  }
+  .gate span { font-size: 14px; color: var(--mute); }
+  .gate.new {
+    border-color: var(--machine);
+    background: var(--machine-soft);
+  }
+
+  footer {
+    font-size: 14px;
+    color: var(--mute);
+    border-top: 1px solid var(--line);
+    padding-top: 16px;
+  }
+
+  @media (max-width: 900px) {
+    .beats, .dock, .layers, .gates, .failok {
+      grid-template-columns: 1fr;
+    }
+    .beats { min-width: 0; }
+    .beats::before { display: none; }
+    .beat { min-height: 0; min-width: 0; }
+    .beat p, .step .sub { overflow-wrap: break-word; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .beat, .step { transition: none; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#diagram">Skip to flow diagram</a>
+<div class="wrap">
+  <header class="hero">
+    <div class="kicker">pdf-translate · strip and retypeset</div>
+    <h1>Peel the words. Stamp new ones. Prove they landed.</h1>
+    <p class="lede">
+      This skill keeps the form’s lines, boxes, and fields. It deletes the old
+      text, puts your translation in the same seats, then refuses to call that
+      a success until the words are actually in the file.
+    </p>
+    <div class="legend" aria-label="Color key">
+      <span class="pill"><i class="dot m"></i> Scripts — a few seconds</span>
+      <span class="pill"><i class="dot h"></i> You — the 30 minutes</span>
+      <span class="pill"><i class="dot x"></i> Halt — do not ship</span>
+    </div>
+  </header>
+
+  <section id="diagram" aria-labelledby="beats-title">
+    <h2 id="beats-title" class="visually-hidden" style="position:absolute;left:-9999px">Four beats</h2>
+    <div class="beats" role="tablist" aria-label="High-level flow">
+      <button class="beat machine" role="tab" id="tab-peel" aria-controls="panel" aria-pressed="true" data-id="peel">
+        <div class="who m">Machine + you look first</div>
+        <div class="n">1</div>
+        <h2>Peel</h2>
+        <div class="mini" aria-hidden="true">
+          <div class="rule" style="top:12px"></div>
+          <div class="rule" style="top:24px"></div>
+          <div class="rule" style="top:36px"></div>
+          <div class="t" style="top:8px;color:#b42318;text-decoration:line-through">Name of applicant</div>
+          <div class="box" style="left:70%;top:14px;width:22%;height:16px"></div>
+        </div>
+        <p>Delete running text. Keep lines, images, checkboxes, fields.</p>
+      </button>
+      <button class="beat human" role="tab" id="tab-write" aria-controls="panel" aria-pressed="false" data-id="write">
+        <div class="who h">You — this is the job</div>
+        <div class="n">2</div>
+        <h2>Write</h2>
+        <div class="mini" aria-hidden="true">
+          <div class="t" style="top:8px">"Name of applicant"</div>
+          <div class="t" style="top:26px;color:#7a2e4a">→ "Nombre del solicitante"</div>
+        </div>
+        <p>Author <code>translations.json</code>. Match the document’s register. Leave write/find/say names verbatim.</p>
+      </button>
+      <button class="beat machine" role="tab" id="tab-stamp" aria-controls="panel" aria-pressed="false" data-id="stamp">
+        <div class="who m">Machine</div>
+        <div class="n">3</div>
+        <h2>Stamp</h2>
+        <div class="mini" aria-hidden="true">
+          <div class="rule" style="top:12px"></div>
+          <div class="t" style="top:8px">Nombre del solicitante</div>
+          <div class="box" style="left:70%;top:14px;width:22%;height:16px"></div>
+        </div>
+        <p>Put each translation at the original coordinates. Missing cores fail the build.</p>
+      </button>
+      <button class="beat human" role="tab" id="tab-check" aria-controls="panel" aria-pressed="false" data-id="check">
+        <div class="who h">Machine gates, then your eyes</div>
+        <div class="n">4</div>
+        <h2>Check</h2>
+        <div class="mini" aria-hidden="true">
+          <div class="t" style="top:8px;color:#1b6b4a">PASS fields · ink · leak</div>
+          <div class="t" style="top:28px;color:#0a5c62">PASS words landed</div>
+        </div>
+        <p>Verify the file. Then look at side-by-side page pictures. Then deliver.</p>
+      </button>
+    </div>
+  </section>
+
+  <div class="dock">
+    <article class="panel" id="panel" role="tabpanel" aria-live="polite">
+      <div class="kicker" id="panel-kicker">Beat 1 · Peel</div>
+      <h3 id="panel-title">Take the words off. Leave the form.</h3>
+      <p class="one-line" id="panel-line">Never white-box. Never redact. Redaction deletes fields.</p>
+      <p id="panel-body">
+        Open the PDF. Count pages and fields. Then strip text from the content
+        stream. Graphics, images, and widgets stay. Extract records every string
+        and where it sat — from the original, not the stripped file.
+      </p>
+      <code class="cmd" id="panel-cmd">python3 scripts/pipeline.py init original.pdf --work .</code>
+      <div class="failok">
+        <div class="ok"><strong>Go</strong><span id="panel-ok">Born-digital PDF with a real text layer.</span></div>
+        <div class="bad"><strong>Halt</strong><span id="panel-halt">Scan / photo page: refuse and name OCR. Do not ship the original as a translation.</span></div>
+      </div>
+    </article>
+
+    <aside class="track">
+      <h2>Full run, in order</h2>
+      <p class="hint">Click a row. Arrow keys work too.</p>
+      <ol class="steps" id="steps">
+        <li><button class="step h" data-id="recon"><span class="idx">1</span><span><span class="ttl">Recon</span><span class="sub">Look. Read failure-modes.md</span></span><span class="tag h">you</span></button></li>
+        <li><button class="step m" data-id="strip"><span class="idx">2</span><span><span class="ttl">Strip</span><span class="sub">strip_text.py</span></span><span class="tag m">script</span></button></li>
+        <li><button class="step m" data-id="extract"><span class="idx">3</span><span><span class="ttl">Extract</span><span class="sub">segments.json + to_translate.json</span></span><span class="tag m">script</span></button></li>
+        <li><button class="step h" data-id="translate"><span class="idx">4</span><span><span class="ttl">Translate</span><span class="sub">author translations.json</span></span><span class="tag h">you</span></button></li>
+        <li><button class="step m" data-id="font"><span class="idx">5</span><span><span class="ttl">Font</span><span class="sub">prepare_font.py — must rasterize</span></span><span class="tag m">script</span></button></li>
+        <li><button class="step m" data-id="retypeset"><span class="idx">6</span><span><span class="ttl">Retypeset</span><span class="sub">stamp at original baselines</span></span><span class="tag m">script</span></button></li>
+        <li><button class="step m" data-id="verify"><span class="idx">7</span><span><span class="ttl">Verify</span><span class="sub">fields, fill, ink, leak, placement</span></span><span class="tag m">script</span></button></li>
+        <li><button class="step h" data-id="eyes"><span class="idx">8</span><span><span class="ttl">Eyes</span><span class="sub">render PNGs and look. Not optional.</span></span><span class="tag h">you</span></button></li>
+        <li><button class="step m" data-id="fields"><span class="idx">9</span><span><span class="ttl">Field fonts</span><span class="sub">full font so users can type names</span></span><span class="tag m">script</span></button></li>
+        <li><button class="step h" data-id="deliver"><span class="idx">10</span><span><span class="ttl">Deliver</span><span class="sub">translated PDF + original + compare HTML</span></span><span class="tag h">you</span></button></li>
+      </ol>
+    </aside>
+  </div>
+
+  <section aria-labelledby="layer-title">
+    <h2 id="layer-title" style="font-family:'Big Shoulders Display',sans-serif;font-size:1.8rem;margin:0 0 10px">One page is three layers</h2>
+    <div class="layers">
+      <div class="layer">
+        <div class="stamp keep">untouched</div>
+        <h3>Graphics</h3>
+        <p>Rules, bands, logos, images. Strip never redraws these. If text was white on a dark band, the new text must stay white.</p>
+      </div>
+      <div class="layer">
+        <div class="stamp peel">this is what moves</div>
+        <h3>Text</h3>
+        <p>Peeled off, then stamped back in the same seats. Overlaying white boxes looks fake. Redaction deletes fields. Don’t.</p>
+      </div>
+      <div class="layer">
+        <div class="stamp keep">same names, types, boxes</div>
+        <h3>Widgets</h3>
+        <p>Fill-ins, checkboxes, buttons, links. Survive strip. Adding extras is a regression unless asked.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="loop" aria-labelledby="loop-title">
+    <h2 id="loop-title">Where the time actually goes</h2>
+    <p>
+      Scripts on a 4-page form finish in seconds. The half hour is you writing
+      the mapping and looking at pictures. After the first extract, do not
+      re-run strip / extract / font unless the source PDF or the character set changed.
+    </p>
+    <ol>
+      <li>Edit <code>translations.json</code></li>
+      <li><code>pipeline.py rebuild</code> (retypeset + verify)</li>
+      <li><code>pipeline.py render</code> (PNGs at ~110 dpi)</li>
+      <li>Look. Fix. Loop. Budget 2–3 visual passes. The first build is never right.</li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="gates-title">
+    <h2 id="gates-title" style="font-family:'Big Shoulders Display',sans-serif;font-size:1.8rem;margin:0 0 10px">Verify can PASS structure and still miss the words — unless you ask</h2>
+    <div class="gates">
+      <div class="gate"><b>Fields</b><span>Same names and types as the original.</span></div>
+      <div class="gate"><b>Fill</b><span>A typed value and a checkbox survive save/reopen.</span></div>
+      <div class="gate"><b>Ink</b><span>Page still has roughly the same dark pixels. Catches invisible glyphs.</span></div>
+      <div class="gate"><b>Leak</b><span>A leftover English sentence fails. One proper noun does not.</span></div>
+      <div class="gate"><b>Scan</b><span>Picture of a page with no text layer → halt, name OCR.</span></div>
+      <div class="gate new"><b>Placement</b><span><code>--translations</code>: every authored line must appear in the output text. Missing lines are listed. Omit the flag: this gate does not run.</span></div>
+    </div>
+  </section>
+
+  <footer>
+    Commands live in <code>SKILL.md</code>.
+    Format of the mapping: <code>references/translations-format.md</code>.
+    Silent failures: <code>references/failure-modes.md</code>.
+    Priority if they fight: structure, then layout, then wording.
+  </footer>
+</div>
+
+<script>
+const copy = {
+  peel: {
+    kicker: "Beat 1 · Peel",
+    title: "Take the words off. Leave the form.",
+    line: "Never white-box. Never redact. Redaction deletes fields.",
+    body: "Open the PDF. Count pages and fields. Then strip text from the content stream. Graphics, images, and widgets stay. Extract records every string and where it sat — from the original, not the stripped file.",
+    cmd: "python3 scripts/pipeline.py init original.pdf --work .",
+    ok: "Born-digital PDF with a real text layer.",
+    halt: "Scan / photo page: refuse and name OCR. Do not ship the original as a translation."
+  },
+  write: {
+    kicker: "Beat 2 · Write",
+    title: "You are the language. The scripts are the geometry.",
+    line: "No glossary will save a weak mapping. Match the document’s register.",
+    body: "Translate every core in to_translate.json. Leave names the reader must write, find, or say (Form W-2, quoted labels, URLs). Declare paragraph merges yourself — never auto-merge, it swallows list items.",
+    cmd: "# author translations.json   (see references/translations-format.md)",
+    ok: "Every non-passthrough core has a target. Verbatim items mapped to themselves on purpose.",
+    halt: "A model that will not look at page images should not author this file."
+  },
+  stamp: {
+    kicker: "Beat 3 · Stamp",
+    title: "Same seats. New language.",
+    line: "A missing core fails retypeset. Silence is not allowed.",
+    body: "Retypeset writes onto the stripped PDF using original baselines. It shrinks to fit, refills dot leaders from the right so they do not plow through checkboxes, and keeps the original text color (white stays white).",
+    cmd: "python3 scripts/retypeset.py stripped.pdf segments.json translations.json out.pdf",
+    ok: "Exit 0. Target strings sit on the page.",
+    halt: "Exit 1 lists cores you forgot. Fix the JSON and run again."
+  },
+  check: {
+    kicker: "Beat 4 · Check",
+    title: "Gates, then eyes, then ship.",
+    line: "A green verify on a file that never got the words is worse than a halt.",
+    body: "Verify checks fields, fill, ink, leftover source sentences, scans — and, if you pass --translations, that every authored line actually appears in the text layer. Then you must look at renders. Gates cannot see a 4-point label or a header sitting left of center.",
+    cmd: "python3 scripts/verify.py original.pdf out.pdf --source-words-from segments.json --translations translations.json\npython3 scripts/pipeline.py render original.pdf out.pdf renders/",
+    ok: "All gates PASS, and a full-page visual pass is clean.",
+    halt: "Any FAIL, or you skipped the pictures. Do not deliver."
+  },
+  recon: {
+    kicker: "Step 1 · Recon",
+    title: "Look before you touch it.",
+    line: "Read failure-modes.md now. Every item in it was a silent, hours-long miss.",
+    body: "Note page count, widgets per page, fonts, and whether the file is a hybrid XFA form. Acrobat will ignore your edited pages until XFA is removed. That is a recon fact, not a later surprise.",
+    cmd: "# open original.pdf  ·  page.widgets()  ·  '/XFA' in AcroForm?",
+    ok: "You know if it is a form, a scan, or a livecycle hybrid.",
+    halt: "Skipping recon. You will rediscover XFA in Acrobat after you thought you were done."
+  },
+  strip: {
+    kicker: "Step 2 · Strip",
+    title: "Delete BT…ET. Keep everything else.",
+    line: "Content-stream edit. Widgets are annotations — a content edit cannot eat them.",
+    body: "Wraps leftover graphics in q/Q so later text does not inherit a gray fill. Optional --captions rewrites button labels in place so English chrome does not draw on top of your translation.",
+    cmd: "python3 scripts/strip_text.py original.pdf stripped.pdf",
+    ok: "Source sentences gone. Fields and vectors still there.",
+    halt: "Using redaction tools. That deletes overlapping fields."
+  },
+  extract: {
+    kicker: "Step 3 · Extract",
+    title: "Geometry from the original. Always.",
+    line: "Never extract from the stripped file. There is nothing left to measure.",
+    body: "Writes segments.json (where) and to_translate.json (what). Numbers and symbols pass through. Warns about inner gaps, quoted strings, form names, and possible paragraph wraps.",
+    cmd: "python3 scripts/extract_segments.py original.pdf",
+    ok: "A list of cores you must translate.",
+    halt: "Visible ink or an image, zero extractable text → exit non-zero, names OCR."
+  },
+  translate: {
+    kicker: "Step 4 · Translate",
+    title: "This is the 30 minutes.",
+    line: "Structure beats layout beats wording. Wording still has to be native, not literal.",
+    body: "If a line will be written on an attachment, searched, or handed to a clerk, keep the source words. If type will shrink below ~0.7×, shorten the translation instead of accepting tiny print.",
+    cmd: "# translations.json  →  translations / merges / overrides / center / skip / fonts",
+    ok: "A complete mapping a native reader would accept.",
+    halt: "Shipping English because verify was green on a stripped file."
+  },
+  font: {
+    kicker: "Step 5 · Font",
+    title: "It must actually draw.",
+    line: "A subsetted CFF font can drop CJK glyphs with no error. Trust the raster assert.",
+    body: "Subset a TrueType (glyf) font to the characters you used. The script renders a sample and counts dark pixels. Skip this and you can ship blank kanji.",
+    cmd: "python3 scripts/prepare_font.py FONT.ttf translations.json font-sub.ttf --sample \"text in target script\"",
+    ok: "Sample rasterizes. File is glyf, not CFF.",
+    halt: "has_glyph() said yes, the page drew nothing."
+  },
+  retypeset: {
+    kicker: "Step 6 · Retypeset",
+    title: "Stamp onto the stripped page.",
+    line: "Insert on the baseline, not the box top — box-top sits visibly low.",
+    body: "One TextWriter per color. Dot leaders refill from the original right edge, at most the original width. ‖ splits a bold lead-in from regular remainder.",
+    cmd: "python3 scripts/pipeline.py rebuild --work . original.pdf out.pdf --translations translations.json",
+    ok: "Exit 0, targets on the page.",
+    halt: "Untranslated segments listed. Inner loop: edit JSON, rebuild."
+  },
+  verify: {
+    kicker: "Step 7 · Verify",
+    title: "Ask the file the structure questions.",
+    line: "Pass --translations so “the mapping never landed” is a FAIL, not a vibe.",
+    body: "Fields, fill, ink, leftover running source text, scan refusal. With --translations, every non-passthrough target (length ≥ 2, spaces and hyphens normalized) must appear in get_text(). Omit the flag and this gate does not run.",
+    cmd: "python3 scripts/verify.py original.pdf out.pdf --fill-text \"…\" --source-words-from segments.json --translations translations.json",
+    ok: "Exit 0. Placement PASS names nothing missing.",
+    halt: "Exit 1 lists missing targets — or field/fill/ink/leak/scan failed."
+  },
+  eyes: {
+    kicker: "Step 8 · Eyes",
+    title: "The gates are blind to half the defects.",
+    line: "Gray text, leaders through checkboxes, 4-pt labels, double-drawn buttons: only pictures catch these.",
+    body: "Render every page next to the original at ~110 dpi. Look. Then rebuild. Compare HTML is for delivery day — rasterizing every page twice at 120 dpi every round is wasted work.",
+    cmd: "python3 scripts/pipeline.py render original.pdf out.pdf renders/",
+    ok: "A full-page visual pass you would hand to a native reader.",
+    halt: "Declaring victory after verify without opening the PNGs."
+  },
+  fields: {
+    kicker: "Step 9 · Field fonts",
+    title: "Users type names the subset never saw.",
+    line: "Skip only for non-form PDFs.",
+    body: "Embed a full-coverage font, point every text field’s default appearance at it, set NeedAppearances. Values can store while the rendering vanishes — easy to miss if you only test ASCII.",
+    cmd: "python3 scripts/field_fonts.py out.pdf FULL_FONT.ttf final.pdf",
+    ok: "A name in the target script still shows after save.",
+    halt: "Shipping a form people cannot type into in their own script."
+  },
+  deliver: {
+    kicker: "Step 10 · Deliver",
+    title: "Three artifacts, plus your decisions.",
+    line: "The user should learn judgment calls from you, not discover them later.",
+    body: "Hand over the translated PDF, the original you used, and the side-by-side HTML. Say what you left verbatim, what you compressed, whether XFA or buttons changed.",
+    cmd: "python3 scripts/compare.py original.pdf final.pdf comparison.html --labels \"English|Español\" --lang es",
+    ok: "Three files and a short note.",
+    halt: "Only the PDF, no original, no comparison, no notes."
+  }
+};
+
+const panel = {
+  kicker: document.getElementById("panel-kicker"),
+  title: document.getElementById("panel-title"),
+  line: document.getElementById("panel-line"),
+  body: document.getElementById("panel-body"),
+  cmd: document.getElementById("panel-cmd"),
+  ok: document.getElementById("panel-ok"),
+  halt: document.getElementById("panel-halt")
+};
+const beats = [...document.querySelectorAll(".beat")];
+const steps = [...document.querySelectorAll(".step")];
+const order = steps.map(s => s.dataset.id);
+
+function show(id) {
+  const c = copy[id];
+  if (!c) return;
+  panel.kicker.textContent = c.kicker;
+  panel.title.textContent = c.title;
+  panel.line.textContent = c.line;
+  panel.body.textContent = c.body;
+  panel.cmd.textContent = c.cmd;
+  panel.ok.textContent = c.ok;
+  panel.halt.textContent = c.halt;
+
+  const beatOf = {
+    peel: "peel", write: "write", stamp: "stamp", check: "check",
+    recon: "peel", strip: "peel", extract: "peel",
+    translate: "write", font: "write",
+    retypeset: "stamp",
+    verify: "check", eyes: "check", fields: "check", deliver: "check"
+  };
+  const stepOfBeat = { peel: "recon", write: "translate", stamp: "retypeset", check: "verify" };
+  beats.forEach(b => b.setAttribute("aria-pressed", String(b.dataset.id === beatOf[id])));
+  const currentStep = stepOfBeat[id] || id;
+  steps.forEach(s => {
+    if (s.dataset.id === currentStep || s.dataset.id === id) s.setAttribute("aria-current", "step");
+    else s.removeAttribute("aria-current");
+  });
+}
+
+beats.forEach(b => b.addEventListener("click", () => show(b.dataset.id)));
+steps.forEach(s => s.addEventListener("click", () => show(s.dataset.id)));
+
+document.addEventListener("keydown", (e) => {
+  const cur = steps.findIndex(s => s.getAttribute("aria-current") === "step");
+  if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+    const next = order[(Math.max(cur, 0) + 1) % order.length];
+    show(next); e.preventDefault();
+  } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+    const prev = order[(cur < 0 ? 0 : cur - 1 + order.length) % order.length];
+    show(prev); e.preventDefault();
+  }
+});
+
+show("peel");
+</script>
+</body>
+</html>

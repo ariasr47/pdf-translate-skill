@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pdf-translate — skill proof</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:opsz,wght@8..60,500;8..60,650;8..60,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #e6e9ee;
+    --sheet: #f7f8fa;
+    --ink: #14171c;
+    --mute: #5c6370;
+    --rule: #c5cad3;
+    --cyan: #0077a8;
+    --proof: #be2a3a;
+    --keep: #1f6b4a;
+    --chip: #dfe4eb;
+    --focus: #0077a8;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Source Sans 3", system-ui, sans-serif;
+    font-size: 17px;
+    line-height: 1.5;
+  }
+  a { color: var(--cyan); }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+
+  .sheet {
+    max-width: 1120px;
+    margin: 28px auto 64px;
+    background: var(--sheet);
+    border: 1px solid var(--rule);
+    position: relative;
+    padding: 36px 44px 56px;
+    box-shadow: 0 1px 0 rgba(20,23,28,.06);
+  }
+  .reg {
+    position: absolute;
+    width: 18px; height: 18px;
+    pointer-events: none;
+  }
+  .reg::before, .reg::after {
+    content: "";
+    position: absolute;
+    background: var(--ink);
+  }
+  .reg::before { width: 18px; height: 1px; top: 8.5px; left: 0; }
+  .reg::after { width: 1px; height: 18px; left: 8.5px; top: 0; }
+  .reg-tl { top: 10px; left: 10px; }
+  .reg-tr { top: 10px; right: 10px; }
+  .reg-bl { bottom: 10px; left: 10px; }
+  .reg-br { bottom: 10px; right: 10px; }
+
+  .mast {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 24px;
+    align-items: start;
+    border-bottom: 1px solid var(--ink);
+    padding-bottom: 20px;
+    margin-bottom: 28px;
+  }
+  .kicker {
+    font-family: "Source Code Pro", ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--mute);
+  }
+  h1 {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: clamp(2.1rem, 4.2vw, 3.15rem);
+    font-weight: 650;
+    line-height: 1.08;
+    letter-spacing: -.02em;
+    margin: 8px 0 10px;
+  }
+  .lede {
+    max-width: 40rem;
+    font-size: 1.12rem;
+    color: var(--mute);
+    margin: 0;
+  }
+  .meta {
+    font-family: "Source Code Pro", ui-monospace, monospace;
+    font-size: 12px;
+    text-align: right;
+    color: var(--mute);
+    line-height: 1.7;
+  }
+  .cmyk {
+    display: flex; gap: 6px; justify-content: flex-end; margin-bottom: 8px;
+  }
+  .cmyk span {
+    width: 14px; height: 14px; border: 1px solid var(--ink);
+  }
+  .c { background: #00a3e0; }
+  .m { background: #d5008f; }
+  .y { background: #ffd100; }
+  .k { background: #14171c; }
+
+  .stream {
+    font-family: "Source Code Pro", ui-monospace, monospace;
+    font-size: 12.5px;
+    background: #14171c;
+    color: #d5dbe4;
+    padding: 14px 16px;
+    margin: 0 0 36px;
+    overflow: auto;
+    white-space: normal;
+    line-height: 1.75;
+  }
+  .stream .kill { color: #f0a0a8; text-decoration: line-through; opacity: .85; }
+  .stream .keep { color: #7fd4ff; }
+  .stream .note { color: #8b93a0; }
+
+  nav.toc {
+    display: flex; flex-wrap: wrap; gap: 8px 18px;
+    margin: 0 0 40px;
+    font-size: 14px;
+  }
+  nav.toc a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--rule); }
+  nav.toc a:hover { border-color: var(--ink); }
+
+  h2 {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 1.65rem;
+    font-weight: 650;
+    margin: 2.4rem 0 .6rem;
+    letter-spacing: -.015em;
+  }
+  h3 {
+    font-family: "Source Sans 3", sans-serif;
+    font-size: .78rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--mute);
+    margin: 1.6rem 0 .45rem;
+    font-weight: 700;
+  }
+  p { margin: 0 0 1rem; max-width: 42rem; }
+  .wide { max-width: none; }
+
+  .split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1px solid var(--ink);
+    margin: 1rem 0 1.6rem;
+  }
+  .split > div { padding: 16px 18px; }
+  .split .was { background: #f3e8e9; border-right: 1px solid var(--ink); }
+  .split .now { background: #e7f0ec; }
+  .split h3 { margin-top: 0; }
+  .split p { margin-bottom: .4rem; font-size: .95rem; }
+  .tag {
+    display: inline-block;
+    font-family: "Source Code Pro", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 1px 7px;
+    border: 1px solid currentColor;
+    margin-bottom: 8px;
+  }
+  .was .tag { color: var(--proof); }
+  .now .tag { color: var(--keep); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+    margin: .4rem 0 1.4rem;
+  }
+  th, td {
+    text-align: left;
+    vertical-align: top;
+    padding: 10px 12px 10px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  th {
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--mute);
+    font-weight: 700;
+  }
+  td.file { font-family: "Source Code Pro", ui-monospace, monospace; font-size: 13px; white-space: nowrap; }
+  .mark {
+    font-family: "Source Code Pro", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .fix { color: var(--proof); }
+  .add { color: var(--keep); }
+  .doc { color: var(--cyan); }
+
+  .callout {
+    border-left: 3px solid var(--ink);
+    padding: 4px 0 4px 16px;
+    margin: 0 0 1.4rem;
+    max-width: 42rem;
+  }
+  .callout strong { font-family: "Source Serif 4", serif; }
+
+  ol.stages {
+    margin: 0 0 1.4rem;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    gap: 6px;
+  }
+  ol.stages li {
+    border: 1px solid var(--rule);
+    padding: 10px 10px 12px;
+    font-size: 13px;
+  }
+  ol.stages code {
+    display: block;
+    font-family: "Source Code Pro", ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--cyan);
+    margin-bottom: 6px;
+  }
+
+  .proofs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: 1rem 0 1.6rem;
+  }
+  .proofs figure {
+    margin: 0;
+    border: 1px solid var(--rule);
+    padding: 14px 14px 12px;
+    background: #fff;
+  }
+  .proofs b {
+    display: block;
+    font-family: "Source Serif 4", serif;
+    font-size: 1.55rem;
+    font-weight: 650;
+    letter-spacing: -.02em;
+  }
+  .proofs span { font-size: 13px; color: var(--mute); }
+
+  pre {
+    font-family: "Source Code Pro", ui-monospace, monospace;
+    font-size: 13px;
+    background: #14171c;
+    color: #e8edf3;
+    padding: 14px 16px;
+    overflow: auto;
+    margin: 0 0 1.4rem;
+  }
+
+  .not {
+    background: var(--chip);
+    padding: 16px 18px;
+    margin: 1rem 0 1.6rem;
+  }
+  .not ul { margin: .3rem 0 0; padding-left: 1.15rem; }
+  .not li { margin: .25rem 0; }
+
+  footer {
+    border-top: 1px solid var(--ink);
+    margin-top: 48px;
+    padding-top: 16px;
+    font-size: 13px;
+    color: var(--mute);
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 860px) {
+    .sheet { margin: 0; padding: 28px 18px 40px; border: none; }
+    .mast, .split, .proofs, ol.stages { grid-template-columns: 1fr; }
+    .split .was { border-right: none; border-bottom: 1px solid var(--ink); }
+    .meta { text-align: left; }
+    .cmyk { justify-content: flex-start; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+<article class="sheet">
+  <span class="reg reg-tl" aria-hidden="true"></span>
+  <span class="reg reg-tr" aria-hidden="true"></span>
+  <span class="reg reg-bl" aria-hidden="true"></span>
+  <span class="reg reg-br" aria-hidden="true"></span>
+
+  <header class="mast">
+    <div>
+      <div class="kicker">pdf-translate · skill proof · not a bakeoff score</div>
+      <h1>The architecture did not change. The skill stopped assuming a vendor, a language, and a PATH.</h1>
+      <p class="lede">Yes — <code>SKILL.md</code> was updated, and so were the seven scripts it names. This page is a compositor’s proof of that pass: what the skill now says, what actually broke on Windows, and what the new tests catch.</p>
+    </div>
+    <div class="meta">
+      <div class="cmyk" aria-hidden="true"><span class="c"></span><span class="m"></span><span class="y"></span><span class="k"></span></div>
+      Sheet: explainer.html<br>
+      Skill: SKILL.md<br>
+      Date: 30 Aug 2026<br>
+      Pair: any → any (born-digital)
+    </div>
+  </header>
+
+  <div class="stream" aria-label="PDF content stream, text operators struck">
+    <span class="note">% page content</span>
+    &nbsp; q  …graphics, images, rules…  Q
+    &nbsp; <span class="kill">BT  /F1 12 Tf  (The applicant must file this form today.) Tj  ET</span>
+    &nbsp; <span class="keep">% widgets, links, outlines untouched</span>
+    &nbsp; <span class="keep">BT  /Trans 12 Tf  (El solicitante debe presentar este formulario hoy.) Tj  ET</span>
+  </div>
+
+  <nav class="toc" aria-label="On this sheet">
+    <a href="#answer">Direct answer</a>
+    <a href="#skill">Skill text</a>
+    <a href="#fixes">Fixes</a>
+    <a href="#adds">New behavior</a>
+    <a href="#proof">Proof</a>
+    <a href="#not">Still out of scope</a>
+    <a href="#run">How to run</a>
+  </nav>
+
+  <section id="answer">
+    <h2>Direct answer</h2>
+    <p>The skill file <code>pdf-translate/SKILL.md</code> is the workflow. It was edited in place. The README was edited with it. The scripts the skill tells you to run were made import-safe, Windows-safe, and language-pair-general. Regression tests now live at <code>tests/test_pipeline.py</code>.</p>
+    <div class="callout">
+      <strong>Unchanged on purpose:</strong> strip-and-retypeset. Text is still deleted at <code>BT</code>/<code>ET</code>, never by overlay or redaction. Graphics stay. Fields stay. A missing translation still fails the build. The visual pass is still mandatory.
+    </div>
+  </section>
+
+  <section id="skill">
+    <h2>What the skill now says that it did not</h2>
+    <p>The old skill already described the pipeline well. It still used FL-150 and Japanese as the running example, and the comparison HTML still shipped with <code>lang="ja"</code>. The update makes the contract explicit: any harness, any mapping author, any born-digital pair.</p>
+    <div class="split">
+      <div class="was">
+        <div class="tag">Was implied</div>
+        <p>Workflow written so an agent could follow it. Comparison page hardcoded Japanese. <code>pyftsubset</code> “must be on PATH.” Button chrome: hide and redraw, which can change the field count.</p>
+        <p>No in-repo tests named in the skill. Same-script leak scan still used a Latin-word regex that flags Spanish as “untranslated English.”</p>
+      </div>
+      <div class="now">
+        <div class="tag">Now written</div>
+        <p>Scripts are provider-neutral: no vendor SDK, no named harness. Translation is a JSON mapping any person or model can author. Invariants are listed: field identity, no redaction, graphics untouched, glyf fonts, coverage is a hard fail.</p>
+        <p><code>--captions</code> rewrites pushbutton <code>/MK /CA</code> in place and drops stale <code>/AP</code>. Extractor warns on write/find/say candidates and possible wraps — it still never auto-merges. Tests: <code>python3 -m unittest tests.test_pipeline -v</code>.</p>
+      </div>
+    </div>
+    <p>The seven stages are the same names, in the same order. What changed is what they assume about the environment and the language pair.</p>
+    <ol class="stages" aria-label="Pipeline stages">
+      <li><code>strip_text</code> + captions, XFA off, q/Q wrap</li>
+      <li><code>extract_segments</code> + write/find/say warnings</li>
+      <li><code>prepare_font</code> finds pyftsubset itself</li>
+      <li><code>retypeset</code> still fails loud on missing cores</li>
+      <li><code>verify</code> source-word leak scan</li>
+      <li><code>field_fonts</code> Windows temp lock ignored</li>
+      <li><code>compare</code> <code>--lang</code>, no Hiragino stack</li>
+    </ol>
+  </section>
+
+  <section id="fixes">
+    <h2>Fixes — defects that already existed</h2>
+    <p>These are not new features. They are things that failed silently or only on this machine, then got a test so they cannot slip back.</p>
+    <table>
+      <thead>
+        <tr><th>Mark</th><th>File</th><th>What was wrong</th><th>What happens now</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mark fix">Fix</td>
+          <td class="file">field_fonts.py</td>
+          <td>Read <code>sys.argv</code> at import, so any test harness crashed. After a good save, Windows <code>WinError 32</code> on the temp file failed the run anyway. Documents were left open, which caused the lock.</td>
+          <td>Callable <code>field_fonts()</code> / <code>main(argv)</code>. Files are closed. A lock on the temp file after a successful write is non-fatal.</td>
+        </tr>
+        <tr>
+          <td class="mark fix">Fix</td>
+          <td class="file">compare.py</td>
+          <td>Same import-time argv. HTML <code>lang="ja"</code> and a Hiragino / Noto Sans JP font stack on every job.</td>
+          <td>Callable <code>compare()</code>. Default <code>lang="en"</code>, generic system sans, optional <code>--lang</code> and <code>--labels</code>.</td>
+        </tr>
+        <tr>
+          <td class="mark fix">Fix</td>
+          <td class="file">prepare_font.py</td>
+          <td><code>pyftsubset</code> invoked as a bare command. On this Windows install it is not on PATH; it lives under the interpreter’s <code>Scripts</code> folder.</td>
+          <td>Search PATH, then <code>Scripts/pyftsubset.exe</code> next to Python, then <code>python -m fontTools.subset</code>.</td>
+        </tr>
+        <tr>
+          <td class="mark fix">Fix</td>
+          <td class="file">verify.py</td>
+          <td>Three consecutive Latin words always failed. English→Spanish therefore failed on the translation itself. Fill round-trip wrote <code>_verify_fill.pdf</code> into the current directory.</td>
+          <td>With <code>--source-words-from</code>, both running-text and isolated-token scans use <em>this document’s</em> source words. Fill uses a temp file.</td>
+        </tr>
+        <tr>
+          <td class="mark fix">Fix</td>
+          <td class="file">strip_text.py</td>
+          <td>Rewriting a button caption left the old appearance stream. Viewers and <code>get_text()</code> still saw English (“Print this form”) on top of the new <code>/CA</code>.</td>
+          <td><code>--captions</code> writes <code>/MK /CA</code> and deletes <code>/AP</code> so NeedAppearances can rebuild. Field count stays 266 on FL-150.</td>
+        </tr>
+        <tr>
+          <td class="mark fix">Fix</td>
+          <td class="file">*.py JSON I/O</td>
+          <td>Opens without <code>encoding='utf-8'</code>. Fine on UTF-8 locales; a defect on Windows when translations are not Latin-1.</td>
+          <td>UTF-8 on the mapping and segment files.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="adds">
+    <h2>New behavior the skill now documents</h2>
+    <table>
+      <thead>
+        <tr><th>Mark</th><th>File</th><th>What you get</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mark add">Add</td>
+          <td class="file">extract_segments.py</td>
+          <td>Warnings for quoted strings, <code>Form</code>/<code>Schedule</code> names, URLs and emails (write/find/say), plus possible wrapped-paragraph merges. Still only warnings — geometry is never auto-merged.</td>
+        </tr>
+        <tr>
+          <td class="mark add">Add</td>
+          <td class="file">strip_text.py</td>
+          <td><code>--captions captions.json</code>: in-place pushbutton rewrite. Prefer this over hide-and-redraw when the widget should remain.</td>
+        </tr>
+        <tr>
+          <td class="mark add">Add</td>
+          <td class="file">tests/test_pipeline.py</td>
+          <td>Constructed fillable form and non-form page. Drives the shipped functions: strip, extract, retypeset, color, fields, links/bookmarks, incomplete mapping, dot leaders vs a mid-line checkbox, same-script leak, prepare_font rasterization, vendor-token grep.</td>
+        </tr>
+        <tr>
+          <td class="mark doc">Doc</td>
+          <td class="file">SKILL.md / README.md</td>
+          <td>Provider-neutral contract, invariants, caption rewrite, extractor warnings, font-tool discovery, <code>--lang</code>, unittest command. FL-150 remains an example in the verbatim section, not a branch in the scripts.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="proof">
+    <h2>What was actually run</h2>
+    <p>Not a native-reader quality claim. These are the gates that passed on this pass.</p>
+    <div class="proofs">
+      <figure>
+        <b>14 / 14</b>
+        <span>unittest tests.test_pipeline</span>
+      </figure>
+      <figure>
+        <b>2× CLI</b>
+        <span>strip → … → compare, both PASS</span>
+      </figure>
+      <figure>
+        <b>266 / 266</b>
+        <span>FL-150 fields after caption rewrite</span>
+      </figure>
+      <figure>
+        <b>ink 1.01</b>
+        <span>constructed form, page 1 ratio</span>
+      </figure>
+    </div>
+    <p>Both live CLI launches printed <code>PASS field parity</code>, <code>PASS fill round-trip</code>, <code>PASS page 1 ink ratio</code>, <code>PASS no untranslated running text</code>. Extracted output contained the Spanish targets and not the English source sentence. FL-150 replay with <code>--captions</code> also passed field, fill, ink, and leak gates.</p>
+  </section>
+
+  <section id="not">
+    <h2>What this pass did not claim</h2>
+    <div class="not">
+      <p class="wide" style="margin-bottom:.4rem">The north star is still unbounded. This sheet is not a proof of “any PDF, any language pair.” Explicitly still out:</p>
+      <ul>
+        <li>OCR / scanned pages</li>
+        <li>RTL and vertical shaping (the skill still halts if you cannot verify)</li>
+        <li>Rebuilding tagged-PDF <code>/StructTreeRoot</code></li>
+        <li>Auto-merging paragraph lines by geometry</li>
+        <li>A translation API, a web UI, or a named vendor client</li>
+        <li>Native-reader indistinguishability — that is the mapping author’s job, plus the visual pass</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="run">
+    <h2>How to run what changed</h2>
+    <pre>cd pdf-translate
+python3 -m unittest tests.test_pipeline -v
+
+python3 scripts/strip_text.py original.pdf stripped.pdf --captions captions.json
+python3 scripts/extract_segments.py original.pdf
+python3 scripts/prepare_font.py FONT.ttf translations.json font-sub.ttf
+python3 scripts/retypeset.py stripped.pdf segments.json translations.json out.pdf
+python3 scripts/verify.py original.pdf out.pdf --source-words-from segments.json
+python3 scripts/field_fonts.py out.pdf FULL_FONT.ttf final.pdf
+python3 scripts/compare.py original.pdf final.pdf comparison.html --lang es</pre>
+    <p>Start at <code>SKILL.md</code>. Read <code>references/failure-modes.md</code> before touching a file. After the gates pass, render every page next to the original and look — that instruction was already in the skill, and it was not weakened.</p>
+  </section>
+
+  <footer>
+    <div>pdf-translate · strip-and-retypeset · provider-neutral</div>
+    <div>This sheet travels with the skill · explainer.html</div>
+  </footer>
+</article>
+</body>
+</html>

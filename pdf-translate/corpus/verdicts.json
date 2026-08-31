@@ -1,0 +1,13 @@
+{
+  "choice_fields.pdf": "translate",
+  "colored.pdf": "translate",
+  "dense_table.pdf": "translate",
+  "encrypted.pdf": "translate",
+  "expansion.pdf": "translate",
+  "image_only.pdf": "refuse+OCR",
+  "multicolumn.pdf": "translate",
+  "pale_blank.pdf": "skip-ink",
+  "rotated.pdf": "translate",
+  "rtl_source.pdf": "translate",
+  "xobject_text.pdf": "translate"
+}

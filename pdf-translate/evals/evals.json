@@ -1,0 +1,26 @@
+{
+  "skill_name": "pdf-translate",
+  "evals": [
+    {
+      "id": 0,
+      "eval_name": "fillable-form-to-japanese",
+      "prompt": "I have a school permission slip PDF at {INPUT}/permission_form.pdf that our Japanese-speaking families need. Can you translate it to Japanese? It's a fillable form and it needs to stay fillable — parents will type into it. The layout should look the same as the English one.",
+      "expected_output": "A Japanese PDF with identical layout, all 12 form fields intact and fillable (incl. Japanese input), dot leaders and checkboxes preserved, natural Japanese in school-notice register.",
+      "files": ["permission_form.pdf"]
+    },
+    {
+      "id": 1,
+      "eval_name": "fillable-form-to-spanish",
+      "prompt": "translate the pdf form at {INPUT}/permission_form.pdf into spanish for me, keep everything working and looking the same please",
+      "expected_output": "A Spanish PDF, identical layout, all 12 fields intact, Spanish text ~15-25% longer handled by rewording/fitting rather than overflow.",
+      "files": ["permission_form.pdf"]
+    },
+    {
+      "id": 2,
+      "eval_name": "non-form-flyer-to-french",
+      "prompt": "Here's a flyer for our garden workshop: {INPUT}/garden_flyer.pdf. We need a French version that looks exactly like the original — same colors, same layout, just French text.",
+      "expected_output": "A French PDF flyer, identical layout/colors incl. white text on the blue banner, prices/URL kept, French text expansion handled.",
+      "files": ["garden_flyer.pdf"]
+    }
+  ]
+}
