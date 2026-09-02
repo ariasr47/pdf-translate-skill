@@ -216,6 +216,17 @@ def page_textdict_without_annots(page):
     return tp.extractDICT()
 
 
+def page_rawdict_without_annots(page):
+    """get_text('rawdict') of the page CONTENT only: per-character boxes and
+    origins from the same annotation-free text page as the dict helper.
+    The extractor reads it for lines that carry a list marker (row 23)."""
+    dl = page.get_displaylist(annots=False)
+    tp = dl.get_textpage()
+    if not isinstance(tp, pymupdf.TextPage):
+        tp = pymupdf.TextPage(tp)
+    return tp.extractRAWDICT()
+
+
 def leftover_page_text(path):
     """[(page_index, snippet)] for every page whose content still has text."""
     doc = pymupdf.open(path)

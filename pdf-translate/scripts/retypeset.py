@@ -10,7 +10,10 @@ document gets the same behavior:
 - single-line segments -> TextWriter at the ORIGINAL baseline origin
 - a list marker is re-emitted in Helvetica followed by the whitespace the
   source printed after it (segment "gap"; one space when a segments.json
-  predates the key), so the body starts where it did
+  predates the key), and the body starts at the measured offset the
+  source's own characters had (segment "body_dx"), because Helvetica's
+  advance for the marker is only right for a Helvetica-metric source;
+  without that key the body starts at Helvetica's width of marker + gap
 - shrink-to-fit bounded by the nearest same-row obstacle (next segment or
   widget rect) so text never overlaps fields or neighboring cells
 - dot leaders refilled anchored to the RIGHT at most the original run width
@@ -706,10 +709,14 @@ def retypeset(stripped, segf, trf, out):
                           logical=''):
             rtw = pymupdf.TextWriter(page.rect)
             xx = px
-            for t, f, fsz in parts_fs:
+            for item in parts_fs:
+                t, f, fsz = item[:3]
+                # A fourth element is an explicit advance (a list marker
+                # whose body starts at the measured source offset).
+                adv = item[3] if len(item) > 3 else f.text_length(t, fsz)
                 rtw.append((xx, py), t, font=f, fontsize=fsz,
                            right_to_left=rtl)
-                xx += f.text_length(t, fsz)
+                xx += adv
             rot_jobs.append((rtw, cint, rotation_morph(px, py, dx, dy),
                              logical if rtl else ''))
 
@@ -777,6 +784,22 @@ def retypeset(stripped, segf, trf, out):
             if gap is None:
                 gap = ' '
             mk = marker + gap
+            # Row 23: where the body's first glyph was in the source, measured
+            # from its characters. The marker is drawn in Helvetica whatever
+            # the source font, so Helvetica's advance is right only for a
+            # Helvetica-metric source. An old segments.json has no key and
+            # keeps the row-19 placement. Scales with the run when it shrinks.
+            body_dx = seg.get('body_dx')
+
+            def marker_adv(mfont, fsz):
+                if body_dx is not None:
+                    return body_dx * (fsz / fs if fs else 1.0)
+                return mfont.text_length(mk, fsz)
+
+            def part_adv(i, t, f, fsz):
+                if i == 0 and marker:
+                    return marker_adv(f, fsz)
+                return f.text_length(t, fsz)
             jp = T.get(core)
             if jp is None:
                 if not seg['passthrough']:
@@ -804,7 +827,7 @@ def retypeset(stripped, segf, trf, out):
                 if marker:
                     mfont = helv_role(seg['bold'], seg.get('italic'))
                     tw.append((bx, oy), mk, font=mfont, fontsize=fs)
-                    bx += mfont.text_length(mk, fs)
+                    bx += marker_adv(mfont, fs)
                 avail = right_limit(pno, seg, segs) - bx
                 inline_jobs.append((bx, oy, jp.replace('‖', ''),
                                     bool(seg['bold']), bool(seg.get('italic')),
@@ -827,7 +850,7 @@ def retypeset(stripped, segf, trf, out):
                 check_glyphs(pno, f, t, core, _font_label(f, {
                     id(font_r): 'regular', id(font_b): 'bold',
                     id(font_i): 'italic', id(font_bi): 'bold-italic'}))
-            wsum = sum(f.text_length(t, fs) for t, f in parts)
+            wsum = sum(part_adv(i, t, f, fs) for i, (t, f) in enumerate(parts))
             rtl_body = is_rtl_text(jp)
             shaped = needs_shaping(jp)
             def leader_geometry():
@@ -863,7 +886,7 @@ def retypeset(stripped, segf, trf, out):
                 if marker:
                     mfont = helv_role(seg['bold'], seg.get('italic'))
                     tw.append((bx, oy), mk, font=mfont, fontsize=fs)
-                    bx += mfont.text_length(mk, fs)
+                    bx += marker_adv(mfont, fs)
                 room = max(label_max - (bx - ox), 1.0)
                 if shaped:
                     # Shaping usually narrows a run (ligatures, conjuncts),
@@ -892,9 +915,9 @@ def retypeset(stripped, segf, trf, out):
                 if fs and fs2 < fs:
                     consider_ratio(pno, core, fs2 / fs)
                 x = ox
-                for t, f in parts:
+                for i, (t, f) in enumerate(parts):
                     tw.append((x, oy), t, font=f, fontsize=fs2)
-                    x += f.text_length(t, fs2)
+                    x += part_adv(i, t, f, fs2)
                 fill_leaders(x, cur_end)
                 continue
             maxw = (direction_limit(page, seg, dx, dy) if rot
@@ -903,7 +926,7 @@ def retypeset(stripped, segf, trf, out):
             if fs and fs2 < fs and not shaped:
                 consider_ratio(pno, core, fs2 / fs)
             x = ox
-            run_w = sum(f.text_length(t, fs2) for t, f in parts)
+            run_w = sum(part_adv(i, t, f, fs2) for i, (t, f) in enumerate(parts))
             if core in center and not rot:
                 cx = (seg['bbox'][0] + seg['bbox'][2]) / 2
                 x = max(ox - 200, cx - run_w / 2)
@@ -920,7 +943,8 @@ def retypeset(stripped, segf, trf, out):
                     # exact silent defect this program refuses to ship.
                     rotated_shaped.append((pno, core))
                     continue
-                place_rotated(x, oy, [(t, f, fs2) for t, f in parts],
+                place_rotated(x, oy, [(t, f, fs2, part_adv(i, t, f, fs2))
+                                      for i, (t, f) in enumerate(parts)],
                               int(seg.get('color', 0)), dx, dy,
                               rtl=rtl_body, logical=jp.replace('‖', ''))
                 continue
@@ -932,7 +956,7 @@ def retypeset(stripped, segf, trf, out):
                 if marker:
                     mfont = helv_role(seg['bold'], seg.get('italic'))
                     tw.append((bx, oy), mk, font=mfont, fontsize=fs)
-                    bx += mfont.text_length(mk, fs)
+                    bx += marker_adv(mfont, fs)
                 shaped_jobs.append((bx, oy, jp.replace('‖', ''), bool(seg['bold']), fs,
                                     int(seg.get('color', 0)), maxw - (bx - x), core,
                                     bool(seg.get('italic'))))
@@ -943,9 +967,9 @@ def retypeset(stripped, segf, trf, out):
                                  role(seg['bold'], seg.get('italic')), fs2,
                                  int(seg.get('color', 0)), logical))
             else:
-                for t, f in parts:
+                for i, (t, f) in enumerate(parts):
                     tw.append((x, oy), t, font=f, fontsize=fs2)
-                    x += f.text_length(t, fs2)
+                    x += part_adv(i, t, f, fs2)
         for cint, w in writers.items():
             w.write_text(page, color=rgb_of(cint))
         for (rtw, cint, morph, logical) in rot_jobs:

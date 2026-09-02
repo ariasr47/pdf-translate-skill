@@ -112,6 +112,9 @@ implementation in this skill (refusal is the product). The canary
 - The original's `/Title` quoted as a unit, and a multi-word `--allow`
   phrase, are kept runs in the leak scan, printed as a note; a longer run
   that contains them is still a leak; `skip` exempts nothing
+- A list body starts where the source's characters put it (`gap` and
+  `body_dx` in the segment); the marker stays Helvetica; a segments.json
+  without either key still builds
 - Shaped scripts (Arabic, Indic, Thai…) go through the Story engine with
   `/ActualText`; unshaped Arabic in an output is a verify FAIL
 - `narrow-column` and `right-aligned` are *warnings*: geometry proposes,
@@ -142,8 +145,8 @@ model doing a real job, each with a measurement in `dev/canary/runs/`:
 | **20** | `goals/20-notice-title-leak.md` | **Closed 2 Sep.** The compliance notice's source-language title tripped the leak scan. The original's `/Title` quoted as a unit is kept; `--allow` takes phrases; a longer run is still a leak | Fable 5.1 |
 
 One sitting each, in that order (cheapest first). 18, 19 and 20 are
-closed, and so are 21 and 22. The wild corpus's 23 remains (see *Backlog
-after the review*); after it, lane B, then the canary again. Do not paste Grok NOTES,
+closed, and so are 21, 22 and 23. Lane A is empty; lane B is next (see
+*Backlog after the review*), then the canary again. Do not paste Grok NOTES,
 `work/translations.json`, or bakeoff scores into that session.
 
 The evening review of 2 September (`docs/REVIEW-2026-09-02.md`) added a
@@ -174,7 +177,7 @@ are in `docs/REVIEW-2026-09-02.md` §5; this is the queue.
 | C2 | canary run 2 — after P3, so it also tests the shorter skill; one deliberately long session | — |
 | 21 | `goals/21-right-aligned-on-text.md` | **Closed 2 Sep evening.** A group is proposed only when at least half its members sit within one em of a rule, a field or the next segment; corpus 1,485 → 158 groups, 11,507 → 642 segments, FL-100's caption stacks kept, everything else identical |
 | 22 | `goals/22-merge-candidate-kind.md` | **Closed 2 Sep evening.** Merge candidates carry `kind: "merge-candidate"`; `propose_merges` still accepts a kind-less candidate from an older `segments.json`; the corpus re-run names all 2,484 |
-| **23** | `goals/23-marker-font-metrics.md` | wild corpus, while closing 19: the body still starts at Helvetica's width of marker + gap, so one-space lists whose marker font is not Helvetica-metric drift — 1.3 pt on Medicare, 4.9 pt on FL-300, every gate green |
+| 23 | `goals/23-marker-font-metrics.md` | **Closed 2 Sep evening.** Segments carry `body_dx`, measured from the source's characters; retypeset starts the body there in every marker path; absent key → row-19 placement. Corpus: 952/952 marker lines measured, drift of up to 4.9 pt (FL-300) now corrected |
 
 **Lane B — product rows.** New. Triggered by product evidence, not by a
 model's defect; never a gate.
@@ -189,7 +192,9 @@ model's defect; never a gate.
 | P7 | Notice channel (candidate, no brief yet) | The skill has no way to add the compliance notice it requires: Fable wrote its own script and re-canonicalised the text layer afterwards; row 20's fixture draws it by hand. A `--notice` input — text, page, a rect the author chose — placed with the job's fonts at retypeset time, canonical layer kept, gates unchanged. Write the brief when it is next | Choosing the rect by geometry; adding a page; a notice the reader cannot read |
 | P5 | One source of truth | **Closed 2 Sep evening**: README count removed and CI badge added; audit HTML is a banner-marked snapshot; findings §15; tracker carries both lanes. Rule: `checklist.html` tracks, this file queues, `HANDOVER.md` cold-starts; nothing else states counts or open rows | — |
 
-**Order:** 23 → P2 → P6 → P3 → C2 → P4.
+**Order:** P2 → P6 → P3 → C2 → P4. Lane A is empty: every measured
+row is closed; the next lane A rows come from canary run 2 or the next
+wild-corpus probe, never from invention.
 
 **Hypotheses, after the wild corpus** (`dev/wild/ANALYSIS.md` §5): hybrid
 XFA — answered on page 1 of eight forms, the AcroForm layer renders

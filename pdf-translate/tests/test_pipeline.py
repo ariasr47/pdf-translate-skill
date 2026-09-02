@@ -2343,9 +2343,12 @@ class ListMarkerGapTests(unittest.TestCase):
         build_list_pdf(src)
         extract_segments.extract_segments(src, outdir=tmp)
         if drop_gap:
+            # A segments.json from before row 19 has neither the gap nor the
+            # measured body offset (row 23); drop both to stand in for one.
             data = json.loads(Path(segs).read_text(encoding='utf-8'))
             for s in data['segments']:
                 s.pop('gap', None)
+                s.pop('body_dx', None)
             Path(segs).write_text(json.dumps(data), encoding='utf-8')
         strip_text.strip_text(src, stripped)
         write_mapping(tr, LIST_TARGETS, font)
@@ -2410,6 +2413,92 @@ class ListMarkerGapTests(unittest.TestCase):
             self.assertAlmostEqual(body_x0(out, LIST_TARGETS[LIST_TWO_CORE]),
                                    body_x0(src, LIST_TWO_CORE) - helv.text_length(' ', 11),
                                    delta=0.5)
+
+
+# Row 23: the marker is drawn in Helvetica, so the body used to start at
+# Helvetica's width of marker + gap, whatever the source font. Times and
+# Courier markers are 1.6 and 9.6 pt off at 14 pt; the corpus measured
+# 1.3 pt (Medicare) and 4.9 pt (FL-300) on one-space lists.
+METRIC_TIMES_CORE = 'Body set in Times'
+METRIC_COURIER_CORE = 'Body set in Courier'
+METRIC_TARGETS = {METRIC_TIMES_CORE: 'Cuerpo en Times',
+                  METRIC_COURIER_CORE: 'Cuerpo en Courier'}
+
+
+def build_metric_list_pdf(path):
+    doc = pymupdf.open()
+    page = doc.new_page(width=400, height=300)
+    page.insert_text((72, 100), '1. ' + METRIC_TIMES_CORE, fontsize=14,
+                     fontname='tiro')
+    page.insert_text((72, 140), '2. ' + METRIC_COURIER_CORE, fontsize=14,
+                     fontname='cour')
+    doc.save(path)
+    doc.close()
+
+
+class MarkerFontMetricTests(unittest.TestCase):
+    """Row 23: a list body starts at the measured source x, whatever the
+    marker font. The segment records body_dx from per-character geometry;
+    retypeset starts the body there; an old segments.json falls back to
+    the Helvetica advance (row 19 behaviour)."""
+
+    def _build(self, tmp, drop_key=False):
+        font = find_test_font()
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        segs = os.path.join(tmp, 'segments.json')
+        build_metric_list_pdf(src)
+        extract_segments.extract_segments(src, outdir=tmp)
+        if drop_key:
+            data = json.loads(Path(segs).read_text(encoding='utf-8'))
+            for s in data['segments']:
+                s.pop('body_dx', None)
+            Path(segs).write_text(json.dumps(data), encoding='utf-8')
+        strip_text.strip_text(src, stripped)
+        write_mapping(tr, METRIC_TARGETS, font)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(stripped, segs, tr, out)
+        self.assertEqual(rc, 0, msg=buf.getvalue())
+        return src, out
+
+    def test_extractor_measures_the_body_offset(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_metric_list_pdf(src)
+            result = extract_segments.extract_segments(src, outdir=tmp)
+            by_core = {s['core']: s for s in result['segments']}
+            for core, fontname in ((METRIC_TIMES_CORE, 'tiro'),
+                                   (METRIC_COURIER_CORE, 'cour')):
+                seg = by_core[core]
+                self.assertEqual(seg['gap'], ' ')
+                # Measured, not computed from a font: it equals the
+                # source font's own advance for "N. ".
+                want = pymupdf.Font(fontname).text_length(seg['marker'] + ' ', 14)
+                self.assertAlmostEqual(seg['body_dx'], want, delta=0.3, msg=core)
+            # A segment with no marker carries no offset.
+            self.assertTrue(all('body_dx' not in s for s in result['segments']
+                                if not s['marker']))
+
+    def test_body_lands_on_the_source_x_whatever_the_marker_font(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out = self._build(tmp)
+            for core, target in METRIC_TARGETS.items():
+                self.assertAlmostEqual(body_x0(out, target), body_x0(src, core),
+                                       delta=0.5, msg=core)
+
+    def test_old_segments_without_the_key_use_the_helvetica_advance(self):
+        helv = pymupdf.Font('helv')
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out = self._build(tmp, drop_key=True)
+            # Row 19 behaviour, exactly: origin + Helvetica width of "2. ".
+            self.assertAlmostEqual(body_x0(out, METRIC_TARGETS[METRIC_COURIER_CORE]),
+                                   72 + helv.text_length('2. ', 14), delta=0.5)
+            # Which is not where Courier put it.
+            self.assertGreater(body_x0(src, METRIC_COURIER_CORE)
+                               - body_x0(out, METRIC_TARGETS[METRIC_COURIER_CORE]), 5)
 
 
 class MergePlacementGateTests(unittest.TestCase):

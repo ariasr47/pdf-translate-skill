@@ -5,7 +5,8 @@
 Reads text with exact geometry and writes two files:
 
   segments.json     every placeable segment: page, bbox, baseline origin,
-                    font size, bold/italic, raw text, parsed marker / gap / core /
+                    font size, bold/italic, raw text, parsed marker / gap /
+                    body_dx / core /
                     dot-leader info. retypeset.py consumes this.
   to_translate.json unique normalized "core" strings that need translation,
                     with occurrence counts. Author translations for ALL of
@@ -37,8 +38,11 @@ Segmentation rules (why they matter):
   rotated line is never gap-split, because the x distance between its
   spans is not a horizontal gap.
 - List markers (a., (1), 12.) are peeled off and kept verbatim, together
-  with the whitespace that followed them ("gap"), so retypeset starts the
-  body where the source did and not one space after the marker.
+  with the whitespace that followed them ("gap") and the measured distance
+  from the origin to the body's first glyph ("body_dx", from the
+  characters the source drew). retypeset draws the marker in Helvetica
+  whatever the source font, so Helvetica's own advance is right only for
+  a Helvetica-metric source; the measured offset is right for any.
 - Trailing dot leaders + optional currency symbol are peeled off; retypeset
   refills dots anchored to the right so they never invade mid-line gaps.
 - Segments whose core is empty or purely numbers/symbols are pass-through
@@ -92,7 +96,7 @@ if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 from strip_text import (  # noqa: E402
     invisible_text_pages, page_textdict_without_annots,
-    widget_text_scaffold)
+    page_rawdict_without_annots, widget_text_scaffold)
 
 MARKER = re.compile(
     r'^\s*(\(?[a-z]\.|\([a-z0-9]{1,3}\)|\d{1,2}\.)\s+'
@@ -139,6 +143,47 @@ def write_find_say_hits(text):
     for m in URL_EMAIL.finditer(text):
         hits.append(('url-or-email', m.group(0)))
     return hits
+
+
+def raw_char_lines(page):
+    """[[char, ...], ...] per line of the annotation-free text page."""
+    lines = []
+    for b in page_rawdict_without_annots(page)['blocks']:
+        if b.get('type') != 0:
+            continue
+        for ln in b.get('lines', []):
+            chars = [c for sp in ln.get('spans', []) for c in sp.get('chars', [])]
+            if chars:
+                lines.append(chars)
+    return lines
+
+
+def body_offset(group, marker, gap, core, lines):
+    """Distance from the group's origin to the first glyph of the core,
+    along the line direction, measured from the characters the source
+    drew (row 23). None when the characters cannot be matched, in which
+    case retypeset falls back to Helvetica's advance for marker + gap.
+    """
+    if not (marker and core):
+        return None
+    ox, oy = group['origin']
+    dx, dy = (group.get('dir') or [1.0, 0.0])[:2]
+    want = marker + gap + core[0]
+    for chars in lines:
+        for j, ch in enumerate(chars):
+            cx, cy = ch['origin']
+            if abs(cx - ox) > 1.0 or abs(cy - oy) > 1.0:
+                continue
+            k = j
+            while k < len(chars) and chars[k]['c'].isspace():
+                k += 1
+            seq = ''.join(c['c'] for c in chars[k:k + len(want)])
+            if seq != want:
+                return None
+            body = chars[k + len(marker) + len(gap)]
+            bx, by = body['origin']
+            return round((bx - ox) * dx + (by - oy) * dy, 2)
+    return None
 
 
 def merge_candidate_warnings(segments):
@@ -476,6 +521,7 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None):
     wanted = parse_pages(pages, len(doc))
     segments, warnings = [], []
     obstacles = {}
+    raw_lines = {}   # page -> character lines, read only where a marker needs one
     sid = 0
     for pno, page in enumerate(doc):
         if pno not in wanted:
@@ -543,6 +589,12 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None):
                     if dm:
                         core, dots, tail = (
                             dm.group(1).strip(), dm.group(2), dm.group(3).strip())
+                    body_dx = None
+                    if marker and core:
+                        if pno not in raw_lines:
+                            raw_lines[pno] = raw_char_lines(page)
+                        body_dx = body_offset(g, marker, marker_gap, core,
+                                              raw_lines[pno])
                     seg = {
                         'id': sid, 'page': pno,
                         'bbox': [round(v, 2) for v in g['bbox']],
@@ -560,6 +612,7 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None):
                         'dir': g.get('dir', [1.0, 0.0]),
                         'text': g['text'], 'marker': marker,
                         'gap': marker_gap, 'core': core,
+                        **({'body_dx': body_dx} if body_dx is not None else {}),
                         'dots': dots or '', 'tail': tail,
                         'passthrough': bool(not core or PASS.match(core)),
                     }

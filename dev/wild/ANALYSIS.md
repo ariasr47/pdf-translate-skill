@@ -217,3 +217,13 @@ regenerated with the shipped extractor.
 Every other warning kind, every segment count and every verdict is
 unchanged on all seventeen files; extraction time is 57.8 s against 57.2 s
 (the obstacle pass reads widgets and drawings once per page).
+
+## 9. After row 23 — the body offset is measured, not computed
+
+Every marker segment with a body (952 across the seventeen files) now
+carries `body_dx`, read from the source's characters. Its median
+difference from Helvetica's advance for `marker + gap` — the drift
+retypeset shipped until now — is 0.00 pt on the Helvetica-metric forms
+(W-9, W-4, SF-15, FDA 3500), +1.27 on Medicare & You, +2.22 on I-9,
++2.42 on 1040-ES, +3.88 on the IRS booklet, +4.92 on FL-300 and −1.79 on
+the GDPR. Counts and verdicts unchanged; extraction 57.8 → 61.7 s.
