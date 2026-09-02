@@ -38,6 +38,9 @@ import strip_text  # noqa: E402
 import verify  # noqa: E402
 
 SOURCE_SENTENCE = 'The applicant must file this form today.'
+# Spaces and an ASCII hyphen: exactly the characters a reverse-mapped
+# ToUnicode turns into NBSP and a soft hyphen.
+DRIFT_TARGET = 'Vease Form W-2 y no-custodio hoy.'
 TARGET_SENTENCE = 'El solicitante debe presentar este formulario hoy.'
 EMPTY_CORE = 'are living with me'
 EMPTY_HAPPY = 'viven conmigo ahora'
@@ -1397,6 +1400,99 @@ class RotatedTextTests(unittest.TestCase):
             self.assertFalse(os.path.exists(out), msg=log)
 
 
+class CanonicalTextLayerTests(unittest.TestCase):
+    """Audit H4/H5: the text layer must report the authored code points."""
+
+    def _build(self, tmp, canonicalize=True):
+        font = find_test_font()
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        build_plain_pdf(src)
+        extract_segments.extract_segments(src, outdir=tmp)
+        strip_text.strip_text(src, stripped)
+        write_mapping(tr, {SOURCE_SENTENCE: DRIFT_TARGET}, font)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            if canonicalize:
+                rc = retypeset.retypeset(
+                    stripped, os.path.join(tmp, 'segments.json'), tr, out)
+            else:
+                with mock.patch.object(retypeset, 'canonicalize_text_layer',
+                                       return_value=0):
+                    rc = retypeset.retypeset(
+                        stripped, os.path.join(tmp, 'segments.json'), tr, out)
+        self.assertEqual(rc, 0, msg=buf.getvalue())
+        return src, out, tr, os.path.join(tmp, 'segments.json')
+
+    def layer(self, path):
+        doc = pymupdf.open(path)
+        try:
+            return '\n'.join(p.get_text() for p in doc)
+        finally:
+            doc.close()
+
+    def test_authored_gid_map_prefers_the_lower_code_point(self):
+        font = find_test_font()
+        gidmap, name = retypeset.authored_gid_map(str(font), ['a b-c'])
+        self.assertTrue(name)
+        f = pymupdf.Font(fontfile=str(font))
+        space, hyphen = f.has_glyph(0x20), f.has_glyph(0x2D)
+        self.assertEqual(gidmap.get(space), 0x20)
+        self.assertEqual(gidmap.get(hyphen), 0x2D)
+        # Authoring the drifted character too must not raise the mapping.
+        gidmap, _ = retypeset.authored_gid_map(str(font), ['\xa0 x\u00ad-'])
+        self.assertEqual(gidmap.get(space), 0x20)
+        self.assertEqual(gidmap.get(hyphen), 0x2D)
+        self.assertEqual(retypeset.authored_gid_map('no-such.ttf', ['x']),
+                         (None, ''))
+
+    def test_font_key_ignores_subset_prefix_and_spacing(self):
+        self.assertEqual(retypeset._font_key('/ABCDEF+Arial Regular'),
+                         retypeset._font_key('ArialRegular'))
+        self.assertEqual(retypeset._font_key(None), '')
+
+    def test_layer_is_canonical_after_retypeset(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, segs = self._build(tmp)
+            layer = self.layer(out)
+            self.assertIn(DRIFT_TARGET, layer, msg=repr(layer))
+            for ch in ('\xa0', '\u00ad', '\u2010', '\u2011'):
+                self.assertNotIn(ch, layer, msg=repr(layer))
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr,
+                                   source_words_from=segs)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('PASS canonical text layer', log)
+
+    def test_gate_fails_the_same_build_without_the_rewrite(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, segs = self._build(tmp, canonicalize=False)
+            layer = self.layer(out)
+            drifted = [ch for ch in ('\xa0', '\u00ad', '\u2010', '\u2011')
+                       if ch in layer]
+            if not drifted:
+                raise unittest.SkipTest(
+                    'this font\'s cmap does not reverse-map to drift '
+                    'characters, so there is nothing to canonicalize')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr,
+                                   source_words_from=segs)
+            log = buf.getvalue()
+            self.assertNotEqual(rc, 0, msg=log)
+            self.assertIn('FAIL text layer is not canonical', log)
+
+    def test_original_drift_is_not_the_outputs_fault(self):
+        # A character already in the original is the source's business.
+        self.assertEqual(
+            verify.drifted_characters('a\xa0b', 'the original had \xa0'), [])
+        self.assertTrue(verify.drifted_characters('a\xa0b', 'plain'))
+
+
 class OverflowTests(unittest.TestCase):
     def test_squeeze_below_0_7_fails_and_does_not_save(self):
         font = find_test_font()
@@ -2016,39 +2112,48 @@ class RefusalGateTests(unittest.TestCase):
 class PlacementTests(unittest.TestCase):
     """Authored targets must appear in the output text layer when asked."""
 
-    def test_soft_hyphen_folds_to_ascii(self):
-        # Arial maps U+00AD to the hyphen glyph, so MuPDF reports 'W\u00ad2'
-        # for an authored 'W-2'. The fold must treat it like U+2010/U+2011.
+    def test_source_side_fold_survives_for_identifier_comparison(self):
+        # Arial maps U+00AD to the hyphen glyph, so a SOURCE PDF can report
+        # 'W\u00ad2' for a printed 'W-2'. That drift is not ours to rewrite,
+        # so identifier spans read out of the original still fold.
         self.assertEqual(verify.normalize_ws_nbsp('Form W\u00ad2'), 'Form W-2')
-        self.assertEqual(verify.missing_translation_targets('Vease Form W\u00ad2', ['Form W-2']), [])
+        self.assertEqual(verify.normalize_ws_nbsp('Form\xa0W-2'), 'Form W-2')
+        self.assertEqual(
+            verify.missing_identifier_spans('Vease Form W\u00ad2',
+                                            ['Form W-2']), [])
 
-    def test_nbsp_normalized_targets_length_gate(self):
-        # Same glyphs, NBSP vs space, must count as present.
-        page = 'Adjunte\xa0el recibo hoy.'
+    def test_placement_targets_are_compared_verbatim(self):
+        # Retypeset canonicalizes /ToUnicode, so an authored space must land
+        # as a space. Folding here would hide the drift the canonical gate
+        # exists to catch.
         self.assertEqual(
             verify.missing_translation_targets(
-                page, ['Adjunte el recibo hoy.', 'x', '']),
+                'Adjunte el recibo hoy.', ['Adjunte el recibo hoy.', 'x', '']),
             [])
+        self.assertEqual(
+            verify.missing_translation_targets(
+                'Adjunte\xa0el recibo hoy.', ['Adjunte el recibo hoy.']),
+            ['Adjunte el recibo hoy.'])
         # Absent target of length ≥ 2 is reported; length-1 is not required.
         missing = verify.missing_translation_targets(
             'nope', ['Adjunte el recibo hoy.', 'Z'])
         self.assertEqual(missing, ['Adjunte el recibo hoy.'])
         self.assertNotIn('Z', missing)
 
-    def test_hyphen_variants_match_authored_ascii_hyphen(self):
+    def test_drifted_characters_unit(self):
         authored = 'Vease Form W-2 y Schedule C.'
-        self.assertIn('-', authored)
-        # What the text layer actually contains after retypeset (NBSP + U+2011).
         landed = authored.replace(' ', '\xa0').replace('-', '\u2011')
-        self.assertNotEqual(landed, authored)
+        drift = dict(verify.drifted_characters(landed, authored))
+        self.assertIn('\xa0', drift)
+        self.assertIn('\u2011', drift)
+        self.assertEqual(verify.drifted_characters(authored, authored), [])
+        # A character the author really wrote is not drift.
         self.assertEqual(
-            verify.missing_translation_targets(landed, [authored]), [])
-        landed_2010 = authored.replace('-', '\u2010')
+            verify.drifted_characters('caf\u00e9\xa0here', 'x\xa0y'), [])
+        # CJK compatibility ideograph for 立.
         self.assertEqual(
-            verify.missing_translation_targets(landed_2010, [authored]), [])
-        self.assertEqual(
-            verify.missing_translation_targets('nope', [authored]),
-            [authored])
+            [c for c, _ in verify.drifted_characters('\uf9f7', '\u7acb')],
+            ['\uf9f7'])
 
     def test_pipe_split_is_what_lands_not_the_separator(self):
         conf = {
@@ -2064,12 +2169,14 @@ class PlacementTests(unittest.TestCase):
             verify.missing_translation_targets('LeadIn remainder', targets),
             [])
 
-    def test_fillable_hyphenated_target_passes_after_retypeset(self):
-        """ASCII 'W-2' in the mapping must PASS even when get_text() emits a
-        non-ASCII hyphen (U+2010/U+2011 with Noto, U+00AD with Arial).
+    def test_fillable_hyphenated_target_lands_canonical(self):
+        """ASCII 'W-2' in the mapping must come back as ASCII 'W-2'.
 
-        Do not swap this for a hyphen-free fixture: the authored target contains
-        '-' and the placed layer must still satisfy --translations.
+        MuPDF's reverse-mapped ToUnicode reports U+2010/U+2011 (Noto) or
+        U+00AD (Arial) for the hyphen glyph and NBSP for space. Retypeset
+        rewrites /ToUnicode to the authored code points, so the layer is
+        byte-identical to what was authored. Do not swap this for a
+        hyphen-free fixture: the authored target contains '-'.
         """
         font = find_test_font()
         hyphen_src = 'See Form W-2 and Schedule C.'
@@ -2094,10 +2201,11 @@ class PlacementTests(unittest.TestCase):
                 layer = placed[0].get_text()
             finally:
                 placed.close()
-            # The layer is not a byte-identical copy of the authored ASCII string.
-            self.assertNotIn(hyphen_tgt, layer)
-            self.assertTrue(
-                any(h in layer for h in ('\u2011', '\u2010', '\u00ad')),
+            # The layer IS a byte-identical copy of the authored ASCII string.
+            self.assertIn(hyphen_tgt, layer, msg=repr(layer))
+            self.assertFalse(
+                [h for h in ('\u2011', '\u2010', '\u00ad', '\xa0')
+                 if h in layer],
                 msg=repr(layer))
             buf = io.StringIO()
             with redirect_stdout(buf):
@@ -2110,6 +2218,7 @@ class PlacementTests(unittest.TestCase):
             log = buf.getvalue()
             self.assertEqual(rc, 0, msg=log)
             self.assertIn('PASS authored translations present', log)
+            self.assertIn('PASS canonical text layer', log)
             self.assertNotIn('FAIL missing translation targets', log)
             self.assertNotIn(hyphen_tgt, log)
 

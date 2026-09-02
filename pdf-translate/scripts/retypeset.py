@@ -218,6 +218,108 @@ def wrap_last_stream_actualtext(page, logical):
     page.parent.update_stream(xref, _actualtext_bdc(logical) + data + tail)
 
 
+# ---------------------------------------------------- canonical text layer
+# MuPDF builds an embedded font's /ToUnicode by reverse-mapping the font's
+# cmap. When several code points share one glyph it can report the wrong
+# one: Arial's space glyph comes back as NBSP (U+00A0), its hyphen as a
+# soft hyphen (U+00AD), and common kanji as CJK Compatibility Ideographs
+# (立 as U+F9F7). The glyphs on the page are right; the text layer is not,
+# so copy-paste, search and every string gate see characters nobody
+# authored. After saving we rewrite /ToUnicode for the glyphs we actually
+# placed, to the code points the author actually wrote.
+_SUBSET_PREFIX = re.compile(r'^[A-Z]{6}\+')
+
+
+def _font_key(name):
+    return _SUBSET_PREFIX.sub('', str(name or '').lstrip('/')).replace(
+        ' ', '').lower()
+
+
+def authored_gid_map(fontfile, texts):
+    """{glyph id: code point} for every character placed with this font.
+
+    Two authored characters can share one glyph (space and NBSP, hyphen
+    and soft hyphen, 立 and its compatibility ideograph). The lower code
+    point wins: in every drift pair the canonical character is the lower
+    one, and picking it is what makes the layer canonical.
+    """
+    try:
+        font = pymupdf.Font(fontfile=fontfile)
+    except Exception:
+        return None, ''
+    out = {}
+    for text in texts:
+        for ch in text or '':
+            cp = ord(ch)
+            gid = font.has_glyph(cp)
+            if not gid:
+                continue
+            if gid not in out or cp < out[gid]:
+                out[gid] = cp
+    return out, font.name
+
+
+def _override_block(gidmap):
+    lines = []
+    items = sorted(gidmap.items())
+    for i in range(0, len(items), 100):
+        chunk = items[i:i + 100]
+        lines.append(f'{len(chunk)} beginbfchar')
+        for gid, cp in chunk:
+            lines.append(f'<{gid:04x}> <{cp:04x}>' if cp <= 0xFFFF
+                         else f'<{gid:04x}> <{_utf16be_hex(cp)}>')
+        lines.append('endbfchar')
+    return ('\n' + '\n'.join(lines) + '\n').encode('ascii')
+
+
+def _utf16be_hex(cp):
+    return chr(cp).encode('utf-16-be').hex()
+
+
+def canonicalize_text_layer(path, fontfiles, texts):
+    """Rewrite /ToUnicode so the text layer reports the authored code points.
+
+    A CMap is executed in order, so a bfchar block appended before endcmap
+    overrides whatever an earlier bfrange said for the same code. Returns
+    the number of font objects patched.
+    """
+    import pikepdf
+
+    maps = {}
+    for fontfile in fontfiles:
+        gidmap, name = authored_gid_map(fontfile, texts)
+        if not gidmap or not name:
+            continue
+        maps.setdefault(_font_key(name), {}).update(gidmap)
+    if not maps:
+        return 0
+    patched = 0
+    pdf = pikepdf.open(path, allow_overwriting_input=True)
+    try:
+        for obj in pdf.objects:
+            try:
+                if obj.get('/Type') != pikepdf.Name('/Font'):
+                    continue
+            except (AttributeError, TypeError):
+                continue
+            gidmap = maps.get(_font_key(obj.get('/BaseFont')))
+            tu = obj.get('/ToUnicode')
+            if not gidmap or tu is None:
+                continue
+            data = bytes(tu.read_bytes())
+            i = data.rfind(b'endcmap')
+            if i < 0:
+                continue
+            obj.ToUnicode = pdf.make_stream(
+                data[:i] + _override_block(gidmap) + data[i:])
+            patched += 1
+        if patched:
+            pdf.save(path)
+    finally:
+        pdf.close()
+    return patched
+
+
 def _load_json(path):
     with open(path, encoding='utf-8') as f:
         return json.load(f)
@@ -569,6 +671,21 @@ def retypeset(stripped, segf, trf, out):
 
     doc.ez_save(out)
     doc.close()
+
+    # The glyphs are right either way; this is the text layer.
+    placed = [t for t in T.values() if isinstance(t, str)]
+    placed.extend(re.sub(r'<[^>]+>', '', m.get('html') or '') for m in merges)
+    for o in overrides:
+        placed.extend(part.get('text') or '' for part in o.get('parts') or [])
+    for seg in segments:
+        placed.extend((seg.get('marker') or '', seg.get('tail') or ''))
+        if seg.get('passthrough'):
+            placed.append(seg.get('text') or '')
+    fontfiles = [fonts['regular'], fonts.get('bold', fonts['regular'])]
+    n = canonicalize_text_layer(out, fontfiles, placed)
+    if n:
+        print(f'canonical text layer: rewrote /ToUnicode on {n} font object(s)')
+
     print('saved', out)
     return 0
 

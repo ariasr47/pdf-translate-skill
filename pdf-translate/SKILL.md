@@ -13,7 +13,7 @@ description: >-
   "translate this document but keep the formatting". Also use it when a user
   complains that a translated PDF broke its layout or its form fields.
 metadata:
-  version: "18"
+  version: "19"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -313,10 +313,19 @@ spaceless family (ZH↔JA) the scan prints one REVIEW line and cannot gate;
 lean on `--translations` and the visual pass.
 
 Pass `--translations translations.json` so verify also fails if an authored
-non-passthrough **target** (length ≥ 2, whitespace/NBSP normalized, hyphen
-U+2010/U+2011 folded to ASCII `-`) never appears in the output text layer —
-a stripped file, a failed write, or an NBSP/hyphen mismatch. Missing targets
-are listed. This does not judge whether the wording is the right term.
+non-passthrough **target** (length ≥ 2) never appears **verbatim** in the
+output text layer — a stripped file or a failed write. Missing targets are
+listed. This does not judge whether the wording is the right term.
+
+The comparison is verbatim because retypeset **canonicalizes the text
+layer**. MuPDF builds an embedded font's `/ToUnicode` by reverse-mapping
+its cmap, so the space glyph comes back as NBSP, the hyphen as U+00AD or
+U+2010, and common kanji as CJK Compatibility Ideographs (立 as U+F9F7):
+the page looks perfect while the words in it cannot be searched, copied or
+matched. After saving, retypeset rewrites `/ToUnicode` for the glyphs it
+placed to the code points you authored, and the always-on **canonical text
+layer** gate FAILs any of those characters that are in neither the original
+nor your mapping.
 
 The same flag also checks **pushbutton chrome**. Captions live in `/MK /CA`
 and draw on top of the page; `get_text()` still sees them. Either rewrite
@@ -385,7 +394,7 @@ class of work is a second linguist, and the honest deliverable says so.
 
 ## References
 
-- `references/failure-modes.md` — the thirteen silent failures and their fixes.
+- `references/failure-modes.md` — the fourteen silent failures and their fixes.
   Read during recon, before touching the file.
 - `references/translations-format.md` — the translations.json contract
   (translations, merges, overrides, center, skip, fonts). Read before

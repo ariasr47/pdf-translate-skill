@@ -170,6 +170,26 @@ placed, the ink ratio barely changed, and the text layer read correctly.
 Only the render showed it. Segments now carry the line's direction vector
 and retypeset morphs each rotated run about its own origin.
 
+## 14. The text layer reports characters nobody wrote
+
+MuPDF builds an embedded font's `/ToUnicode` by reverse-mapping the font's
+cmap. When several code points share one glyph it can pick the wrong one:
+Arial's space comes back as NBSP (U+00A0) and its hyphen as a soft hyphen
+(U+00AD); with full Noto Sans JP, common kanji come back as CJK
+Compatibility Ideographs (立 as U+F9F7, 年 as U+F98E). The glyphs are
+right, so nothing looks wrong — but the words cannot be searched, cannot
+be copied, and a string gate comparing against the authored text fails a
+correct translation. Subsetting hid it; `field_fonts.py` embeds a full
+font, so it was always one delivery away.
+
+After saving, `retypeset.py` rewrites `/ToUnicode` for the glyphs it
+placed to the code points you authored (a CMap is executed in order, so an
+appended `bfchar` block overrides an earlier `bfrange`). Where two authored
+characters share a glyph the lower code point wins — in every drift pair
+the canonical character is the lower one. `verify.py` then FAILs any
+drift-prone character that is in neither the original nor the mapping, and
+the placement gate compares verbatim instead of folding.
+
 ## Also worth knowing
 
 - Extraction geometry must come from the ORIGINAL (text intact); writing

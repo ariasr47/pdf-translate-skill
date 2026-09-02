@@ -27,8 +27,9 @@
                   Ink ratio is skipped when the original has negligible ink,
                   instead of failing a pale/blank page with ratio 0.00.
 6. placement      if --translations is given, every non-passthrough target
-                  string (length ≥ 2, whitespace/NBSP normalized, U+2010/U+2011
-                  folded to ASCII '-') must appear in the output text layer.
+                  string (length >= 2) must appear VERBATIM in the output
+                  text layer — retypeset canonicalizes /ToUnicode, so no
+                  NBSP or hyphen folding is applied here any more.
                   Omit the flag: this gate does not run. Does not judge
                   whether a target is the right term.
 7. button chrome  with --translations: a visible original pushbutton caption
@@ -72,6 +73,12 @@
                   changing an export breaks /V and everything submitted.
                   Always runs, like field parity. Silent with no choice
                   fields.
+15. canonical text the output text layer must report the code points
+                  somebody actually wrote. NBSP, soft hyphen, U+2010/U+2011
+                  and CJK Compatibility Ideographs that are in neither the
+                  original nor the authored mapping are ToUnicode drift and
+                  FAIL: the page looks right while the words in it cannot
+                  be searched or copied. Always runs.
 
 These gates catch structural failures. They do NOT catch visual defects —
 after they pass you still render pages side-by-side and look at them.
@@ -230,10 +237,14 @@ def source_words_from_segments(path, allow, script='Latin'):
     return source_words_from_text('\n'.join(s['text'] for s in segs), allow, script)
 
 
-# get_text() often remaps authored ASCII '-' to U+2010/U+2011 (e.g. "W-2"),
-# and fonts whose cmap maps U+00AD to the hyphen glyph (Arial) report a soft
-# hyphen. Spaces come back as NBSP the same way. One root cause: MuPDF builds
-# ToUnicode by reverse-mapping the font cmap (audit finding H4).
+# Fold table for comparisons where the SOURCE side can drift and we cannot
+# rewrite it: identifier spans read out of the original, and authored values
+# that are whitespace. MuPDF builds ToUnicode by reverse-mapping the font
+# cmap, so a source PDF may report NBSP for space, U+00AD or U+2010/U+2011
+# for hyphen, whatever the author typed (audit finding H4). Our OWN output no
+# longer needs this: retypeset rewrites /ToUnicode to the authored code
+# points and the canonical-text-layer gate fails what is left, so the
+# placement gate compares without folding.
 _PLACEMENT_FOLD = str.maketrans({
     '\xa0': ' ',
     '\u202f': ' ',
@@ -245,10 +256,48 @@ _PLACEMENT_FOLD = str.maketrans({
 
 
 def normalize_ws_nbsp(text):
-    """NBSP/figure spaces → ASCII space; U+2010/U+2011/U+00AD → ASCII hyphen."""
+    """NBSP/figure spaces → ASCII space; U+2010/U+2011/U+00AD → ASCII hyphen.
+
+    For comparisons against text read out of the ORIGINAL, whose drift is
+    not ours to rewrite. Placement compares with normalize_ws instead.
+    """
     if not text:
         return ''
     return text.translate(_PLACEMENT_FOLD)
+
+
+def normalize_ws(text):
+    """No folding: the output's text layer must be the authored code points."""
+    return text or ''
+
+
+# Code points that a reverse-mapped ToUnicode reports for a glyph the author
+# spelled with something else: NBSP for space, soft hyphen and U+2010/U+2011
+# for '-', CJK Compatibility Ideographs for common kanji (立 as U+F9F7).
+DRIFT_RANGES = (
+    (0x00A0, 0x00A0), (0x00AD, 0x00AD), (0x202F, 0x202F), (0x2007, 0x2007),
+    (0x2010, 0x2011), (0xF900, 0xFAFF), (0x2F800, 0x2FA1F),
+)
+
+
+def drifted_characters(out_text, authored_text):
+    """[(char, count)] drift-prone code points nobody authored.
+
+    A character that is in the original, or in an authored string, is the
+    author's business and passes. What is left came from the text layer
+    itself, and means retypeset's /ToUnicode rewrite did not reach that
+    font: the page looks right and every string in it is a character the
+    reader cannot search for or copy.
+    """
+    ok = set(authored_text or '')
+    counts = {}
+    for ch in out_text or '':
+        if ch in ok:
+            continue
+        o = ord(ch)
+        if any(a <= o <= b for a, b in DRIFT_RANGES):
+            counts[ch] = counts.get(ch, 0) + 1
+    return sorted(counts.items())
 
 
 def collect_translation_targets(conf):
@@ -356,12 +405,17 @@ def page_search_text(page):
 
 
 def missing_translation_targets(page_text, targets):
-    """Return targets of length ≥ 2 (NBSP/space-normalized) absent from page text."""
-    hay = normalize_ws_nbsp(page_text)
+    """Return targets of length ≥ 2 absent from the output text layer.
+
+    Compared verbatim: retypeset canonicalizes /ToUnicode to the authored
+    code points, so an authored space must land as a space. A fold here
+    would hide exactly the drift the canonical-text-layer gate exists for.
+    """
+    hay = normalize_ws(page_text)
     missing = []
     seen = set()
     for raw in targets:
-        nt = normalize_ws_nbsp(raw)
+        nt = normalize_ws(raw)
         if len(nt) < 2:
             continue
         if nt in seen:
@@ -804,6 +858,26 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
         fail = 1
     if not invisible:
         print('PASS text layer is visible')
+
+    # Canonical text layer (audit H4/H5). Authored strings count as
+    # deliberate; so does anything already in the original, whose own
+    # drift we cannot rewrite.
+    authored = o_text
+    if translations:
+        with open(translations, encoding='utf-8') as f:
+            _conf = json.load(f)
+        authored += '\n' + '\n'.join(collect_translation_targets(_conf))
+    drift = drifted_characters(
+        '\n'.join(page_search_text(jc[i]) for i in range(len(jc))), authored)
+    if drift:
+        print(f'FAIL text layer is not canonical ({len(drift)} character(s) '
+              f'nobody authored — ToUnicode drift; the page looks right but '
+              f'the words cannot be searched or copied):')
+        for ch, n in drift[:10]:
+            print(f'   U+{ord(ch):04X} {unicodedata.name(ch, "?")} x{n}')
+        fail = 1
+    else:
+        print('PASS canonical text layer')
 
     unshaped, saw_arabic = unshaped_arabic_pages(jc)
     for pno, n in unshaped:
