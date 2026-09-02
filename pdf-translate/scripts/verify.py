@@ -27,9 +27,12 @@
                   Ink ratio is skipped when the original has negligible ink,
                   instead of failing a pale/blank page with ratio 0.00.
 6. placement      if --translations is given, every non-passthrough target
-                  string (length >= 2) must appear VERBATIM in the output
-                  text layer — retypeset canonicalizes /ToUnicode, so no
-                  NBSP or hyphen folding is applied here any more.
+                  string (length >= 2) must appear in the output text
+                  layer, character for character apart from wrapping
+                  whitespace (a re-flowed merge wraps, so the layer has a
+                  newline where the paragraph has a space). retypeset
+                  canonicalizes /ToUnicode, so no NBSP or hyphen folding
+                  is applied here any more.
                   Omit the flag: this gate does not run. Does not judge
                   whether a target is the right term.
 7. button chrome  with --translations: a visible original pushbutton caption
@@ -279,9 +282,23 @@ def normalize_ws_nbsp(text):
     return text.translate(_PLACEMENT_FOLD)
 
 
+# Wrapping whitespace only: newline, carriage return, tab, runs of ASCII
+# spaces. Deliberately NOT NBSP or the other exotic spaces — drift is the
+# canonical-text-layer gate's business, and folding it here is what used to
+# hide it.
+_WRAP_WS = re.compile(r'[ \t\r\n]+')
+
+
 def normalize_ws(text):
-    """No folding: the output's text layer must be the authored code points."""
-    return text or ''
+    """Collapse wrapping whitespace; fold nothing else.
+
+    A merge is re-flowed by the Story engine, so a paragraph that wraps
+    comes back from get_text() with a newline where the authored string
+    has a space. Comparing those verbatim fails a build whose paragraph is
+    placed perfectly — the gate would be the bug. Every other character
+    still has to match what was authored.
+    """
+    return _WRAP_WS.sub(' ', text or '').strip()
 
 
 # Code points that a reverse-mapped ToUnicode reports for a glyph the author
@@ -520,9 +537,12 @@ def unmarked_shaped_targets(actual_texts, targets):
 def missing_translation_targets(page_text, targets):
     """Return targets of length ≥ 2 absent from the output text layer.
 
-    Compared verbatim: retypeset canonicalizes /ToUnicode to the authored
-    code points, so an authored space must land as a space. A fold here
-    would hide exactly the drift the canonical-text-layer gate exists for.
+    Wrapping whitespace is collapsed on both sides, because a re-flowed
+    merge wraps and the layer then holds a newline where the paragraph
+    holds a space. Nothing else is folded: retypeset canonicalizes
+    /ToUnicode to the authored code points, so an authored NBSP must land
+    as an NBSP, and folding that here would hide exactly the drift the
+    canonical-text-layer gate exists for.
     """
     hay = normalize_ws(page_text)
     missing = []

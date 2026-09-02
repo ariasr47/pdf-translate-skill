@@ -1,0 +1,75 @@
+{
+ "original": "dev/canary/fixtures/permission_form.pdf",
+ "runs": [
+  {
+   "run": "opus",
+   "output": "filled_test.pdf",
+   "verify_rc": 1,
+   "gates_failed": [
+    "FAIL untranslated running text (1):"
+   ],
+   "identifiers": [
+    {
+     "kind": "quoted",
+     "text": "Attachment A",
+     "kept": true
+    },
+    {
+     "kind": "form-name",
+     "text": "Schedule Q",
+     "kept": true
+    },
+    {
+     "kind": "form-name",
+     "text": "Form RS-14",
+     "kept": true
+    },
+    {
+     "kind": "url-or-email",
+     "text": "https://example.org/field-trips.",
+     "kept": true
+    }
+   ],
+   "qa_findings": [
+    {
+     "kind": "untranslated",
+     "severity": "warn",
+     "core": "Riverside Elementary School",
+     "detail": "target is identical to the source and this core is not a write/find/say identifier — translate it, or map it to itself deliberately and record why"
+    }
+   ],
+   "artifacts": [
+    "DELIVERY.md",
+    "NOTES.md",
+    "add_notice.py",
+    "captions.json",
+    "comparison.html",
+    "filled_test.pdf",
+    "font-sub.ttf",
+    "font-sub.ttf.chars.txt",
+    "font-sub.ttf.instanced.ttf",
+    "fonts/Arimo-Regular-full.ttf",
+    "fonts/Arimo-var.ttf",
+    "out.pdf",
+    "permission_form.es.pdf",
+    "permission_form.pdf",
+    "renders_final/filled_input_test.png",
+    "renders_final/orig_p1.png",
+    "renders_final/orig_p2.png",
+    "renders_final/out_p1.png",
+    "renders_final/out_p2.png",
+    "renders_final/zoom_orig_p1_amount.png",
+    "renders_final/zoom_orig_p2_list.png",
+    "renders_final/zoom_out_p1_amount.png",
+    "renders_final/zoom_out_p2_list.png",
+    "segments.json",
+    "set_lang.py",
+    "stripped.pdf",
+    "stripped_clean.pdf",
+    "to_translate.json",
+    "translations.json",
+    "widget_text.json"
+   ]
+  }
+ ]
+}

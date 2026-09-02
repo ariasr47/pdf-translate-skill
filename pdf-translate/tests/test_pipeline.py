@@ -2126,6 +2126,110 @@ def qa_kinds(findings):
     return {(f['kind'], f['severity']) for f in findings}
 
 
+class MergePlacementGateTests(unittest.TestCase):
+    """A re-flowed merge wraps; the gate must not read that as missing.
+
+    Found by the canary: retypeset placed a two-line Spanish paragraph at
+    full size, exit 0, and verify --translations failed it, because
+    get_text() returns a newline at the wrap point while the authored html
+    is one long string. Gates that fail correct output are the bug.
+    """
+
+    PARA_HTML = ('El secretario revisara todas las declaraciones presentadas '
+                 'antes de la fecha de la audiencia y enviara por correo una '
+                 'copia conformada a cada parte nombrada en el encabezado.')
+
+    def test_wrapping_whitespace_is_collapsed_not_folded(self):
+        self.assertEqual(verify.normalize_ws('a\nb'), 'a b')
+        self.assertEqual(verify.normalize_ws('a  \t b'), 'a b')
+        self.assertEqual(verify.normalize_ws('  a b  '), 'a b')
+        # NBSP and the hyphen variants are NOT wrapping whitespace: the
+        # canonical-text-layer gate owns those, and folding here hid them.
+        self.assertEqual(verify.normalize_ws('a\xa0b'), 'a\xa0b')
+        self.assertEqual(verify.normalize_ws('W\u2011 2'), 'W\u2011 2')
+        self.assertEqual(
+            verify.missing_translation_targets('one two\nthree',
+                                               ['one two three']), [])
+        self.assertEqual(
+            verify.missing_translation_targets('one two\xa0three',
+                                               ['one two three']),
+            ['one two three'])
+
+    def test_a_wrapped_merge_passes_the_placement_gate(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_paragraph_pdf(src, pages=1)
+            extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            conf = {
+                'fonts': {'regular': str(font), 'bold': str(font)},
+                'translations': {'Page 1 note here.': 'Nota de la pagina 1.'},
+                'merges': [{'page': 0, 'lines': PARA_LINES,
+                            'html': self.PARA_HTML, 'align': 'left'}],
+                'overrides': [], 'center': [], 'skip': [],
+            }
+            Path(tr).write_text(json.dumps(conf, ensure_ascii=False),
+                                encoding='utf-8')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(
+                    stripped, os.path.join(tmp, 'segments.json'), tr, out)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+
+            # The paragraph really did wrap — otherwise this proves nothing.
+            doc = pymupdf.open(out)
+            layer = doc[0].get_text()
+            doc.close()
+            self.assertNotIn(self.PARA_HTML, layer,
+                             msg='fixture did not wrap; widen the paragraph')
+            self.assertIn('\n', layer)
+
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('PASS authored translations present', log)
+
+    def test_a_merge_that_really_is_missing_still_fails(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_paragraph_pdf(src, pages=1)
+            extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            conf = {
+                'fonts': {'regular': str(font), 'bold': str(font)},
+                'translations': {'Page 1 note here.': 'Nota de la pagina 1.'},
+                'merges': [{'page': 0, 'lines': PARA_LINES,
+                            'html': self.PARA_HTML, 'align': 'left'}],
+                'overrides': [], 'center': [], 'skip': [],
+            }
+            Path(tr).write_text(json.dumps(conf, ensure_ascii=False),
+                                encoding='utf-8')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                retypeset.retypeset(
+                    stripped, os.path.join(tmp, 'segments.json'), tr, out)
+            # Now claim a paragraph nobody placed.
+            conf['merges'][0]['html'] = 'Un parrafo que nadie coloco jamas.'
+            Path(tr).write_text(json.dumps(conf, ensure_ascii=False),
+                                encoding='utf-8')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr)
+            log = buf.getvalue()
+            self.assertNotEqual(rc, 0, msg=log)
+            self.assertIn('FAIL missing translation targets', log)
+
+
 class QaCheckTests(unittest.TestCase):
     """The linguistic layer: what a reviser looks for first."""
 
