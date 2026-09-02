@@ -1508,7 +1508,8 @@ class PlacementTests(unittest.TestCase):
             [])
 
     def test_fillable_hyphenated_target_passes_after_retypeset(self):
-        """ASCII 'W-2' in the mapping must PASS even when get_text() emits U+2011.
+        """ASCII 'W-2' in the mapping must PASS even when get_text() emits a
+        non-ASCII hyphen (U+2010/U+2011 with Noto, U+00AD with Arial).
 
         Do not swap this for a hyphen-free fixture: the authored target contains
         '-' and the placed layer must still satisfy --translations.
@@ -1539,7 +1540,7 @@ class PlacementTests(unittest.TestCase):
             # The layer is not a byte-identical copy of the authored ASCII string.
             self.assertNotIn(hyphen_tgt, layer)
             self.assertTrue(
-                ('\u2011' in layer) or ('\u2010' in layer),
+                any(h in layer for h in ('\u2011', '\u2010', '\u00ad')),
                 msg=repr(layer))
             buf = io.StringIO()
             with redirect_stdout(buf):
