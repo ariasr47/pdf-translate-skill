@@ -14,19 +14,21 @@ turn the skill into a leaderboard.
 Generated, never committed:
 
 ```bash
-python3 pdf-translate/evals/make_fixtures.py --outdir dev/canary/fixtures
+python3 dev/canary/make_fixture.py
 ```
 
-`permission_form.pdf` is the interesting one: it carries a `$12.00` fee, a
-`Print` pushbutton caption, a dropdown with export values, tooltips, dot
-leaders and a signature rule. `garden_flyer.pdf` adds white-on-colour text,
-a URL, a price and two wrapped paragraphs.
+Two pages, chosen so one document exercises all five axes at once:
 
-For the identifier axis, add a page with quoted and form-name payload — the
-same shapes `extract_segments.write_find_say_hits` looks for:
+- **page 1** — the school permission slip from `evals/make_fixtures.py`:
+  twelve fillable fields, a dropdown with export values, tooltips, dot
+  leaders, a `$12.00` fee and a `Print` pushbutton.
+- **page 2** — write/find/say payload: a quoted `"Attachment A"`, a
+  `Schedule Q`, a URL, `8 1/2-by-11-inch` paper and `Form RS-14`. These are
+  exactly the shapes `extract_segments.write_find_say_hits` looks for, so
+  axis 3 is machine-checkable rather than a matter of opinion.
 
-> Write "Attachment A" at the top.
-> Please attach Schedule Q.
+`garden_flyer.pdf` is built alongside it and is the non-form alternative
+(white-on-colour banner, a price, a URL, two wrapped paragraphs).
 
 ## The prompt (identical for every model)
 
@@ -54,6 +56,19 @@ Five axes, 0 or 1 each. Record the evidence, not the impression.
 Also record, without scoring: how many rebuild rounds it took, whether
 `qa_check.py` findings were addressed or ignored, and whether it invented a
 glossary (it should not).
+
+### The objective half
+
+```bash
+python3 dev/canary/score.py dev/canary/fixtures/permission_form.pdf RUNDIR [...]
+```
+
+Axes 1, 2, 4 and 5 are judgements a person makes by reading the delivery.
+Axis 3 is not, and neither is "did the thing they produced pass the gates".
+`score.py` finds each run's output, runs `verify.py` and `qa_check.py`
+against it, and reports every write/find/say span from the original as kept
+or lost. Run it before scoring, so the arguable half is the only part
+anyone has to argue about.
 
 ## Reporting
 
