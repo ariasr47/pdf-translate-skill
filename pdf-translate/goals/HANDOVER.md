@@ -26,7 +26,7 @@ level; re-insert translated text at original coordinates. Do not overlay
 white boxes, do not regenerate the document, do not use redaction
 annotations (they delete widgets).
 
-It is **provider-neutral**: seven Python scripts, no vendor SDK. Any person
+It is **provider-neutral**: plain Python scripts, no vendor SDK. Any person
 or model authors `translations.json`. Scripts do not call an LLM.
 
 It is **not** FL-150 English→Japanese. FL-150 was a hard **canary**, not

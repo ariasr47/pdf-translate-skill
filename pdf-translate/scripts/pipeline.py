@@ -20,6 +20,12 @@ Usage:
       Values are JSON null (retypeset still FAILs until you author them).
       Refuses to overwrite unless --force. No model, no auto-merge.
 
+  python3 pipeline.py qa --work DIR [--glossary glossary.csv] [--strict]
+      linguistic QA on DIR/translations.json before you build: numbers and
+      dates that moved, untranslated lines, inconsistent variants, brackets,
+      punctuation parity, spacing, expansion band. Advisory; --strict makes
+      warnings fail too.
+
   python3 pipeline.py rebuild --work DIR ORIGINAL.pdf OUT.pdf [verify flags...]
       retypeset DIR/stripped.pdf + DIR/segments.json + DIR/translations.json
       then verify ORIGINAL.pdf OUT.pdf with any extra verify flags
@@ -41,6 +47,7 @@ from compare import compare
 from render_pages import render_pages
 from retypeset import retypeset
 from strip_text import strip_text, WidgetTextError
+from qa_check import main as qa_main
 from verify import verify, main as verify_main
 
 
@@ -135,6 +142,20 @@ def cmd_from_cores(argv):
     return scaffold_from_cores(to_path, out_path, force=force)
 
 
+def cmd_qa(argv):
+    work = argv[argv.index('--work') + 1] if '--work' in argv else '.'
+    rest = [a for a in argv if a not in ('--work', work)]
+    tr = os.path.join(work, 'translations.json')
+    segs = os.path.join(work, 'segments.json')
+    if not os.path.isfile(tr):
+        print(f'qa: missing {tr}')
+        return 2
+    args = [tr]
+    if os.path.isfile(segs):
+        args += ['--segments', segs]
+    return qa_main(args + rest)
+
+
 def cmd_rebuild(argv):
     if '--work' not in argv:
         print('rebuild requires --work DIR')
@@ -197,6 +218,8 @@ def main(argv=None):
         return cmd_init(rest)
     if cmd == 'from-cores':
         return cmd_from_cores(rest)
+    if cmd == 'qa':
+        return cmd_qa(rest)
     if cmd == 'rebuild':
         return cmd_rebuild(rest)
     if cmd == 'render':

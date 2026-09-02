@@ -34,6 +34,7 @@ import pipeline  # noqa: E402
 import render_pages  # noqa: E402
 import field_fonts  # noqa: E402
 import prepare_font  # noqa: E402
+import qa_check  # noqa: E402
 import retypeset  # noqa: E402
 import strip_text  # noqa: E402
 import verify  # noqa: E402
@@ -1995,6 +1996,179 @@ class AlignmentAndFontRoleTests(unittest.TestCase):
                          'a x y')
         self.assertEqual(verify.strip_inline_markup('<i>x</i>'), 'x')
         self.assertEqual(retypeset.strip_inline_markup('a < b'), 'a < b')
+
+
+QA_MAPPING = {
+    'Pay $1,250.00 by 12/31/2024.': 'Pague $1.250,00 antes del 31/12/2024.',
+    'Pay $1,250.00 by 12/31/2025.': 'Pague $1.500,00 antes del 31/12/2025.',
+    'Total': 'Total',
+    'See Form W-2.': 'Vease Form W-2.',
+    'Name:': 'Nombre',
+    'Address (mailing)': 'Direccion (postal',
+    'City': 'La ciudad  donde usted reside habitualmente y trabaja',
+    'state': 'estado',
+    'State': 'provincia',
+}
+
+
+def write_qa_mapping(path, translations=None, **extra):
+    conf = {'fonts': {'regular': 'f.ttf'},
+            'translations': dict(QA_MAPPING if translations is None
+                                 else translations),
+            'skip': []}
+    conf.update(extra)
+    Path(path).write_text(json.dumps(conf, ensure_ascii=False),
+                          encoding='utf-8')
+    return path
+
+
+def qa_kinds(findings):
+    return {(f['kind'], f['severity']) for f in findings}
+
+
+class QaCheckTests(unittest.TestCase):
+    """The linguistic layer: what a reviser looks for first."""
+
+    def test_expansion_band_is_length_dependent(self):
+        self.assertEqual(qa_check.expansion_limit(4), 3.0)
+        self.assertEqual(qa_check.expansion_limit(10), 3.0)
+        self.assertEqual(qa_check.expansion_limit(11), 2.0)
+        self.assertEqual(qa_check.expansion_limit(60), 1.4)
+        self.assertEqual(qa_check.expansion_limit(500), 1.3)
+
+    def test_number_and_date_units(self):
+        self.assertEqual(qa_check.number_tokens('Pay $1,250.00 now'),
+                         ['125000'])
+        self.assertEqual(qa_check.number_tokens('1.250,00'), ['125000'])
+        self.assertEqual(qa_check.number_tokens('no digits'), [])
+        self.assertEqual([r for _, r in qa_check.date_parts('due 12/31/2024')],
+                         ['12/31/2024'])
+        self.assertEqual(qa_check.date_parts('12/31/2024')[0][0],
+                         ('12', '2024', '31'))
+        self.assertEqual(qa_check.strip_dates('due 12/31/2024 ok').split(),
+                         ['due', 'ok'])
+        self.assertEqual(qa_check.unbalanced_pairs('a (b'), [('(', ')')])
+        self.assertEqual(qa_check.unbalanced_pairs('a (b)'), [])
+        self.assertEqual(qa_check.unbalanced_pairs('say "hi'), [('"', '"')])
+        self.assertEqual(qa_check.normalize_key('State:'),
+                         qa_check.normalize_key('state'))
+
+    def test_findings_over_a_bad_mapping(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = write_qa_mapping(os.path.join(tmp, 'translations.json'))
+            findings = qa_check.qa_check(path)
+            kinds = qa_kinds(findings)
+            self.assertIn(('numbers', 'error'), kinds)
+            self.assertIn(('brackets', 'error'), kinds)
+            self.assertIn(('dates', 'warn'), kinds)
+            self.assertIn(('inconsistent', 'warn'), kinds)
+            self.assertIn(('length', 'warn'), kinds)
+            self.assertIn(('punctuation', 'warn'), kinds)
+            self.assertIn(('spacing', 'warn'), kinds)
+            self.assertIn(('untranslated', 'warn'), kinds)
+            # A reordered date is a warning, not a lost figure.
+            date_findings = [f for f in findings if f['kind'] == 'dates']
+            self.assertTrue(all(f['severity'] == 'warn' for f in date_findings),
+                            msg=date_findings)
+            # An identifier line kept verbatim is not "untranslated".
+            untranslated = {f['core'] for f in findings
+                            if f['kind'] == 'untranslated'}
+            self.assertIn('Total', untranslated)
+            self.assertNotIn('See Form W-2.', untranslated)
+
+    def test_a_clean_mapping_reports_nothing(self):
+        clean = {
+            'The applicant must file this form today.':
+                'El solicitante debe presentar este formulario hoy.',
+            'Amount due: $1,250.00': 'Importe a pagar: $1,250.00',
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            path = write_qa_mapping(os.path.join(tmp, 'translations.json'),
+                                    clean)
+            self.assertEqual(qa_check.qa_check(path), [])
+
+    def test_null_and_skip_entries_are_not_checked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = write_qa_mapping(
+                os.path.join(tmp, 'translations.json'),
+                {'Total': None, 'Amount (net)': None})
+            self.assertEqual(qa_check.qa_check(path), [])
+            path = write_qa_mapping(
+                os.path.join(tmp, 'skipped.json'),
+                {'Print': 'Print'}, skip=['Print'])
+            self.assertEqual(qa_check.qa_check(path), [])
+
+    def test_cjk_target_is_not_flagged_for_shrinking(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = write_qa_mapping(
+                os.path.join(tmp, 'translations.json'),
+                {'The applicant must file this form today.': '本日提出',
+                 'Please describe the reason below.': '理由を記入'})
+            findings = [f for f in qa_check.qa_check(path)
+                        if f['kind'] == 'length']
+            self.assertEqual(findings, [], msg=findings)
+
+    def test_job_glossary_is_checked_and_never_shipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            gloss = os.path.join(tmp, 'glossary.csv')
+            Path(gloss).write_text(
+                'source,target\nForm W-2,Formulario W-2\n', encoding='utf-8')
+            self.assertEqual(qa_check.load_glossary(gloss),
+                             [('Form W-2', 'Formulario W-2')])
+            path = write_qa_mapping(os.path.join(tmp, 'translations.json'),
+                                    {'See Form W-2.': 'Vease Form W-2.'})
+            self.assertEqual(qa_check.qa_check(path), [])
+            findings = qa_check.qa_check(path, glossary_path=gloss)
+            self.assertEqual(qa_kinds(findings), {('glossary', 'error')})
+            ok = write_qa_mapping(os.path.join(tmp, 'ok.json'),
+                                  {'See Form W-2.': 'Vease Formulario W-2.'})
+            self.assertEqual(qa_check.qa_check(ok, glossary_path=gloss), [])
+            # No glossary ships with the skill.
+            self.assertEqual(
+                sorted(p.name for p in Path(SCRIPTS).parent.rglob('*.csv')),
+                [])
+
+    def test_cli_exit_codes_and_json_report(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bad = write_qa_mapping(os.path.join(tmp, 'bad.json'))
+            report = os.path.join(tmp, 'findings.json')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = qa_check.main([bad, '--json', report])
+            self.assertEqual(rc, 1, msg=buf.getvalue())
+            data = json.loads(Path(report).read_text(encoding='utf-8'))
+            self.assertTrue(data['findings'])
+
+            warn_only = write_qa_mapping(os.path.join(tmp, 'warn.json'),
+                                         {'Total': 'Total'})
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                self.assertEqual(qa_check.main([warn_only]), 0)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                self.assertEqual(qa_check.main([warn_only, '--strict']), 1)
+
+            clean = write_qa_mapping(
+                os.path.join(tmp, 'clean.json'),
+                {'The applicant must file this form today.':
+                 'El solicitante debe presentar este formulario hoy.'})
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                self.assertEqual(qa_check.main([clean]), 0)
+            self.assertIn('no script can judge that', buf.getvalue())
+
+    def test_pipeline_qa_command(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            write_qa_mapping(os.path.join(tmp, 'translations.json'))
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = pipeline.main(['qa', '--work', tmp])
+            self.assertEqual(rc, 1, msg=buf.getvalue())
+            self.assertIn('qa_check:', buf.getvalue())
+            with tempfile.TemporaryDirectory() as empty:
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    self.assertEqual(pipeline.main(['qa', '--work', empty]), 2)
 
 
 class OverflowTests(unittest.TestCase):

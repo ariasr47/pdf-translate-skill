@@ -72,7 +72,7 @@ on the toy PDF is a **different day**, not this sitting.
 
 ## What is already locked (do not regress)
 
-- Provider-neutral seven scripts; no vendor SDK
+- Provider-neutral bundled scripts; no vendor SDK; no glossary shipped
 - Scan / image-only → `refuse+OCR` (exit ≠ 0, message names OCR)
 - Pale blank → `skip-ink`, not ink 0.00 FAIL
 - Corpus table in `corpus/verdicts.json`

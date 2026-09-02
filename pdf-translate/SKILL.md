@@ -13,7 +13,7 @@ description: >-
   "translate this document but keep the formatting". Also use it when a user
   complains that a translated PDF broke its layout or its form fields.
 metadata:
-  version: "24"
+  version: "25"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -34,7 +34,7 @@ the original coordinates. Overlaying white boxes looks like a scanlation;
 regenerating the document never matches; redaction annotations **delete form
 fields**. Don't use those.
 
-The seven scripts are **provider-neutral**: plain Python, no vendor SDK, no
+The bundled scripts are **provider-neutral**: plain Python, no vendor SDK, no
 assumption about which model or CLI is driving. Source-string translation is
 a JSON mapping any person or any model can author; the rest of the pipeline
 runs without that author. Do not ship a terminology glossary. Lexicon is
@@ -85,7 +85,7 @@ Run the bundled scripts from `scripts/` in this order. They do all the
 deterministic work; your work is the identity record, the mapping, and
 the visual inspection loop.
 
-**Where the time goes.** On a 4-page form the seven scripts finish in a few
+**Where the time goes.** On a 4-page form the whole pipeline finishes in a few
 seconds. A 30–40 minute run is almost entirely translation authoring and
 2–3 visual passes — not Python. After the first extract:
 
@@ -128,6 +128,12 @@ facts:
    language, or `none`, or `not searched`.
 4. **Identifiers** — names on *this* PDF the reader must still write, find,
    or say in the source language. Fill after extract (step 3).
+
+The class decides one more thing here: whether the output needs a
+target-language **"translation for information only"** notice. Court forms,
+government applications, anything the reader files, submits or signs for an
+authority, and medical consents do; brochures and manuals do not. Wording
+and placement: `references/compliance.md`.
 
 **Lookup.** If you can search, you must. Search where a translator of this
 class would look: the issuer's catalog (form number or title), the regulator,
@@ -233,8 +239,22 @@ The language decisions that matter:
 
 - **Register**: step 1 lookup. Parallel text wins; else that class's
   established usage in the target language. Do not calque.
-- **Length**: expansion varies by pair (EN→DE grows ~30%, EN→JA often
-  shrinks). Retypeset **fails** if a segment scales below 0.7×. **Reword
+- **Length**: expansion depends on how *short* the string is, not just on
+  the pair — and a form is made of short labels. The W3C/IBM band for
+  translation out of English:
+
+  | Source length (characters) | Expect up to |
+  |---|---|
+  | 1–10 | 300% |
+  | 11–20 | 200% |
+  | 21–30 | 180% |
+  | 31–50 | 160% |
+  | 51–70 | 140% |
+  | over 70 | 130% |
+
+  So "City" may need three times its width while a paragraph needs a third
+  more; EN→JA usually shrinks instead. `qa_check.py` flags targets outside
+  the band. Retypeset **fails** if a segment scales below 0.7×. **Reword
   first** — a shorter, equally correct phrase is almost always available,
   and it is the fix that keeps the page readable. `allow_scale` is the
   **last resort**, for a cell whose geometry genuinely cannot hold the
@@ -336,6 +356,31 @@ versus the original size — a note is not a ship. Shorten the translation,
 or list that core (or merge first line) in `allow_scale` if the cell must
 stay tiny.
 
+### 5b. QA the mapping (before you build)
+
+```bash
+python3 scripts/qa_check.py translations.json --segments segments.json \
+    [--glossary glossary.csv] [--strict]
+# or: python3 scripts/pipeline.py qa --work .
+```
+
+Reads the mapping, not the file. Reports the defects a reviser catches
+first and every structural gate misses: a figure or amount that changed, a
+date whose parts moved, a line left in the source language, two spellings
+of one label, an unclosed bracket, a lost trailing colon, doubled spaces,
+a target outside the expansion band. `error` findings exit non-zero;
+warnings are listed and `--strict` makes them fail too.
+
+`--glossary glossary.csv` is an optional **per-job** termbase — the
+issuer's published terms, or the client's — two columns, source term and
+target term. Every string containing the source term must contain the
+target term. It is a job input, never part of this skill: a public skill
+cannot maintain glossaries for every pair and register, and step 1 already
+tells you to look the issuer's own terms up.
+
+Nothing here judges whether the wording is right. It narrows what the human
+reader has to look for.
+
 ### 6. Verify — gates, then eyes
 
 ```bash
@@ -424,8 +469,14 @@ python3 scripts/compare.py original.pdf final.pdf comparison.html \
     --labels "English (original)|Français (traduit)" --lang fr
 ```
 
-Deliver three things: the translated PDF, the original used, and the
-side-by-side comparison HTML. Summarize every judgment call: the four
+Deliver five things: the translated PDF, the original used, the
+side-by-side comparison HTML, the **completed reviewer checklist** from
+`references/review.md`, and — for court, government, medical-consent and
+anything the reader files or signs — the **target-language notice** on
+page 1 and the wording from `references/compliance.md`. The output is a
+**working copy, not a certified translation**; say so in those words. If a
+certified translation is required, hand over the certification template
+for a qualified human to sign, and do not sign on anyone's behalf. Summarize every judgment call: the four
 identity facts (class, issuer, parallel text or `none`/`not searched`,
 identifiers), structural changes (XFA removed, `/Perms` deleted, buttons
 replaced), whether the source was encrypted or certified and what the
@@ -434,12 +485,14 @@ adaptations — the user should learn your decisions from you, not discover
 them later.
 
 **Name a second reader for official work.** For court, government, medical
-and legal filings, say plainly in the delivery that a qualified human
-reviser should read the target text before it is relied on, and that the
-scripts are not that person. Every gate here checks structure; none of them
-can tell a plausible wrong term from the right one (養子支援 on a
-child-support page passes every gate). The professional standard for this
-class of work is a second linguist, and the honest deliverable says so.
+and legal filings, name a qualified human reviser in the delivery and say
+plainly that the scripts are not that person — ISO 17100 defines
+translation as translation *plus* revision by a second person. Every gate
+here checks structure and `qa_check.py` checks mechanics; none of them can
+tell a plausible wrong term from the right one (養子支援 on a
+child-support page passes every gate). If no human reviser was available,
+say that, in those words. The checklist and the MQM-typology prompt for an
+optional model first pass are in `references/review.md`.
 
 ## References
 
@@ -450,6 +503,12 @@ class of work is a second linguist, and the honest deliverable says so.
   authoring translations.
 - `references/fonts.md` — per-script font sourcing (CJK, Arabic, Devanagari,
   Thai, Latin/Cyrillic/Greek) and the glyf-flavor rule. Read at step 4.
+- `references/review.md` — the reviewer checklist (a required deliverable),
+  who the reviser should be, an optional MQM-typology judge prompt and the
+  `review.json` schema. Read at step 8.
+- `references/compliance.md` — when a target-language "information only"
+  notice belongs in the document (decided at step 1), the working-copy
+  wording, and the translator's certification template a human signs.
 
 Regression tests (tiny constructed PDFs, no vendor, no FL-150 dependency):
 
