@@ -65,13 +65,16 @@ def find_rtl_font():
 
 def find_test_font():
     candidates = [
-        Path(__file__).resolve().parents[2] / 'work' / 'NotoSansJP-Regular-full.ttf',
         Path(r'C:\Windows\Fonts\arial.ttf'),
         Path(r'C:\Windows\Fonts\Arial.ttf'),
         Path(r'C:\Windows\Fonts\calibri.ttf'),
         Path(r'C:\Windows\Fonts\segoeui.ttf'),
         Path('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'),
         Path('/System/Library/Fonts/Supplemental/Arial.ttf'),
+        # Local convenience only: never let a gitignored font decide whether
+        # the suite is green (Arial's cmap reports soft hyphens and NBSPs,
+        # which is exactly what the gates must cope with).
+        Path(__file__).resolve().parents[2] / 'work' / 'NotoSansJP-Regular-full.ttf',
     ]
     for p in candidates:
         if p.is_file():
@@ -1455,6 +1458,12 @@ class RefusalGateTests(unittest.TestCase):
 
 class PlacementTests(unittest.TestCase):
     """Authored targets must appear in the output text layer when asked."""
+
+    def test_soft_hyphen_folds_to_ascii(self):
+        # Arial maps U+00AD to the hyphen glyph, so MuPDF reports 'W\u00ad2'
+        # for an authored 'W-2'. The fold must treat it like U+2010/U+2011.
+        self.assertEqual(verify.normalize_ws_nbsp('Form W\u00ad2'), 'Form W-2')
+        self.assertEqual(verify.missing_translation_targets('Vease Form W\u00ad2', ['Form W-2']), [])
 
     def test_nbsp_normalized_targets_length_gate(self):
         # Same glyphs, NBSP vs space, must count as present.

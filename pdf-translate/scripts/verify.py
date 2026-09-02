@@ -218,18 +218,22 @@ def source_words_from_segments(path, allow, script='Latin'):
     return source_words_from_text('\n'.join(s['text'] for s in segs), allow, script)
 
 
-# get_text() often remaps authored ASCII '-' to U+2010/U+2011 (e.g. "W-2").
+# get_text() often remaps authored ASCII '-' to U+2010/U+2011 (e.g. "W-2"),
+# and fonts whose cmap maps U+00AD to the hyphen glyph (Arial) report a soft
+# hyphen. Spaces come back as NBSP the same way. One root cause: MuPDF builds
+# ToUnicode by reverse-mapping the font cmap (audit finding H4).
 _PLACEMENT_FOLD = str.maketrans({
     '\xa0': ' ',
     '\u202f': ' ',
     '\u2007': ' ',
     '\u2010': '-',
     '\u2011': '-',
+    '\u00ad': '-',
 })
 
 
 def normalize_ws_nbsp(text):
-    """NBSP/figure spaces → ASCII space; U+2010/U+2011 → ASCII hyphen."""
+    """NBSP/figure spaces → ASCII space; U+2010/U+2011/U+00AD → ASCII hyphen."""
     if not text:
         return ''
     return text.translate(_PLACEMENT_FOLD)
