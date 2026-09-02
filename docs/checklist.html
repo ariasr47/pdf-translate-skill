@@ -1,0 +1,261 @@
+<title>pdf-translate Checklist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#F3F5F2; --surface:#FFFFFF; --ink:#171A18; --muted:#5A625E; --rule:#D5DBD6;
+  --accent:#0E6B76; --accent-soft:#DDEFF1; --code-bg:#EEF1EE;
+  --p0:#A32D2D; --p0-soft:#F6E1E1; --p1:#B4531D; --p1-soft:#F8E6DA;
+  --p2:#8A6A0B; --p2-soft:#F5EDD3; --p3:#3E7A3E; --p3-soft:#E1EFE1;
+  --done:#3E7A3E;
+  --serif:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",Consolas,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#101312; --surface:#181C1A; --ink:#E6EAE7; --muted:#A0A9A4; --rule:#2B3330;
+    --accent:#5BC2CC; --accent-soft:#143A3F; --code-bg:#1F2624;
+    --p0:#E07A7A; --p0-soft:#3A1F1F; --p1:#E39A6B; --p1-soft:#3B2618;
+    --p2:#D8B75A; --p2-soft:#332B12; --p3:#8CC98C; --p3-soft:#1B2E1B;
+    --done:#8CC98C;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#101312; --surface:#181C1A; --ink:#E6EAE7; --muted:#A0A9A4; --rule:#2B3330;
+  --accent:#5BC2CC; --accent-soft:#143A3F; --code-bg:#1F2624;
+  --p0:#E07A7A; --p0-soft:#3A1F1F; --p1:#E39A6B; --p1-soft:#3B2618;
+  --p2:#D8B75A; --p2-soft:#332B12; --p3:#8CC98C; --p3-soft:#1B2E1B;
+  --done:#8CC98C;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--accent) 45%,transparent)}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.page{max-width:860px;margin:0 auto;padding:36px 24px 80px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--serif);font-weight:600;font-size:36px;line-height:1.1;margin:8px 0 10px;text-wrap:balance}
+.lede{max-width:64ch;margin:0 0 18px;color:var(--ink)}
+.progress{position:sticky;top:0;z-index:2;background:var(--ground);padding:10px 0 12px;border-bottom:1px solid var(--rule);margin-bottom:24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.bar{flex:1 1 220px;height:8px;background:var(--code-bg);border-radius:999px;overflow:hidden;border:1px solid var(--rule)}
+.bar > span{display:block;height:100%;width:0;background:var(--accent);transition:width .25s ease}
+.count{font-family:var(--mono);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+button.reset{font-family:var(--sans);font-size:13px;color:var(--muted);background:var(--surface);border:1px solid var(--rule);border-radius:4px;padding:5px 10px;cursor:pointer}
+button.reset:hover{color:var(--accent);border-color:var(--accent)}
+section{margin:0 0 34px}
+h2{font-family:var(--serif);font-weight:600;font-size:23px;margin:0 0 4px;text-wrap:balance}
+h2 + p{margin:0 0 14px;color:var(--muted);max-width:66ch}
+ol.items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+li.item{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:12px 14px 12px 12px;display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px 12px;align-items:start}
+li.item.checked{opacity:.62}
+li.item.checked .title{text-decoration:line-through;text-decoration-color:var(--muted)}
+input[type=checkbox]{width:18px;height:18px;margin:3px 0 0 2px;accent-color:var(--accent);cursor:pointer}
+.head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.title{font-weight:600;font-size:15.5px}
+.title label{cursor:pointer}
+.chip{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.04em;padding:1px 7px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+.chip.p0{color:var(--p0);background:var(--p0-soft);border-color:color-mix(in srgb,var(--p0) 35%,transparent)}
+.chip.p1{color:var(--p1);background:var(--p1-soft);border-color:color-mix(in srgb,var(--p1) 35%,transparent)}
+.chip.p2{color:var(--p2);background:var(--p2-soft);border-color:color-mix(in srgb,var(--p2) 35%,transparent)}
+.chip.p3{color:var(--p3);background:var(--p3-soft);border-color:color-mix(in srgb,var(--p3) 35%,transparent)}
+.chip.neutral{color:var(--muted);background:var(--code-bg);border-color:var(--rule)}
+.detail{grid-column:2;font-size:14.5px;color:var(--ink);margin:0;max-width:72ch}
+.detail code{font-family:var(--mono);font-size:.9em;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+.meta{grid-column:2;font-family:var(--mono);font-size:12px;color:var(--muted)}
+details{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:10px 14px}
+summary{cursor:pointer;font-weight:600}
+details ul{margin:10px 0 4px;padding-left:20px;font-size:14.5px}
+details li{margin:4px 0}
+.done-mark{color:var(--done);font-family:var(--mono);font-size:12px}
+footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
+@media (max-width:640px){.page{padding:24px 14px 60px}h1{font-size:30px}}
+</style>
+
+<div class="page">
+  <div class="eyebrow">Program tracker · after gate 16 · updated 2 Sep 2026</div>
+  <h1>pdf-translate Checklist</h1>
+  <p class="lede">What is left after gates 13–16, in the order it should be done. Items follow the program's rule of one gate per sitting with a constructed fixture, a test, and a commit. Ticks are saved in this browser only.</p>
+
+  <div class="progress" role="status" aria-live="polite">
+    <div class="bar"><span id="bar"></span></div>
+    <div class="count" id="count">0 of 0 done</div>
+    <button class="reset" id="reset" type="button">Clear ticks</button>
+  </div>
+
+  <section>
+    <h2>Now</h2>
+    <p>Row 11 closed and committed; row 12 is the last of the repo's own queue before goal 17.</p>
+    <ol class="items">
+      <li class="item" data-id="g12">
+        <input type="checkbox" id="c-g12"><div class="head"><span class="title"><label for="c-g12">Program row 12: narrow-column warning</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
+        <p class="detail">Extractor warns (<code>kind: narrow-column</code>) when three or more stacked cores share a skinny column; warn only, never merge. Brief exists (<code>goals/12-narrow-column-warning.md</code>).</p>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Audit P0 still open</h2>
+    <p>The last silent-pass class from the audit.</p>
+    <ol class="items">
+      <li class="item" data-id="g17">
+        <input type="checkbox" id="c-g17"><div class="head"><span class="title"><label for="c-g17">Goal 17: widget text</label></span><span class="chip p0">P0</span><span class="chip neutral">M</span><span class="chip neutral">closes H2</span></div>
+        <p class="detail">Extract page text from an annotation-free display list so field values and dropdown selections stop leaking into <code>to_translate.json</code> (verified to work). Add a widget-text channel next to <code>--captions</code> for <code>/TU</code> tooltips, <code>/Opt</code> display strings and <code>/V</code>/<code>/DV</code> defaults, keeping export values; gate on <code>/Opt</code> parity.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>P1: silent-pass classes with a known fix</h2>
+    <p>One sitting each, constructed fixtures, in roughly this order.</p>
+    <ol class="items">
+      <li class="item" data-id="h1">
+        <input type="checkbox" id="c-h1"><div class="head"><span class="title"><label for="c-h1">Rotated text lines</label></span><span class="chip p1">P1</span><span class="chip neutral">M</span><span class="chip neutral">closes H1</span></div>
+        <p class="detail">Record <code>line["dir"]</code> per segment; place with <code>TextWriter.write_text(morph=…)</code>; width budget along the line direction; corpus <code>rotated_text.pdf</code> (distinct from the page-rotation fixture).</p>
+      </li>
+      <li class="item" data-id="h4">
+        <input type="checkbox" id="c-h4"><div class="head"><span class="title"><label for="c-h4">Canonical text layer</label></span><span class="chip p1">P1</span><span class="chip neutral">M</span><span class="chip neutral">closes H4/H5</span></div>
+        <p class="detail">Post-process <code>ToUnicode</code> with pikepdf to the authored code points, or emit <code>/ActualText</code> per run; gate flags CJK compatibility ideographs, NBSP and soft hyphen unless authored; then retire the NBSP and U+2010 folds in verify.</p>
+      </li>
+      <li class="item" data-id="m5">
+        <input type="checkbox" id="c-m5"><div class="head"><span class="title"><label for="c-m5">Per-character glyph coverage in retypeset</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span><span class="chip neutral">closes M5</span></div>
+        <p class="detail"><code>font.has_glyph</code> for every character of every placed run against the exact font object; FAIL listing the characters. MuPDF otherwise substitutes a fallback face mid-string or draws a box.</p>
+      </li>
+      <li class="item" data-id="m3">
+        <input type="checkbox" id="c-m3"><div class="head"><span class="title"><label for="c-m3">Encryption and usage rights</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span><span class="chip neutral">closes M3</span></div>
+        <p class="detail">Recon reports encryption, permissions and <code>/Perms</code> or DocMDP; strip deletes <code>/Perms</code> (the Adobe usage-rights signature cannot survive editing) and says so; optional <code>--keep-encryption</code>; certified documents get a warning in the deliverable.</p>
+      </li>
+      <li class="item" data-id="m4">
+        <input type="checkbox" id="c-m4"><div class="head"><span class="title"><label for="c-m4">Output metadata</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span><span class="chip neutral">closes M4</span></div>
+        <p class="detail"><code>/Lang</code> to the target BCP-47 tag and XMP language; <code>/Title</code> treated as a core; outline titles translated via <code>set_toc</code>; orphaned <code>/StructTreeRoot</code> removed and <code>/MarkInfo Marked false</code> until tags can be rebuilt.</p>
+      </li>
+      <li class="item" data-id="m1">
+        <input type="checkbox" id="c-m1"><div class="head"><span class="title"><label for="c-m1">Right alignment and font roles</label></span><span class="chip p1">P1</span><span class="chip neutral">M</span><span class="chip neutral">closes M1/M2</span></div>
+        <p class="detail">A <code>right</code> list next to <code>center</code>, proposed by the extractor from aligned right edges; regular, bold, italic and bold-italic per serif or sans family from span flags; inline <code>&lt;b&gt;</code>/<code>&lt;i&gt;</code> in single-line targets the way merges already allow.</p>
+      </li>
+      <li class="item" data-id="g16b">
+        <input type="checkbox" id="c-g16b"><div class="head"><span class="title"><label for="c-g16b">Shaped-script leftovers from goal 16</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
+        <p class="detail">Dot leaders on shaped-script labels are not refilled (the label goes through the Story engine, the leader path is TextWriter). Indic has no code-point signal for a glyph-form gate; a reference render comparison could close that.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>P2: the translation-quality layer</h2>
+    <p>The largest gap from the audit. None of it is a glossary shipped with the skill.</p>
+    <ol class="items">
+      <li class="item" data-id="qa">
+        <input type="checkbox" id="c-qa"><div class="head"><span class="title"><label for="c-qa"><code>qa_check.py</code>: linguistic QA on the mapping</label></span><span class="chip p2">P2</span><span class="chip neutral">M</span></div>
+        <p class="detail">Numbers and dates that vanish or change, targets identical to source for non-identifier cores, one source string mapped to different targets across case or punctuation variants, unpaired brackets and quotes, trailing colon and punctuation parity, doubled spaces, length ratios against the W3C/IBM expansion table.</p>
+      </li>
+      <li class="item" data-id="review">
+        <input type="checkbox" id="c-review"><div class="head"><span class="title"><label for="c-review">Reviser step</label></span><span class="chip p2">P2</span><span class="chip neutral">M</span></div>
+        <p class="detail">A review checklist as a required deliverable, plus an optional MQM-typology judge prompt template and schema producing <code>review.json</code>; any model may run it, and a human reviser is named for court and official work (ISO 17100, Judicial Council protocol).</p>
+      </li>
+      <li class="item" data-id="glossary">
+        <input type="checkbox" id="c-glossary"><div class="head"><span class="title"><label for="c-glossary">Job-level <code>glossary.csv</code> input</label></span><span class="chip p2">P2</span><span class="chip neutral">S</span></div>
+        <p class="detail">The issuer's published terms or a client termbase as an optional per-job input with a consistency gate (source term present, target term present). Never shipped with the skill; the identity record already tells the author to look these up.</p>
+      </li>
+      <li class="item" data-id="notice">
+        <input type="checkbox" id="c-notice"><div class="head"><span class="title"><label for="c-notice">Compliance notice and certification template</label></span><span class="chip p2">P2</span><span class="chip neutral">S</span></div>
+        <p class="detail">A target-language "informational only; file the English form" notice as a required deliverable for court and government classes, decided at the identity step; a translator's certification statement template a human signs; a sentence in SKILL.md that the output is a working copy, not a certified translation.</p>
+      </li>
+      <li class="item" data-id="expansion">
+        <input type="checkbox" id="c-expansion"><div class="head"><span class="title"><label for="c-expansion">Expansion table in SKILL.md</label></span><span class="chip p2">P2</span><span class="chip neutral">S</span></div>
+        <p class="detail">Replace "EN→DE grows ~30%" with the length-dependent table (strings under ten characters grow 200–300%); make the extractor's length warnings use it. Forms are made of short labels.</p>
+      </li>
+      <li class="item" data-id="paragraph">
+        <input type="checkbox" id="c-paragraph"><div class="head"><span class="title"><label for="c-paragraph">Paragraph mode, page partitioning, bilingual output</label></span><span class="chip p2">P2</span><span class="chip neutral">L</span></div>
+        <p class="detail">Block-based merge proposals the author accepts in bulk (never silently), the existing scale search, work split by page, and an alternating-pages bilingual option. This is what makes the "manuals and brochures" claim in the description true.</p>
+      </li>
+      <li class="item" data-id="small">
+        <input type="checkbox" id="c-small"><div class="head"><span class="title"><label for="c-small">Three small guards</label></span><span class="chip p2">P2</span><span class="chip neutral">S</span></div>
+        <p class="detail">List image regions per page as review items (banners and stamps with text); rewrite choice-field <code>/DA</code> in <code>field_fonts.py</code>, not only text fields; read <code>OS/2.fsType</code> in <code>prepare_font.py</code> and refuse restricted-embedding fonts.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>P3: hygiene</h2>
+    <p>Cheap, and overdue now that the skill is a real package.</p>
+    <ol class="items">
+      <li class="item" data-id="dev">
+        <input type="checkbox" id="c-dev"><div class="head"><span class="title"><label for="c-dev">Move development material out of the skill directory</label></span><span class="chip p3">P3</span><span class="chip neutral">S</span></div>
+        <p class="detail"><code>goals/</code>, the session prompts and the four HTML explainers ship with the skill today. Move them to a repo-level <code>dev/</code>; keep <code>corpus/</code> and <code>tests/</code> with the skill.</p>
+      </li>
+      <li class="item" data-id="license">
+        <input type="checkbox" id="c-license"><div class="head"><span class="title"><label for="c-license">License, frontmatter fields, pinned ranges</label></span><span class="chip p3">P3</span><span class="chip neutral">S</span></div>
+        <p class="detail">Add a LICENSE file and <code>license:</code>, a <code>compatibility:</code> line (Python 3.10+, pymupdf, pikepdf, fonttools, network for Noto fonts, an image-viewing harness), and upper bounds in <code>requirements.txt</code>; PyMuPDF changes surfaces between minors.</p>
+      </li>
+      <li class="item" data-id="ci">
+        <input type="checkbox" id="c-ci"><div class="head"><span class="title"><label for="c-ci">CI with a vendored OFL font</label></span><span class="chip p3">P3</span><span class="chip neutral">M</span></div>
+        <p class="detail">The Arabic and Devanagari tests depend on Arial and Nirmala UI and skip elsewhere. Vendor a Noto subset, run the suite on Linux and Windows; it takes about 30 s now.</p>
+      </li>
+      <li class="item" data-id="drift">
+        <input type="checkbox" id="c-drift"><div class="head"><span class="title"><label for="c-drift">Description, meta-paragraph, eval fixtures</label></span><span class="chip p3">P3</span><span class="chip neutral">S</span></div>
+        <p class="detail">Trim the pipeline mechanics from the frontmatter description (keep the triggers), move the "YAML block above is optional" paragraph to the README, and add the two eval fixtures <code>evals.json</code> references but the repo lacks.</p>
+      </li>
+      <li class="item" data-id="canary">
+        <input type="checkbox" id="c-canary"><div class="head"><span class="title"><label for="c-canary">Canary run on the toy PDFs</label></span><span class="chip p3">P3</span><span class="chip neutral">S</span></div>
+        <p class="detail">After goal 17: one strong and one weak model on the constructed fixtures, scored on identity record, lookup and identifiers kept. A different day from any gate; no winner in SKILL.md.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <details>
+      <summary>Done since the audit <span class="done-mark">5 gates · commit and sync</span></summary>
+      <ul>
+        <li><strong>13 Strip completeness</strong>: nested XObjects and inherited resources stripped; leftover page text fails and deletes the file. Commit <code>2175a0b</code>.</li>
+        <li><strong>14 OCR-layer refusal</strong>: invisible text layers are refused by extract and verify; "OCR first" advice removed. Commit <code>b504da2</code>.</li>
+        <li><strong>15 Script-aware leak scan</strong>: the leak gate follows the source document's script; JA→EN and AR→EN work. Commit <code>6613f35</code>.</li>
+        <li><strong>16 Shaped scripts</strong>: Arabic and Indic runs go through the Story engine on the original baseline with ActualText; unshaped Arabic fails verify. Commit <code>66790fa</code>, 77 tests green.</li>
+        <li><strong>Version field</strong>: <code>metadata.version</code> "16" in the frontmatter, scheme documented in the README. Commit <code>be1080a</code>.</li>
+        <li><strong>11 Override markers</strong>: verify fails an override whose parts drop the source <code>d.</code> or <code>$</code> (reads <code>segments.json</code> beside the mapping or <code>--segments</code>); found and fixed on the way: the fill round-trip gate failed every checkbox-only form.</li>
+        <li><strong>Installed copy synced</strong>: the <code>anthropic-skills:pdf-translate</code> copy now matches the gate-16 tree outside dev material, manifest description refreshed, v1 backed up in the session scratchpad.</li>
+      </ul>
+    </details>
+  </section>
+
+  <footer>The in-repo queue stays <code>goals/PROGRAM.md</code>; this page is the reading order across the program rows and the audit's roadmap. The audit itself is the "pdf-translate Audit" page from 1 Sep 2026.</footer>
+</div>
+
+<script>
+(function () {
+  var KEY = 'pdf-translate-checklist-v1';
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('li.item input[type=checkbox]'));
+  var bar = document.getElementById('bar');
+  var count = document.getElementById('count');
+  function load() {
+    try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; }
+  }
+  function save(state) {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable: ticks are session-only */ }
+  }
+  function render() {
+    var done = 0;
+    boxes.forEach(function (b) {
+      var li = b.closest('li.item');
+      if (b.checked) { done += 1; li.classList.add('checked'); } else { li.classList.remove('checked'); }
+    });
+    bar.style.width = (boxes.length ? (100 * done / boxes.length) : 0) + '%';
+    count.textContent = done + ' of ' + boxes.length + ' done';
+  }
+  var state = load();
+  boxes.forEach(function (b) {
+    var id = b.closest('li.item').getAttribute('data-id');
+    b.checked = !!state[id];
+    b.addEventListener('change', function () {
+      var s = load();
+      s[id] = b.checked;
+      save(s);
+      render();
+    });
+  });
+  document.getElementById('reset').addEventListener('click', function () {
+    boxes.forEach(function (b) { b.checked = false; });
+    save({});
+    render();
+  });
+  render();
+})();
+</script>
