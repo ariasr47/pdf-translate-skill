@@ -54,6 +54,18 @@ the requester decide; do not shrink the form's own text to make room, and do
 not add a page unless the requester asks (a page count change breaks the
 "visually indistinguishable" promise and can break a filing).
 
+**What the gates do with it.** The notice names the form in the source
+language, so verify's leak scan keeps a run that equals the original's
+`/Title` — quote the title as one unit, in the source language, with
+target-language words around it — and prints it as a note instead of a
+failure. Anything longer that merely contains the title is still a leak,
+and a page with a notice is not exempt. A source-language title that is
+not the file's `/Title`, or an issuer's multi-word name (`Riverside
+Elementary School`), is a decision you made, not something the scan can
+know: keep it with `--allow "Riverside Elementary School"` (a phrase
+matches that run and nothing else; single words still allowlist
+themselves everywhere) and say so in the delivery.
+
 This is a judgment call about *this* job, not a legal opinion. Rules vary by
 jurisdiction, issuer and purpose. When the requester needs a filing to be
 accepted, tell them to confirm the requirement with the issuer — and say

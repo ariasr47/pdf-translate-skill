@@ -21,6 +21,13 @@
                   document's own words (--source-words-from, or harvested
                   from the original automatically). A shared spaceless
                   family (zh->ja) gets one REVIEW line, not a gate.
+                  A run that equals the ORIGINAL's /Title is kept, not
+                  counted: the compliance notice names the form it
+                  translates, in the source language, and the reader has
+                  to find that form. So is a run equal to a multi-word
+                  --allow entry, which matches a whole run and never its
+                  words. A longer run that merely contains either is
+                  still a leak; kept runs are printed as a note.
 5. text layer     a page with visible ink or an embedded image but no
                   extractable text is treated as a scan and fails (scans are out of
                   scope; an OCR layer is refused by gate 11).
@@ -101,7 +108,7 @@ after they pass you still render pages side-by-side and look at them.
 
 Usage:
   python3 verify.py ORIGINAL.pdf TRANSLATED.pdf \
-      [--fill-text "value in target script"] [--allow WORD,WORD,...] \
+      [--fill-text "value in target script"] [--allow WORD,"Multi Word Name",...] \
       [--min-ink 0.4] [--source-regex "[A-Za-z]{4,}"] \
       [--source-words-from segments.json] [--allow-extra-prefix tr_] \
       [--translations translations.json] [--segments segments.json]
@@ -747,7 +754,37 @@ def document_only_cores(segfile):
     return {c for c in candidates if c not in on_page}
 
 
-def scan_leaks(text, allow, source_words=None, src_re=None, script='Latin'):
+def _run_key(text, script='Latin'):
+    """A run's form for keep-list comparison: letters only, lowercased.
+
+    Spaceless scripts compare with whitespace removed. Quotes, commas and
+    case around a quoted title must not matter; a missing or extra word
+    must.
+    """
+    text = normalize_ws_nbsp(text).lower()
+    if script in SPACELESS_SCRIPTS:
+        return re.sub(r'\s+', '', text)
+    return ' '.join(re.findall(r"[^\W\d_]+", text))
+
+
+def _kept(run, keep, kept, script='Latin'):
+    """True when run equals a keep phrase (the original /Title, or a
+    multi-word --allow entry). Records it in kept for the report."""
+    if not keep:
+        return False
+    key = _run_key(run, script)
+    if not key:
+        return False
+    for phrase in keep:
+        if _run_key(phrase, script) == key:
+            if kept is not None:
+                kept.append(run.strip()[:70])
+            return True
+    return False
+
+
+def scan_leaks(text, allow, source_words=None, src_re=None, script='Latin',
+               keep=None, kept=None):
     """Split surviving source-script tokens into running vs isolated.
 
     script is the SOURCE document's script. When source_words is provided
@@ -758,7 +795,8 @@ def scan_leaks(text, allow, source_words=None, src_re=None, script='Latin'):
     """
     running, isolated = [], []
     if script and script != 'Latin':
-        return _scan_leaks_script(text, allow, script, source_words, src_re)
+        return _scan_leaks_script(text, allow, script, source_words, src_re,
+                                  keep=keep, kept=kept)
     if source_words:
         tokens = [m.group(0) for m in WORD.finditer(text)]
         i = 0
@@ -774,7 +812,9 @@ def scan_leaks(text, allow, source_words=None, src_re=None, script='Latin'):
                         j += 1
                     else:
                         break
-                if len(seq) >= 3:
+                if _kept(' '.join(seq), keep, kept, script):
+                    pass   # the quoted title, or an allowlisted phrase
+                elif len(seq) >= 3:
                     running.append(' '.join(seq)[:70])
                 else:
                     isolated.extend(seq)
@@ -784,6 +824,8 @@ def scan_leaks(text, allow, source_words=None, src_re=None, script='Latin'):
         return running, isolated
 
     for phrase in RUN.findall(text):
+        if _kept(phrase, keep, kept, script):
+            continue
         words = re.findall(r"[A-Za-z']+", phrase)
         if sum(1 for w in words if w.lower() not in allow) >= 3:
             running.append(phrase.strip()[:70])
@@ -795,14 +837,15 @@ def scan_leaks(text, allow, source_words=None, src_re=None, script='Latin'):
     return running, isolated
 
 
-def _scan_leaks_script(text, allow, script, source_words=None, src_re=None):
+def _scan_leaks_script(text, allow, script, source_words=None, src_re=None,
+                       keep=None, kept=None):
     """scan_leaks for a non-Latin source script."""
     running, isolated = [], []
     cls = script_class(script)
     if script in SPACELESS_SCRIPTS:
         for m in re.finditer(cls + '+', text):
             run = m.group(0)
-            if run.lower() in allow:
+            if run.lower() in allow or _kept(run, keep, kept, script):
                 continue
             if len(run) >= SPACELESS_RUN_CHARS:
                 running.append(run[:70])
@@ -822,7 +865,9 @@ def _scan_leaks_script(text, allow, script, source_words=None, src_re=None):
                         and tokens[j].lower() not in allow:
                     seq.append(tokens[j])
                     j += 1
-                if len(seq) >= 3:
+                if _kept(' '.join(seq), keep, kept, script):
+                    pass   # the quoted title, or an allowlisted phrase
+                elif len(seq) >= 3:
                     running.append(' '.join(seq)[:70])
                 else:
                     isolated.extend(seq)
@@ -832,6 +877,8 @@ def _scan_leaks_script(text, allow, script, source_words=None, src_re=None):
         return running, isolated
     run_re = re.compile(word + r'(?:\s+' + word + r'){2,}')
     for phrase in run_re.findall(text):
+        if _kept(phrase, keep, kept, script):
+            continue
         words = re.findall(cls + '+', phrase)
         if sum(1 for w in words if w.lower() not in allow) >= 3:
             running.append(phrase.strip()[:70])
@@ -897,9 +944,21 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
            source_regex=None, source_words_from=None, allow_extra_prefix=None,
            translations=None, segments=None):
     """Run structural gates. Returns 0 on pass, 1 on any failure."""
-    allow = set(w.lower() for w in (allow or []) if w)
+    # A multi-word --allow entry is a phrase: it matches a whole run and
+    # nothing else (row 20). Single words behave as before. Until now a
+    # phrase was accepted and silently matched nothing.
+    given = [a.strip() for a in (allow or []) if a and a.strip()]
+    keep = {a for a in given if re.search(r'\s', a)}
+    allow = set(a.lower() for a in given if a not in keep)
 
     o, j = pymupdf.open(orig), pymupdf.open(trans)
+    # The compliance notice names the form it translates in the source
+    # language; the reader has to find that form. The original's /Title,
+    # quoted as one run, is therefore kept rather than counted.
+    otitle_keep = ((o.metadata or {}).get('title') or '').strip()
+    if otitle_keep:
+        keep.add(otitle_keep)
+    kept = []
     fail = 0
 
     # Gate 4 is keyed to the source document's script, not to Latin.
@@ -1066,10 +1125,15 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
     else:
         for i in range(len(jc)):
             r, iso = scan_leaks(jc[i].get_text(), allow, source_words=source_words,
-                                src_re=src_re, script=src_script)
+                                src_re=src_re, script=src_script,
+                                keep=keep, kept=kept)
             running.extend((i + 1, ph) for ph in r)
             isolated.extend((i + 1, w) for w in iso)
 
+    if kept:
+        uniq = sorted(set(kept))
+        print(f'note: {len(kept)} source-language run(s) kept as the original '
+              f'/Title or an allowlisted phrase: ' + '; '.join(uniq[:5]))
     if running:
         print(f'FAIL untranslated running text ({len(running)}):')
         for pg, ph in running[:10]:

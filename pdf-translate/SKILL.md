@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "31"
+  version: "32"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -445,7 +445,10 @@ leftovers are REVIEW. When both sides share a space-delimited script
 harvested from the original automatically; `--source-words-from
 segments.json` is still accepted and preferred when you pass it. Expect a
 few false positives (proper nouns, words spelled the same in both
-languages) and allowlist them deliberately. When both sides share a
+languages) and allowlist them deliberately: a multi-word entry
+(`--allow "Riverside Elementary School"`) matches that run as a unit and
+nothing else, and the original's `/Title` quoted as a unit — the
+compliance notice names the form — is kept, never counted. When both sides share a
 spaceless family (ZH↔JA) the scan prints one REVIEW line and cannot gate;
 lean on `--translations` and the visual pass.
 

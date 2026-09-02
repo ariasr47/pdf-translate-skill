@@ -3277,6 +3277,143 @@ class LeakScanTests(unittest.TestCase):
         self.assertFalse(running)
 
 
+# Row 20: a compliance notice names the form it translates, in the source
+# language. The leak scan must not read that title as untranslated text —
+# and must still fail a sentence that is.
+NOTICE_TITLE = 'Field Trip Permission Slip'
+NOTICE_SENTENCE = 'Please return this form to the office.'
+NOTICE_ISSUER = 'Riverside Elementary School'
+NOTICE_TARGETS = {
+    NOTICE_TITLE: 'Autorizacion de excursion escolar',
+    NOTICE_SENTENCE: 'Devuelva este formulario a la oficina.',
+    NOTICE_ISSUER: NOTICE_ISSUER,   # the author kept the issuer's name
+}
+# compliance.md's wording, target language, quoting the source title as a unit.
+NOTICE_LINE = ('Traduccion solo informativa. Esta es una traduccion no oficial de '
+               + NOTICE_TITLE + ', que se ofrece para ayudarle a entender el formulario.')
+
+
+def build_titled_pdf(path, title=NOTICE_TITLE):
+    """Heading, one sentence and an issuer line; /Title set to the heading."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=400, height=300)
+    page.insert_text((72, 80), title, fontsize=14)
+    page.insert_text((72, 120), NOTICE_SENTENCE, fontsize=11)
+    page.insert_text((72, 150), NOTICE_ISSUER, fontsize=11)
+    doc.set_metadata({'title': title})
+    doc.save(path)
+    doc.close()
+
+
+def add_notice(pdf_in, pdf_out, line=NOTICE_LINE):
+    """Draw a notice line at the foot of page 1 (the author's own step; the
+    skill has no notice channel of its own)."""
+    doc = pymupdf.open(pdf_in)
+    doc[0].insert_text((72, 270), line, fontsize=7, fontname='helv')
+    doc.save(pdf_out)
+    doc.close()
+
+
+class NoticeTitleTests(unittest.TestCase):
+    """Row 20: compliance.md tells the author to name the source form in the
+    notice; the leak scan then failed that title as untranslated running
+    text (two of three canary models had to allowlist it word by word).
+    The original's /Title, quoted as a unit, is not a leak; a longer run
+    that merely contains it still is."""
+
+    def _translated(self, tmp, targets):
+        font = find_test_font()
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        build_titled_pdf(src)
+        extract_segments.extract_segments(src, outdir=tmp)
+        strip_text.strip_text(src, stripped)
+        write_mapping(tr, targets, font)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(stripped, os.path.join(tmp, 'segments.json'), tr, out)
+        self.assertEqual(rc, 0, msg=buf.getvalue())
+        return src, out, os.path.join(tmp, 'segments.json')
+
+    def _verify(self, src, out, **kw):
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = verify.verify(src, out, **kw)
+        return rc, buf.getvalue()
+
+    def test_notice_quoting_the_title_is_not_a_leak(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, segs = self._translated(tmp, NOTICE_TARGETS)
+            noticed = os.path.join(tmp, 'noticed.pdf')
+            add_notice(out, noticed)
+            # The issuer's name is the author's decision: allowlisted as a
+            # phrase, which matches that run and nothing else.
+            rc, log = self._verify(src, noticed, source_words_from=segs,
+                                   allow=[NOTICE_ISSUER])
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('PASS no untranslated running text', log)
+            self.assertNotIn('FAIL untranslated running text', log)
+            # Kept runs are said out loud, not silently dropped.
+            note = [l for l in log.splitlines() if l.startswith('note:')]
+            self.assertEqual(len(note), 1, msg=log)
+            self.assertIn(NOTICE_TITLE, note[0])
+            self.assertIn(NOTICE_ISSUER, note[0])
+
+    def test_an_untranslated_sentence_still_fails_beside_the_notice(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            leaked = dict(NOTICE_TARGETS)
+            leaked[NOTICE_SENTENCE] = NOTICE_SENTENCE   # forgotten, not decided
+            src, out, segs = self._translated(tmp, leaked)
+            noticed = os.path.join(tmp, 'noticed.pdf')
+            add_notice(out, noticed)
+            rc, log = self._verify(src, noticed, source_words_from=segs,
+                                   allow=[NOTICE_ISSUER])
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn('FAIL untranslated running text', log)
+            fail_block = log.split('FAIL untranslated running text')[1].split('\n\n')[0]
+            self.assertIn('return this form', fail_block)
+            self.assertNotIn('Field Trip Permission', fail_block)
+
+    def test_issuer_name_needs_a_phrase_allow_not_words(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, segs = self._translated(tmp, NOTICE_TARGETS)
+            # Kept verbatim and not allowlisted: three source words in a row.
+            rc, log = self._verify(src, out, source_words_from=segs)
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn(NOTICE_ISSUER, log)
+            # The phrase allow clears exactly that run.
+            rc, log = self._verify(src, out, source_words_from=segs,
+                                   allow=[NOTICE_ISSUER])
+            self.assertEqual(rc, 0, msg=log)
+            # And does not clear a different three-word run built from the
+            # same words: the phrase is a unit, not a word list.
+            other = os.path.join(tmp, 'other.pdf')
+            add_notice(out, other, line='School Riverside Elementary again')
+            rc, log = self._verify(src, other, source_words_from=segs,
+                                   allow=[NOTICE_ISSUER])
+            self.assertEqual(rc, 1, msg=log)
+
+    def test_scan_leaks_keeps_a_run_equal_to_the_title_only(self):
+        words = {'field', 'trip', 'permission', 'slip', 'form', 'please', 'return', 'this'}
+        keep = {NOTICE_TITLE}
+        running, isolated = verify.scan_leaks(
+            'Traduccion de Field Trip Permission Slip, para usted.',
+            allow=set(), source_words=words, keep=keep)
+        self.assertEqual(running, [])
+        self.assertEqual(isolated, [])
+        # Title plus one more source word: a longer run, still a leak.
+        running, _ = verify.scan_leaks(
+            'Traduccion de Field Trip Permission Slip Form ahora.',
+            allow=set(), source_words=words, keep=keep)
+        self.assertEqual(len(running), 1, msg=running)
+        # Case does not matter; punctuation around the title does not either.
+        running, _ = verify.scan_leaks(
+            'Vea "FIELD TRIP PERMISSION SLIP".', allow=set(), source_words=words, keep=keep)
+        self.assertEqual(running, [])
+
+
 class ScriptAwareLeakTests(unittest.TestCase):
     """Goal 15: the leak scan follows the source document's script."""
 

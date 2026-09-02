@@ -109,6 +109,9 @@ implementation in this skill (refusal is the product). The canary
   of scope with or without OCR
 - Leak scan follows the source script (JA→EN, AR→EN, RU→ES); Latin-source
   behaviour unchanged; same spaceless family is REVIEW-only
+- The original's `/Title` quoted as a unit, and a multi-word `--allow`
+  phrase, are kept runs in the leak scan, printed as a note; a longer run
+  that contains them is still a leak; `skip` exempts nothing
 - Shaped scripts (Arabic, Indic, Thai…) go through the Story engine with
   `/ActualText`; unshaped Arabic in an output is a verify FAIL
 - `narrow-column` and `right-aligned` are *warnings*: geometry proposes,
@@ -134,11 +137,11 @@ model doing a real job, each with a measurement in `dev/canary/runs/`:
 |---|---|---|---|
 | **18** | `goals/18-center-example.md` | **Closed 2 Sep.** `center` was documented for "signature captions", the one case where it is wrong (left-flush under a rule). Example corrected, SKILL.md step 5 says it, a constructed fixture locks the geometry (a wider translation `center`ed lands left of the source x0; anchored left it lands on it; verify passes both). No warning, by decision | Haiku 4.5 |
 | **19** | `goals/19-list-marker-gap.md` | **Closed 2 Sep.** List markers lost the source's gap: `marker + ' '` shifted every list body 3.06 pt left. Segments now record the `gap`; retypeset re-emits it; old files fall back to one space | Opus 5 |
-| **20** | `goals/20-notice-title-leak.md` | The compliance notice's source-language title trips the leak scan. A title quoted in a notice is an identifier by the skill's own rule | Fable 5.1 |
+| **20** | `goals/20-notice-title-leak.md` | **Closed 2 Sep.** The compliance notice's source-language title tripped the leak scan. The original's `/Title` quoted as a unit is kept; `--allow` takes phrases; a longer run is still a leak | Fable 5.1 |
 
-One sitting each, in that order (cheapest first). 18 and 19 are closed;
-20 is next. After those, do not invent the next row: run the canary
-again and see what it walks into. Do not paste Grok NOTES,
+One sitting each, in that order (cheapest first). 18, 19 and 20 are
+closed. The wild corpus opened 22, 21 and 23 (see *Backlog after the
+review*); after those, run the canary again. Do not paste Grok NOTES,
 `work/translations.json`, or bakeoff scores into that session.
 
 The evening review of 2 September (`docs/REVIEW-2026-09-02.md`) added a
@@ -165,7 +168,7 @@ are in `docs/REVIEW-2026-09-02.md` §5; this is the queue.
 | # | Brief | Trigger |
 |---|---|---|
 | 19 | `goals/19-list-marker-gap.md` | **Closed 2 Sep evening.** Segments record the whitespace after a marker (`gap`); retypeset re-emits it in every marker path; absent key → one space, so stale work directories still build. Was Opus 5, measured 3.06 pt; 0.00 after |
-| 20 | `goals/20-notice-title-leak.md` | Fable 5.1 and Opus 5 both had to allowlist |
+| 20 | `goals/20-notice-title-leak.md` | **Closed 2 Sep evening.** The original's `/Title` quoted as a unit, and a multi-word `--allow` phrase, are kept runs in the leak scan (printed as a note); anything longer is still a leak. Was Fable 5.1 and Opus 5 both allowlisting word by word |
 | C2 | canary run 2 — after P3, so it also tests the shorter skill; one deliberately long session | — |
 | **21** | `goals/21-right-aligned-on-text.md` | wild corpus: 1,485 `right-aligned` groups, 11,507 segments proposed for `right` on 17 documents, most of them justified text |
 | **22** | `goals/22-merge-candidate-kind.md` | wild corpus: merge candidates carry no `kind`; 2,484 of them were mislabelled by the first tool keyed on it |
@@ -181,9 +184,10 @@ model's defect; never a gate.
 | **P6** | Warnings at scale | `goals/P6-warnings-at-scale.md`: extract prints a per-kind digest before the list (6,191 warnings on the corpus, 1,093 write/find/say on one booklet); the skill text says what each kind wants of the author; widget-text data values (USCIS `PDF417BarCode1`) are identity-mapped by instruction | Silencing a kind; auto-accepting anything; guessing which values are data |
 | **P3** | `SKILL.md` under 500 lines | Body < 500 lines and ~5,000 tokens (today 550 lines, ~7,300 on invoke as measured by `claude plugin details`) by *moving* detail into `references/` (gates, widget text, expansion table), one level deep, each with a contents line; frontmatter stays spec-clean; suite green; C2 scores no lower than run 1 | Removing a rule; touching the description; Claude Code-only frontmatter |
 | **P4** | Eval automation | Three `evals/**/case.yaml` cases with graders wrapping `dev/canary/score.py` plus an LLM grader for the identity and honest-delivery axes; `claude plugin eval . --runs 1 --json` produces a report; a `--threshold` documents the bar; one report committed under `dev/canary/runs/` | Running in CI on every push; naming a winner; scoring the visual pass by machine |
+| P7 | Notice channel (candidate, no brief yet) | The skill has no way to add the compliance notice it requires: Fable wrote its own script and re-canonicalised the text layer afterwards; row 20's fixture draws it by hand. A `--notice` input — text, page, a rect the author chose — placed with the job's fonts at retypeset time, canonical layer kept, gates unchanged. Write the brief when it is next | Choosing the rect by geometry; adding a page; a notice the reader cannot read |
 | P5 | One source of truth | **Closed 2 Sep evening**: README count removed and CI badge added; audit HTML is a banner-marked snapshot; findings §15; tracker carries both lanes. Rule: `checklist.html` tracks, this file queues, `HANDOVER.md` cold-starts; nothing else states counts or open rows | — |
 
-**Order:** 20 → 22 → 21 → 23 → P2 → P6 → P3 → C2 → P4.
+**Order:** 22 → 21 → 23 → P2 → P6 → P3 → C2 → P4.
 
 **Hypotheses, after the wild corpus** (`dev/wild/ANALYSIS.md` §5): hybrid
 XFA — answered on page 1 of eight forms, the AcroForm layer renders

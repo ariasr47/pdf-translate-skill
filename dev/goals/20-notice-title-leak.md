@@ -75,3 +75,71 @@ glossary. A refusal must stay possible.
 
 Notice-with-title passes; untranslated sentence still fails; existing leak
 fixtures unchanged. Full unittest + corpus.
+
+---
+
+## 7. Closing note — 2 September 2026, closed
+
+**Reproduced first.** A constructed page with `/Title` and heading
+`Field Trip Permission Slip`, one sentence, and the issuer line `Riverside
+Elementary School`; translated to Spanish with the issuer's name kept, then
+the compliance notice drawn at the foot of the output quoting the title as
+a unit — the author's own step, since the skill has no notice channel.
+Shipped `verify` before the fix:
+
+```
+FAIL untranslated running text (2):
+   p1: Riverside Elementary School
+   p1: Field Trip Permission Slip
+```
+
+Exactly the canary's two runs, from Fable's and Opus's deliveries.
+
+**Done bar, item by item.**
+
+1. **The title quoted as a unit is not a leak.** `verify` reads the
+   original's `/Title` and hands it to the scan as a *kept phrase*: a run
+   whose letters, lowercased, equal the title's is neither running nor
+   isolated, in every branch (same-script words, Latin runs, non-Latin
+   words, spaceless runs). Quotes, commas and case around it do not
+   matter; a missing or extra word does. Kept runs are printed as a
+   `note:` line, never silently dropped.
+2. **The scan is not weaker.** A run that merely contains the title
+   (`Field Trip Permission Slip Form`) is still running text; the
+   untranslated sentence beside a notice still fails and names itself; the
+   goal-15 and goal-08 leak fixtures are untouched and green. No
+   threshold moved; a page with a notice is not exempt; `skip` exempts
+   nothing.
+3. **The proper-noun question, decided.** An issuer's multi-word name is a
+   *translation decision*, not a fact the scan can know: the issuer's own
+   parallel text may translate it (`Departamento de Vehículos
+   Motorizados`) or keep it (`Riverside Elementary School`), and step 1's
+   lookup is where that is settled. Allowlisting therefore stays the
+   author's job — and it is now sayable in the author's terms:
+   `--allow "Riverside Elementary School"` is a **phrase** that matches
+   that run and nothing else, where the only option before was
+   `--allow riverside,elementary,school`, three words that then passed
+   anywhere on the page. (A phrase passed to `--allow` used to be accepted
+   and silently match nothing.) Not done, by choice: exempting cores the
+   author identity-mapped — that would make "map everything to itself"
+   pass the scan, which is the shortcut the skill forbids.
+4. **`compliance.md` says what to expect**: quote the title as one unit in
+   the source language with target-language words around it; the scan
+   keeps it and notes it; a title that is not the file's `/Title`, or an
+   issuer's name, is allowlisted as a phrase and disclosed. `SKILL.md`
+   step 6 says the same in one sentence; the verify docstring for gate 4
+   carries the rule.
+5. `NoticeTitleTests` (four tests): the notice passes with the note; the
+   untranslated sentence fails beside it; the issuer name needs the
+   phrase, and the phrase does not clear a different run of the same
+   words; `scan_leaks` keeps a run equal to the title only. 166 tests, no
+   skips, green locally; corpus unchanged. `metadata.version` 31 → 32.
+
+**Not done, as the brief asked:** the three-word threshold is untouched;
+nothing in `skip` is exempt; no capitalisation heuristic; the scan runs
+on every page.
+
+**Left on the record.** The skill still has no channel for adding the
+notice itself; Fable wrote its own script and re-canonicalised the text
+layer afterwards. That is a lane B candidate, not a row from this
+sitting.

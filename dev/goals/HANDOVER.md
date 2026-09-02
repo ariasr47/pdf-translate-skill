@@ -20,8 +20,8 @@ sitting. The wild corpus ran that same evening (P1 closed): seventeen
 public PDFs, no crashes, no wrong verdicts, and it opened rows **21** and
 **22** and lane B row **P6** — `dev/wild/ANALYSIS.md` has the numbers.
 The PDFs are re-fetched from `dev/wild/SOURCES.md`, never committed.
-Row 19 closed the same night (version 31, 162 tests) and, measured on the
-corpus while closing it, opened row 23.
+Rows 19 and 20 closed the same night (version 32, 166 tests); the corpus
+measurement made while closing 19 opened row 23.
 
 **Repo:** `<REPO>` — GitHub `ariasr47/pdf-translate-skill`, branch `main`
 **Skill dir:** `pdf-translate/` (the only directory you install)
@@ -41,14 +41,14 @@ pikepdf 10) for everything above.
 
 **State of play, 2 September 2026, end of the row-18 sitting:**
 
-- **162 tests, no skips**, 25–40 s locally. 158 of them are green on
+- **166 tests, no skips**, 25–40 s locally. 162 of them are green on
   GitHub Actions across Linux and Windows, Python 3.10 and 3.13; the four
-  from row 19 are green locally and await CI — push and check.
-- `SKILL.md` is at `metadata.version: "31"`.
+  from row 20 are green locally and await CI — push and check.
+- `SKILL.md` is at `metadata.version: "32"`.
 - Working tree clean, everything committed. Nothing is half-finished.
-- Program rows 01–19 and the whole September audit roadmap are **closed**.
-- The canary has run once. It opened rows **18, 19 and 20** — see §5. Rows
-  18 and 19 are closed; 20 is open. The wild corpus opened 21, 22 and 23.
+- Program rows 01–20 and the whole September audit roadmap are **closed**.
+- The canary has run once. It opened rows **18, 19 and 20** — all three
+  closed on 2 September. The wild corpus opened 21, 22 and 23 — open.
 
 ---
 
@@ -142,6 +142,13 @@ page text after strip deletes the stripped file. A rotated run whose target
 needs shaping is refused rather than drawn flat. A font whose `OS/2.fsType`
 forbids embedding is refused.
 
+### The leak scan keeps what the reader must find
+
+The original's `/Title` quoted as one run (the compliance notice names the
+form) and any multi-word `--allow` phrase are kept, printed as a note, and
+never counted; a longer run that contains them is still a leak; nothing in
+`skip` is exempt; the three-word threshold is unchanged.
+
 ### The text layer is honest
 
 retypeset rewrites `/ToUnicode` to the authored code points; NBSP, soft
@@ -197,11 +204,11 @@ into `/goal`:
 |---|---|---|---|
 | **18** | `goals/18-center-example.md` | **Closed 2 Sep.** `center` was documented for "signature captions", the one case where it is wrong: those are left-flush under a rule, and centring moved one 7.5 pt off its own rule, past every gate. Example corrected, SKILL.md step 5 says it, `test_center_moves_a_left_flush_caption_off_its_rule` locks the geometry; no warning built, by decision (closing note in the brief). | Haiku 4.5 |
 | **19** | `goals/19-list-marker-gap.md` | **Closed 2 Sep.** retypeset re-emitted `marker + ' '` where the source had two spaces, shifting every list body **3.06 pt left**. Segments now carry `gap`; every marker path re-emits it; an old segments.json gets one space. Row 23 holds the font-metric remainder. | Opus 5 |
-| **20** | `goals/20-notice-title-leak.md` | `compliance.md` tells the author to name the source form title in the notice; the leak scan then FAILs that title as untranslated running text. Two features disagreeing. | Fable 5.1 |
+| **20** | `goals/20-notice-title-leak.md` | **Closed 2 Sep.** `compliance.md` told the author to name the source form title in the notice; the leak scan then FAILed that title. The original's `/Title` quoted as a unit is now a kept run (noted, not counted), `--allow` takes phrases, and a longer run is still a leak. | Fable 5.1 |
 
-Do them **one sitting each, in that order** — cheapest first. 18 and 19
-are closed; 20 is next, then the rows the wild corpus measured (22, 21,
-23 — `PROGRAM.md` has the order). Then the canary again.
+All three are closed. Next are the rows the wild corpus measured — 22,
+21, 23, in that order (`PROGRAM.md`, *Backlog after the review*) — then
+lane B, then the canary again.
 
 One defect from that canary is already fixed: the placement gate could not
 pass a wrapped merge, which broke paragraph mode on the day it shipped
@@ -274,19 +281,19 @@ Tests, from pdf-translate/:
   python3 tools/fetch_test_fonts.py
   python3 -m unittest tests.test_pipeline tests.test_corpus_verdicts
 
-162 tests, no skips, green locally; confirm CI after pushing. Everything is
-committed. Program rows 01-19 and the whole audit roadmap are closed. Do
+166 tests, no skips, green locally; confirm CI after pushing. Everything is
+committed. Program rows 01-20 and the whole audit roadmap are closed. Do
 not redo them.
 
-Next sitting: copy dev/goals/20-notice-title-leak.md into /goal and close
-that bar only. Do not start 21, 22 or 23 in the same session. Do not mix
-in a canary run. No glossary. Not FL-150 as a fixture.
+Next sitting: copy dev/goals/22-merge-candidate-kind.md into /goal and
+close that bar only. Do not start 21 or 23 in the same session. Do not
+mix in a canary run. No glossary. Not FL-150 as a fixture.
 
 When the bar is green: full unittest + corpus, bump metadata.version in
 SKILL.md, commit, stop.
 ```
 
-After 20, the queue in `PROGRAM.md` (22, 21, 23, then lane B) names the
-next brief; swap it into the message above. If the user wants the
+After 22, the queue in `PROGRAM.md` (21, 23, then lane B) names the next
+brief; swap it into the message above. If the user wants the
 stale audit HTML or the installed-copy re-sync instead, say so and do only
 that — neither is a gate, and neither needs a fixture.
