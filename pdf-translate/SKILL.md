@@ -13,7 +13,7 @@ description: >-
   "translate this document but keep the formatting". Also use it when a user
   complains that a translated PDF broke its layout or its form fields.
 metadata:
-  version: "25"
+  version: "26"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -200,6 +200,8 @@ appearance streams, not page text; they never trip this gate.
 
 ```bash
 python3 scripts/extract_segments.py original.pdf
+# a long document, one slice at a time:
+python3 scripts/extract_segments.py original.pdf --outdir p1 --pages 1-10
 ```
 
 Produces `segments.json` (geometry plus a `document` block: source
@@ -229,6 +231,18 @@ but not a left one — put those cores in `right` or a longer translation
 grows past the rule they sit against), and `narrow-column` stacks — three or more cores
 sharing a column under 90 pt wide (pay-stub boxes, label stacks). Those
 are warn-only; nothing merges them for you.
+
+**Long documents.** `--pages` takes 1-based inclusive ranges, so a manual
+can be extracted and authored a slice at a time. Combine the slices before
+the single retypeset over the whole file:
+
+```bash
+python3 scripts/pipeline.py merge-mappings translations.json \
+    p1/translations.json p2/translations.json
+```
+
+Conflicting values for one core stop the write and are listed;
+`--last-wins` takes the later file.
 
 Finish the identity record **before** filling any translation: copy
 write/find/say warnings into **Identifiers** (halt-and-confirm, not optional
@@ -262,7 +276,18 @@ The language decisions that matter:
   so name them in the delivery summary.
 - **Merges**: multi-line paragraphs must be translated as one unit and
   re-flowed. Declare each merge explicitly by its member lines — never
-  auto-merge by geometry, it swallows sibling list items.
+  auto-merge by geometry, it swallows sibling list items. On a manual or
+  brochure, where nearly every block is a wrapped paragraph, accept them
+  in bulk instead of one at a time:
+
+  ```bash
+  python3 scripts/pipeline.py propose-merges --work .          # look first
+  python3 scripts/pipeline.py propose-merges --work . --accept # then fold in
+  ```
+
+  `--accept` adds each candidate with `"html": null`, which still **fails**
+  retypeset until you write the paragraph. Delete the entries that were
+  really sibling list items.
 - **Narrow columns**: when the extractor reports a `narrow-column` stack,
   treat the box as *one* decision, not five. Either declare one merge over
   those lines and let it re-flow, or write one `overrides` entry with a
@@ -467,7 +492,14 @@ appearance at it, and sets NeedAppearances. Skip only for non-form PDFs.
 ```bash
 python3 scripts/compare.py original.pdf final.pdf comparison.html \
     --labels "English (original)|Français (traduit)" --lang fr
+# optional reading copy: source and target pages interleaved
+python3 scripts/pipeline.py bilingual original.pdf final.pdf bilingual.pdf
 ```
+
+A bilingual PDF is a **reading copy**: interleaving two files that both
+carry fields gives two widgets with the same name, which fill together and
+submit ambiguously. `bilingual.py` refuses a fillable input unless you pass
+`--reading-copy`. Deliver the translated form itself for filling.
 
 Deliver five things: the translated PDF, the original used, the
 side-by-side comparison HTML, the **completed reviewer checklist** from

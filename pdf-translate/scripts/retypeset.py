@@ -15,7 +15,8 @@ document gets the same behavior:
   by the Story engine (shaped scripts) or right-to-left
 - '‖' in a translation splits a bold lead-in from a regular remainder
 - declared merges rendered as re-flowed paragraphs via insert_htmlbox
-  with auto-shrink (scale_low=0)
+  with auto-shrink (scale_low=0); a merge whose html is null is an
+  accepted proposal nobody wrote yet, and FAILs like a null translation
 - centered strings re-centered on the original bbox midpoint; strings in
   "right" re-anchored on the original bbox RIGHT edge, so a longer
   translation grows leftward instead of past the rule it sat against
@@ -535,7 +536,14 @@ def retypeset(stripped, segf, trf, out):
         by_page.setdefault(s['page'], []).append(s)
 
     merge_jobs = []
+    unauthored_merges = []
     for m in merges:
+        if m.get('html') is None:
+            # A merge proposal accepted in bulk but not yet written. Same
+            # rule as a null translation: it must not ship silently.
+            unauthored_merges.append(
+                (m.get('page'), (m.get('lines') or [''])[0]))
+            continue
         page_segs = by_page.get(m['page'], [])
         idxs, li = [], 0
         for i, s in enumerate(page_segs):
@@ -573,10 +581,17 @@ def retypeset(stripped, segf, trf, out):
                 continue
             if T.get(seg['core']) is None and not seg['passthrough']:
                 missing.append((pno, seg['core']))
+    if unauthored_merges:
+        print(f'FAIL: {len(unauthored_merges)} merges with html null '
+              f'(accepted as proposals; author the paragraph or delete the '
+              f'entry):')
+        for p, first in unauthored_merges[:30]:
+            print(f'  p{p}: {first[:70]}')
     if missing:
         print(f'FAIL: {len(missing)} untranslated segments:')
         for p, c in missing[:30]:
             print(f'  p{p}: {c}')
+    if missing or unauthored_merges:
         return 1
 
     # Four roles, each falling back to the nearest one the mapping named.

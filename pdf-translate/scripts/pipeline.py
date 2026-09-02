@@ -10,6 +10,7 @@ Usage:
   python3 pipeline.py init ORIGINAL.pdf --work DIR [--captions captions.json]
                                                   [--widget-text wt.json]
                                                   [--keep-encryption]
+                                                  [--pages 1-10]
       strip + extract into DIR (stripped.pdf, segments.json,
       to_translate.json, widget_text.json). Run it once bare to get the
       widget_text.json scaffold, author the targets, then run it again with
@@ -19,6 +20,18 @@ Usage:
       scaffold DIR/translations.json from DIR/to_translate.json cores.
       Values are JSON null (retypeset still FAILs until you author them).
       Refuses to overwrite unless --force. No model, no auto-merge.
+
+  python3 pipeline.py propose-merges --work DIR [--accept] [--min-lines 2]
+      turn the extractor's wrapped-paragraph candidates into ready-to-edit
+      "merges" entries with html: null. Writes DIR/merges_proposed.json;
+      --accept also folds them into DIR/translations.json. Nothing merges
+      without this command, and a null html still FAILs retypeset until
+      you author the paragraph. Paragraph mode for manuals and brochures.
+
+  python3 pipeline.py merge-mappings OUT.json IN.json [IN.json ...]
+      combine mappings authored per page range into one. Conflicting
+      values for the same core are reported and nothing is written unless
+      --last-wins.
 
   python3 pipeline.py qa --work DIR [--glossary glossary.csv] [--strict]
       linguistic QA on DIR/translations.json before you build: numbers and
@@ -34,6 +47,11 @@ Usage:
 
   python3 pipeline.py finish ORIGINAL.pdf OUT.pdf FONT.ttf FINAL.pdf HTML
       field_fonts + compare (delivery only)
+
+  python3 pipeline.py bilingual ORIGINAL.pdf FINAL.pdf BOTH.pdf
+      optional reading copy with source and target pages interleaved.
+      Refuses a fillable input unless --reading-copy (duplicate field
+      names fill together).
 """
 import json
 import os
@@ -47,6 +65,7 @@ from compare import compare
 from render_pages import render_pages
 from retypeset import retypeset
 from strip_text import strip_text, WidgetTextError
+from bilingual import main as bilingual_main
 from qa_check import main as qa_main
 from verify import verify, main as verify_main
 
@@ -89,7 +108,10 @@ def cmd_init(argv):
         for item in leftover:
             print(f"  p{item['page']}: {item['text']}")
         return 1
-    rc = extract_main([src, '--outdir', work])
+    extract_args = [src, '--outdir', work]
+    if '--pages' in argv:
+        extract_args += ['--pages', argv[argv.index('--pages') + 1]]
+    rc = extract_main(extract_args)
     print(f'elapsed {time.perf_counter()-t0:.2f}s -> {work}')
     return rc
 
@@ -140,6 +162,135 @@ def cmd_from_cores(argv):
     to_path = os.path.join(work, 'to_translate.json')
     out_path = os.path.join(work, 'translations.json')
     return scaffold_from_cores(to_path, out_path, force=force)
+
+
+def propose_merges(work, accept=False, min_lines=2):
+    """Shape the extractor's merge candidates as editable merges entries.
+
+    A wrapped paragraph must be translated as one unit and re-flowed;
+    translating each visual line on its own is how a brochure turns to
+    fragments. Geometry can propose those groups but must never apply
+    them — sibling list items share a column and read exactly like a
+    wrapped paragraph. So: propose in bulk, accept in bulk, author each
+    html. A proposal with html null still fails retypeset.
+    """
+    seg_path = os.path.join(work, 'segments.json')
+    if not os.path.isfile(seg_path):
+        print(f'propose-merges: missing {seg_path}')
+        return 2
+    with open(seg_path, encoding='utf-8') as f:
+        data = json.load(f)
+    by_id = {s['id']: s for s in data.get('segments') or []}
+    proposals = []
+    for w in data.get('warnings') or []:
+        ids = w.get('ids') or []
+        if w.get('kind') not in (None, 'narrow-column'):
+            continue
+        if len(ids) < min_lines:
+            continue
+        segs = [by_id[i] for i in ids if i in by_id]
+        if len(segs) < min_lines:
+            continue
+        proposals.append({
+            'page': w.get('page', segs[0]['page']),
+            'lines': [s['text'].strip() for s in segs],
+            'html': None,
+            'align': 'left',
+            'why': w.get('why', ''),
+        })
+    out_path = os.path.join(work, 'merges_proposed.json')
+    with open(out_path, 'w', encoding='utf-8') as f:
+        json.dump({'merges': proposals}, f, ensure_ascii=False, indent=1)
+    print(f'propose-merges: {len(proposals)} candidate(s) -> {out_path} '
+          f'(html is null — author each, or delete the entry)')
+    if not accept:
+        print('propose-merges: nothing changed. Re-run with --accept to fold '
+              'these into translations.json.')
+        return 0
+
+    tr_path = os.path.join(work, 'translations.json')
+    if not os.path.isfile(tr_path):
+        print(f'propose-merges: missing {tr_path} (run from-cores first)')
+        return 2
+    with open(tr_path, encoding='utf-8') as f:
+        conf = json.load(f)
+    existing = {tuple(m.get('lines') or []) for m in conf.get('merges') or []}
+    merges = list(conf.get('merges') or [])
+    added = 0
+    for p in proposals:
+        key = tuple(p['lines'])
+        if key in existing:
+            continue
+        merges.append({k: p[k] for k in ('page', 'lines', 'html', 'align')})
+        existing.add(key)
+        added += 1
+    conf['merges'] = merges
+    with open(tr_path, 'w', encoding='utf-8') as f:
+        json.dump(conf, f, ensure_ascii=False, indent=1)
+        f.write('\n')
+    print(f'propose-merges: added {added} merge(s) to {tr_path}; author every '
+          f'html (null still FAILs retypeset)')
+    return 0
+
+
+def cmd_propose_merges(argv):
+    work = argv[argv.index('--work') + 1] if '--work' in argv else '.'
+    min_lines = int(argv[argv.index('--min-lines') + 1]
+                    if '--min-lines' in argv else 2)
+    return propose_merges(work, accept='--accept' in argv,
+                          min_lines=min_lines)
+
+
+def merge_mappings(out_path, paths, last_wins=False):
+    """Combine per-page-range mappings into one. Conflicts stop the write."""
+    merged = None
+    conflicts = []
+    for path in paths:
+        with open(path, encoding='utf-8') as f:
+            conf = json.load(f)
+        if merged is None:
+            merged = json.loads(json.dumps(conf))
+            continue
+        for core, target in (conf.get('translations') or {}).items():
+            have = merged['translations'].get(core, KeyError)
+            if have is not KeyError and have != target and target is not None:
+                if have is None or last_wins:
+                    merged['translations'][core] = target
+                else:
+                    conflicts.append((core, have, target, path))
+            elif have is KeyError:
+                merged['translations'][core] = target
+        for key in ('merges', 'overrides'):
+            merged.setdefault(key, [])
+            merged[key].extend(conf.get(key) or [])
+        for key in ('center', 'right', 'skip', 'allow_scale',
+                    'allow_translate'):
+            if conf.get(key):
+                merged[key] = sorted(set(merged.get(key) or [])
+                                     | set(conf[key]))
+    if merged is None:
+        print('merge-mappings: no inputs')
+        return 2
+    if conflicts:
+        print(f'merge-mappings: {len(conflicts)} conflicting core(s); '
+              f'nothing written (pass --last-wins to take the later file):')
+        for core, a, b, path in conflicts[:20]:
+            print(f'  {core[:50]!r}: {a!r} vs {b!r} (from {path})')
+        return 1
+    with open(out_path, 'w', encoding='utf-8') as f:
+        json.dump(merged, f, ensure_ascii=False, indent=1)
+        f.write('\n')
+    total = len(merged.get('translations') or {})
+    print(f'merge-mappings: {total} cores -> {out_path}')
+    return 0
+
+
+def cmd_merge_mappings(argv):
+    rest = [a for a in argv if a != '--last-wins']
+    if len(rest) < 2:
+        print('merge-mappings: OUT.json IN.json [IN.json ...]')
+        return 2
+    return merge_mappings(rest[0], rest[1:], last_wins='--last-wins' in argv)
 
 
 def cmd_qa(argv):
@@ -218,6 +369,10 @@ def main(argv=None):
         return cmd_init(rest)
     if cmd == 'from-cores':
         return cmd_from_cores(rest)
+    if cmd == 'propose-merges':
+        return cmd_propose_merges(rest)
+    if cmd == 'merge-mappings':
+        return cmd_merge_mappings(rest)
     if cmd == 'qa':
         return cmd_qa(rest)
     if cmd == 'rebuild':
@@ -226,6 +381,8 @@ def main(argv=None):
         return cmd_render(rest)
     if cmd == 'finish':
         return cmd_finish(rest)
+    if cmd == 'bilingual':
+        return bilingual_main(rest)
     print('unknown command', cmd)
     print(__doc__)
     return 2

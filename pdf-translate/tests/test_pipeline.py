@@ -28,6 +28,7 @@ CHOICE_SENTENCE = 'Choose fruit from the list and a color below.'
 CHOICE_TARGET = 'Elija fruta de la lista y un color abajo.'
 sys.path.insert(0, str(SCRIPTS))
 
+import bilingual  # noqa: E402
 import compare  # noqa: E402
 import extract_segments  # noqa: E402
 import pipeline  # noqa: E402
@@ -2169,6 +2170,215 @@ class QaCheckTests(unittest.TestCase):
                 buf = io.StringIO()
                 with redirect_stdout(buf):
                     self.assertEqual(pipeline.main(['qa', '--work', empty]), 2)
+
+
+PARA_LINES = [
+    'The clerk will review every declaration that is filed before',
+    'the hearing date and will mail one conformed copy back to',
+    'each party named in the caption of this proceeding.',
+]
+
+
+def build_paragraph_pdf(path, pages=2):
+    """A wrapped paragraph per page, plus a page-specific line."""
+    doc = pymupdf.open()
+    for n in range(pages):
+        page = doc.new_page(width=420, height=300)
+        for i, line in enumerate(PARA_LINES):
+            page.insert_text((40, 60 + 14 * i), line, fontsize=9)
+        page.insert_text((40, 160), f'Page {n + 1} note here.', fontsize=9)
+    doc.save(path)
+    doc.close()
+
+
+class ParagraphAndSplitTests(unittest.TestCase):
+    """Paragraph mode, page partitioning and the bilingual reading copy."""
+
+    def test_propose_merges_writes_candidates_and_changes_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_paragraph_pdf(src, pages=1)
+            extract_segments.extract_segments(src, outdir=tmp)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = pipeline.main(['propose-merges', '--work', tmp])
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            data = json.loads(Path(tmp, 'merges_proposed.json')
+                              .read_text(encoding='utf-8'))
+            self.assertTrue(data['merges'])
+            first = data['merges'][0]
+            self.assertIsNone(first['html'])
+            self.assertGreaterEqual(len(first['lines']), 2)
+            self.assertFalse(Path(tmp, 'translations.json').exists())
+            self.assertIn('nothing changed', buf.getvalue())
+
+    def test_accept_folds_merges_in_with_null_html_that_still_fails(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            build_paragraph_pdf(src, pages=1)
+            extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            cores = json.loads(Path(tmp, 'to_translate.json')
+                               .read_text(encoding='utf-8'))['cores']
+            mapping = {c['text']: c['text'] + ' (es)' for c in cores}
+            write_mapping(os.path.join(tmp, 'translations.json'), mapping,
+                          font, skip=[])
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = pipeline.main(['propose-merges', '--work', tmp,
+                                    '--accept'])
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            conf = json.loads(Path(tmp, 'translations.json')
+                              .read_text(encoding='utf-8'))
+            self.assertTrue(conf['merges'])
+            self.assertTrue(all(m['html'] is None for m in conf['merges']))
+            # Accepting a proposal does not translate it.
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(
+                    stripped, os.path.join(tmp, 'segments.json'),
+                    os.path.join(tmp, 'translations.json'), out)
+            self.assertNotEqual(rc, 0, msg=buf.getvalue())
+
+            # Authoring the html makes the same build pass.
+            conf['merges'][0]['html'] = 'Un parrafo re-flujado en una unidad.'
+            Path(tmp, 'translations.json').write_text(
+                json.dumps(conf, ensure_ascii=False), encoding='utf-8')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(
+                    stripped, os.path.join(tmp, 'segments.json'),
+                    os.path.join(tmp, 'translations.json'), out)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+
+    def test_pages_slice_extracts_only_that_range(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_paragraph_pdf(src, pages=3)
+            first = extract_segments.extract_segments(src, outdir=tmp,
+                                                      pages='1')
+            self.assertEqual(first['pages'], [0])
+            self.assertEqual({s['page'] for s in first['segments']}, {0})
+            cores = {c['text'] for c in first['cores']}
+            self.assertIn('Page 1 note here.', cores)
+            self.assertNotIn('Page 2 note here.', cores)
+
+            rest = extract_segments.extract_segments(src, outdir=tmp,
+                                                     pages='2-3')
+            self.assertEqual(rest['pages'], [1, 2])
+            cores = {c['text'] for c in rest['cores']}
+            self.assertNotIn('Page 1 note here.', cores)
+            self.assertIn('Page 3 note here.', cores)
+
+    def test_merge_mappings_combines_and_refuses_conflicts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            a = os.path.join(tmp, 'a.json')
+            b = os.path.join(tmp, 'b.json')
+            out = os.path.join(tmp, 'all.json')
+            write_qa_mapping(a, {'One': 'Uno', 'Shared': 'Compartido'},
+                             center=['One'])
+            write_qa_mapping(b, {'Two': 'Dos', 'Shared': 'Compartido'},
+                             center=['Two'])
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = pipeline.main(['merge-mappings', out, a, b])
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            conf = json.loads(Path(out).read_text(encoding='utf-8'))
+            self.assertEqual(conf['translations'],
+                             {'One': 'Uno', 'Shared': 'Compartido',
+                              'Two': 'Dos'})
+            self.assertEqual(sorted(conf['center']), ['One', 'Two'])
+
+            clash = os.path.join(tmp, 'clash.json')
+            write_qa_mapping(clash, {'Shared': 'Otra cosa'})
+            conflicted = os.path.join(tmp, 'conflicted.json')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = pipeline.main(['merge-mappings', conflicted, a, clash])
+            self.assertEqual(rc, 1, msg=buf.getvalue())
+            self.assertIn('conflicting core', buf.getvalue())
+            self.assertFalse(Path(conflicted).exists())
+
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = pipeline.main(['merge-mappings', conflicted, a, clash,
+                                    '--last-wins'])
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            conf = json.loads(Path(conflicted).read_text(encoding='utf-8'))
+            self.assertEqual(conf['translations']['Shared'], 'Otra cosa')
+
+    def test_null_from_cores_values_are_filled_not_conflicted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            a = os.path.join(tmp, 'a.json')
+            b = os.path.join(tmp, 'b.json')
+            out = os.path.join(tmp, 'all.json')
+            write_qa_mapping(a, {'One': None})
+            write_qa_mapping(b, {'One': 'Uno'})
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = pipeline.main(['merge-mappings', out, a, b])
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            conf = json.loads(Path(out).read_text(encoding='utf-8'))
+            self.assertEqual(conf['translations']['One'], 'Uno')
+
+    def test_bilingual_interleaves_and_refuses_fillable_input(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            tgt = os.path.join(tmp, 'out.pdf')
+            both = os.path.join(tmp, 'both.pdf')
+            build_paragraph_pdf(src, pages=2)
+            shutil.copy(src, tgt)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = pipeline.main(['bilingual', src, tgt, both])
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            doc = pymupdf.open(both)
+            try:
+                self.assertEqual(len(doc), 4)
+            finally:
+                doc.close()
+
+            form = os.path.join(tmp, 'form.pdf')
+            build_form_pdf(form)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = bilingual.main([form, form, both])
+            self.assertEqual(rc, 1, msg=buf.getvalue())
+            self.assertIn('form fields', buf.getvalue())
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = bilingual.main([form, form, both, '--reading-copy'])
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            self.assertIn('reading copy only', buf.getvalue())
+
+    def test_bilingual_target_first_order(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            a = os.path.join(tmp, 'a.pdf')
+            b = os.path.join(tmp, 'b.pdf')
+            out = os.path.join(tmp, 'both.pdf')
+            for path, word in ((a, 'SOURCE'), (b, 'TARGET')):
+                doc = pymupdf.open()
+                page = doc.new_page(width=200, height=200)
+                page.insert_text((20, 40), word, fontsize=12)
+                doc.save(path)
+                doc.close()
+            bilingual.interleave(a, b, out)
+            doc = pymupdf.open(out)
+            try:
+                self.assertIn('SOURCE', doc[0].get_text())
+                self.assertIn('TARGET', doc[1].get_text())
+            finally:
+                doc.close()
+            bilingual.interleave(a, b, out, target_first=True)
+            doc = pymupdf.open(out)
+            try:
+                self.assertIn('TARGET', doc[0].get_text())
+                self.assertIn('SOURCE', doc[1].get_text())
+            finally:
+                doc.close()
 
 
 class OverflowTests(unittest.TestCase):

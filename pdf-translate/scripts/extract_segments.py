@@ -63,8 +63,14 @@ Segmentation rules (why they matter):
   pixels, and retypeset would print the translation over them. The
   script exits non-zero and names the pages (kind: invisible-text).
 
+--pages takes 1-based, inclusive page numbers ("1-10", "3", "11-20,25-")
+so a long manual can be worked in slices: extract a range, author it, and
+combine the mappings with `pipeline.py merge-mappings` before the single
+retypeset over the whole document.
+
 Usage:
   python3 extract_segments.py ORIGINAL.pdf [--gap 12] [--outdir .]
+                                           [--pages 1-10]
 """
 import json
 import os
@@ -323,13 +329,41 @@ def right_alignment_warnings(segments):
     return warnings
 
 
-def extract_segments(src, outdir='.', gap=12.0):
+def parse_pages(spec, npages):
+    """"2", "1-4", "1-4,9,12-" -> a sorted set of 0-based page indices.
+
+    1-based and inclusive, the way a person reads a page number. An empty
+    or missing spec means every page.
+    """
+    if not spec:
+        return set(range(npages))
+    out = set()
+    for part in str(spec).split(','):
+        part = part.strip()
+        if not part:
+            continue
+        if '-' in part:
+            a, _, b = part.partition('-')
+            start = int(a) if a.strip() else 1
+            end = int(b) if b.strip() else npages
+        else:
+            start = end = int(part)
+        for n in range(start, end + 1):
+            if 1 <= n <= npages:
+                out.add(n - 1)
+    return out
+
+
+def extract_segments(src, outdir='.', gap=12.0, pages=None):
     """Extract geometry + unique cores. Writes segments.json and to_translate.json."""
     os.makedirs(outdir, exist_ok=True)
     doc = pymupdf.open(src)
+    wanted = parse_pages(pages, len(doc))
     segments, warnings = [], []
     sid = 0
     for pno, page in enumerate(doc):
+        if pno not in wanted:
+            continue
         for b in page_textdict_without_annots(page)['blocks']:
             if b['type'] != 0:
                 continue
@@ -425,6 +459,8 @@ def extract_segments(src, outdir='.', gap=12.0):
 
     unextractable_pages = []
     for pno, page in enumerate(doc):
+        if pno not in wanted:
+            continue
         if any(s['page'] == pno for s in segments):
             continue
         if page_has_visible_content(page):
@@ -442,7 +478,7 @@ def extract_segments(src, outdir='.', gap=12.0):
     warnings.extend(narrow_column_warnings(segments))
     warnings.extend(right_alignment_warnings(segments))
 
-    invisible = invisible_text_pages(src)
+    invisible = [(p, f) for p, f in invisible_text_pages(src) if p in wanted]
     for pno, fraction in invisible:
         warnings.append({
             'page': pno,
@@ -475,7 +511,8 @@ def extract_segments(src, outdir='.', gap=12.0):
         json.dump(widget_text, f, ensure_ascii=False, indent=1)
     with open(seg_path, 'w', encoding='utf-8') as f:
         json.dump({'source': src, 'segments': segments,
-                   'warnings': warnings, 'document': document},
+                   'warnings': warnings, 'document': document,
+                   'pages': sorted(wanted)},
                   f, ensure_ascii=False, indent=1)
     cores = [{'text': k, 'count': v} for k, v in uniq.items()]
     with open(to_path, 'w', encoding='utf-8') as f:
@@ -485,6 +522,7 @@ def extract_segments(src, outdir='.', gap=12.0):
         'warnings': warnings,
         'cores': cores,
         'document': document,
+        'pages': sorted(wanted),
         'unextractable_pages': unextractable_pages,
         'invisible_text_pages': invisible,
         'segments_path': seg_path,
@@ -499,7 +537,8 @@ def main(argv=None):
     src = argv[0]
     gap = float(argv[argv.index('--gap') + 1]) if '--gap' in argv else 12.0
     outdir = argv[argv.index('--outdir') + 1] if '--outdir' in argv else '.'
-    result = extract_segments(src, outdir=outdir, gap=gap)
+    pages = argv[argv.index('--pages') + 1] if '--pages' in argv else None
+    result = extract_segments(src, outdir=outdir, gap=gap, pages=pages)
     nseg = len(result['segments'])
     nuniq = len(result['cores'])
     nw = len(result['warnings'])
