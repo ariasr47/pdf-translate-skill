@@ -10,6 +10,18 @@ Reads text with exact geometry and writes two files:
   to_translate.json unique normalized "core" strings that need translation,
                     with occurrence counts. Author translations for ALL of
                     these (pass-through items are pre-filtered out).
+  widget_text.json  the translatable strings that live in annotation
+                    dictionaries and never reach a content stream: /TU
+                    tooltips, choice /Opt display labels, text-field /V and
+                    /DV defaults. Author the "target" of each, then pass the
+                    file to strip_text.py --widget-text. Empty object when
+                    the PDF has none.
+
+Page text is read from an annotation-free display list. get_text() includes
+widget appearance streams, so a text field's default value and a combo
+box's current choice would otherwise arrive as page text: the author
+translates them, retypeset draws the translation on the page, and the
+widget keeps drawing the source value on top of it.
 
 Segmentation rules (why they matter):
 - A visual line is split at horizontal gaps > GAP pt between spans: one line
@@ -51,7 +63,9 @@ import pymupdf
 _SCRIPTS = os.path.dirname(os.path.abspath(__file__))
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
-from strip_text import invisible_text_pages  # noqa: E402
+from strip_text import (  # noqa: E402
+    invisible_text_pages, page_textdict_without_annots,
+    widget_text_scaffold)
 
 MARKER = re.compile(
     r'^\s*(\(?[a-z]\.|\([a-z0-9]{1,3}\)|\d{1,2}\.)\s+'
@@ -206,7 +220,7 @@ def extract_segments(src, outdir='.', gap=12.0):
     segments, warnings = [], []
     sid = 0
     for pno, page in enumerate(doc):
-        for b in page.get_text('dict')['blocks']:
+        for b in page_textdict_without_annots(page)['blocks']:
             if b['type'] != 0:
                 continue
             for line in b['lines']:
@@ -322,6 +336,10 @@ def extract_segments(src, outdir='.', gap=12.0):
 
     seg_path = os.path.join(outdir, 'segments.json')
     to_path = os.path.join(outdir, 'to_translate.json')
+    widget_path = os.path.join(outdir, 'widget_text.json')
+    widget_text = widget_text_scaffold(src)
+    with open(widget_path, 'w', encoding='utf-8') as f:
+        json.dump(widget_text, f, ensure_ascii=False, indent=1)
     with open(seg_path, 'w', encoding='utf-8') as f:
         json.dump({'source': src, 'segments': segments, 'warnings': warnings},
                   f, ensure_ascii=False, indent=1)
@@ -336,6 +354,8 @@ def extract_segments(src, outdir='.', gap=12.0):
         'invisible_text_pages': invisible,
         'segments_path': seg_path,
         'to_translate_path': to_path,
+        'widget_text': widget_text,
+        'widget_text_path': widget_path,
     }
 
 
@@ -348,8 +368,13 @@ def main(argv=None):
     nseg = len(result['segments'])
     nuniq = len(result['cores'])
     nw = len(result['warnings'])
+    nwidget = len(result['widget_text'])
     print(f'{nseg} segments, {nuniq} unique strings to translate, '
           f'{nw} warnings -> segments.json / to_translate.json')
+    if nwidget:
+        print(f'{nwidget} field(s) carry widget text (tooltips, dropdown '
+              f'labels, defaults) -> widget_text.json; author each "target" '
+              f'and pass it to strip_text.py --widget-text')
     if result['warnings']:
         print('WARNINGS (need review):')
         for w in result['warnings']:

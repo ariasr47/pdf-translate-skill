@@ -133,6 +133,33 @@ isolated forms. Indic scripts leave no code-point signal in the text
 layer (the shaper writes glyph ids), so for them the visual pass is the
 check.
 
+## 12. Widget text is invisible to strip-and-retypeset — twice over
+
+`/TU` tooltips, choice `/Opt` labels and text-field `/V` / `/DV` defaults
+live in annotation dictionaries, never in a content stream. Two failures
+follow, and both are silent.
+
+*Leaking in*: `get_text()` renders widget appearance streams, so a text
+field's default value and a combo box's current selection arrive as page
+text. The author translates them, retypeset draws the translation on the
+page, and the widget keeps drawing the source value on top — two strings,
+one of them wrong, in the same rectangle. `extract_segments.py` now reads
+page text from `page.get_displaylist(annots=False)`, so they never become
+cores.
+
+*Never coming out*: nothing else in the pipeline can reach them, so a
+"fully translated" form still hovers and drops down in the source
+language. `extract_segments.py` writes `widget_text.json`; author each
+`target` and pass it to `strip_text.py --widget-text`.
+
+The trap inside the fix is the **export value**. An `/Opt` entry may be a
+bare string (export and display are the same) or `[export, display]`.
+Translate the string and you have silently changed what the form submits
+and what `/V` must match — the dropdown looks right and the data is
+broken. The channel always writes `[export, display]` pairs and refuses a
+spec that touches a choice field's `/V`; `verify.py` compares export
+values against the original and FAILs any drift.
+
 ## Also worth knowing
 
 - Extraction geometry must come from the ORIGINAL (text intact); writing

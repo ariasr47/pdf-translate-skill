@@ -13,7 +13,7 @@ description: >-
   "translate this document but keep the formatting". Also use it when a user
   complains that a translated PDF broke its layout or its form fields.
 metadata:
-  version: "16"
+  version: "17"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -134,9 +134,9 @@ pretend you matched an official file.
 
 ```bash
 python3 scripts/strip_text.py original.pdf stripped.pdf
-# optional: rewrite pushbutton captions in place (field count stays exact)
+# optional: rewrite pushbutton captions and widget text in place
 python3 scripts/strip_text.py original.pdf stripped.pdf \
-    --captions captions.json
+    --captions captions.json --widget-text widget_text.json
 ```
 
 Removes all page text, keeps graphics/images/widgets, wraps content in q/Q,
@@ -147,6 +147,20 @@ viewers do not keep drawing the source-language caption. The new caption
 must fit the widget; verify `--translations` fails overflow. Hide
 (`--hide-buttons`) only when the button should disappear; hiding plus a
 drawn replacement adds widgets unless you are replacing, not duplicating.
+
+**Widget text is not page text.** Tooltips (`/TU`), dropdown labels
+(`/Opt`) and text-field defaults (`/V`, `/DV`) live in the annotation
+dictionaries and never reach a content stream, so strip-and-retypeset
+cannot touch them: without this channel a "fully translated" form still
+shows the source language on every hover and in every dropdown.
+`extract_segments.py` writes the `widget_text.json` scaffold; author each
+`target`, then pass it back with `--widget-text` (or
+`pipeline.py init … --widget-text`). A `null` target is a refusal, not a
+skip — author it or delete the key. **Export values stay:** an `/Opt`
+entry becomes `[export, display]` and only the display half is
+translated, so `/V` and everything the form submits keep working. A spec
+that asks to translate a choice field's `/V` is refused; verify's `/Opt`
+parity gate fails any output whose export values moved.
 
 Strip is also a gate. After saving, it re-reads the stripped file with
 annotation appearances excluded; if any page still has text it prints
@@ -162,7 +176,11 @@ appearance streams, not page text; they never trip this gate.
 python3 scripts/extract_segments.py original.pdf
 ```
 
-Produces `segments.json` (geometry) and `to_translate.json` (unique strings).
+Produces `segments.json` (geometry), `to_translate.json` (unique strings)
+and `widget_text.json` (the annotation strings — see step 2). Page text is
+read from an annotation-free display list, so field values and the current
+dropdown selection do **not** arrive as cores; translating those would draw
+the translation on the page underneath a widget still showing the source.
 If a page has visible content but zero extractable text, the script exits
 non-zero and names OCR — that is a refusal, not an empty successful job.
 Scaffold the mapping (no model, no auto-merge) then author every value:
@@ -301,6 +319,11 @@ widget rect**: `--translations` FAILs if Helvetica `text_length` of the
 output `/CA` is wider than the button minus a 2 pt pad each side. Prefer
 short chrome (`Print` / `OK`) over a sentence in a tiny button.
 
+Choice-field **`/Opt` export parity** is checked always, like field parity:
+the export half of every dropdown entry must be byte-identical to the
+original's, in the same order. Translate the display half (step 2), never
+the export — the export is what the form submits.
+
 The same flag also checks **write/find/say identifiers**. Quoted strings and
 `Form` / `Schedule` / `Attachment` / `Exhibit` names from the original page
 must still appear in the output text layer. Missing ones FAIL and are
@@ -353,7 +376,7 @@ class of work is a second linguist, and the honest deliverable says so.
 
 ## References
 
-- `references/failure-modes.md` — the eleven silent failures and their fixes.
+- `references/failure-modes.md` — the twelve silent failures and their fixes.
   Read during recon, before touching the file.
 - `references/translations-format.md` — the translations.json contract
   (translations, merges, overrides, center, skip, fonts). Read before

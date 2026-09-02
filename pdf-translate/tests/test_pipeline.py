@@ -18,6 +18,7 @@ from unittest import mock
 from contextlib import redirect_stdout
 from pathlib import Path
 
+import pikepdf
 import pymupdf
 
 SCRIPTS = Path(__file__).resolve().parents[1] / 'scripts'
@@ -279,6 +280,57 @@ def build_narrow_column_pdf(path):
         page.insert_text((72, 300 + 16 * i), item, fontsize=9)
     doc.save(path)
     doc.close()
+
+
+WIDGET_LABEL = 'Real page label here.'
+WIDGET_DEFAULT = 'LEAKED DEFAULT VALUE'
+WIDGET_TIP = 'Enter your full legal name'
+FRUIT_TIP = 'Pick one fruit'
+FRUIT_OPTS = ['Apple', 'Pear', 'Plum']
+
+
+def build_widget_text_pdf(path):
+    """A page label plus widgets carrying /TU, /Opt and a /V default."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=400, height=300)
+    page.insert_text((50, 50), WIDGET_LABEL, fontsize=11)
+    tf = pymupdf.Widget()
+    tf.field_name = 'Applicant'
+    tf.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+    tf.rect = pymupdf.Rect(50, 80, 250, 100)
+    tf.field_value = WIDGET_DEFAULT
+    tf.field_label = WIDGET_TIP
+    page.add_widget(tf)
+    cb = pymupdf.Widget()
+    cb.field_name = 'Fruit'
+    cb.field_type = pymupdf.PDF_WIDGET_TYPE_COMBOBOX
+    cb.rect = pymupdf.Rect(50, 120, 250, 140)
+    cb.choice_values = list(FRUIT_OPTS)
+    cb.field_value = FRUIT_OPTS[0]
+    cb.field_label = FRUIT_TIP
+    page.add_widget(cb)
+    doc.save(path)
+    doc.close()
+
+
+def retranslate_opt_exports(src, dst, mapping):
+    """Copy src to dst with /Opt entries replaced by translated exports.
+
+    This is the defect the parity gate exists for: a well-meaning rewrite
+    that translates the whole option instead of its display half.
+    """
+    pdf = pikepdf.open(src)
+    try:
+        for page in pdf.pages:
+            for a in page.get('/Annots', []):
+                if a.get('/Opt') is None:
+                    continue
+                a.Opt = pikepdf.Array(
+                    [pikepdf.String(mapping.get(str(e), str(e)))
+                     for e in a.Opt])
+        pdf.save(dst)
+    finally:
+        pdf.close()
 
 
 def widget_map(pdf_path):
@@ -905,6 +957,176 @@ class NarrowColumnTests(unittest.TestCase):
         nums = [seg(i, 72, 80 + 14 * i, 40) for i in range(3)]
         nums[1]['passthrough'] = True
         self.assertFalse(extract_segments.narrow_column_warnings(nums))
+
+
+class WidgetTextTests(unittest.TestCase):
+    """Goal 17: widget text is not page text, and export values are data."""
+
+    def test_field_value_and_choice_do_not_leak_into_cores(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_widget_text_pdf(src)
+            doc = pymupdf.open(src)
+            # The defect this closes: get_text() DOES show the widget text.
+            self.assertIn(WIDGET_DEFAULT, doc[0].get_text())
+            self.assertIn(FRUIT_OPTS[0], doc[0].get_text())
+            doc.close()
+
+            result = extract_segments.extract_segments(src, outdir=tmp)
+            cores = {c['text'] for c in result['cores']}
+            self.assertIn(WIDGET_LABEL, cores)
+            self.assertNotIn(WIDGET_DEFAULT, cores)
+            self.assertNotIn(FRUIT_OPTS[0], cores)
+            texts = ' '.join(seg['text'] for seg in result['segments'])
+            self.assertNotIn(WIDGET_DEFAULT, texts)
+
+    def test_scaffold_lists_tooltips_options_and_defaults(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_widget_text_pdf(src)
+            result = extract_segments.extract_segments(src, outdir=tmp)
+            scaffold = result['widget_text']
+            self.assertEqual(
+                json.loads(Path(tmp, 'widget_text.json')
+                           .read_text(encoding='utf-8')), scaffold)
+            self.assertEqual(scaffold['Applicant']['tooltip'],
+                             {'source': WIDGET_TIP, 'target': None})
+            self.assertEqual(scaffold['Applicant']['value'],
+                             {'source': WIDGET_DEFAULT, 'target': None})
+            self.assertEqual(
+                [o['export'] for o in scaffold['Fruit']['options']],
+                FRUIT_OPTS)
+            self.assertTrue(
+                all(o['target'] is None for o in scaffold['Fruit']['options']))
+            self.assertEqual(scaffold['Fruit']['tooltip']['source'], FRUIT_TIP)
+
+    def test_apply_translates_display_and_keeps_export_values(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            build_widget_text_pdf(src)
+            spec = {
+                'Applicant': {
+                    'tooltip': {'source': WIDGET_TIP,
+                                'target': 'Nombre legal completo'},
+                    'value': {'source': WIDGET_DEFAULT,
+                              'target': 'VALOR PREDETERMINADO'},
+                },
+                'Fruit': {
+                    'tooltip': 'Elija una fruta',
+                    'options': {'Apple': 'Manzana', 'Pear': 'Pera',
+                                'Plum': 'Ciruela'},
+                },
+            }
+            report = strip_text.strip_text(src, stripped, widget_text=spec)
+            self.assertEqual(report['leftover_text'], [])
+            changed = {r['name']: set(r['changed'])
+                       for r in report['rewritten_widget_text']}
+            self.assertEqual(changed['Applicant'], {'tooltip', 'value'})
+            self.assertEqual(changed['Fruit'], {'tooltip', 'options'})
+
+            # Export values are untouched; only the display half moved.
+            self.assertEqual(strip_text.choice_exports(stripped),
+                             strip_text.choice_exports(src))
+            doc = pymupdf.open(stripped)
+            widgets = {w.field_name: w for p in doc for w in p.widgets()}
+            self.assertEqual(widgets['Applicant'].field_label,
+                             'Nombre legal completo')
+            self.assertEqual(widgets['Applicant'].field_value,
+                             'VALOR PREDETERMINADO')
+            self.assertEqual(widgets['Fruit'].field_label, 'Elija una fruta')
+            self.assertEqual(list(widgets['Fruit'].choice_values),
+                             [('Apple', 'Manzana'), ('Pear', 'Pera'),
+                              ('Plum', 'Ciruela')])
+            # /V still holds the export value a viewer submits.
+            self.assertEqual(widgets['Fruit'].field_value, 'Apple')
+            doc.close()
+
+    def test_unauthored_or_export_breaking_specs_are_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            dst = os.path.join(tmp, 'stripped.pdf')
+            build_widget_text_pdf(src)
+            cases = [
+                ({'Applicant': {'value': {'source': 'x', 'target': None}}},
+                 'null'),
+                ({'Applicant': {'value': {'source': 'x', 'target': '  '}}},
+                 'empty'),
+                ({'Fruit': {'value': 'Manzana'}}, 'export value'),
+                ({'Fruit': {'default': 'Manzana'}}, 'export value'),
+                ({'Nope': {'tooltip': 'x'}}, 'does not have'),
+                ({'Fruit': {'options': {'Banana': 'Platano'}}},
+                 'not export values'),
+                ({'Applicant': {'options': {'Apple': 'Manzana'}}},
+                 'non-choice'),
+                ({'Applicant': {'tip': 'x'}}, 'unknown widget-text keys'),
+                ({'Applicant': 'just a string'}, 'must be an object'),
+            ]
+            for spec, needle in cases:
+                with self.assertRaises(strip_text.WidgetTextError) as ctx:
+                    strip_text.strip_text(src, dst, widget_text=spec)
+                self.assertIn(needle, str(ctx.exception))
+
+    def test_cli_exits_2_on_a_bad_widget_text_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            dst = os.path.join(tmp, 'stripped.pdf')
+            wt = os.path.join(tmp, 'widget_text.json')
+            build_widget_text_pdf(src)
+            Path(wt).write_text(json.dumps(
+                {'Applicant': {'value': {'source': 'x', 'target': None}}}),
+                encoding='utf-8')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = strip_text.main([src, dst, '--widget-text', wt])
+            self.assertEqual(rc, 2, msg=buf.getvalue())
+            self.assertIn('FAIL widget text', buf.getvalue())
+
+            Path(wt).write_text(json.dumps(
+                {'Applicant': {'value': {'source': 'x', 'target': 'Valor'}}}),
+                encoding='utf-8')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = strip_text.main([src, dst, '--widget-text', wt])
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+
+    def test_opt_parity_gate_fails_a_translated_export(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            good = os.path.join(tmp, 'good.pdf')
+            bad = os.path.join(tmp, 'bad.pdf')
+            build_widget_text_pdf(src)
+            strip_text.strip_text(src, good, widget_text={
+                'Fruit': {'options': {'Apple': 'Manzana', 'Pear': 'Pera',
+                                      'Plum': 'Ciruela'}}})
+            retranslate_opt_exports(src, bad, {'Apple': 'Manzana',
+                                               'Pear': 'Pera',
+                                               'Plum': 'Ciruela'})
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, bad)
+            log = buf.getvalue()
+            self.assertNotEqual(rc, 0, msg=log)
+            self.assertIn('FAIL /Opt export values changed', log)
+            self.assertIn('Fruit', log)
+
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                verify.verify(src, good)
+            log = buf.getvalue()
+            self.assertIn('PASS /Opt export parity', log)
+            self.assertNotIn('FAIL /Opt export values changed', log)
+
+    def test_opt_parity_is_silent_without_choice_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            build_plain_pdf(src)
+            shutil.copy(src, out)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                verify.verify(src, out)
+            self.assertNotIn('/Opt export', buf.getvalue())
 
 
 class RetypesetTests(unittest.TestCase):

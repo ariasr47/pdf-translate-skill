@@ -8,7 +8,11 @@ strip / extract / prepare_font / compare every round.
 
 Usage:
   python3 pipeline.py init ORIGINAL.pdf --work DIR [--captions captions.json]
-      strip + extract into DIR (stripped.pdf, segments.json, to_translate.json)
+                                                  [--widget-text wt.json]
+      strip + extract into DIR (stripped.pdf, segments.json,
+      to_translate.json, widget_text.json). Run it once bare to get the
+      widget_text.json scaffold, author the targets, then run it again with
+      --widget-text to apply tooltips, dropdown labels and defaults.
 
   python3 pipeline.py from-cores --work DIR [--force]
       scaffold DIR/translations.json from DIR/to_translate.json cores.
@@ -35,7 +39,7 @@ from field_fonts import field_fonts
 from compare import compare
 from render_pages import render_pages
 from retypeset import retypeset
-from strip_text import strip_text
+from strip_text import strip_text, WidgetTextError
 from verify import verify, main as verify_main
 
 
@@ -45,12 +49,20 @@ def cmd_init(argv):
     os.makedirs(work, exist_ok=True)
     captions = None
     if '--captions' in argv:
-        import json
         with open(argv[argv.index('--captions') + 1], encoding='utf-8') as f:
             captions = json.load(f)
+    widget_text = None
+    if '--widget-text' in argv:
+        with open(argv[argv.index('--widget-text') + 1], encoding='utf-8') as f:
+            widget_text = json.load(f)
     stripped = os.path.join(work, 'stripped.pdf')
     t0 = time.perf_counter()
-    report = strip_text(src, stripped, captions=captions)
+    try:
+        report = strip_text(src, stripped, captions=captions,
+                            widget_text=widget_text)
+    except WidgetTextError as exc:
+        print(f'FAIL widget text: {exc}')
+        return 2
     print(f'strip: xfa_removed={report.get("xfa_removed")} '
           f'dead_buttons={len(report.get("dead_buttons") or [])}')
     leftover = report.get('leftover_text') or []

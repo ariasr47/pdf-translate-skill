@@ -24,16 +24,25 @@ form-field widgets.
 Usage:
   python3 strip_text.py IN.pdf OUT.pdf [--hide-buttons name1,name2,...]
                                        [--captions captions.json]
+                                       [--widget-text widget_text.json]
 
 --captions rewrites pushbutton /MK /CA strings in place (field count stays
 exact). --hide-buttons sets the Hidden flag instead. Prefer captions when
 the widget should remain as the UI chrome.
 
+--widget-text rewrites the text that lives in the annotation dictionaries
+and never reaches a content stream: /TU tooltips, choice /Opt display
+strings and text-field /V /DV defaults. Export values are preserved (an
+/Opt entry becomes [export, display]); a spec that would translate a
+choice /V is refused, not ignored. extract_segments.py writes the
+scaffold. Exit 2 on a mapping that is unauthored or wrong.
+
 Prints a JSON report to stdout: pages processed, XFA removed or not,
 pushbuttons that have no /A action (dead if XFA was removed — decide
 whether to hide them, rewrite captions, or leave them), Form XObjects that
-contained text (also stripped, with nesting depth), and leftover_text
-(empty on success). Exit 1 when leftover_text is not empty.
+contained text (also stripped, with nesting depth), rewritten widget text,
+and leftover_text (empty on success). Exit 1 when leftover_text is not
+empty.
 """
 import json
 import os
@@ -136,6 +145,23 @@ def page_text_without_annots(page):
     return tp.extractText()
 
 
+def page_textdict_without_annots(page):
+    """get_text('dict') of the page CONTENT only: annotation appearances out.
+
+    Same shape as page.get_text('dict'), minus the widget appearance
+    streams. A text field's default value and a combo box's current choice
+    are drawn by the widget, not by the page; letting them into extraction
+    puts them in to_translate.json, where the author translates them and
+    retypeset draws the translation *under* a widget that still shows the
+    source value.
+    """
+    dl = page.get_displaylist(annots=False)
+    tp = dl.get_textpage()
+    if not isinstance(tp, pymupdf.TextPage):
+        tp = pymupdf.TextPage(tp)
+    return tp.extractDICT()
+
+
 def leftover_page_text(path):
     """[(page_index, snippet)] for every page whose content still has text."""
     doc = pymupdf.open(path)
@@ -221,11 +247,234 @@ def invisible_text_pages(src):
         return out
 
 
-def strip_text(src, dst, hide_buttons=None, captions=None):
+# ---------------------------------------------------------------- widget text
+# Widget text is not page text. /TU tooltips, /Opt choice labels and text
+# /V /DV defaults live in the annotation dictionaries, never reach the
+# content stream, and so are invisible to strip-and-retypeset. Without this
+# channel a "fully translated" form still shows English on every hover and
+# in every dropdown. Export values must survive: a choice /Opt entry becomes
+# [export, display] so scripts, /V and submitted data keep working.
+
+
+class WidgetTextError(Exception):
+    """A widget-text mapping that cannot be applied honestly."""
+
+
+def _target_of(spec, what, field):
+    """Author's target string from a scaffold entry or a bare string."""
+    if spec is None:
+        return None
+    if isinstance(spec, str):
+        return spec
+    if isinstance(spec, dict):
+        if 'target' not in spec:
+            raise WidgetTextError(
+                f'{field}: {what} entry has no "target" key')
+        target = spec['target']
+        if target is None:
+            raise WidgetTextError(
+                f'{field}: {what} target is null — author it, or delete the '
+                f'key to leave the source text in place')
+        if not str(target).strip():
+            raise WidgetTextError(f'{field}: {what} target is empty')
+        return str(target)
+    raise WidgetTextError(f'{field}: {what} must be a string or an object')
+
+
+def _option_pairs(spec, field):
+    """[(export, target)] from either scaffold list or {export: display} dict."""
+    pairs = []
+    if isinstance(spec, dict):
+        for export, target in spec.items():
+            if target is None:
+                raise WidgetTextError(
+                    f'{field}: option "{export}" target is null — author it, '
+                    f'or delete the key')
+            pairs.append((str(export), str(target)))
+        return pairs
+    if isinstance(spec, list):
+        for item in spec:
+            if not isinstance(item, dict) or 'export' not in item:
+                raise WidgetTextError(
+                    f'{field}: each option needs an "export" key')
+            pairs.append((str(item['export']),
+                          _target_of(item, f'option {item["export"]}', field)))
+        return pairs
+    raise WidgetTextError(f'{field}: options must be an object or a list')
+
+
+def _opt_export(entry):
+    """Export value of one /Opt entry (string, or [export, display])."""
+    if isinstance(entry, pikepdf.Array) or isinstance(entry, list):
+        return str(entry[0]) if len(entry) else ''
+    return str(entry)
+
+
+def opt_exports(annot):
+    """Ordered export values of a choice widget's /Opt, or None."""
+    opt = annot.get('/Opt')
+    if opt is None:
+        return None
+    return [_opt_export(e) for e in opt]
+
+
+WIDGET_TEXT_KEYS = {'type', 'tooltip', 'options', 'value', 'default'}
+
+
+def _pdf_str(obj):
+    return str(obj) if obj is not None else None
+
+
+def widget_text_scaffold(src):
+    """{field: {...}} of every translatable annotation string in a PDF.
+
+    Values are {"source": ..., "target": null} so the author can see what
+    the string is and strip_text can tell "not authored yet" from "left in
+    the source language on purpose" (delete the key for that). Pushbutton
+    captions are the --captions channel and are not repeated here.
+    """
+    out = {}
+    pdf = pikepdf.open(src)
+    try:
+        for page in pdf.pages:
+            for a in page.get('/Annots', []):
+                ft = a.get('/FT')
+                if ft is None:
+                    continue
+                name = str(a.get('/T', ''))
+                if not name or name in out:
+                    continue
+                is_push = (ft == Name('/Btn')
+                           and int(a.get('/Ff', 0) or 0) & (1 << 16))
+                if is_push:
+                    continue
+                entry = {'type': str(ft)}
+                tu = _pdf_str(a.get('/TU'))
+                if tu and tu.strip():
+                    entry['tooltip'] = {'source': tu, 'target': None}
+                if ft == Name('/Ch'):
+                    exports = opt_exports(a) or []
+                    options = []
+                    for export, raw in zip(exports, a.get('/Opt', [])):
+                        display = (str(raw[1]) if (isinstance(raw, pikepdf.Array)
+                                                   and len(raw) > 1)
+                                   else export)
+                        options.append({'export': export, 'source': display,
+                                        'target': None})
+                    if options:
+                        entry['options'] = options
+                elif ft == Name('/Tx'):
+                    for key, pdfkey in (('value', '/V'), ('default', '/DV')):
+                        val = _pdf_str(a.get(pdfkey))
+                        if val and val.strip():
+                            entry[key] = {'source': val, 'target': None}
+                if len(entry) > 1:
+                    out[name] = entry
+    finally:
+        pdf.close()
+    return out
+
+
+def choice_exports(path):
+    """{field name: [export values]} for every choice widget in a PDF.
+
+    The export value is what a viewer submits and what /V holds; translating
+    a dropdown must change only the display half of each /Opt entry. This is
+    what verify's /Opt parity gate compares.
+    """
+    out = {}
+    pdf = pikepdf.open(path)
+    try:
+        for page in pdf.pages:
+            for a in page.get('/Annots', []):
+                if a.get('/FT') != Name('/Ch'):
+                    continue
+                name = str(a.get('/T', ''))
+                exports = opt_exports(a)
+                if name and exports is not None:
+                    out[name] = exports
+    finally:
+        pdf.close()
+    return out
+
+
+def apply_widget_text(annot, spec, field, report):
+    """Rewrite /TU, /Opt display halves and text /V /DV from one spec.
+
+    Choice /V and /DV are export values once /Opt carries [export, display]
+    pairs; translating them would break the submitted data, so a spec that
+    asks for it is refused rather than quietly ignored.
+    """
+    if not isinstance(spec, dict):
+        raise WidgetTextError(f'{field}: widget-text entry must be an object')
+    unknown = sorted(set(spec) - WIDGET_TEXT_KEYS)
+    if unknown:
+        raise WidgetTextError(
+            f'{field}: unknown widget-text keys {unknown} (expected '
+            f'{sorted(WIDGET_TEXT_KEYS)})')
+    changed = []
+    is_choice = annot.get('/FT') == Name('/Ch')
+
+    tooltip = _target_of(spec.get('tooltip'), 'tooltip', field)
+    if tooltip is not None:
+        annot.TU = pikepdf.String(tooltip)
+        changed.append('tooltip')
+
+    if 'options' in spec:
+        if not is_choice:
+            raise WidgetTextError(f'{field}: options on a non-choice field')
+        exports = opt_exports(annot)
+        if exports is None:
+            raise WidgetTextError(f'{field}: field has no /Opt to translate')
+        pairs = dict(_option_pairs(spec['options'], field))
+        unknown = [e for e in pairs if e not in exports]
+        if unknown:
+            raise WidgetTextError(
+                f'{field}: options {unknown} are not export values of this '
+                f'field ({exports})')
+        rebuilt = []
+        for entry, export in zip(annot.Opt, exports):
+            display = pairs.get(export)
+            if display is None:
+                rebuilt.append(entry)
+                continue
+            rebuilt.append(pikepdf.Array([pikepdf.String(export),
+                                          pikepdf.String(display)]))
+        annot.Opt = pikepdf.Array(rebuilt)
+        changed.append('options')
+
+    for key, pdfkey in (('value', '/V'), ('default', '/DV')):
+        if key not in spec:
+            continue
+        if is_choice:
+            raise WidgetTextError(
+                f'{field}: {key} on a choice field is an export value; '
+                f'translate "options" instead and leave {pdfkey} alone')
+        target = _target_of(spec[key], key, field)
+        if target is None:
+            continue
+        annot[Name(pdfkey)] = pikepdf.String(target)
+        changed.append(key)
+
+    if changed and '/AP' in annot:
+        # Same reason as captions: a stale appearance keeps drawing the
+        # source string on top of the value we just rewrote.
+        del annot.AP
+    if changed:
+        report['rewritten_widget_text'].append(
+            {'name': field, 'changed': changed})
+    return bool(changed)
+
+
+def strip_text(src, dst, hide_buttons=None, captions=None, widget_text=None):
     """Strip page text, wrap content in q/Q, remove XFA. Returns a report dict.
 
     hide_buttons: iterable of field names (base name, without [0] suffix).
     captions: dict of field name -> new /MK /CA caption (in-place rewrite).
+    widget_text: dict of field name -> {tooltip, options, value, default}
+        (see apply_widget_text). Rewrites annotation text that never
+        reaches the content stream. Raises WidgetTextError on a mapping
+        that is unauthored (null target) or would break export values.
 
     report['leftover_text'] lists pages whose content still had text after
     stripping (annotation appearances excluded). When it is not empty the
@@ -234,11 +483,13 @@ def strip_text(src, dst, hide_buttons=None, captions=None):
     """
     hide = set(hide_buttons or [])
     captions = captions or {}
+    widget_text = widget_text or {}
 
     pdf = pikepdf.open(src)
     report = {'xfa_removed': False, 'pages': [], 'dead_buttons': [],
               'form_xobjects_stripped': [], 'hidden': [],
-              'rewritten_captions': [], 'leftover_text': []}
+              'rewritten_captions': [], 'rewritten_widget_text': [],
+              'leftover_text': []}
 
     acro = pdf.Root.get('/AcroForm')
     if acro is not None and '/XFA' in acro:
@@ -246,19 +497,25 @@ def strip_text(src, dst, hide_buttons=None, captions=None):
         report['xfa_removed'] = True
 
     seen_xobjects = set()
+    seen_widget_text = set()
     for i, page in enumerate(pdf.pages):
         data, removed = strip_ops(page, pdf)
         page.Contents = pdf.make_stream(b'q\n' + data + b'\nQ\n')
         report['pages'].append({'page': i, 'text_blocks_removed': removed})
         strip_xobjects(resources_of(page.obj), pdf, i, report, seen_xobjects)
         for a in page.get('/Annots', []):
+            t = str(a.get('/T', ''))
+            base = _field_base(t)
+            spec_key = (t if t in widget_text
+                        else (base if base in widget_text else None))
+            if spec_key is not None:
+                if apply_widget_text(a, widget_text[spec_key], t, report):
+                    seen_widget_text.add(spec_key)
             if a.get('/FT') != Name('/Btn'):
                 continue
             ff = int(a.get('/Ff', 0) or 0)
             if not (ff & (1 << 16)):  # pushbutton flag
                 continue
-            t = str(a.get('/T', ''))
-            base = _field_base(t)
             if a.get('/A') is None:
                 report['dead_buttons'].append({'page': i, 'name': t})
             cap_key = t if t in captions else (base if base in captions else None)
@@ -276,6 +533,19 @@ def strip_text(src, dst, hide_buttons=None, captions=None):
             if base in hide or t in hide:
                 a.F = 2
                 report['hidden'].append(t)
+
+    unknown = sorted(set(widget_text) - seen_widget_text)
+    if unknown:
+        pdf.close()
+        raise WidgetTextError(
+            f'widget-text mapping names fields this PDF does not have: '
+            f'{unknown}')
+    if report['rewritten_widget_text']:
+        # The appearances we dropped have to be rebuilt by the viewer.
+        if acro is None:
+            pdf.Root.AcroForm = pdf.make_indirect(pikepdf.Dictionary())
+            acro = pdf.Root.AcroForm
+        acro.NeedAppearances = True
 
     pdf.save(dst)
     pdf.close()
@@ -307,7 +577,16 @@ def main(argv=None):
     if '--captions' in argv:
         with open(argv[argv.index('--captions') + 1], encoding='utf-8') as f:
             captions = json.load(f)
-    report = strip_text(src, dst, hide_buttons=hide, captions=captions)
+    widget_text = None
+    if '--widget-text' in argv:
+        with open(argv[argv.index('--widget-text') + 1], encoding='utf-8') as f:
+            widget_text = json.load(f)
+    try:
+        report = strip_text(src, dst, hide_buttons=hide, captions=captions,
+                            widget_text=widget_text)
+    except WidgetTextError as exc:
+        _say(f'FAIL widget text: {exc}')
+        return 2
     _say(json.dumps(report, indent=2, ensure_ascii=False))
     if report['leftover_text']:
         _say(f"FAIL: page text survived strip on {len(report['leftover_text'])} "

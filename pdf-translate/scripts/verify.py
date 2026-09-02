@@ -65,6 +65,13 @@
                   marker (d.) and tail ($). Needs segments.json: --segments
                   PATH, else the file beside translations.json; without
                   one the gate is SKIPped, not failed.
+14. /Opt parity   a choice field's export values (the /Opt entry, or its
+                  first element once entries are [export, display]) must be
+                  byte-identical to the original's, in the same order.
+                  Translating a dropdown changes the display half only;
+                  changing an export breaks /V and everything submitted.
+                  Always runs, like field parity. Silent with no choice
+                  fields.
 
 These gates catch structural failures. They do NOT catch visual defects —
 after they pass you still render pages side-by-side and look at them.
@@ -90,7 +97,7 @@ _SCRIPTS = os.path.dirname(os.path.abspath(__file__))
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 from extract_segments import write_find_say_hits  # noqa: E402
-from strip_text import invisible_text_pages  # noqa: E402
+from strip_text import choice_exports, invisible_text_pages  # noqa: E402
 
 # Unicode letter ranges per script (goal 15). A range table, not an ICU
 # dependency: the scan only needs to tell the source script from the target
@@ -718,6 +725,20 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
             fail = 1
     if not (missing or mismatch or extra):
         print('PASS field parity')
+
+    # Widget text is translated by rewriting the DISPLAY half of each /Opt
+    # entry. The export half is what /V holds and what a viewer submits;
+    # a translated export silently breaks the form's data.
+    oopt, jopt = choice_exports(orig), choice_exports(trans)
+    drifted = sorted(name for name in set(oopt) | set(jopt)
+                     if oopt.get(name) != jopt.get(name))
+    if drifted:
+        print(f'FAIL /Opt export values changed ({len(drifted)}):')
+        for name in drifted[:10]:
+            print(f'   {name}: {oopt.get(name)} -> {jopt.get(name)}')
+        fail = 1
+    elif oopt:
+        print(f'PASS /Opt export parity ({len(oopt)} choice field(s))')
 
     if onames:
         ttarget = cbtarget = None
