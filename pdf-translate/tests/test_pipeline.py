@@ -121,10 +121,17 @@ def find_rtl_font():
     return find_font_for(AR_TARGET, AR_PHRASE, what='Arabic')
 
 
+# The Latin repertoire the constructed fixtures actually use. "First
+# candidate wins" is not good enough: with the fetched faces present,
+# sorted() puts Noto Naskh Arabic first, and a face with no Latin fails
+# the glyph-coverage gate on every ordinary test.
+LATIN_SAMPLE = ('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+                '0123456789.,:;!?()[]{}$%&*+=/\\@#\'"-_ '
+                'áéíóúñüàèìòùâêîôûäëïöüçÁÉÍÓÚÑ')
+
+
 def find_test_font():
-    for path in font_candidates():
-        return path
-    raise unittest.SkipTest('no glyf TTF available for tests')
+    return find_font_for(LATIN_SAMPLE, what='Latin')
 
 
 def write_mapping(path, translations, font, skip=None, allow_scale=None,
