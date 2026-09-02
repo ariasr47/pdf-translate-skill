@@ -13,7 +13,7 @@ description: >-
   "translate this document but keep the formatting". Also use it when a user
   complains that a translated PDF broke its layout or its form fields.
 metadata:
-  version: "21"
+  version: "22"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -192,8 +192,10 @@ appearance streams, not page text; they never trip this gate.
 python3 scripts/extract_segments.py original.pdf
 ```
 
-Produces `segments.json` (geometry), `to_translate.json` (unique strings)
-and `widget_text.json` (the annotation strings — see step 2). Page text is
+Produces `segments.json` (geometry plus a `document` block: source
+`/Lang`, `/Title`, outline titles), `to_translate.json` (unique strings —
+the title and every bookmark title are cores too) and `widget_text.json`
+(the annotation strings — see step 2). Page text is
 read from an annotation-free display list, so field values and the current
 dropdown selection do **not** arrive as cores; translating those would draw
 the translation on the page underneath a widget still showing the source.
@@ -295,6 +297,15 @@ MuPDF substitutes its own fallback face mid-string, or draws a box, and
 reports nothing — the ink gate barely moves and the text layer still reads
 correctly. Pick a font that covers the target script
 (`references/fonts.md`); the run names the code points.
+
+**Document metadata is retargeted here too.** Set `"lang"` in
+translations.json to the target BCP-47 tag: retypeset writes it to `/Lang`
+and to `dc:language`, and without it the output still tells screen readers,
+hyphenation and search that it is in the source language. The `/Title` and
+every outline title are translated from the mapping like any other core.
+The orphaned `/StructTreeRoot` is removed and `/MarkInfo /Marked` set
+false, because those tags describe text that was stripped — **say in the
+delivery that the file is no longer tagged**.
 
 Rotated lines (side labels, margin stamps) keep their angle: the extractor
 records each line's direction and retypeset morphs the run about its own

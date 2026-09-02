@@ -88,7 +88,7 @@ def find_test_font():
 
 
 def write_mapping(path, translations, font, skip=None, allow_scale=None,
-                  mirror=False, allow_translate=None):
+                  mirror=False, allow_translate=None, lang=None):
     data = {
         'fonts': {'regular': str(font), 'bold': str(font)},
         'translations': translations,
@@ -104,6 +104,8 @@ def write_mapping(path, translations, font, skip=None, allow_scale=None,
         data['mirror'] = True
     if allow_translate is not None:
         data['allow_translate'] = list(allow_translate)
+    if lang is not None:
+        data['lang'] = lang
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
 
@@ -1648,6 +1650,164 @@ class EncryptionAndPermsTests(unittest.TestCase):
             before = widget_map(src)
             strip_text.strip_text(src, dst)
             self.assertEqual(set(widget_map(dst)), set(before))
+
+
+DOC_TITLE = 'Application for Benefits'
+DOC_TITLE_ES = 'Solicitud de prestaciones'
+DOC_TOC = ['Section One', 'Part A']
+DOC_TOC_ES = ['Seccion Uno', 'Parte A']
+
+
+def build_metadata_pdf(path):
+    """A tagged, titled, bookmarked, en-US document."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=400, height=300)
+    page.insert_text((50, 60), SOURCE_SENTENCE, fontsize=11)
+    doc.set_metadata({'title': DOC_TITLE, 'subject': 'Court form'})
+    doc.set_toc([[1, DOC_TOC[0], 1], [2, DOC_TOC[1], 1]])
+    doc.set_language('en-US')
+    doc.save(path)
+    doc.close()
+    # A structure tree, the way a tagged form carries one.
+    pdf = pikepdf.open(path, allow_overwriting_input=True)
+    pdf.Root.StructTreeRoot = pdf.make_indirect(
+        pikepdf.Dictionary(Type=pikepdf.Name('/StructTreeRoot')))
+    pdf.Root.MarkInfo = pikepdf.Dictionary(Marked=True)
+    pdf.save(path)
+    pdf.close()
+
+
+class DocumentMetadataTests(unittest.TestCase):
+    """Audit M4: /Lang, /Title, bookmarks and orphaned tags."""
+
+    def _run(self, tmp, lang='es-MX', translate_meta=True):
+        font = find_test_font()
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        build_metadata_pdf(src)
+        extract_segments.extract_segments(src, outdir=tmp)
+        strip_text.strip_text(src, stripped)
+        mapping = {SOURCE_SENTENCE: TARGET_SENTENCE}
+        if translate_meta:
+            mapping[DOC_TITLE] = DOC_TITLE_ES
+            for a, b in zip(DOC_TOC, DOC_TOC_ES):
+                mapping[a] = b
+        else:
+            mapping[DOC_TITLE] = DOC_TITLE
+            for a in DOC_TOC:
+                mapping[a] = a
+        write_mapping(tr, mapping, font, lang=lang)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(
+                stripped, os.path.join(tmp, 'segments.json'), tr, out)
+        self.assertEqual(rc, 0, msg=buf.getvalue())
+        return src, out, tr, buf.getvalue()
+
+    def test_extract_lists_title_and_outline_as_cores(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_metadata_pdf(src)
+            result = extract_segments.extract_segments(src, outdir=tmp)
+            cores = {c['text'] for c in result['cores']}
+            self.assertIn(DOC_TITLE, cores)
+            for title in DOC_TOC:
+                self.assertIn(title, cores)
+            doc = result['document']
+            self.assertEqual(doc['title'], DOC_TITLE)
+            self.assertEqual(doc['outline'], DOC_TOC)
+            self.assertTrue(doc['lang'].lower().startswith('en'))
+            self.assertTrue(doc['struct_tree'])
+            self.assertTrue(doc['marked'])
+            on_disk = json.loads(
+                Path(tmp, 'segments.json').read_text(encoding='utf-8'))
+            self.assertEqual(on_disk['document'], doc)
+
+    def test_retypeset_retargets_lang_title_outline_and_tags(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, log = self._run(tmp)
+            doc = pymupdf.open(out)
+            try:
+                self.assertEqual((doc.metadata or {}).get('title'),
+                                 DOC_TITLE_ES)
+                self.assertEqual([e[1] for e in doc.get_toc(simple=True)],
+                                 DOC_TOC_ES)
+                self.assertTrue(doc.language.lower().startswith('es'))
+                cat = doc.pdf_catalog()
+                self.assertEqual(
+                    doc.xref_get_key(cat, 'StructTreeRoot')[0], 'null')
+                self.assertIn('false',
+                              str(doc.xref_get_key(cat, 'MarkInfo')[1]))
+            finally:
+                doc.close()
+            self.assertIn('/Lang -> es-MX', log)
+            self.assertIn('orphaned /StructTreeRoot', log)
+
+    def test_gate_passes_a_retargeted_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, _ = self._run(tmp)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('PASS document metadata', log)
+            self.assertNotIn('REVIEW document metadata', log)
+
+    def test_gate_fails_a_stale_title_lang_and_struct_tree(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, _ = self._run(tmp)
+            # Put the source metadata back, the way an output that never
+            # retargeted anything looks.
+            stale = os.path.join(tmp, 'stale.pdf')
+            doc = pymupdf.open(out)
+            doc.set_metadata({'title': DOC_TITLE})
+            doc.set_toc([[1, DOC_TOC[0], 1], [2, DOC_TOC[1], 1]])
+            doc.set_language('en-US')
+            doc.save(stale)
+            doc.close()
+            pdf = pikepdf.open(stale, allow_overwriting_input=True)
+            pdf.Root.StructTreeRoot = pdf.make_indirect(
+                pikepdf.Dictionary(Type=pikepdf.Name('/StructTreeRoot')))
+            pdf.save(stale)
+            pdf.close()
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, stale, translations=tr)
+            log = buf.getvalue()
+            self.assertNotEqual(rc, 0, msg=log)
+            self.assertIn('FAIL document metadata', log)
+            for what in ('[lang]', '[title]', '[outline]', '[struct-tree]'):
+                self.assertIn(what, log)
+
+    def test_missing_lang_is_a_review_line_not_a_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, _ = self._run(tmp, lang=None)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('REVIEW document metadata', log)
+
+    def test_xmp_language_is_retargeted_when_present(self):
+        xml = ('<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF><rdf:Description>'
+               '<dc:language><rdf:Bag><rdf:li>en-US</rdf:li></rdf:Bag>'
+               '</dc:language></rdf:Description></rdf:RDF></x:xmpmeta>')
+            
+        out, changed = retypeset.retarget_xmp(xml, 'es-MX')
+        self.assertTrue(changed)
+        self.assertIn('<rdf:li>es-MX</rdf:li>', out)
+        self.assertNotIn('en-US', out)
+        plain = '<dc:language>en-US</dc:language>'
+        out, changed = retypeset.retarget_xmp(plain, 'es-MX')
+        self.assertTrue(changed)
+        self.assertEqual(out, '<dc:language>es-MX</dc:language>')
+        self.assertEqual(retypeset.retarget_xmp('<x/>', 'es'), ('<x/>', False))
+        self.assertEqual(retypeset.retarget_xmp('', 'es'), ('', False))
+        self.assertEqual(retypeset.retarget_xmp(plain, ''), (plain, False))
 
 
 class OverflowTests(unittest.TestCase):

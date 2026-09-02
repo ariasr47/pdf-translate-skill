@@ -21,6 +21,11 @@ document gets the same behavior:
   FAILS (exit 1) if any exist — missing text must never ship silently
 - any run scaled below 0.7× FAILS unless its core (or merge first line) is
   in allow_scale — tiny type must not ship as a note
+- document metadata is retargeted: /Lang (and dc:language in XMP) from
+  translations.json's "lang", /Title and every outline title from the
+  mapping (both are cores), and the orphaned /StructTreeRoot is removed
+  with /MarkInfo /Marked false, because the tags describe text that no
+  longer exists
 - every character of every placed run is checked against the exact font
   object that will draw it; a character the font lacks FAILS, because
   MuPDF substitutes a fallback face mid-string (or draws a box) and
@@ -244,6 +249,99 @@ def missing_glyphs(font, text):
         if not font.has_glyph(ord(ch)):
             out.append(ch)
     return out
+
+
+# --------------------------------------------------------- document metadata
+_DC_LANG = re.compile(r'(<dc:language>)(.*?)(</dc:language>)', re.S)
+_RDF_LI = re.compile(r'(<rdf:li[^>]*>)(.*?)(</rdf:li>)', re.S)
+
+
+def retarget_xmp(xml, lang):
+    """Point every dc:language entry at the target tag. Returns (xml, changed).
+
+    The Info dictionary and /Lang are rewritten from the mapping; XMP that
+    still claims the source language contradicts both, and readers and
+    catalogues believe XMP first. Everything else in the packet is left
+    alone: it is the producer's, not ours.
+    """
+    if not xml or not lang:
+        return xml, False
+    changed = False
+
+    def one(block):
+        inner = block.group(2)
+        if _RDF_LI.search(inner):
+            new_inner = _RDF_LI.sub(lambda m: m.group(1) + lang + m.group(3),
+                                    inner)
+        else:
+            new_inner = lang
+        return block.group(1) + new_inner + block.group(3)
+
+    out, n = _DC_LANG.subn(one, xml)
+    changed = bool(n)
+    return out, changed
+
+
+def apply_document_metadata(doc, document, translations, lang):
+    """Retarget /Lang, /Title and the outline; drop orphaned structure tags.
+
+    None of this is page text, so nothing else in the pipeline touches it:
+    an output otherwise keeps the source /Title in the window caption, the
+    source /Lang for screen readers and hyphenation, and untranslated
+    bookmarks. Structure tags describe text that no longer exists, so the
+    tree is removed and /MarkInfo /Marked set false rather than left
+    pointing at deleted content.
+    """
+    report = {'lang': None, 'title': None, 'outline': 0, 'xmp': False,
+              'struct_tree_removed': False}
+    document = document or {}
+
+    if lang:
+        try:
+            doc.set_language(lang)
+            report['lang'] = lang
+        except Exception:
+            pass
+        xml = doc.get_xml_metadata() or ''
+        new_xml, changed = retarget_xmp(xml, lang)
+        if changed:
+            doc.set_xml_metadata(new_xml)
+            report['xmp'] = True
+
+    src_title = (document.get('title') or '').strip()
+    new_title = translations.get(src_title) if src_title else None
+    if new_title:
+        meta = dict(doc.metadata or {})
+        meta['title'] = new_title
+        meta.pop('format', None)
+        meta.pop('encryption', None)
+        doc.set_metadata(meta)
+        report['title'] = new_title
+
+    toc = doc.get_toc(simple=True) or []
+    if toc:
+        changed = 0
+        for entry in toc:
+            title = str(entry[1])
+            target = translations.get(title)
+            if target:
+                entry[1] = target
+                changed += 1
+        if changed:
+            doc.set_toc(toc)
+            report['outline'] = changed
+
+    cat = doc.pdf_catalog()
+    if cat:
+        try:
+            kind, _ = doc.xref_get_key(cat, 'StructTreeRoot')
+            if kind != 'null':
+                doc.xref_set_key(cat, 'StructTreeRoot', 'null')
+                report['struct_tree_removed'] = True
+            doc.xref_set_key(cat, 'MarkInfo', '<< /Marked false >>')
+        except Exception:
+            pass
+    return report
 
 
 # ---------------------------------------------------- canonical text layer
@@ -731,6 +829,20 @@ def retypeset(stripped, segf, trf, out):
                 flipped['from'] = pymupdf.Rect(pw - r.x1, r.y0, pw - r.x0, r.y1)
                 page.delete_link(lnk)
                 page.insert_link(flipped)
+
+    meta_report = apply_document_metadata(
+        doc, segd.get('document'), T, conf.get('lang'))
+    if meta_report['title']:
+        print(f'metadata: /Title -> {meta_report["title"][:60]}')
+    if meta_report['outline']:
+        print(f'metadata: {meta_report["outline"]} outline title(s) translated')
+    if meta_report['lang']:
+        print(f'metadata: /Lang -> {meta_report["lang"]}'
+              + (' (and dc:language)' if meta_report['xmp'] else ''))
+    if meta_report['struct_tree_removed']:
+        print('metadata: removed the orphaned /StructTreeRoot and set '
+              '/MarkInfo /Marked false — the tags described text that no '
+              'longer exists. Tell the user the file is no longer tagged.')
 
     doc.ez_save(out)
     doc.close()

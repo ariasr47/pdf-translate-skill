@@ -200,5 +200,6 @@ the placement gate compares verbatim instead of folding.
   target-script text falls back or vanishes in some viewers until
   `field_fonts.py` rewires it. Values still store; the *rendering* is what
   breaks — easy to miss if you only test with ASCII.
-- Tagged PDFs: stripping text orphans `/StructTreeRoot`. Check for it and
-  tell the user accessibility metadata was lost if present.
+- Tagged PDFs: stripping text orphans `/StructTreeRoot`. `retypeset.py`
+  removes it and sets `/MarkInfo /Marked false` rather than leaving tags
+  pointing at deleted text; tell the user the file is no longer tagged.

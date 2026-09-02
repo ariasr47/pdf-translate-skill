@@ -17,6 +17,11 @@ Reads text with exact geometry and writes two files:
                     file to strip_text.py --widget-text. Empty object when
                     the PDF has none.
 
+segments.json also carries a "document" block: the source /Lang, /Title and
+the outline (bookmark) titles. The title and the outline entries are added
+to to_translate.json as cores, because the window caption, the bookmarks
+pane and every screen reader read them.
+
 Page text is read from an annotation-free display list. get_text() includes
 widget appearance streams, so a text field's default value and a combo
 box's current choice would otherwise arrive as page text: the author
@@ -217,6 +222,61 @@ def narrow_column_warnings(segments):
     return warnings
 
 
+def _catalog_key(doc, key):
+    """(type, value) of a catalog key, or ('null', '') when absent."""
+    try:
+        cat = doc.pdf_catalog()
+        if not cat:
+            return 'null', ''
+        kind, val = doc.xref_get_key(cat, key)
+        return kind, val
+    except Exception:
+        return 'null', ''
+
+
+def _is_marked(doc):
+    kind, val = _catalog_key(doc, 'MarkInfo')
+    return kind != 'null' and 'Marked' in str(val) and 'true' in str(val)
+
+
+def _has_struct_tree(doc):
+    kind, _ = _catalog_key(doc, 'StructTreeRoot')
+    return kind != 'null'
+
+
+def document_strings(src):
+    """Document-level translatable text: /Lang, /Title and outline titles.
+
+    None of this is page text, so strip-and-retypeset never touches it: an
+    output keeps the English /Title in the window caption, the source
+    /Lang for screen readers and hyphenation, and an untranslated
+    bookmark tree. All three are visible to the reader and to assistive
+    technology.
+    """
+    doc = pymupdf.open(src)
+    try:
+        meta = doc.metadata or {}
+        try:
+            lang = doc.language or ''
+        except Exception:
+            lang = ''
+        toc = []
+        for entry in doc.get_toc(simple=True) or []:
+            if len(entry) >= 2 and str(entry[1]).strip():
+                toc.append(str(entry[1]))
+        return {
+            'lang': lang,
+            'title': (meta.get('title') or '').strip(),
+            'subject': (meta.get('subject') or '').strip(),
+            'keywords': (meta.get('keywords') or '').strip(),
+            'outline': toc,
+            'marked': _is_marked(doc),
+            'struct_tree': _has_struct_tree(doc),
+        }
+    finally:
+        doc.close()
+
+
 def extract_segments(src, outdir='.', gap=12.0):
     """Extract geometry + unique cores. Writes segments.json and to_translate.json."""
     os.makedirs(outdir, exist_ok=True)
@@ -347,10 +407,18 @@ def extract_segments(src, outdir='.', gap=12.0):
                    'pixels; do not ship',
         })
 
+    document = document_strings(src)
+
     uniq = {}
     for s in segments:
         if not s['passthrough']:
             uniq[s['core']] = uniq.get(s['core'], 0) + 1
+    # The document title and every outline entry are read by the window
+    # caption, the bookmarks pane and every screen reader. They are cores.
+    for extra in [document['title']] + document['outline']:
+        if extra and not PASS.match(extra):
+            uniq.setdefault(extra, 0)
+            uniq[extra] += 1
 
     seg_path = os.path.join(outdir, 'segments.json')
     to_path = os.path.join(outdir, 'to_translate.json')
@@ -359,7 +427,8 @@ def extract_segments(src, outdir='.', gap=12.0):
     with open(widget_path, 'w', encoding='utf-8') as f:
         json.dump(widget_text, f, ensure_ascii=False, indent=1)
     with open(seg_path, 'w', encoding='utf-8') as f:
-        json.dump({'source': src, 'segments': segments, 'warnings': warnings},
+        json.dump({'source': src, 'segments': segments,
+                   'warnings': warnings, 'document': document},
                   f, ensure_ascii=False, indent=1)
     cores = [{'text': k, 'count': v} for k, v in uniq.items()]
     with open(to_path, 'w', encoding='utf-8') as f:
@@ -368,6 +437,7 @@ def extract_segments(src, outdir='.', gap=12.0):
         'segments': segments,
         'warnings': warnings,
         'cores': cores,
+        'document': document,
         'unextractable_pages': unextractable_pages,
         'invisible_text_pages': invisible,
         'segments_path': seg_path,

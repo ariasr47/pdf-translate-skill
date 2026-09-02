@@ -10,10 +10,20 @@ this file is where your judgment lives.
     "bold": "font-sub-bold.ttf"     // optional; falls back to regular
   },
 
+  // BCP-47 tag of the TARGET language. retypeset writes it to /Lang and to
+  // dc:language in XMP; screen readers, hyphenation and search all read it,
+  // and without it the output still declares the source language. verify
+  // REVIEWs a mapping with no "lang" and FAILs an output whose /Lang does
+  // not match this.
+  "lang": "es-MX",
+
   // core string (from to_translate.json) -> translation.
   // Keys are the NORMALIZED cores: markers (a., (1)) and trailing
   // dot-leaders/$ already stripped by the extractor, so one entry covers
-  // every occurrence across all pages.
+  // every occurrence across all pages. The document /Title and every
+  // outline (bookmark) title are cores too; they are not page text, so
+  // retypeset writes them to the metadata and the outline instead, and
+  // the placement gate does not look for them in the text layer.
   "translations": {
     "NAME:": "氏名：",
     // '‖' splits a bold lead-in from a regular remainder, for lines that

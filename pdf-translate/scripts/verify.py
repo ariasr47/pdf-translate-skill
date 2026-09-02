@@ -73,6 +73,12 @@
                   changing an export breaks /V and everything submitted.
                   Always runs, like field parity. Silent with no choice
                   fields.
+16. document meta with --translations: /Lang must match the mapping's
+                  "lang", a translated /Title and translated outline titles
+                  must actually be in the output, and the output must not
+                  carry the orphaned /StructTreeRoot (its tags describe
+                  stripped text). No "lang" in the mapping is a REVIEW
+                  line, not a failure.
 15. canonical text the output text layer must report the code points
                   somebody actually wrote. NBSP, soft hyphen, U+2010/U+2011
                   and CJK Compatibility Ideographs that are in neither the
@@ -300,7 +306,7 @@ def drifted_characters(out_text, authored_text):
     return sorted(counts.items())
 
 
-def collect_translation_targets(conf):
+def collect_translation_targets(conf, exclude_cores=None):
     """Authored strings that should land in get_text() (not skip / not passthrough).
 
     translations.json values are already the non-passthrough mapping. '‖' is a
@@ -308,9 +314,10 @@ def collect_translation_targets(conf):
     Merges and overrides are also placed text.
     """
     skip = set(conf.get('skip') or [])
+    exclude = set(exclude_cores or [])
     targets = []
     for core, tgt in (conf.get('translations') or {}).items():
-        if core in skip or tgt is None:
+        if core in skip or core in exclude or tgt is None:
             continue
         for part in str(tgt).split('‖'):
             targets.append(part)
@@ -326,6 +333,51 @@ def collect_translation_targets(conf):
             if t:
                 targets.append(t)
     return targets
+
+
+def document_metadata_misses(odoc, jdoc, conf):
+    """[(what, detail)] document-level strings the translation left behind.
+
+    /Lang, /Title and the outline are not page text, so nothing in the
+    strip-and-retypeset path touches them. They are what the window
+    caption, the bookmarks pane and every screen reader read.
+    """
+    T = conf.get('translations') or {}
+    misses = []
+
+    want_lang = (conf.get('lang') or '').strip()
+    try:
+        got_lang = (jdoc.language or '').strip()
+    except Exception:
+        got_lang = ''
+    if want_lang:
+        if not got_lang or not want_lang.lower().startswith(got_lang.lower()):
+            misses.append(('lang', f'translations.json asks for '
+                                   f'"{want_lang}", output declares '
+                                   f'"{got_lang or "nothing"}"'))
+
+    otitle = ((odoc.metadata or {}).get('title') or '').strip()
+    jtitle = ((jdoc.metadata or {}).get('title') or '').strip()
+    if otitle and T.get(otitle) and jtitle == otitle:
+        misses.append(('title', f'/Title is still the source string: '
+                                f'{otitle[:60]}'))
+
+    for entry in jdoc.get_toc(simple=True) or []:
+        title = str(entry[1]) if len(entry) > 1 else ''
+        if title and T.get(title):
+            misses.append(('outline', f'bookmark still reads: {title[:60]}'))
+
+    try:
+        cat = jdoc.pdf_catalog()
+        if cat and jdoc.xref_get_key(cat, 'StructTreeRoot')[0] != 'null':
+            misses.append((
+                'struct-tree',
+                'the output still carries /StructTreeRoot; those tags '
+                'describe text that was stripped, so assistive technology '
+                'reads a structure that no longer matches the page'))
+    except Exception:
+        pass
+    return misses
 
 
 def _authored_text_is_empty(raw):
@@ -574,8 +626,8 @@ def override_marker_misses(conf, segments):
     return misses
 
 
-def load_segments_for(translations_path, segments_path=None):
-    """segments.json for the override gate: --segments, else beside the mapping."""
+def load_segments_file(translations_path, segments_path=None):
+    """Whole segments.json: --segments, else the file beside the mapping."""
     path = segments_path
     if not path and translations_path:
         candidate = os.path.join(os.path.dirname(os.path.abspath(translations_path)),
@@ -585,8 +637,33 @@ def load_segments_for(translations_path, segments_path=None):
     if not path or not os.path.isfile(path):
         return None
     with open(path, encoding='utf-8') as f:
-        data = json.load(f)
+        return json.load(f)
+
+
+def load_segments_for(translations_path, segments_path=None):
+    """segments.json segments for the override gate."""
+    data = load_segments_file(translations_path, segments_path)
+    if data is None:
+        return None
     return data.get('segments') if isinstance(data, dict) else data
+
+
+def document_only_cores(segfile):
+    """Cores that are document metadata and never page text.
+
+    The document /Title and the outline titles are cores, so from-cores
+    scaffolds them and the author translates them — but they are drawn by
+    the window caption and the bookmarks pane, not by a content stream.
+    The placement gate must not demand them in the text layer.
+    """
+    if not isinstance(segfile, dict):
+        return set()
+    doc = segfile.get('document') or {}
+    candidates = {(doc.get('title') or '').strip()}
+    candidates.update(str(t).strip() for t in (doc.get('outline') or []))
+    candidates.discard('')
+    on_page = {s.get('core') for s in (segfile.get('segments') or [])}
+    return {c for c in candidates if c not in on_page}
 
 
 def scan_leaks(text, allow, source_words=None, src_re=None, script='Latin'):
@@ -931,6 +1008,8 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
     if translations:
         with open(translations, encoding='utf-8') as f:
             conf = json.load(f)
+        segfile = load_segments_file(translations, segments)
+        meta_cores = document_only_cores(segfile)
         hay = '\n'.join(page_search_text(jc[i]) for i in range(len(jc)))
         blanks = empty_translation_targets(conf)
         if blanks:
@@ -940,7 +1019,9 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
             fail = 1
         else:
             print('PASS no empty translation targets')
-        targets = collect_translation_targets(conf)
+        # /Title and outline titles are cores but not page text; the
+        # document-metadata gate is what checks those landed.
+        targets = collect_translation_targets(conf, exclude_cores=meta_cores)
         missing = missing_translation_targets(hay, targets)
         if missing:
             print(f'FAIL missing translation targets ({len(missing)}):')
@@ -973,7 +1054,8 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
         else:
             print('PASS caption width')
 
-        segs = load_segments_for(translations, segments)
+        segs = (segfile.get('segments')
+                if isinstance(segfile, dict) else segfile)
         if segs is None:
             print('SKIP override marker gate (no segments.json beside the mapping; '
                   'pass --segments)')
@@ -986,6 +1068,19 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
                 fail = 1
             elif conf.get('overrides'):
                 print('PASS override parts keep markers and tails')
+
+        meta_misses = document_metadata_misses(o, jc, conf)
+        if meta_misses:
+            print(f'FAIL document metadata ({len(meta_misses)}):')
+            for what, detail in meta_misses[:10]:
+                print(f'   [{what}] {detail}')
+            fail = 1
+        else:
+            print('PASS document metadata')
+        if not (conf.get('lang') or '').strip():
+            print('REVIEW document metadata: translations.json has no "lang"; '
+                  'the output still declares the source language to screen '
+                  'readers and hyphenation')
 
         spans = collect_identifier_spans(o)
         missing_ids = missing_identifier_spans(
