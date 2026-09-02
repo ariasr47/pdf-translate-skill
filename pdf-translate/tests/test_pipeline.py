@@ -1923,10 +1923,15 @@ ITALIC_CORE = 'Read the notice carefully.'
 
 
 def build_right_aligned_pdf(path):
-    """Three labels sharing a right edge, plus one left-aligned column."""
+    """Three labels sharing a right edge, tucked against a vertical rule,
+    plus one left-aligned column."""
     doc = pymupdf.open()
     page = doc.new_page(width=400, height=300)
     helv = pymupdf.Font('helv')
+    # The rule the labels sit against (audit M1: "Gesamt ... over the rule
+    # it was tucked against"). Row 21: a shared right edge alone is also
+    # the shape of justified text; the rule is what makes this a column.
+    page.draw_line((RIGHT_EDGE + 2, 45), (RIGHT_EDGE + 2, 110))
     for i, label in enumerate(RIGHT_LABELS):
         w = helv.text_length(label, 11)
         page.insert_text((RIGHT_EDGE - w, 60 + 20 * i), label, fontsize=11)
@@ -2003,19 +2008,93 @@ class AlignmentAndFontRoleTests(unittest.TestCase):
                     'origin': [x0, y], 'size': 10.0, 'core': f'c{i}',
                     'passthrough': False}
 
+        # A vertical rule one point past the shared edge, spanning the rows:
+        # what the labels are tucked against.
+        rule = {0: [(301.0, 40.0, 100.0)]}
         aligned = [seg(0, 100, 300, 60), seg(1, 200, 300, 80)]
         self.assertEqual(
-            len(extract_segments.right_alignment_warnings(aligned)), 1)
+            len(extract_segments.right_alignment_warnings(aligned, rule)), 1)
         # Same left edge too: an ordinary block, not a right-aligned column.
         block = [seg(0, 100, 300, 60), seg(1, 100, 300, 80)]
-        self.assertFalse(extract_segments.right_alignment_warnings(block))
+        self.assertFalse(extract_segments.right_alignment_warnings(block, rule))
         # Different right edges.
         ragged = [seg(0, 100, 300, 60), seg(1, 200, 280, 80)]
-        self.assertFalse(extract_segments.right_alignment_warnings(ragged))
+        self.assertFalse(extract_segments.right_alignment_warnings(ragged, rule))
         # Passthrough rows never propose anything.
         nums = [seg(0, 100, 300, 60), seg(1, 200, 300, 80)]
         nums[0]['passthrough'] = True
-        self.assertFalse(extract_segments.right_alignment_warnings(nums))
+        self.assertFalse(extract_segments.right_alignment_warnings(nums, rule))
+
+    def test_right_alignment_unit_needs_something_to_be_tucked_against(self):
+        """Row 21: a shared right edge with spread left edges is also the
+        shape of a justified paragraph with an indented first line. What
+        makes a label column is what it sits against: a rule, a field or
+        the next segment starting within one em of the edge."""
+        def seg(i, x0, x1, y):
+            return {'id': i, 'page': 0, 'bbox': [x0, y - 10, x1, y + 2],
+                    'origin': [x0, y], 'size': 10.0, 'core': f'c{i}',
+                    'passthrough': False}
+
+        aligned = [seg(0, 100, 300, 60), seg(1, 200, 300, 80)]
+        # Nothing to the right: no column, nothing proposed.
+        self.assertFalse(extract_segments.right_alignment_warnings(aligned))
+        self.assertFalse(extract_segments.right_alignment_warnings(aligned, {0: []}))
+        # A rule within one em (size 10): proposed.
+        near = {0: [(309.0, 40.0, 100.0)]}
+        self.assertEqual(len(extract_segments.right_alignment_warnings(aligned, near)), 1)
+        # A rule two ems away is a column gutter, not a tuck.
+        far = {0: [(321.0, 40.0, 100.0)]}
+        self.assertFalse(extract_segments.right_alignment_warnings(aligned, far))
+        # A rule that does not reach the rows counts for neither of them.
+        elsewhere = {0: [(305.0, 150.0, 200.0)]}
+        self.assertFalse(extract_segments.right_alignment_warnings(aligned, elsewhere))
+        # The next segment on the row is an obstacle too: a value column.
+        with_values = aligned + [seg(2, 306, 380, 60), seg(3, 306, 380, 80)]
+        self.assertEqual(len(extract_segments.right_alignment_warnings(with_values)), 1)
+
+    def test_justified_text_and_hanging_indents_are_not_right_aligned(self):
+        """Row 21: on the wild corpus 11,507 segments were proposed for
+        `right`, most of them justified body text. Neither fixture below
+        has anything to its right; both share a right edge with spread
+        left edges, so both warned before the fix."""
+        just = pymupdf.TEXT_ALIGN_JUSTIFY
+        para = ('These words are set as a justified paragraph so that every '
+                'line but the last one ends at the same right edge of the '
+                'column, which is what the extractor used to read as a '
+                'right-aligned column of labels whenever a first line was '
+                'indented by a few points.')
+        item = ('A bullet item whose continuation lines are indented under '
+                'the text and not under the bullet, the hanging indent of '
+                'every numbered list in every manual, which also shares a '
+                'right edge while its left edges differ.')
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            doc = pymupdf.open()
+            page = doc.new_page(width=400, height=400)
+            # Justified paragraph: an indented first pair of lines, then the
+            # rest flush left; every full line ends at x = 300.
+            page.insert_textbox(pymupdf.Rect(84, 40, 300, 70), para[:90],
+                                fontsize=10, align=just)
+            page.insert_textbox(pymupdf.Rect(72, 66, 300, 160), para[90:],
+                                fontsize=10, align=just)
+            # Hanging-indent list item: bullet line flush, continuation
+            # lines indented by 12 pt, all ending at x = 300.
+            page.insert_textbox(pymupdf.Rect(72, 200, 300, 226), '• ' + item[:80],
+                                fontsize=10, align=just)
+            page.insert_textbox(pymupdf.Rect(84, 222, 300, 320), item[80:],
+                                fontsize=10, align=just)
+            doc.save(src)
+            doc.close()
+            result = extract_segments.extract_segments(src, outdir=tmp)
+            edges = sorted({s['bbox'][2] for s in result['segments']})
+            # The fixture means something only if lines really share x = 300
+            # while their left edges differ.
+            at_edge = [s for s in result['segments'] if abs(s['bbox'][2] - 300) < 1.5]
+            self.assertGreaterEqual(len(at_edge), 4, msg=edges)
+            self.assertGreater(max(s['bbox'][0] for s in at_edge)
+                               - min(s['bbox'][0] for s in at_edge), 4)
+            hits = [w for w in result['warnings'] if w.get('kind') == 'right-aligned']
+            self.assertEqual(hits, [])
 
     def test_right_list_anchors_the_right_edge(self):
         font = find_test_font()

@@ -70,7 +70,7 @@
     "write-find-say": 48,
     "merge-candidate": 76,
     "narrow-column": 7,
-    "right-aligned": 37,
+    "right-aligned": 2,
     "image-region": 1
    },
    "unextractable_pages": [],
@@ -137,7 +137,7 @@
   },
   "strip": {
    "rc": 0,
-   "seconds": 0.06,
+   "seconds": 0.05,
    "traceback": null,
    "stdout_tail": " \"page\": 2,\n      \"text_blocks_removed\": 19\n    }\n  ],\n  \"dead_buttons\": [\n    {\n      \"page\": 0,\n      \"name\": \"Button1[0]\"\n    },\n    {\n      \"page\": 1,\n      \"name\": \"Button1[0]\"\n    },\n    {\n      \"page\": 1,\n      \"name\": \"Button1[1]\"\n    },\n    {\n      \"page\": 2,\n      \"name\": \"Button1[0]\"\n    },\n    {\n      \"page\": 2,\n      \"name\": \"Button1[1]\"\n    },\n    {\n      \"page\": 2,\n      \"name\": \"Print[0]\"\n    },\n    {\n      \"page\": 2,\n      \"name\": \"Save[0]\"\n    },\n    {\n      \"page\": 2,\n      \"name\": \"Reset[0]\"\n    },\n    {\n      \"page\": 2,\n      \"name\": \"Warning[0]\"\n    },\n    {\n      \"page\": 2,\n      \"name\": \"Button1[0]\"\n    }\n  ],\n  \"form_xobjects_stripped\": [],\n  \"hidden\": [],\n  \"rewritten_captions\": [],\n  \"rewritten_widget_text\": [],\n  \"perms_removed\": [\n    \"/UR3\"\n  ],\n  \"certified\": false,\n  \"encryption\": {\n    \"encrypted\": true,\n    \"method\": \"EncryptionMethod.aes\",\n    \"bits\": 128,\n    \"empty_user_password\": true,\n    \"permissions\": {\n      \"accessibility\": true,\n      \"extract\": false,\n      \"modify_annotation\": false,\n      \"modify_assembly\": false,\n      \"modify_form\": true,\n      \"modify_other\": false,\n      \"print_lowres\": true,\n      \"print_highres\": true\n    }\n  },\n  \"reencrypted\": false,\n  \"leftover_text\": []\n}\nNOTE: deleted /Perms ['/UR3'] — those signatures cover the bytes this script rewrites and cannot survive editing.\nNOTE: the source was encrypted; the output is not. Pass --keep-encryption to re-apply its permission bits (with an empty owner password).\n",
    "written": true,
@@ -150,7 +150,7 @@
   },
   "extract": {
    "rc": 0,
-   "seconds": 0.29,
+   "seconds": 0.32,
    "traceback": null,
    "stdout_tail": "",
    "segments": 250,
@@ -162,7 +162,7 @@
     "write-find-say": 2,
     "merge-candidate": 10,
     "narrow-column": 3,
-    "right-aligned": 17
+    "right-aligned": 9
    },
    "unextractable_pages": [],
    "invisible_text_pages": [],
@@ -246,7 +246,7 @@
   },
   "extract": {
    "rc": 0,
-   "seconds": 0.53,
+   "seconds": 0.59,
    "traceback": null,
    "stdout_tail": "",
    "segments": 281,
@@ -258,7 +258,7 @@
     "write-find-say": 3,
     "merge-candidate": 20,
     "narrow-column": 8,
-    "right-aligned": 24,
+    "right-aligned": 13,
     "image-region": 1
    },
    "unextractable_pages": [],
@@ -320,7 +320,7 @@
   },
   "strip": {
    "rc": 0,
-   "seconds": 0.96,
+   "seconds": 0.94,
    "traceback": null,
    "stdout_tail": "page\": 68,\n      \"text_blocks_removed\": 3\n    },\n    {\n      \"page\": 69,\n      \"text_blocks_removed\": 5\n    },\n    {\n      \"page\": 70,\n      \"text_blocks_removed\": 4\n    },\n    {\n      \"page\": 71,\n      \"text_blocks_removed\": 3\n    },\n    {\n      \"page\": 72,\n      \"text_blocks_removed\": 3\n    },\n    {\n      \"page\": 73,\n      \"text_blocks_removed\": 3\n    },\n    {\n      \"page\": 74,\n      \"text_blocks_removed\": 3\n    },\n    {\n      \"page\": 75,\n      \"text_blocks_removed\": 3\n    },\n    {\n      \"page\": 76,\n      \"text_blocks_removed\": 3\n    },\n    {\n      \"page\": 77,\n      \"text_blocks_removed\": 3\n    },\n    {\n      \"page\": 78,\n      \"text_blocks_removed\": 3\n    },\n    {\n      \"page\": 79,\n      \"text_blocks_removed\": 10\n    },\n    {\n      \"page\": 80,\n      \"text_blocks_removed\": 5\n    },\n    {\n      \"page\": 81,\n      \"text_blocks_removed\": 3\n    },\n    {\n      \"page\": 82,\n      \"text_blocks_removed\": 5\n    },\n    {\n      \"page\": 83,\n      \"text_blocks_removed\": 3\n    },\n    {\n      \"page\": 84,\n      \"text_blocks_removed\": 5\n    },\n    {\n      \"page\": 85,\n      \"text_blocks_removed\": 5\n    },\n    {\n      \"page\": 86,\n      \"text_blocks_removed\": 3\n    },\n    {\n      \"page\": 87,\n      \"text_blocks_removed\": 6\n    }\n  ],\n  \"dead_buttons\": [],\n  \"form_xobjects_stripped\": [],\n  \"hidden\": [],\n  \"rewritten_captions\": [],\n  \"rewritten_widget_text\": [],\n  \"perms_removed\": [],\n  \"certified\": false,\n  \"encryption\": {\n    \"encrypted\": false\n  },\n  \"reencrypted\": false,\n  \"leftover_text\": []\n}\n",
    "written": true,
@@ -329,7 +329,7 @@
   },
   "extract": {
    "rc": 0,
-   "seconds": 7.56,
+   "seconds": 7.55,
    "traceback": null,
    "stdout_tail": "",
    "segments": 4539,
@@ -338,7 +338,7 @@
    "widget_text": 0,
    "warnings": {
     "merge-candidate": 528,
-    "right-aligned": 109
+    "right-aligned": 7
    },
    "unextractable_pages": [],
    "invisible_text_pages": [],
@@ -404,7 +404,7 @@
   },
   "strip": {
    "rc": 0,
-   "seconds": 0.11,
+   "seconds": 0.1,
    "traceback": null,
    "stdout_tail": "\n      \"text_blocks_removed\": 3\n    },\n    {\n      \"page\": 2,\n      \"text_blocks_removed\": 10\n    },\n    {\n      \"page\": 3,\n      \"text_blocks_removed\": 46\n    },\n    {\n      \"page\": 4,\n      \"text_blocks_removed\": 46\n    },\n    {\n      \"page\": 5,\n      \"text_blocks_removed\": 34\n    },\n    {\n      \"page\": 6,\n      \"text_blocks_removed\": 20\n    },\n    {\n      \"page\": 7,\n      \"text_blocks_removed\": 4\n    }\n  ],\n  \"dead_buttons\": [\n    {\n      \"page\": 0,\n      \"name\": \"ResetForm[0]\"\n    },\n    {\n      \"page\": 6,\n      \"name\": \"T97[0]\"\n    },\n    {\n      \"page\": 6,\n      \"name\": \"T113[0]\"\n    },\n    {\n      \"page\": 6,\n      \"name\": \"T97[0]\"\n    },\n    {\n      \"page\": 6,\n      \"name\": \"T118[0]\"\n    },\n    {\n      \"page\": 6,\n      \"name\": \"Button1[0]\"\n    }\n  ],\n  \"form_xobjects_stripped\": [],\n  \"hidden\": [],\n  \"rewritten_captions\": [],\n  \"rewritten_widget_text\": [],\n  \"perms_removed\": [],\n  \"certified\": false,\n  \"encryption\": {\n    \"encrypted\": true,\n    \"method\": \"EncryptionMethod.aesv3\",\n    \"bits\": 256,\n    \"empty_user_password\": true,\n    \"permissions\": {\n      \"accessibility\": true,\n      \"extract\": false,\n      \"modify_annotation\": false,\n      \"modify_assembly\": false,\n      \"modify_form\": true,\n      \"modify_other\": false,\n      \"print_lowres\": true,\n      \"print_highres\": true\n    }\n  },\n  \"reencrypted\": false,\n  \"leftover_text\": []\n}\nNOTE: the source was encrypted; the output is not. Pass --keep-encryption to re-apply its permission bits (with an empty owner password).\n",
    "written": true,
@@ -416,7 +416,7 @@
   },
   "extract": {
    "rc": 0,
-   "seconds": 0.81,
+   "seconds": 0.89,
    "traceback": null,
    "stdout_tail": "",
    "segments": 410,
@@ -427,7 +427,7 @@
     "write-find-say": 11,
     "merge-candidate": 27,
     "narrow-column": 2,
-    "right-aligned": 27,
+    "right-aligned": 5,
     "image-region": 10
    },
    "unextractable_pages": [],
@@ -503,7 +503,7 @@
   },
   "strip": {
    "rc": 0,
-   "seconds": 0.26,
+   "seconds": 0.24,
    "traceback": null,
    "stdout_tail": "ext_blocks_removed\": 82\n    },\n    {\n      \"page\": 6,\n      \"text_blocks_removed\": 49\n    },\n    {\n      \"page\": 7,\n      \"text_blocks_removed\": 75\n    },\n    {\n      \"page\": 8,\n      \"text_blocks_removed\": 70\n    },\n    {\n      \"page\": 9,\n      \"text_blocks_removed\": 231\n    },\n    {\n      \"page\": 10,\n      \"text_blocks_removed\": 65\n    },\n    {\n      \"page\": 11,\n      \"text_blocks_removed\": 55\n    },\n    {\n      \"page\": 12,\n      \"text_blocks_removed\": 21\n    },\n    {\n      \"page\": 13,\n      \"text_blocks_removed\": 32\n    },\n    {\n      \"page\": 14,\n      \"text_blocks_removed\": 80\n    },\n    {\n      \"page\": 15,\n      \"text_blocks_removed\": 1\n    }\n  ],\n  \"dead_buttons\": [\n    {\n      \"page\": 13,\n      \"name\": \"LinkActivator[0]\"\n    },\n    {\n      \"page\": 14,\n      \"name\": \"LinkActivator3[0]\"\n    },\n    {\n      \"page\": 14,\n      \"name\": \"LinkActivator2[0]\"\n    },\n    {\n      \"page\": 14,\n      \"name\": \"LinkActivator1[0]\"\n    }\n  ],\n  \"form_xobjects_stripped\": [\n    {\n      \"page\": 0,\n      \"xobject\": \"/I1\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 1,\n      \"xobject\": \"/I1\",\n      \"blocks\": 1,\n      \"depth\": 1\n    }\n  ],\n  \"hidden\": [],\n  \"rewritten_captions\": [],\n  \"rewritten_widget_text\": [],\n  \"perms_removed\": [\n    \"/UR3\"\n  ],\n  \"certified\": false,\n  \"encryption\": {\n    \"encrypted\": false\n  },\n  \"reencrypted\": false,\n  \"leftover_text\": []\n}\nNOTE: deleted /Perms ['/UR3'] — those signatures cover the bytes this script rewrites and cannot survive editing.\n",
    "written": true,
@@ -515,7 +515,7 @@
   },
   "extract": {
    "rc": 0,
-   "seconds": 1.55,
+   "seconds": 1.57,
    "traceback": null,
    "stdout_tail": "",
    "segments": 1916,
@@ -526,7 +526,7 @@
     "write-find-say": 138,
     "merge-candidate": 94,
     "narrow-column": 19,
-    "right-aligned": 70
+    "right-aligned": 2
    },
    "unextractable_pages": [],
    "invisible_text_pages": [],
@@ -596,7 +596,7 @@
   },
   "strip": {
    "rc": 0,
-   "seconds": 11.67,
+   "seconds": 11.39,
    "traceback": null,
    "stdout_tail": ",\n    {\n      \"page\": 7,\n      \"xobject\": \"/I2\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 16,\n      \"xobject\": \"/I2\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 17,\n      \"xobject\": \"/I3\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 17,\n      \"xobject\": \"/I2\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 28,\n      \"xobject\": \"/I2\",\n      \"blocks\": 25,\n      \"depth\": 1\n    },\n    {\n      \"page\": 45,\n      \"xobject\": \"/I1\",\n      \"blocks\": 17,\n      \"depth\": 1\n    },\n    {\n      \"page\": 46,\n      \"xobject\": \"/I1\",\n      \"blocks\": 29,\n      \"depth\": 1\n    },\n    {\n      \"page\": 47,\n      \"xobject\": \"/I1\",\n      \"blocks\": 20,\n      \"depth\": 1\n    },\n    {\n      \"page\": 48,\n      \"xobject\": \"/I1\",\n      \"blocks\": 5,\n      \"depth\": 1\n    },\n    {\n      \"page\": 61,\n      \"xobject\": \"/I1\",\n      \"blocks\": 2,\n      \"depth\": 1\n    },\n    {\n      \"page\": 62,\n      \"xobject\": \"/I3\",\n      \"blocks\": 3,\n      \"depth\": 1\n    },\n    {\n      \"page\": 67,\n      \"xobject\": \"/I2\",\n      \"blocks\": 3,\n      \"depth\": 1\n    },\n    {\n      \"page\": 121,\n      \"xobject\": \"/I1\",\n      \"blocks\": 11,\n      \"depth\": 1\n    },\n    {\n      \"page\": 124,\n      \"xobject\": \"/I1\",\n      \"blocks\": 5,\n      \"depth\": 1\n    }\n  ],\n  \"hidden\": [],\n  \"rewritten_captions\": [],\n  \"rewritten_widget_text\": [],\n  \"perms_removed\": [],\n  \"certified\": false,\n  \"encryption\": {\n    \"encrypted\": false\n  },\n  \"reencrypted\": false,\n  \"leftover_text\": []\n}\n",
    "written": true,
@@ -605,7 +605,7 @@
   },
   "extract": {
    "rc": 0,
-   "seconds": 24.19,
+   "seconds": 24.15,
    "traceback": null,
    "stdout_tail": "",
    "segments": 40649,
@@ -617,7 +617,7 @@
     "inner-gap": 1,
     "merge-candidate": 365,
     "narrow-column": 321,
-    "right-aligned": 612,
+    "right-aligned": 61,
     "image-region": 2
    },
    "unextractable_pages": [],
@@ -629,7 +629,7 @@
   "child": {
    "status": "done",
    "returncode": 0,
-   "seconds": 37.1,
+   "seconds": 36.7,
    "stderr_tail": ""
   }
  },
@@ -689,7 +689,7 @@
   },
   "strip": {
    "rc": 0,
-   "seconds": 0.22,
+   "seconds": 0.21,
    "traceback": null,
    "stdout_tail": "{\n  \"xfa_removed\": true,\n  \"pages\": [\n    {\n      \"page\": 0,\n      \"text_blocks_removed\": 48\n    },\n    {\n      \"page\": 1,\n      \"text_blocks_removed\": 3\n    },\n    {\n      \"page\": 2,\n      \"text_blocks_removed\": 10\n    },\n    {\n      \"page\": 3,\n      \"text_blocks_removed\": 31\n    },\n    {\n      \"page\": 4,\n      \"text_blocks_removed\": 576\n    }\n  ],\n  \"dead_buttons\": [],\n  \"form_xobjects_stripped\": [],\n  \"hidden\": [],\n  \"rewritten_captions\": [],\n  \"rewritten_widget_text\": [],\n  \"perms_removed\": [\n    \"/UR3\"\n  ],\n  \"certified\": false,\n  \"encryption\": {\n    \"encrypted\": false\n  },\n  \"reencrypted\": false,\n  \"leftover_text\": []\n}\nNOTE: deleted /Perms ['/UR3'] — those signatures cover the bytes this script rewrites and cannot survive editing.\n",
    "written": true,
@@ -701,7 +701,7 @@
   },
   "extract": {
    "rc": 0,
-   "seconds": 0.72,
+   "seconds": 0.73,
    "traceback": null,
    "stdout_tail": "",
    "segments": 1534,
@@ -712,7 +712,7 @@
     "write-find-say": 40,
     "merge-candidate": 44,
     "narrow-column": 5,
-    "right-aligned": 26
+    "right-aligned": 3
    },
    "unextractable_pages": [],
    "invisible_text_pages": [],
@@ -793,7 +793,7 @@
   },
   "extract": {
    "rc": 0,
-   "seconds": 0.6,
+   "seconds": 0.61,
    "traceback": null,
    "stdout_tail": "",
    "segments": 731,
@@ -804,7 +804,7 @@
     "write-find-say": 89,
     "merge-candidate": 48,
     "narrow-column": 5,
-    "right-aligned": 63
+    "right-aligned": 2
    },
    "unextractable_pages": [],
    "invisible_text_pages": [],
@@ -875,7 +875,7 @@
   },
   "strip": {
    "rc": 0,
-   "seconds": 0.85,
+   "seconds": 0.8,
    "traceback": null,
    "stdout_tail": " \"page\": 62,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 75,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 76,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 79,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 80,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 91,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 92,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 97,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 98,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 107,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 108,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 119,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 120,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 1,\n      \"depth\": 1\n    },\n    {\n      \"page\": 127,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 3,\n      \"depth\": 1\n    }\n  ],\n  \"hidden\": [],\n  \"rewritten_captions\": [],\n  \"rewritten_widget_text\": [],\n  \"perms_removed\": [],\n  \"certified\": false,\n  \"encryption\": {\n    \"encrypted\": false\n  },\n  \"reencrypted\": false,\n  \"leftover_text\": []\n}\n",
    "written": true,
@@ -884,7 +884,7 @@
   },
   "extract": {
    "rc": 0,
-   "seconds": 9.7,
+   "seconds": 9.71,
    "traceback": null,
    "stdout_tail": "",
    "segments": 5742,
@@ -895,7 +895,7 @@
     "write-find-say": 100,
     "merge-candidate": 976,
     "narrow-column": 11,
-    "right-aligned": 312,
+    "right-aligned": 12,
     "image-region": 18
    },
    "unextractable_pages": [],
@@ -909,7 +909,7 @@
   "child": {
    "status": "done",
    "returncode": 0,
-   "seconds": 11.2,
+   "seconds": 11.1,
    "stderr_tail": ""
   }
  },
@@ -967,7 +967,7 @@
   },
   "strip": {
    "rc": 0,
-   "seconds": 0.07,
+   "seconds": 0.06,
    "traceback": null,
    "stdout_tail": "{\n  \"xfa_removed\": true,\n  \"pages\": [\n    {\n      \"page\": 0,\n      \"text_blocks_removed\": 40\n    },\n    {\n      \"page\": 1,\n      \"text_blocks_removed\": 24\n    }\n  ],\n  \"dead_buttons\": [\n    {\n      \"page\": 0,\n      \"name\": \"PrintButton1[0]\"\n    },\n    {\n      \"page\": 0,\n      \"name\": \"SaveButton1[0]\"\n    },\n    {\n      \"page\": 0,\n      \"name\": \"ResetButton1[0]\"\n    }\n  ],\n  \"form_xobjects_stripped\": [],\n  \"hidden\": [],\n  \"rewritten_captions\": [],\n  \"rewritten_widget_text\": [],\n  \"perms_removed\": [\n    \"/UR3\"\n  ],\n  \"certified\": false,\n  \"encryption\": {\n    \"encrypted\": true,\n    \"method\": \"EncryptionMethod.aes\",\n    \"bits\": 128,\n    \"empty_user_password\": true,\n    \"permissions\": {\n      \"accessibility\": true,\n      \"extract\": false,\n      \"modify_annotation\": false,\n      \"modify_assembly\": false,\n      \"modify_form\": true,\n      \"modify_other\": false,\n      \"print_lowres\": true,\n      \"print_highres\": true\n    }\n  },\n  \"reencrypted\": false,\n  \"leftover_text\": []\n}\nNOTE: deleted /Perms ['/UR3'] — those signatures cover the bytes this script rewrites and cannot survive editing.\nNOTE: the source was encrypted; the output is not. Pass --keep-encryption to re-apply its permission bits (with an empty owner password).\n",
    "written": true,
@@ -980,7 +980,7 @@
   },
   "extract": {
    "rc": 0,
-   "seconds": 0.3,
+   "seconds": 0.33,
    "traceback": null,
    "stdout_tail": "",
    "segments": 189,
@@ -990,7 +990,7 @@
    "warnings": {
     "write-find-say": 6,
     "merge-candidate": 13,
-    "right-aligned": 26
+    "right-aligned": 11
    },
    "unextractable_pages": [],
    "invisible_text_pages": [],
@@ -1057,7 +1057,7 @@
   },
   "strip": {
    "rc": 0,
-   "seconds": 0.34,
+   "seconds": 0.32,
    "traceback": null,
    "stdout_tail": "{\n  \"xfa_removed\": false,\n  \"pages\": [\n    {\n      \"page\": 0,\n      \"text_blocks_removed\": 2\n    },\n    {\n      \"page\": 1,\n      \"text_blocks_removed\": 6\n    },\n    {\n      \"page\": 2,\n      \"text_blocks_removed\": 2\n    },\n    {\n      \"page\": 3,\n      \"text_blocks_removed\": 2\n    },\n    {\n      \"page\": 4,\n      \"text_blocks_removed\": 2\n    },\n    {\n      \"page\": 5,\n      \"text_blocks_removed\": 2\n    },\n    {\n      \"page\": 6,\n      \"text_blocks_removed\": 2\n    },\n    {\n      \"page\": 7,\n      \"text_blocks_removed\": 7\n    },\n    {\n      \"page\": 8,\n      \"text_blocks_removed\": 29\n    },\n    {\n      \"page\": 9,\n      \"text_blocks_removed\": 3\n    },\n    {\n      \"page\": 10,\n      \"text_blocks_removed\": 126\n    },\n    {\n      \"page\": 11,\n      \"text_blocks_removed\": 2\n    },\n    {\n      \"page\": 12,\n      \"text_blocks_removed\": 2\n    }\n  ],\n  \"dead_buttons\": [],\n  \"form_xobjects_stripped\": [\n    {\n      \"page\": 8,\n      \"xobject\": \"/Im3\",\n      \"blocks\": 6,\n      \"depth\": 1\n    }\n  ],\n  \"hidden\": [],\n  \"rewritten_captions\": [],\n  \"rewritten_widget_text\": [],\n  \"perms_removed\": [],\n  \"certified\": false,\n  \"encryption\": {\n    \"encrypted\": false\n  },\n  \"reencrypted\": false,\n  \"leftover_text\": []\n}\n",
    "written": true,
@@ -1066,7 +1066,7 @@
   },
   "extract": {
    "rc": 0,
-   "seconds": 1.21,
+   "seconds": 1.23,
    "traceback": null,
    "stdout_tail": "",
    "segments": 637,
@@ -1077,7 +1077,7 @@
     "write-find-say": 1,
     "merge-candidate": 26,
     "narrow-column": 24,
-    "right-aligned": 21,
+    "right-aligned": 2,
     "image-region": 1
    },
    "unextractable_pages": [],
@@ -1148,7 +1148,7 @@
   },
   "strip": {
    "rc": 0,
-   "seconds": 4.35,
+   "seconds": 4.27,
    "traceback": null,
    "stdout_tail": "{\n  \"xfa_removed\": false,\n  \"pages\": [\n    {\n      \"page\": 0,\n      \"text_blocks_removed\": 6\n    },\n    {\n      \"page\": 1,\n      \"text_blocks_removed\": 1\n    },\n    {\n      \"page\": 2,\n      \"text_blocks_removed\": 9\n    },\n    {\n      \"page\": 3,\n      \"text_blocks_removed\": 2\n    },\n    {\n      \"page\": 4,\n      \"text_blocks_removed\": 28\n    },\n    {\n      \"page\": 5,\n      \"text_blocks_removed\": 15\n    }\n  ],\n  \"dead_buttons\": [],\n  \"form_xobjects_stripped\": [\n    {\n      \"page\": 0,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 49,\n      \"depth\": 1\n    },\n    {\n      \"page\": 1,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 59,\n      \"depth\": 1\n    },\n    {\n      \"page\": 2,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 45,\n      \"depth\": 1\n    },\n    {\n      \"page\": 3,\n      \"xobject\": \"/Fm0\",\n      \"blocks\": 36,\n      \"depth\": 1\n    }\n  ],\n  \"hidden\": [],\n  \"rewritten_captions\": [],\n  \"rewritten_widget_text\": [],\n  \"perms_removed\": [],\n  \"certified\": false,\n  \"encryption\": {\n    \"encrypted\": false\n  },\n  \"reencrypted\": false,\n  \"leftover_text\": []\n}\n",
    "written": true,
@@ -1157,7 +1157,7 @@
   },
   "extract": {
    "rc": 0,
-   "seconds": 5.44,
+   "seconds": 5.6,
    "traceback": null,
    "stdout_tail": "",
    "segments": 413,
@@ -1168,7 +1168,7 @@
     "write-find-say": 9,
     "merge-candidate": 40,
     "narrow-column": 2,
-    "right-aligned": 24,
+    "right-aligned": 8,
     "image-region": 7
    },
    "unextractable_pages": [],
@@ -1180,7 +1180,7 @@
   "child": {
    "status": "done",
    "returncode": 0,
-   "seconds": 10.2,
+   "seconds": 10.3,
    "stderr_tail": ""
   }
  },
@@ -1248,7 +1248,7 @@
   },
   "extract": {
    "rc": 0,
-   "seconds": 0.38,
+   "seconds": 0.4,
    "traceback": null,
    "stdout_tail": "",
    "segments": 298,
@@ -1259,7 +1259,7 @@
     "write-find-say": 9,
     "merge-candidate": 33,
     "narrow-column": 3,
-    "right-aligned": 20,
+    "right-aligned": 3,
     "image-region": 5
    },
    "unextractable_pages": [],
@@ -1275,7 +1275,7 @@
   "child": {
    "status": "done",
    "returncode": 0,
-   "seconds": 0.6,
+   "seconds": 0.7,
    "stderr_tail": ""
   }
  },
@@ -1344,7 +1344,7 @@
   },
   "extract": {
    "rc": 0,
-   "seconds": 1.03,
+   "seconds": 1.07,
    "traceback": null,
    "stdout_tail": "",
    "segments": 650,
@@ -1355,7 +1355,7 @@
     "write-find-say": 55,
     "merge-candidate": 79,
     "narrow-column": 8,
-    "right-aligned": 31,
+    "right-aligned": 3,
     "image-region": 13
    },
    "unextractable_pages": [],
@@ -1440,7 +1440,7 @@
   },
   "extract": {
    "rc": 0,
-   "seconds": 0.51,
+   "seconds": 0.53,
    "traceback": null,
    "stdout_tail": "",
    "segments": 349,
@@ -1451,7 +1451,7 @@
     "write-find-say": 28,
     "inner-gap": 1,
     "merge-candidate": 28,
-    "right-aligned": 24,
+    "right-aligned": 5,
     "image-region": 3
    },
    "unextractable_pages": [],
@@ -1519,7 +1519,7 @@
   },
   "strip": {
    "rc": 0,
-   "seconds": 0.25,
+   "seconds": 0.24,
    "traceback": null,
    "stdout_tail": "      \"page\": 4,\n      \"text_blocks_removed\": 32\n    },\n    {\n      \"page\": 5,\n      \"text_blocks_removed\": 21\n    },\n    {\n      \"page\": 6,\n      \"text_blocks_removed\": 43\n    },\n    {\n      \"page\": 7,\n      \"text_blocks_removed\": 21\n    },\n    {\n      \"page\": 8,\n      \"text_blocks_removed\": 39\n    },\n    {\n      \"page\": 9,\n      \"text_blocks_removed\": 37\n    },\n    {\n      \"page\": 10,\n      \"text_blocks_removed\": 21\n    },\n    {\n      \"page\": 11,\n      \"text_blocks_removed\": 23\n    },\n    {\n      \"page\": 12,\n      \"text_blocks_removed\": 18\n    },\n    {\n      \"page\": 13,\n      \"text_blocks_removed\": 9\n    }\n  ],\n  \"dead_buttons\": [],\n  \"form_xobjects_stripped\": [],\n  \"hidden\": [],\n  \"rewritten_captions\": [],\n  \"rewritten_widget_text\": [],\n  \"perms_removed\": [\n    \"/UR3\"\n  ],\n  \"certified\": false,\n  \"encryption\": {\n    \"encrypted\": true,\n    \"method\": \"EncryptionMethod.aes\",\n    \"bits\": 128,\n    \"empty_user_password\": true,\n    \"permissions\": {\n      \"accessibility\": true,\n      \"extract\": false,\n      \"modify_annotation\": true,\n      \"modify_assembly\": false,\n      \"modify_form\": true,\n      \"modify_other\": false,\n      \"print_lowres\": true,\n      \"print_highres\": true\n    }\n  },\n  \"reencrypted\": false,\n  \"leftover_text\": []\n}\nNOTE: deleted /Perms ['/UR3'] — those signatures cover the bytes this script rewrites and cannot survive editing.\nNOTE: the source was encrypted; the output is not. Pass --keep-encryption to re-apply its permission bits (with an empty owner password).\n",
    "written": true,
@@ -1532,7 +1532,7 @@
   },
   "extract": {
    "rc": 0,
-   "seconds": 1.33,
+   "seconds": 1.43,
    "traceback": null,
    "stdout_tail": "",
    "segments": 932,
@@ -1543,7 +1543,7 @@
     "write-find-say": 59,
     "merge-candidate": 77,
     "narrow-column": 13,
-    "right-aligned": 42,
+    "right-aligned": 10,
     "image-region": 15
    },
    "unextractable_pages": [],

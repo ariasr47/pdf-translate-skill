@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "33"
+  version: "34"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -237,8 +237,10 @@ pixels, so look at each one and tell the user what stays in the source
 language), `merge-candidate` groups — possible wrapped
 paragraphs (declare them explicitly; never auto-merge by geometry, it swallows
 sibling list items), `right-aligned` groups (segments sharing a right edge
-but not a left one — put those cores in `right` or a longer translation
-grows past the rule they sit against), and `narrow-column` stacks — three or more cores
+but not a left one, and sitting within one em of a rule, a field or the
+next segment — put those cores in `right` or a longer translation grows
+past the thing they sit against; running text is a merge, never a `right`
+entry), and `narrow-column` stacks — three or more cores
 sharing a column under 90 pt wide (pay-stub boxes, label stacks). Those
 are warn-only; nothing merges them for you.
 

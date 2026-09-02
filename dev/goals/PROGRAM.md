@@ -115,7 +115,9 @@ implementation in this skill (refusal is the product). The canary
 - Shaped scripts (Arabic, Indic, Thai…) go through the Story engine with
   `/ActualText`; unshaped Arabic in an output is a verify FAIL
 - `narrow-column` and `right-aligned` are *warnings*: geometry proposes,
-  the author decides, nothing merges or realigns itself
+  the author decides, nothing merges or realigns itself; `right-aligned`
+  proposes only a column tucked within one em of a rule, a field or the
+  next segment, never justified text
 - Widget text is a separate channel with `[export, display]` `/Opt` pairs;
   export values are data and never translated
 - The text layer reports the authored code points; drift is a FAIL, not a
@@ -140,8 +142,8 @@ model doing a real job, each with a measurement in `dev/canary/runs/`:
 | **20** | `goals/20-notice-title-leak.md` | **Closed 2 Sep.** The compliance notice's source-language title tripped the leak scan. The original's `/Title` quoted as a unit is kept; `--allow` takes phrases; a longer run is still a leak | Fable 5.1 |
 
 One sitting each, in that order (cheapest first). 18, 19 and 20 are
-closed, and so is 22. The wild corpus's 21 and 23 remain (see *Backlog
-after the review*); after those, run the canary again. Do not paste Grok NOTES,
+closed, and so are 21 and 22. The wild corpus's 23 remains (see *Backlog
+after the review*); after it, lane B, then the canary again. Do not paste Grok NOTES,
 `work/translations.json`, or bakeoff scores into that session.
 
 The evening review of 2 September (`docs/REVIEW-2026-09-02.md`) added a
@@ -170,7 +172,7 @@ are in `docs/REVIEW-2026-09-02.md` §5; this is the queue.
 | 19 | `goals/19-list-marker-gap.md` | **Closed 2 Sep evening.** Segments record the whitespace after a marker (`gap`); retypeset re-emits it in every marker path; absent key → one space, so stale work directories still build. Was Opus 5, measured 3.06 pt; 0.00 after |
 | 20 | `goals/20-notice-title-leak.md` | **Closed 2 Sep evening.** The original's `/Title` quoted as a unit, and a multi-word `--allow` phrase, are kept runs in the leak scan (printed as a note); anything longer is still a leak. Was Fable 5.1 and Opus 5 both allowlisting word by word |
 | C2 | canary run 2 — after P3, so it also tests the shorter skill; one deliberately long session | — |
-| **21** | `goals/21-right-aligned-on-text.md` | wild corpus: 1,485 `right-aligned` groups, 11,507 segments proposed for `right` on 17 documents, most of them justified text |
+| 21 | `goals/21-right-aligned-on-text.md` | **Closed 2 Sep evening.** A group is proposed only when at least half its members sit within one em of a rule, a field or the next segment; corpus 1,485 → 158 groups, 11,507 → 642 segments, FL-100's caption stacks kept, everything else identical |
 | 22 | `goals/22-merge-candidate-kind.md` | **Closed 2 Sep evening.** Merge candidates carry `kind: "merge-candidate"`; `propose_merges` still accepts a kind-less candidate from an older `segments.json`; the corpus re-run names all 2,484 |
 | **23** | `goals/23-marker-font-metrics.md` | wild corpus, while closing 19: the body still starts at Helvetica's width of marker + gap, so one-space lists whose marker font is not Helvetica-metric drift — 1.3 pt on Medicare, 4.9 pt on FL-300, every gate green |
 
@@ -187,7 +189,7 @@ model's defect; never a gate.
 | P7 | Notice channel (candidate, no brief yet) | The skill has no way to add the compliance notice it requires: Fable wrote its own script and re-canonicalised the text layer afterwards; row 20's fixture draws it by hand. A `--notice` input — text, page, a rect the author chose — placed with the job's fonts at retypeset time, canonical layer kept, gates unchanged. Write the brief when it is next | Choosing the rect by geometry; adding a page; a notice the reader cannot read |
 | P5 | One source of truth | **Closed 2 Sep evening**: README count removed and CI badge added; audit HTML is a banner-marked snapshot; findings §15; tracker carries both lanes. Rule: `checklist.html` tracks, this file queues, `HANDOVER.md` cold-starts; nothing else states counts or open rows | — |
 
-**Order:** 21 → 23 → P2 → P6 → P3 → C2 → P4.
+**Order:** 23 → P2 → P6 → P3 → C2 → P4.
 
 **Hypotheses, after the wild corpus** (`dev/wild/ANALYSIS.md` §5): hybrid
 XFA — answered on page 1 of eight forms, the AcroForm layer renders

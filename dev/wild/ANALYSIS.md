@@ -192,3 +192,28 @@ Not rows yet:
    translated.
 3. **A file with FreeText or Stamp annotations** for H-A; none was found
    in the wild set.
+
+---
+
+## 8. After row 21 — `right-aligned` proposes only tucked columns
+
+The rule that shipped: a group sharing a right edge with spread left
+edges is proposed only when at least half its members sit within **one
+em** of something to their right — a rule, a widget, or the next segment
+on the row. Measured first (§2 above gave the shape; this gave the
+signal): at one em the proposals fall from 1,485 groups to 158 and every
+caption stack on FL-100 survives; at two ems the IRS booklet's column
+gutters come back (354 groups). `RESULTS.md` and `results.json` are
+regenerated with the shipped extractor.
+
+| File | Groups before | after | Segments before | after |
+|---|---|---|---|---|
+| IRS 1040 instructions | 612 | 61 | 7,135 | 388 |
+| GDPR | 109 | 7 | 1,938 | 14 |
+| Medicare & You | 312 | 12 | 762 | 28 |
+| Judicial Council FL-100 | 17 | 9 | 39 | 21 |
+| all seventeen | **1,485** | **158** | **11,507** | **642** |
+
+Every other warning kind, every segment count and every verdict is
+unchanged on all seventeen files; extraction time is 57.8 s against 57.2 s
+(the obstacle pass reads widgets and drawings once per page).

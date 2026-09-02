@@ -56,9 +56,11 @@ Segmentation rules (why they matter):
   flagged as merge *candidates* (kind "merge-candidate"). Never
   auto-merged; declare each merge
   explicitly in translations.json.
-- Segments that share a right edge while their left edges differ are
-  flagged "right-aligned": a longer translation anchored at the left grows
-  past the edge it was tucked against. The author lists those cores in
+- Segments that share a right edge while their left edges differ, and
+  sit within one em of a rule, a field or the next segment, are flagged
+  "right-aligned": a longer translation anchored at the left grows past
+  the edge it was tucked against. Justified text shares a right edge too
+  and is a merge, never a column. The author lists those cores in
   "right"; nothing is realigned automatically.
 - Three or more stacked cores sharing a skinny column (same left edge,
   bbox under 90 pt wide) are flagged "narrow-column": a pay-stub box or
@@ -296,24 +298,91 @@ def document_strings(src):
 
 RIGHT_EDGE_TOL = 1.5
 RIGHT_LEFT_SPREAD = 4.0
+# A label sits against the thing to its right by about one letter; column
+# gutters are two ems or more. Measured on seventeen real documents
+# (dev/wild/ANALYSIS.md): within one em the proposals fall from 1,485 groups
+# to 158 and every caption stack on FL-100 survives; at two ems the
+# justified columns of the IRS booklet come back.
+TUCK_EM = 1.0
+# An obstacle counts for a row it overlaps by at least this much of the
+# row's height, so a rule that ends above the label does not count.
+TUCK_ROW_OVERLAP = 0.3
 
 
-def right_alignment_warnings(segments):
+def page_obstacles(page):
+    """Verticals a label can be tucked against: [(x, top, bottom)].
+
+    The left edge of every widget, and every vertical rule or box edge in
+    the page's drawings. Segment left edges are added by
+    right_alignment_warnings itself, because the next cell's text is an
+    obstacle too.
+    """
+    out = []
+    for w in page.widgets():
+        r = w.rect
+        out.append((r.x0, r.y0, r.y1))
+    try:
+        drawings = page.get_drawings()
+    except Exception:
+        drawings = []
+    for d in drawings:
+        for it in d.get('items', []):
+            if it[0] == 'l':
+                p, q = it[1], it[2]
+                if abs(p.x - q.x) < 1.5 and abs(p.y - q.y) > 4:
+                    out.append((p.x, min(p.y, q.y), max(p.y, q.y)))
+            elif it[0] == 're':
+                r = it[1]
+                if r.height > 4:
+                    out.append((r.x0, r.y0, r.y1))
+                    out.append((r.x1, r.y0, r.y1))
+    return out
+
+
+def _tucked(seg, verticals):
+    """True when something starts within TUCK_EM of the segment's right
+    edge and overlaps its row."""
+    x0, y0, x1, y1 = seg['bbox']
+    size = seg.get('size') or 10.0
+    h = max(y1 - y0, 1.0)
+    for x, top, bottom in verticals:
+        if x < x1 - 1.0 or x - x1 > TUCK_EM * size:
+            continue
+        if bottom < y0 + TUCK_ROW_OVERLAP * h or top > y1 - TUCK_ROW_OVERLAP * h:
+            continue
+        return True
+    return False
+
+
+def right_alignment_warnings(segments, obstacles=None):
     """Propose cores that look right-aligned. Never applied automatically.
 
     Only `center` existed, so a right-aligned label grew rightward past its
     original right edge: "Total" at x1 540 became "Gesamt" ending at 555.3,
-    over the rule it was tucked against. Segments that share a right edge
-    while their left edges differ are a right-aligned column; the author
-    puts those cores in "right".
+    over the rule it was tucked against.
+
+    A shared right edge with spread left edges is also the shape of a
+    justified paragraph with an indented first line, a hanging indent and
+    a table of contents: that shape alone proposed 11,507 segments for
+    "right" on the wild corpus (row 21). What makes a label column is what
+    it sits against — a rule, a field or the next segment starting within
+    one em of the edge — so a group is proposed only when at least half
+    its members are tucked like that. `obstacles` maps page ->
+    [(x, top, bottom)] from page_obstacles(); every segment's left edge
+    counts as well. With nothing to sit against, nothing is proposed.
     """
     warnings = []
     by_page = {}
+    all_by_page = {}
     for s in segments:
+        all_by_page.setdefault(s['page'], []).append(s)
         if s['passthrough']:
             continue
         by_page.setdefault(s['page'], []).append(s)
     for page, segs in sorted(by_page.items()):
+        verticals = list((obstacles or {}).get(page, []))
+        verticals.extend((o['bbox'][0], o['bbox'][1], o['bbox'][3])
+                         for o in all_by_page.get(page, []))
         buckets = {}
         for s in segs:
             buckets.setdefault(round(s['bbox'][2] / RIGHT_EDGE_TOL), []).append(s)
@@ -323,14 +392,18 @@ def right_alignment_warnings(segments):
             lefts = [s['bbox'][0] for s in group]
             if max(lefts) - min(lefts) <= RIGHT_LEFT_SPREAD:
                 continue
+            tucked = sum(1 for s in group if _tucked(s, verticals))
+            if tucked < max(1, (len(group) + 1) // 2):
+                continue
             warnings.append({
                 'page': page,
                 'kind': 'right-aligned',
                 'ids': [s['id'] for s in group],
                 'right_edge': round(max(s['bbox'][2] for s in group), 2),
-                'why': 'these share a right edge but not a left one, so they '
-                       'are right-aligned. A longer translation anchored left '
-                       'grows past that edge — list these cores in "right"',
+                'why': 'these share a right edge but not a left one, and sit '
+                       'against a rule, a field or the next segment: a '
+                       'right-aligned column. A longer translation anchored '
+                       'left grows past that edge — list these cores in "right"',
                 'lines': [s['core'] for s in group],
             })
     return warnings
@@ -402,10 +475,12 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None):
     doc = pymupdf.open(src)
     wanted = parse_pages(pages, len(doc))
     segments, warnings = [], []
+    obstacles = {}
     sid = 0
     for pno, page in enumerate(doc):
         if pno not in wanted:
             continue
+        obstacles[pno] = page_obstacles(page)
         for b in page_textdict_without_annots(page)['blocks']:
             if b['type'] != 0:
                 continue
@@ -528,7 +603,7 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None):
 
     warnings.extend(merge_candidate_warnings(segments))
     warnings.extend(narrow_column_warnings(segments))
-    warnings.extend(right_alignment_warnings(segments))
+    warnings.extend(right_alignment_warnings(segments, obstacles))
 
     invisible = [(p, f) for p, f in invisible_text_pages(src) if p in wanted]
     for pno, fraction in invisible:

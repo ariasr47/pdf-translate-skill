@@ -92,3 +92,64 @@ glossary.
 
 Zero warnings on justified text and hanging indents; the label fixture
 unchanged; the wild-corpus counts before and after; full unittest + corpus.
+
+---
+
+## 7. Closing note — 2 September 2026, closed
+
+**Measured first, then the rule.** The shape alone (shared right edge,
+spread left edges) is what justified text has too. The audit's own words
+for the true class were "the rule it was tucked against", so the
+measurement was: for every proposed group on the wild corpus, how far to
+the right is the nearest obstacle — a vertical rule, a widget, the next
+segment on the row — in ems of the member's size.
+
+| Rule: at least half the members tucked within … | Groups kept | Segments |
+|---|---|---|
+| (today: no such rule) | 1,485 | 11,507 |
+| 1.0 em | **158** | **642** |
+| 1.5 em | 242 | 963 |
+| 2.0 em | 555 | 5,122 (the IRS booklet's column gutters) |
+
+One em is the label-to-field contact; two ems is a gutter. FL-100's
+caption stacks (`RESPONDENT:` / `PETITIONER:`, `BRANCH NAME:` /
+`CITY AND ZIP CODE:` / …) sit at 0.0 em from their fields and are kept.
+
+**Done bar, item by item.**
+
+1. **Justified text and hanging indents do not propose.** Fixture: a
+   justified paragraph whose first lines are indented 12 pt and a
+   hanging-indent bullet item, both built with `insert_textbox` and
+   `TEXT_ALIGN_JUSTIFY`, both ending at x = 300 with nothing to their
+   right. Warned before the change (on the record); zero `right-aligned`
+   warnings after. A unit test drives the rule directly: nothing to the
+   right → nothing; a rule at one em → proposed; at two ems → nothing; a
+   rule that does not reach the rows → nothing; a value segment on the
+   row → proposed.
+2. **Label columns still do.** `build_right_aligned_pdf` now draws the
+   rule its labels sit against — the audit's description of the class —
+   and `test_extractor_proposes_right_aligned_cores` is unchanged and
+   green. The unit test for spread left edges passes the obstacles the
+   extractor would.
+3. **The wild corpus, re-run with the shipped extractor:** 1,485 → 158
+   groups, 11,507 → 642 segments; the IRS booklet 612 → 61; every other
+   kind, count and verdict identical on all seventeen files; extraction
+   57.2 → 57.8 s. `dev/wild/RESULTS.md` and `results.json` regenerated;
+   `ANALYSIS.md` §8 records it; PDFs not committed.
+4. `extract_segments.py` header and docstring, `SKILL.md` step 3 and
+   `translations-format.md` say what the warning is for, and that running
+   text is a merge, never a `right` entry.
+5. 171 tests, no skips, green locally; corpus table unchanged.
+   `metadata.version` 33 → 34.
+
+**How it works.** `page_obstacles(page)` collects the left edge of every
+widget and every vertical rule or box edge from the page's drawings;
+`right_alignment_warnings(segments, obstacles)` adds every segment's left
+edge, and a member is *tucked* when one of those verticals starts within
+`TUCK_EM` (1.0) of its right edge and overlaps its row by at least 30% of
+the row's height. With no obstacles known, nothing is proposed — the
+warning is about a collision, and a collision needs something to hit.
+
+Not done, as the brief asked: no auto-realign, no verify gate, `right`
+unchanged in retypeset, merge-candidate membership not used, and no
+threshold moved without a fixture that failed first.

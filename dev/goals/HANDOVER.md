@@ -20,8 +20,8 @@ sitting. The wild corpus ran that same evening (P1 closed): seventeen
 public PDFs, no crashes, no wrong verdicts, and it opened rows **21** and
 **22** and lane B row **P6** — `dev/wild/ANALYSIS.md` has the numbers.
 The PDFs are re-fetched from `dev/wild/SOURCES.md`, never committed.
-Rows 19, 20 and 22 closed the same night (version 33, 169 tests); the
-corpus measurement made while closing 19 opened row 23.
+Rows 19, 20, 21 and 22 closed the same night (version 34, 171 tests);
+the corpus measurement made while closing 19 opened row 23.
 
 **Repo:** `<REPO>` — GitHub `ariasr47/pdf-translate-skill`, branch `main`
 **Skill dir:** `pdf-translate/` (the only directory you install)
@@ -41,16 +41,15 @@ pikepdf 10) for everything above.
 
 **State of play, 2 September 2026, end of the row-18 sitting:**
 
-- **169 tests, no skips**, 25–40 s locally. 166 of them are green on
-  GitHub Actions across Linux and Windows, Python 3.10 and 3.13; the three
-  from row 22 are green locally and await CI — push and check.
-- `SKILL.md` is at `metadata.version: "33"`.
+- **171 tests, no skips**, 25–40 s locally. 169 of them are green on
+  GitHub Actions across Linux and Windows, Python 3.10 and 3.13; the two
+  from row 21 are green locally and await CI — push and check.
+- `SKILL.md` is at `metadata.version: "34"`.
 - Working tree clean, everything committed. Nothing is half-finished.
-- Program rows 01–20 and 22, and the whole September audit roadmap, are
-  **closed**.
+- Program rows 01–22 and the whole September audit roadmap are **closed**.
 - The canary has run once. It opened rows **18, 19 and 20** — all three
-  closed on 2 September. The wild corpus opened 21, 22 and 23; 22 is
-  closed, 21 and 23 are open.
+  closed on 2 September. The wild corpus opened 21, 22 and 23; 21 and 22
+  are closed, 23 is open.
 
 ---
 
@@ -165,6 +164,9 @@ is checked against the exact font object.
 `narrow-column`, `right-aligned`, merge candidates and `image-region` are
 **warnings**. Nothing merges or realigns by geometry. `propose-merges`
 accepts candidates in bulk, with `html: null` that still FAILs.
+`right-aligned` proposes only a column tucked within one em of a rule, a
+field or the next segment — justified text, hanging indents and tables of
+contents are not columns (row 21, measured on the wild corpus).
 
 ### Everything else that is not page text
 
@@ -208,9 +210,8 @@ into `/goal`:
 | **19** | `goals/19-list-marker-gap.md` | **Closed 2 Sep.** retypeset re-emitted `marker + ' '` where the source had two spaces, shifting every list body **3.06 pt left**. Segments now carry `gap`; every marker path re-emits it; an old segments.json gets one space. Row 23 holds the font-metric remainder. | Opus 5 |
 | **20** | `goals/20-notice-title-leak.md` | **Closed 2 Sep.** `compliance.md` told the author to name the source form title in the notice; the leak scan then FAILed that title. The original's `/Title` quoted as a unit is now a kept run (noted, not counted), `--allow` takes phrases, and a longer run is still a leak. | Fable 5.1 |
 
-All three are closed, and so is 22. Next are 21 and 23, in that order
-(`PROGRAM.md`, *Backlog after the review*), then lane B, then the canary
-again.
+All three are closed, and so are 21 and 22. Next is 23 (`PROGRAM.md`,
+*Backlog after the review*), then lane B, then the canary again.
 
 One defect from that canary is already fixed: the placement gate could not
 pass a wrapped merge, which broke paragraph mode on the day it shipped
@@ -283,20 +284,21 @@ Tests, from pdf-translate/:
   python3 tools/fetch_test_fonts.py
   python3 -m unittest tests.test_pipeline tests.test_corpus_verdicts
 
-169 tests, no skips, green locally; confirm CI after pushing. Everything is
-committed. Program rows 01-20 and 22, and the whole audit roadmap, are
-closed. Do not redo them.
+171 tests, no skips, green locally; confirm CI after pushing. Everything is
+committed. Program rows 01-22 and the whole audit roadmap are closed. Do
+not redo them.
 
-Next sitting: copy dev/goals/21-right-aligned-on-text.md into /goal and
-close that bar only. Do not start 23 in the same session. Do not mix in
-a canary run. No glossary. Not FL-150 as a fixture. It touches extract:
-re-run dev/wild/probe.py into a scratch directory before you commit.
+Next sitting: copy dev/goals/23-marker-font-metrics.md into /goal and
+close that bar only. Do not start lane B in the same session. Do not mix
+in a canary run. No glossary. Not FL-150 as a fixture. It touches
+extract: re-run dev/wild/probe.py into a scratch directory before you
+commit.
 
 When the bar is green: full unittest + corpus, bump metadata.version in
 SKILL.md, commit, stop.
 ```
 
-After 21, the queue in `PROGRAM.md` (23, then lane B) names the next
-brief; swap it into the message above. If the user wants the
+After 23, the queue in `PROGRAM.md` (lane B: P2, P6, P3, then canary run
+2 and P4) names the next brief; swap it into the message above. If the user wants the
 stale audit HTML or the installed-copy re-sync instead, say so and do only
 that — neither is a gate, and neither needs a fixture.

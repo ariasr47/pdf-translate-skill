@@ -75,7 +75,9 @@ this file is where your judgment lives.
   // amount columns, right-hand labels tucked against a rule. Without this
   // a longer translation grows rightward past that edge. The extractor
   // proposes candidates as `right-aligned` warnings (segments that share a
-  // right edge while their left edges differ); nothing realigns itself.
+  // right edge while their left edges differ AND sit within one em of a
+  // rule, a field or the next segment; justified text is a merge, not a
+  // column); nothing realigns itself.
   "right": ["Total", "Subtotal"],
 
   // Exact segment texts to drop entirely — e.g. page text duplicated by a
