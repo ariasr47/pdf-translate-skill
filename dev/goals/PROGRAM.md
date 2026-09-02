@@ -23,6 +23,10 @@ construct or pick ONE adversarial case
   → if gates FAIL and output is right: the gate is the bug
   → lock with an in-repo test + a corpus verdict
   → re-run tests + corpus table — nothing may regress
+  → if strip or extract changed: dev/wild/probe.py into a scratch dir,
+    compared with dev/wild/results.json — 17/17 translate, zero count
+    differences (row 19 shipped a TypeError that 161 single-span
+    fixtures could not see; the corpus saw it in seconds)
   → STOP. Do not start the next row in the same session.
 ```
 

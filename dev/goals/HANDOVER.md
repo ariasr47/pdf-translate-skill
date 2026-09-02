@@ -233,6 +233,9 @@ construct ONE tiny PDF that shows the defect
   → if gates FAIL and output is right: the gate is the bug
   → lock with an in-repo test; corpus unchanged
   → python3 -m unittest tests.test_pipeline tests.test_corpus_verdicts -v
+  → if strip or extract changed: python dev/wild/probe.py --out <scratch>
+    and compare with dev/wild/results.json — zero differences (the
+    fixtures are single-span lines; real documents are not)
   → bump metadata.version in SKILL.md; STOP
 ```
 
