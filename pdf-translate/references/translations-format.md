@@ -46,7 +46,8 @@ this file is where your judgment lives.
   // auto-shrinks to fit; retypeset FAILS below 0.7× unless allow_scale
   // lists the merge's first line (or the merge has "allow_scale": true).
   // `pipeline.py propose-merges --work . --accept` fills this list from
-  // the extractor's wrapped-paragraph candidates, each with html null.
+  // the extractor's wrapped-paragraph candidates (warning kind
+  // "merge-candidate"), each with html null.
   // A null html FAILs retypeset exactly like a null translation: an
   // accepted proposal is not a translated paragraph.
   "merges": [

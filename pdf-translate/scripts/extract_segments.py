@@ -53,7 +53,8 @@ Segmentation rules (why they matter):
   screenshots) are listed as "image-region" review items. Nothing here
   translates pixels; a person looks at each one.
 - Consecutive same-column lines that look like a wrapped paragraph are
-  flagged as merge *candidates*. Never auto-merged; declare each merge
+  flagged as merge *candidates* (kind "merge-candidate"). Never
+  auto-merged; declare each merge
   explicitly in translations.json.
 - Segments that share a right edge while their left edges differ are
   flagged "right-aligned": a longer translation anchored at the left grows
@@ -153,6 +154,7 @@ def merge_candidate_warnings(segments):
         def flush():
             if len(run) >= 2:
                 warnings.append({
+                    'kind': 'merge-candidate',
                     'page': page,
                     'ids': [s['id'] for s in run],
                     'why': 'possible wrapped paragraph — declare a merge in '

@@ -184,7 +184,10 @@ def propose_merges(work, accept=False, min_lines=2):
     proposals = []
     for w in data.get('warnings') or []:
         ids = w.get('ids') or []
-        if w.get('kind') not in (None, 'narrow-column'):
+        # Candidates carry kind "merge-candidate" since row 22; a
+        # segments.json from an earlier extractor has none. Both propose:
+        # a stale work directory must not lose its paragraphs.
+        if w.get('kind') not in (None, 'merge-candidate', 'narrow-column'):
             continue
         if len(ids) < min_lines:
             continue

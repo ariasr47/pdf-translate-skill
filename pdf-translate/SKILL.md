@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "32"
+  version: "33"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -234,8 +234,8 @@ write/find/say candidates (quoted strings, `Form`/`Schedule` names, URLs —
 halt-and-confirm, not optional color), `image-region` items (banners, seals,
 stamps and screenshots big enough to carry words — nothing here translates
 pixels, so look at each one and tell the user what stays in the source
-language), possible wrapped-paragraph
-merges (declare them explicitly; never auto-merge by geometry, it swallows
+language), `merge-candidate` groups — possible wrapped
+paragraphs (declare them explicitly; never auto-merge by geometry, it swallows
 sibling list items), `right-aligned` groups (segments sharing a right edge
 but not a left one — put those cores in `right` or a longer translation
 grows past the rule they sit against), and `narrow-column` stacks — three or more cores

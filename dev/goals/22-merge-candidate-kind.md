@@ -55,3 +55,38 @@ working.
 
 The kind on the fixture; the stale-file test; the corpus probe's warning
 table showing `merge-candidate` by name; full unittest + corpus.
+
+---
+
+## 7. Closing note — 2 September 2026, closed
+
+**Reproduced first.** On the paragraph fixture the extractor's proposals
+had no `kind`; `extract_segments.main` printed them untagged; and a
+candidate hand-written *with* `kind: "merge-candidate"` was silently
+dropped by `propose_merges`, whose filter was `kind in (None,
+'narrow-column')`. All three new tests failed before the change.
+
+**Done bar, item by item.**
+
+1. `merge_candidate_warnings` emits `kind: "merge-candidate"`.
+2. `propose_merges` accepts `merge-candidate`, `narrow-column` **and
+   `None`**, with a comment: a `segments.json` from an earlier extractor
+   must keep proposing its paragraphs.
+3. `extract_segments.main` prints `[merge-candidate]` through the same
+   `[kind]` tag every other warning uses; no print code changed.
+4. `MergeCandidateKindTests`: the kind on a constructed paragraph and no
+   nameless warning left; the tag in `main`'s output; `propose_merges` on
+   hand-written files — no kind proposes, the new kind proposes, and a
+   `right-aligned` warning with the same shape proposes nothing.
+5. Header comment and `translations-format.md` name the kind; `SKILL.md`
+   step 3 calls the groups by it. 169 tests, no skips, green locally;
+   corpus table unchanged. `metadata.version` 32 → 33.
+
+**Wild corpus, re-run with the change** into a scratch directory: 17/17
+`translate`, zero segment, core, warning or verdict differences against
+the committed run, **zero warnings without a kind, 2,484 merge candidates
+by name** — the same 2,484 the probe once miscounted. `dev/wild/probe.py`
+keeps its fallback label for older files.
+
+Not done, as the brief asked: the candidate heuristic, `right-aligned`
+(row 21) and every other kind are untouched.

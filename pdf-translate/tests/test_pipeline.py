@@ -2601,6 +2601,62 @@ def build_paragraph_pdf(path, pages=2):
     doc.close()
 
 
+class MergeCandidateKindTests(unittest.TestCase):
+    """Row 22: every warning names its kind; the paragraph proposals did not,
+    so anything keyed on `kind` mislabelled them (the wild-corpus probe
+    miscounted 2,484 of them). The kind exists now, and a segments.json
+    from before it still proposes."""
+
+    def test_merge_candidates_carry_their_kind(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_paragraph_pdf(src, pages=1)
+            result = extract_segments.extract_segments(src, outdir=tmp)
+            cands = [w for w in result['warnings']
+                     if w.get('kind') == 'merge-candidate']
+            self.assertTrue(cands, msg=result['warnings'])
+            self.assertGreaterEqual(len(cands[0]['lines']), 2)
+            nameless = [w for w in result['warnings'] if not w.get('kind')]
+            self.assertEqual(nameless, [])
+
+    def test_main_prints_the_kind(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_paragraph_pdf(src, pages=1)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = extract_segments.main([src, '--outdir', tmp])
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            self.assertIn('[merge-candidate]', buf.getvalue())
+
+    def test_propose_merges_accepts_old_and_new_candidates_only(self):
+        segs = [{'id': 0, 'page': 0, 'text': 'first line of a paragraph',
+                 'core': 'first line of a paragraph', 'passthrough': False},
+                {'id': 1, 'page': 0, 'text': 'second line of it.',
+                 'core': 'second line of it.', 'passthrough': False}]
+        lines = [s['text'] for s in segs]
+        # (kind on the warning, proposals expected)
+        for kind, expected in ((None, 1), ('merge-candidate', 1),
+                               ('right-aligned', 0)):
+            with tempfile.TemporaryDirectory() as tmp:
+                w = {'page': 0, 'ids': [0, 1], 'why': 'possible wrapped paragraph',
+                     'lines': lines}
+                if kind:
+                    w['kind'] = kind
+                Path(tmp, 'segments.json').write_text(
+                    json.dumps({'segments': segs, 'warnings': [w]}),
+                    encoding='utf-8')
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    rc = pipeline.main(['propose-merges', '--work', tmp])
+                self.assertEqual(rc, 0, msg=buf.getvalue())
+                data = json.loads(Path(tmp, 'merges_proposed.json')
+                                  .read_text(encoding='utf-8'))
+                self.assertEqual(len(data['merges']), expected, msg=(kind, data))
+                if expected:
+                    self.assertEqual(data['merges'][0]['lines'], lines)
+
+
 class ParagraphAndSplitTests(unittest.TestCase):
     """Paragraph mode, page partitioning and the bilingual reading copy."""
 

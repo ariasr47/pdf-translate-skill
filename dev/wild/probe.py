@@ -161,8 +161,8 @@ def probe_one(src, work):
         ex['cores'] = len(result.get('cores') or [])
         ex['passthrough'] = sum(1 for s in segs if s.get('passthrough'))
         ex['widget_text'] = len(result.get('widget_text') or {})
-        # merge_candidate_warnings emits no `kind` (every other warning does);
-        # label those so the table does not hide paragraph proposals.
+        # Candidates carry kind "merge-candidate" since row 22; a segments.json
+        # from an earlier extractor has none — label those the same way.
         kinds = Counter((w.get('kind') or 'merge-candidate') for w in result.get('warnings') or [])
         ex['warnings'] = dict(kinds)
         ex['unextractable_pages'] = result.get('unextractable_pages') or []
