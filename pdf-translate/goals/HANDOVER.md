@@ -10,7 +10,7 @@ a gate.
 **Interpreter:** `py -3`  
 **Tests:** from `pdf-translate/`:  
 `py -3 -m unittest tests.test_pipeline tests.test_corpus_verdicts -v`  
-**Branch:** `main`. Gates 01–14 and the any-PDF skill text are committed (`git log -1` shows the latest).  
+**Branch:** `main`. Gates 01–16 and the any-PDF skill text are committed (`git log -1` shows the latest).  
 **After that commit** only bakeoff material, session prompts and HTML explainers remain untracked or ignored; see §9.
 
 ---
@@ -98,7 +98,7 @@ Also locked: scan/image-only → `refuse+OCR`; pale blank → `skip-ink`;
 field identity; no redaction; glyf fonts + rasterization assert;
 `pipeline.py rebuild` / `render`; corpus `verdicts.json`.
 
-### PROGRAM 08–10, 13 and 14 (committed)
+### PROGRAM 08–10 and 13–16 (committed)
 
 | # | What | Tests |
 |---|---|---|
@@ -107,6 +107,7 @@ field identity; no redaction; glyf fonts + rasterization assert;
 | **10** | Output pushbutton `/CA` wider than widget (helv `text_length`, pad 2 pt) FAIL | `CaptionWidthTests` |
 | **13** | Stripped file re-read without annotation appearances must have no page text; nested Form XObjects and `/Resources` inherited from `/Pages` are stripped; FAIL deletes the file | `StripCompletenessTests` + corpus strip-clean assertion; `corpus/nested_xobject.pdf` |
 | **14** | Invisible text layer (OCR'd scan): stripping the text changes under 3% of its span pixels → extract + verify FAIL; scans refused with or without OCR | `InvisibleTextTests`; `corpus/ocr_layer.pdf` `refuse+ocr-layer` |
+| **16** | Runs whose target script needs shaping (Arabic, Indic, Thai, Khmer, Myanmar) are placed with the Story engine on the original baseline, logical string in `/ActualText`; verify FAILs Arabic drawn unshaped | `ShapedScriptTests` |
 | **15** | Leak scan keyed to the source document's script; same-script pairs use document words automatically; shared spaceless family is REVIEW-only | `ScriptAwareLeakTests`; `corpus/ja_source.pdf`, `corpus/ar_source.pdf` |
 
 `--translations` omitted → 01/02/08/09/10 do not run.
@@ -273,7 +274,7 @@ Do not paste bakeoff scores, `work/translations.json`, or old NOTES.
 
 ## 9. Uncommitted / untracked (as of this handover)
 
-**Committed:** gates 08–14 (verify gates 08–10, strip gate 13, OCR-layer refusal 14), the any-PDF skill text, goal briefs 08–13, HANDOVER / IMPLEMENTATION / RECOMMENDATIONS, `corpus/nested_xobject.pdf`, `.gitignore` (`runs/`).
+**Committed:** gates 08–16 (verify gates 08–10, strip gate 13, OCR-layer refusal 14, script-aware leak scan 15, shaped scripts 16), the any-PDF skill text, goal briefs 08–13, HANDOVER / IMPLEMENTATION / RECOMMENDATIONS, `corpus/nested_xobject.pdf`, `.gitignore` (`runs/`).
 
 **Untracked, keep with the skill (not yet committed):**  
 `recommendations.html`, `quality-bakeoff.html`, `CHATGPT_SESSION_PROMPT.md`

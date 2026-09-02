@@ -428,6 +428,67 @@ def build_ar_source_pdf(path, fontfile):
     doc.close()
 
 
+AR_PHRASE = 'السلام عليكم ورحمة الله'
+DV_PHRASE = 'नमस्ते क्षत्रिय'
+SHAPE_SOURCE = 'Peace be upon you and mercy'
+# Arabic Presentation Forms-B: four-form groups start at these code points
+# (isolated, final, initial, medial). Initial/medial forms only appear when
+# the letters were joined by a shaper.
+_AR_GROUPS = (0xFE89, 0xFE8F, 0xFE95, 0xFE99, 0xFE9D, 0xFEA1, 0xFEA5, 0xFEB1,
+              0xFEB5, 0xFEB9, 0xFEBD, 0xFEC1, 0xFEC5, 0xFEC9, 0xFECD, 0xFED1,
+              0xFED5, 0xFED9, 0xFEDD, 0xFEE1, 0xFEE5, 0xFEE9, 0xFEF1)
+AR_CONNECTED_FORMS = {b + 2 for b in _AR_GROUPS} | {b + 3 for b in _AR_GROUPS}
+
+
+def find_devanagari_font():
+    for name in ('Nirmala.ttc', 'Nirmala.ttf', 'mangal.ttf', 'Mangal.ttf'):
+        path = Path(r'C:\Windows\Fonts') / name
+        if path.is_file():
+            return path
+    for path in (Path('/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf'),
+                 Path('/usr/share/fonts/truetype/lohit-devanagari/Lohit-Devanagari.ttf')):
+        if path.is_file():
+            return path
+    raise unittest.SkipTest('no Devanagari-capable TTF')
+
+
+def raw_codepoints(page, clip=None):
+    out = []
+    flags = pymupdf.TEXTFLAGS_RAWDICT | pymupdf.TEXT_IGNORE_ACTUALTEXT
+    for block in page.get_text('rawdict', clip=clip, flags=flags)['blocks']:
+        for line in block.get('lines', []):
+            for span in line['spans']:
+                out.extend(ord(c['c']) for c in span['chars'])
+    return out
+
+
+def first_line_geometry(page):
+    """(bbox, origin) of the first text line on the page."""
+    for block in page.get_text('dict')['blocks']:
+        for line in block.get('lines', []):
+            span = line['spans'][0]
+            return pymupdf.Rect(line['bbox']), span['origin']
+    return None, None
+
+
+def build_one_line_pdf(path, text=SHAPE_SOURCE, x=72, y=80, size=12):
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_text((x, y), text, fontsize=size)
+    # A rule just under the baseline: a shaped run must not paint over it.
+    page.draw_line(pymupdf.Point(60, y + 4), pymupdf.Point(300, y + 4), color=(0, 0, 0), width=1)
+    doc.save(path)
+    doc.close()
+
+
+def render_region(page, rect, dpi=100):
+    return bytes(page.get_pixmap(dpi=dpi, clip=rect).samples)
+
+
+def pixel_diff(a, b):
+    return sum(1 for x, y in zip(a, b) if abs(x - y) > 40)
+
+
 class ImportSafeTests(unittest.TestCase):
     def test_field_fonts_and_compare_import_without_argv(self):
         # These two historically read sys.argv at import time, which crashes
@@ -2327,6 +2388,136 @@ class RtlLayoutTests(unittest.TestCase):
             with redirect_stdout(buf):
                 rc = verify.verify(src, out_rtl, translations=tr_rtl, min_ink=0.2)
             self.assertEqual(rc, 0, msg=buf.getvalue())
+
+
+class ShapedScriptTests(unittest.TestCase):
+    """Goal 16: runs whose target script needs shaping take the Story
+    (HarfBuzz) path; unshaped Arabic in an output is a verify FAIL."""
+
+    def _translate_one_line(self, tmp, target, font):
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'tr.json')
+        build_one_line_pdf(src)
+        strip_text.strip_text(src, stripped)
+        extract_segments.extract_segments(src, outdir=tmp)
+        write_mapping(tr, {SHAPE_SOURCE: target}, font)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(stripped, os.path.join(tmp, 'segments.json'), tr, out)
+        return src, out, tr, rc, buf.getvalue()
+
+    def test_needs_shaping_unit(self):
+        self.assertTrue(retypeset.needs_shaping(AR_PHRASE))
+        self.assertTrue(retypeset.needs_shaping(DV_PHRASE))
+        self.assertTrue(retypeset.needs_shaping('สวัสดี'))
+        self.assertFalse(retypeset.needs_shaping(HE_TARGET))
+        self.assertFalse(retypeset.needs_shaping('Hello world'))
+        self.assertFalse(retypeset.needs_shaping('申立人'))
+
+    def test_arabic_target_is_shaped_and_on_baseline(self):
+        font = find_rtl_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, rc, log = self._translate_one_line(tmp, AR_PHRASE, font)
+            self.assertEqual(rc, 0, msg=log)
+            doc = pymupdf.open(out)
+            cps = raw_codepoints(doc[0])
+            actual = verify.extract_actualtext(doc[0])
+            bbox, origin = first_line_geometry(doc[0])
+            rule = render_region(doc[0], pymupdf.Rect(150, 82, 300, 86))
+            doc.close()
+            self.assertTrue(AR_CONNECTED_FORMS & set(cps),
+                            msg=f'no initial/medial Arabic forms in {[hex(c) for c in cps][:20]}')
+            self.assertTrue(any(AR_PHRASE in a for a in actual), msg=actual)
+            self.assertGreater(sum(1 for b in rule if b < 100), 50, msg='rule under the run was painted over')
+            self.assertAlmostEqual(bbox.x0, 72.0, delta=1.5, msg=bbox)
+            self.assertAlmostEqual(origin[1], 80.0, delta=1.5, msg=origin)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr, min_ink=0.2)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+
+    def test_unshaped_arabic_output_fails_verify(self):
+        font = find_rtl_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            bad = os.path.join(tmp, 'unshaped.pdf')
+            good = os.path.join(tmp, 'shaped.pdf')
+            build_one_line_pdf(src)
+            doc = pymupdf.open()
+            page = doc.new_page(width=612, height=792)
+            tw = pymupdf.TextWriter(page.rect)
+            tw.append((72, 80), AR_PHRASE, font=pymupdf.Font(fontfile=str(font)),
+                      fontsize=12, right_to_left=True)
+            tw.write_text(page)
+            doc.save(bad)
+            doc.close()
+            doc = pymupdf.open()
+            page = doc.new_page(width=612, height=792)
+            css = "@font-face {font-family: t; src: url(%s);} body {font-family: t; margin: 0; padding: 0;}" % os.path.basename(str(font))
+            page.insert_htmlbox(pymupdf.Rect(72, 70, 540, 86),
+                                '<div style="font-size:12px; line-height:1">%s</div>' % AR_PHRASE,
+                                css=css, archive=pymupdf.Archive(os.path.dirname(str(font))))
+            doc.save(good)
+            doc.close()
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, bad, min_ink=0.2)
+            log = buf.getvalue()
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn('unshaped', log.lower())
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                verify.verify(src, good, min_ink=0.2)
+            self.assertNotIn('unshaped', buf.getvalue().lower())
+
+    def test_devanagari_target_uses_story_path(self):
+        font = find_devanagari_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, rc, log = self._translate_one_line(tmp, DV_PHRASE, font)
+            self.assertEqual(rc, 0, msg=log)
+            region = pymupdf.Rect(60, 60, 400, 83)   # above the rule at y=84
+            out_doc = pymupdf.open(out)
+            got = render_region(out_doc[0], region)
+            actual = verify.extract_actualtext(out_doc[0])
+            out_doc.close()
+            ref = pymupdf.open()
+            page = ref.new_page(width=612, height=792)
+            css = "@font-face {font-family: t; src: url(%s);} body {font-family: t; margin: 0; padding: 0;}" % os.path.basename(str(font))
+            page.insert_htmlbox(pymupdf.Rect(72, 80 - 0.8 * 12, 540, 80 - 0.8 * 12 + 15),
+                                '<div style="font-size:12px; line-height:1">%s</div>' % DV_PHRASE,
+                                css=css, archive=pymupdf.Archive(os.path.dirname(str(font))))
+            story_ref = render_region(page, region)
+            tw_doc = pymupdf.open()
+            tw_page = tw_doc.new_page(width=612, height=792)
+            tw = pymupdf.TextWriter(tw_page.rect)
+            tw.append((72, 80), DV_PHRASE, font=pymupdf.Font(fontfile=str(font)), fontsize=12)
+            tw.write_text(tw_page)
+            tw_ref = render_region(tw_page, region)
+            d_story = pixel_diff(got, story_ref)
+            d_tw = pixel_diff(got, tw_ref)
+            self.assertLess(d_story, d_tw, msg=f'story diff {d_story} vs textwriter diff {d_tw}')
+            self.assertLess(d_story, 0.02 * len(got))
+            self.assertTrue(any(DV_PHRASE in a for a in actual), msg=actual)
+
+    def test_shaped_run_in_narrow_gap_fails_overflow(self):
+        font = find_rtl_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'tr.json')
+            build_squeeze_pdf(src)
+            strip_text.strip_text(src, stripped)
+            extract_segments.extract_segments(src, outdir=tmp)
+            write_mapping(tr, {SQUEEZE_CORE: ' '.join([AR_PHRASE] * 4)}, font)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(stripped, os.path.join(tmp, 'segments.json'), tr, out)
+            self.assertEqual(rc, 1, msg=buf.getvalue())
+            self.assertIn('scaled below', buf.getvalue())
+            self.assertFalse(os.path.exists(out))
 
 
 class ProviderAgnosticTests(unittest.TestCase):

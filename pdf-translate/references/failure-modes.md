@@ -121,6 +121,18 @@ any page text left is a FAIL, the message lists page and text, and the
 stripped file is not written. Do not work around that FAIL by hand; it
 means the walker has a blind spot worth a fixture.
 
+## 11. Complex scripts drawn without shaping
+
+`TextWriter` places glyphs one by one. Arabic drawn that way is a row of
+isolated letterforms; Devanagari shows consonant + halant where a conjunct
+belongs. The placement gate still PASSes because it reads the logical
+string from `/ActualText`, and the ink ratio barely moves. Runs whose
+target script needs shaping now go through the Story engine (the merges
+path), and `verify.py` FAILs an output whose Arabic letters are all
+isolated forms. Indic scripts leave no code-point signal in the text
+layer (the shaper writes glyph ids), so for them the visual pass is the
+check.
+
 ## Also worth knowing
 
 - Extraction geometry must come from the ORIGINAL (text intact); writing

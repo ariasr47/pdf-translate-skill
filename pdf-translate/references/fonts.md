@@ -24,18 +24,27 @@ whose original is serif. Bold in CJK forms is often better served by the
 For field input (field_fonts.py) use the FULL instanced font, not the
 translation subset — users type names with characters outside the document.
 
-## Arabic, Hebrew (RTL)
+## Arabic (and Syriac, N'Ko): shaped through the Story engine
 
-Shaping at *render* time often looks correct: MuPDF's TextWriter joins Arabic
-letters and draws Hebrew right-to-left. That is not the same as a correct
-RTL document.
+Arabic letters join. A run drawn glyph by glyph comes out as isolated
+letterforms, which is what `TextWriter` produces. Since gate 16, every run
+whose target script needs shaping is placed with the Story engine
+(`insert_htmlbox`, HarfBuzz), the same path merges use: letters join,
+lam-alef ligates, and the run sits on the original baseline at the
+original size and colour. `verify.py` FAILs an output whose Arabic came
+out unshaped (joining letters in isolated form and nothing connected).
 
-What the pipeline now does for the **text layer**: RTL targets (Hebrew /
-Arabic unicode ranges) are written with `right_to_left=True` and wrapped in
-`/ActualText` (UTF-16BE). `verify.py --translations` searches `get_text()`
-**and** those ActualText strings, so an authored logical line must round-trip
-even when MuPDF's default extract is still visual-order or presentation-form
-glyphs (`طلب المساعدة` must appear in ActualText, not only as `ةدعاسملا بلط`).
+**Text layer.** What a shaped run leaves in the text layer is what the
+shaper drew (presentation forms, sometimes glyph ids), so the logical
+string lives in `/ActualText` (UTF-16BE). `verify.py --translations`
+searches `get_text()` **and** those ActualText strings, so an authored
+logical line must round-trip even when MuPDF's default extract is
+visual-order or presentation-form glyphs (`طلب المساعدة` must appear in
+ActualText, not only as `ةدعاسملا بلط`).
+
+**Hebrew** needs no shaping, only direction: it still takes the
+`TextWriter` path with `right_to_left=True` and the same `/ActualText`
+wrap.
 
 **Layout is not mirrored by default.** Labels stay on the original LTR
 baselines. Set `"mirror": true` in translations.json to flip text x
@@ -49,16 +58,21 @@ Do not claim full RTL from a pretty render. Halt unless you have verified
 (1) the pixels, (2) the logical string is in ActualText / verify
 `--translations`, and (3) whether default (un-mirrored) or `mirror: true`
 is acceptable. Fonts: Noto Naskh Arabic / Noto Sans Hebrew (Google Fonts,
-glyf). Arial on Windows often has both scripts for tests.
+glyf); the font must carry the script's GSUB tables, which
+`prepare_font.py` keeps when subsetting. Arial on Windows has both
+scripts for tests.
 
-## Devanagari, Bengali, Tamil, Thai (complex shaping)
+## Devanagari, Bengali, Tamil, Thai, Khmer, Myanmar (complex shaping)
 
-Same caution as RTL: these scripts require conjunct/mark shaping that plain
-glyph placement does not do. Thai additionally has no spaces — line-breaking
-a merged paragraph needs dictionary-based segmentation. Verify a rendered
-sample with a reader of the script (or a careful glyph-level comparison
-against a browser rendering) before building the whole document. Fonts:
-Noto Sans Devanagari / Bengali / Tamil / Thai.
+These scripts need conjunct and mark shaping. Runs in them take the Story
+engine path automatically (gate 16), and the logical string goes into
+`/ActualText`, because the text layer of a shaped Indic run is glyph ids.
+Thai additionally has no spaces: line-breaking a merged paragraph needs
+dictionary-based segmentation the engine does not do. Dot leaders on a
+shaped-script label are not refilled (same as RTL). Still verify a
+rendered sample with a reader of the script before building the whole
+document. Fonts: Noto Sans Devanagari / Bengali / Tamil / Thai (glyf,
+with GSUB).
 
 ## Latin, Cyrillic, Greek (including Vietnamese)
 

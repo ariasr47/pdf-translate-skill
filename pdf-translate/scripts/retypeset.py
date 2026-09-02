@@ -25,14 +25,21 @@ document gets the same behavior:
   /ActualText so the logical string is in the text layer; layout stays LTR
   unless translations.json sets mirror: true (opt-in x-flip of text +
   field/link rects; graphics stay)
+- runs whose target script needs shaping (Arabic-family, Indic, Thai, Lao,
+  Khmer, Myanmar, Tibetan) are placed with the Story engine
+  (insert_htmlbox, HarfBuzz) on the original baseline, at the original
+  size and colour, then wrapped in /ActualText; TextWriter would draw
+  them letter by letter (isolated Arabic forms, broken conjuncts)
 
 Usage:
   python3 retypeset.py STRIPPED.pdf segments.json translations.json OUT.pdf
 """
+import html as htmlmod
 import json
 import re
 import sys
 import time
+from pathlib import PurePath
 
 import pymupdf
 
@@ -53,6 +60,50 @@ def is_rtl_text(text):
             if a <= o <= b:
                 return True
     return False
+
+
+# Scripts whose letters must be shaped before they are drawn: joining
+# (Arabic family), conjuncts and mark placement (Indic, Thai, Lao, Khmer,
+# Myanmar, Tibetan). Hebrew only needs direction and stays on TextWriter.
+_SHAPING_RANGES = (
+    (0x0600, 0x06FF), (0x0750, 0x077F), (0x08A0, 0x08FF),   # Arabic
+    (0xFB50, 0xFDFF), (0xFE70, 0xFEFC),                      # Arabic presentation forms
+    (0x0700, 0x074F),                                        # Syriac
+    (0x07C0, 0x07FF),                                        # N'Ko
+    (0x0900, 0x0DFF),                                        # Devanagari .. Sinhala
+    (0x0E00, 0x0EFF),                                        # Thai, Lao
+    (0x0F00, 0x0FFF),                                        # Tibetan
+    (0x1000, 0x109F),                                        # Myanmar
+    (0x1780, 0x17FF),                                        # Khmer
+)
+# Measured on insert_htmlbox with line-height 1: a single line's baseline sits
+# 0.8 x size below the rect top for every font tried, and the run starts at
+# the rect's left edge. A rect 1.25 x size tall holds one line; a second line
+# only fits once the engine has scaled below the 0.7x gate, which refuses.
+SHAPED_BASELINE = 0.8
+SHAPED_LINE = 1.25
+
+
+def needs_shaping(text):
+    """True if text contains letters of a script that must be shaped."""
+    for ch in text or '':
+        o = ord(ch)
+        for a, b in _SHAPING_RANGES:
+            if a <= o <= b:
+                return True
+    return False
+
+
+def place_shaped(page, x, baseline, text, bold, fs, color_int, avail, css, arch):
+    """Draw one shaped run with the Story engine; returns the scale applied."""
+    top = baseline - SHAPED_BASELINE * fs
+    rect = pymupdf.Rect(x, top, x + max(avail, 1.0) + 1.0, top + SHAPED_LINE * fs)
+    fam = 'trb' if bold else 'tr'
+    body = (f'<div style="font-family:{fam}; font-size:{fs:.2f}px; line-height:1; '
+            f'color:#{color_int:06x}; margin:0; padding:0">{htmlmod.escape(text)}</div>')
+    _, scale = page.insert_htmlbox(rect, body, css=css, archive=arch, scale_low=0)
+    wrap_last_stream_actualtext(page, text)
+    return scale
 
 
 def _actualtext_bdc(text):
@@ -84,6 +135,28 @@ def wrap_last_bt_actualtext(page, logical):
             k += 1
     new = data[:k] + _actualtext_bdc(logical) + data[k:j] + b'EMC\n' + data[j:]
     page.parent.update_stream(xref, new)
+
+
+def wrap_last_stream_actualtext(page, logical):
+    """Mark the page's newest content stream with /ActualText.
+
+    The Story engine (insert_htmlbox) draws into a Form XObject and appends
+    a stream that only invokes it (q /fzFrmN Do Q); the glyphs it leaves in
+    the text layer are presentation forms or glyph ids. Wrapping that
+    invocation in a marked-content span makes extraction report the logical
+    string instead, which is what the placement gate reads.
+    """
+    if not logical:
+        return
+    xrefs = page.get_contents()
+    if not xrefs:
+        return
+    xref = xrefs[-1]
+    data = page.parent.xref_stream(xref) or b''
+    if b'/ActualText' in data:
+        return
+    tail = (chr(10) + 'EMC' + chr(10)).encode('ascii')
+    page.parent.update_stream(xref, _actualtext_bdc(logical) + data + tail)
 
 
 def _load_json(path):
@@ -176,6 +249,16 @@ def retypeset(stripped, segf, trf, out):
 
     doc = pymupdf.open(stripped)
     widg = {p.number: [w.rect for w in p.widgets()] for p in doc}
+    arch = pymupdf.Archive('.')
+    # MuPDF's CSS parser eats backslashes, so a Windows path in url() loses
+    # its separators and the engine silently falls back to a font without
+    # the target script. Always hand it POSIX separators.
+    css_regular = PurePath(fonts['regular']).as_posix()
+    css_bold = PurePath(fonts.get('bold', fonts['regular'])).as_posix()
+    css = (f"@font-face {{font-family: tr; src: url({css_regular});}}"
+           f"@font-face {{font-family: trb; src: url({css_bold});}}"
+           "body {font-family: tr; margin: 0; padding: 0;}"
+           "b {font-family: trb; font-weight: normal;}")
 
     def right_limit(pno, seg, segs):
         x0 = seg['origin'][0]
@@ -205,6 +288,7 @@ def retypeset(stripped, segf, trf, out):
         # gate barely moves because the band was already dark.
         writers = {}
         rtl_jobs = []
+        shaped_jobs = []
 
         def W(cint):
             if cint not in writers:
@@ -235,7 +319,12 @@ def retypeset(stripped, segf, trf, out):
                     fs2 = fs if w <= maxw else max(4.0, fs * maxw / w)
                     if fs and fs2 < fs:
                         consider_ratio(pno, ov.get('contains') or t, fs2 / fs)
-                    if is_rtl_text(t):
+                    if needs_shaping(t):
+                        avail = maxw if maxw < 5000 else page.rect.width - 32 - x
+                        shaped_jobs.append((mirror_left(x, w, page.rect.width), oy, t,
+                                            bool(part.get('bold')), fs, int(seg.get('color', 0)),
+                                            avail, ov.get('contains') or t))
+                    elif is_rtl_text(t):
                         rtl_jobs.append((x, oy, t, f, fs2, int(seg.get('color', 0)), t))
                     else:
                         tw.append((mirror_left(x, f.text_length(t, fs2),
@@ -264,7 +353,8 @@ def retypeset(stripped, segf, trf, out):
                 parts.append((jp, font_b if seg['bold'] else font_r))
             wsum = sum(f.text_length(t, fs) for t, f in parts)
             rtl_body = is_rtl_text(jp)
-            if dots and not rtl_body and not mirror:
+            shaped = needs_shaping(jp)
+            if dots and not rtl_body and not shaped and not mirror:
                 cur_end = seg['bbox'][2] - (
                     helv.text_length(tail, fs) + 2 if tail else 0)
                 label_max = cur_end - ox - 8
@@ -285,7 +375,7 @@ def retypeset(stripped, segf, trf, out):
                 continue
             maxw = right_limit(pno, seg, segs) - ox
             fs2 = fs if wsum <= maxw or wsum == 0 else max(4.0, fs * maxw / wsum)
-            if fs and fs2 < fs:
+            if fs and fs2 < fs and not shaped:
                 consider_ratio(pno, core, fs2 / fs)
             x = ox
             if core in center:
@@ -294,6 +384,18 @@ def retypeset(stripped, segf, trf, out):
                 x = max(ox - 200, cx - w2 / 2)
             run_w = sum(f.text_length(t, fs2) for t, f in parts)
             x = mirror_left(x, run_w, page.rect.width)
+            if shaped:
+                # Marker stays a TextWriter run in Helvetica; the body is
+                # shaped at the ORIGINAL size and the engine's own scale
+                # feeds the overflow gate.
+                bx = x
+                if marker:
+                    mfont = hebo if seg['bold'] else helv
+                    tw.append((bx, oy), marker + ' ', font=mfont, fontsize=fs)
+                    bx += mfont.text_length(marker + ' ', fs)
+                shaped_jobs.append((bx, oy, jp.replace('‖', ''), bool(seg['bold']), fs,
+                                    int(seg.get('color', 0)), maxw - (bx - x), core))
+                continue
             if rtl_body:
                 logical = jp.replace('‖', '')
                 rtl_jobs.append((x, oy, logical,
@@ -310,12 +412,10 @@ def retypeset(stripped, segf, trf, out):
             rtw.append((rx, ry), t, font=fnt, fontsize=fsz, right_to_left=True)
             rtw.write_text(page, color=rgb_of(cint))
             wrap_last_bt_actualtext(page, logical)
+        for (sx, sy, text, bold, fsz, cint, avail, key) in shaped_jobs:
+            scale = place_shaped(page, sx, sy, text, bold, fsz, cint, avail, css, arch)
+            consider_ratio(pno, key, scale)
 
-    arch = pymupdf.Archive('.')
-    css = (f"@font-face {{font-family: tr; src: url({fonts['regular']});}}"
-           f"@font-face {{font-family: trb; src: url({fonts.get('bold', fonts['regular'])});}}"
-           "body {font-family: tr; margin: 0; padding: 0;}"
-           "b {font-family: trb; font-weight: normal;}")
     for (pno, r, html, align, size, lh, color, merge_key, merge_opt) in merge_jobs:
         pw = doc[pno].rect.width
         if mirror:
@@ -328,8 +428,8 @@ def retypeset(stripped, segf, trf, out):
         _, scale = doc[pno].insert_htmlbox(rect, h, css=css, archive=arch, scale_low=0)
         consider_ratio(pno, merge_key, scale, opted=merge_opt)
         plain = re.sub(r'<[^>]+>', '', html)
-        if is_rtl_text(plain):
-            wrap_last_bt_actualtext(doc[pno], plain)
+        if is_rtl_text(plain) or needs_shaping(plain):
+            wrap_last_stream_actualtext(doc[pno], plain)
 
     if missing:
         print(f'FAIL: {len(missing)} untranslated segments:')

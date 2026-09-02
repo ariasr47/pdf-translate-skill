@@ -55,6 +55,11 @@
                   sees (stripping it changes under 3% of the text-span
                   area in pixels: an OCR layer over a scan, or text under
                   an image) FAILs. Always runs. Refusal, not a fix.
+12. unshaped Arabic an output page whose Arabic letters are all isolated
+                  presentation forms (three or more joining letters, no
+                  initial or medial form) was drawn letter by letter and
+                  FAILs. Reads the glyph forms, not /ActualText. Silent
+                  when the page has no Arabic presentation forms.
 
 These gates catch structural failures. They do NOT catch visual defects —
 after they pass you still render pages side-by-side and look at them.
@@ -569,6 +574,39 @@ def _scan_leaks_script(text, allow, script, source_words=None, src_re=None):
     return running, isolated
 
 
+# Arabic Presentation Forms-B: four-form groups (isolated, final, initial,
+# medial) start at these code points. Initial and medial forms only exist
+# when a shaper joined the letters; a run drawn letter by letter shows the
+# isolated forms only.
+_AR_GROUPS = (0xFE89, 0xFE8F, 0xFE95, 0xFE99, 0xFE9D, 0xFEA1, 0xFEA5, 0xFEB1,
+              0xFEB5, 0xFEB9, 0xFEBD, 0xFEC1, 0xFEC5, 0xFEC9, 0xFECD, 0xFED1,
+              0xFED5, 0xFED9, 0xFEDD, 0xFEE1, 0xFEE5, 0xFEE9, 0xFEF1)
+ARABIC_ISOLATED_JOINING = set(_AR_GROUPS)
+ARABIC_CONNECTED_FORMS = {b + 2 for b in _AR_GROUPS} | {b + 3 for b in _AR_GROUPS}
+
+
+def unshaped_arabic_pages(doc):
+    """([(page_index, isolated_count)], saw_forms) from the drawn glyph forms."""
+    flags = pymupdf.TEXTFLAGS_RAWDICT | pymupdf.TEXT_IGNORE_ACTUALTEXT
+    flagged, saw = [], False
+    for page in doc:
+        iso = conn = 0
+        for block in page.get_text('rawdict', flags=flags)['blocks']:
+            for line in block.get('lines', []):
+                for span in line['spans']:
+                    for c in span['chars']:
+                        o = ord(c['c'])
+                        if o in ARABIC_CONNECTED_FORMS:
+                            conn += 1
+                        elif o in ARABIC_ISOLATED_JOINING:
+                            iso += 1
+        if iso or conn:
+            saw = True
+        if conn == 0 and iso >= 3:
+            flagged.append((page.number, iso))
+    return flagged, saw
+
+
 def page_unextractable(page):
     """True when the page looks scanned: visible content, no text layer."""
     if page.get_text().strip():
@@ -695,6 +733,14 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
         fail = 1
     if not invisible:
         print('PASS text layer is visible')
+
+    unshaped, saw_arabic = unshaped_arabic_pages(jc)
+    for pno, n in unshaped:
+        print(f'FAIL page {pno+1} Arabic drawn unshaped: {n} joining letters in isolated '
+              f'form and none connected. The run bypassed the Story engine; do not ship.')
+        fail = 1
+    if saw_arabic and not unshaped:
+        print('PASS Arabic letterforms joined')
 
     # Two buckets, because "a Latin word survived" and "a sentence went
     # untranslated" are completely different findings and must not score alike.

@@ -72,7 +72,7 @@ SKILL.md                        the workflow, start here
 README.md                       this file
 requirements.txt
 references/
-  failure-modes.md              10 silent failures and their fixes — read before you start
+  failure-modes.md              11 silent failures and their fixes — read before you start
   translations-format.md        the translations.json contract
   fonts.md                      per-script font sourcing; the glyf-flavor rule
 scripts/
@@ -100,6 +100,7 @@ document's register** > file size and everything else.
 
 Born-digital PDFs. Scans are out of scope with or without an OCR layer: the
 words the reader sees are pixels, and extract/verify refuse such pages; say so
-rather than producing a double-printed overlay. Right-to-left and vertical scripts need
-shaping that plain glyph placement does not do: verify a rendered sample before
-committing, and stop and say so if you cannot (see `references/fonts.md`).
+rather than producing a double-printed overlay. Arabic and Indic scripts are shaped through the Story engine and Hebrew
+is placed right-to-left; vertical scripts are not handled. Still verify a
+rendered sample before committing, and stop and say so if you cannot
+(see `references/fonts.md`).

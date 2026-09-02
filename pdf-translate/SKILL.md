@@ -62,9 +62,11 @@ or an image but no text, and also when a page's text is invisible (an OCR
 layer over the scanned pixels, or text hidden under an image). In both
 cases the words the reader sees are pixels; strip-and-retypeset would
 print the translation over them, and this pipeline has no masking mode.
-Tell the user; do not ship that file as a translation. If the target script is RTL, retypeset writes `/ActualText` in
-logical order and `--translations` looks there as well as `get_text()`
-(which may still be visual-order for Arabic). **Layout is not mirrored
+Tell the user; do not ship that file as a translation. If the target script needs shaping (Arabic, every Indic script, Thai,
+Khmer, Myanmar), retypeset places those runs with the Story engine so
+letters join and conjuncts form, and writes `/ActualText` in logical
+order; `--translations` looks there as well as `get_text()`. Hebrew is
+direction only. verify fails an output whose Arabic came out unshaped. **Layout is not mirrored
 unless** translations.json sets `"mirror": true` (flips text x and
 field/link rects; graphics stay). Read `references/fonts.md` and halt
 unless you have checked the render, the logical text layer, *and*
@@ -322,7 +324,7 @@ you, not discover them later.
 
 ## References
 
-- `references/failure-modes.md` — the ten silent failures and their fixes.
+- `references/failure-modes.md` — the eleven silent failures and their fixes.
   Read during recon, before touching the file.
 - `references/translations-format.md` — the translations.json contract
   (translations, merges, overrides, center, skip, fonts). Read before
