@@ -31,12 +31,15 @@ python -m unittest tests.test_pipeline tests.test_corpus_verdicts
 ```
 
 154 tests on constructed PDFs drive the shipped scripts, in about 25
-seconds. The Arabic and Devanagari tests need a font with real shaping
-tables: `tools/fetch_test_fonts.py` downloads three OFL Noto faces into
-`tests/fonts/` (never committed), and the tests prefer those over whatever
-the host ships. Without them they fall back to system fonts and skip where
-there are none. GitHub Actions runs the whole thing on Linux and Windows,
-Python 3.10 and 3.13.
+seconds locally and 40 on CI, with **no skips** once the fonts are there.
+The Arabic, Hebrew and Devanagari tests need faces with real shaping
+tables: `tools/fetch_test_fonts.py` downloads four OFL Noto faces into
+`tests/fonts/` (never committed), and each test asks for a font covering
+the characters it needs — no single Noto face carries both Arabic and
+Hebrew, which is why these tests used to run only on macOS and Windows.
+Without the fetch they fall back to system fonts and skip where there are
+none. GitHub Actions runs the whole thing on Linux and Windows, Python
+3.10 and 3.13.
 
 ## The skill's own metadata
 

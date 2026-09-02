@@ -96,7 +96,7 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
   <section>
     <h2>Closed since the audit</h2>
-    <p>In the order they were done. Each landed with in-repo tests, and the full suite stayed green: 154 tests, about 25 seconds.</p>
+    <p>In the order they were done. Each landed with in-repo tests, and the full suite stayed green: 154 tests, no skips, green on Linux and Windows under Python 3.10 and 3.13.</p>
     <ol class="items">
       <li class="item" data-id="g12">
         <input type="checkbox" id="c-g12" checked><div class="head"><span class="title"><label for="c-g12">Program row 12: narrow-column warning</label></span><span class="chip p1">P1</span><span class="done-mark">done</span></div>
@@ -172,7 +172,7 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
       </li>
       <li class="item" data-id="ci">
         <input type="checkbox" id="c-ci" checked><div class="head"><span class="title"><label for="c-ci">CI with an OFL font</label></span><span class="chip p3">P3</span><span class="done-mark">done</span></div>
-        <p class="detail"><code>tools/fetch_test_fonts.py</code> pulls three OFL Noto faces into <code>tests/fonts/</code> and the test helpers prefer them, so the Arabic and Devanagari tests stop skipping. GitHub Actions runs the suite on Linux and Windows, Python 3.10 and 3.13. Nothing is committed: the URLs are branch-tip and the script says so rather than carrying a SHA nobody verified.</p>
+        <p class="detail"><code>tools/fetch_test_fonts.py</code> pulls four OFL Noto faces into <code>tests/fonts/</code> and each test asks for a font covering the characters it needs, so nothing skips any more. GitHub Actions runs the suite on Linux and Windows, Python 3.10 and 3.13 — green. The first four runs found four real defects: a pikepdf 9-vs-10 difference that broke every retypeset, a font helper demanding one face for two scripts, a Latin test font chosen by sort order, and two tests measuring font metadata instead of ink.</p>
       </li>
       <li class="item" data-id="drift">
         <input type="checkbox" id="c-drift" checked><div class="head"><span class="title"><label for="c-drift">Description, meta-paragraph, eval fixtures</label></span><span class="chip p3">P3</span><span class="done-mark">done</span></div>
