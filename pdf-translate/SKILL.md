@@ -12,6 +12,8 @@ description: >-
   only say "make this form Japanese", "Spanish version of this PDF", or
   "translate this document but keep the formatting". Also use it when a user
   complains that a translated PDF broke its layout or its form fields.
+metadata:
+  version: "16"
 ---
 
 # pdf-translate: high-fidelity PDF translation

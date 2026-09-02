@@ -23,6 +23,11 @@ This uses **strip-and-retypeset**: delete the text at the content-stream level
 (which leaves graphics, images, and field widgets untouched), then re-insert
 translated text at the original baselines.
 
+`SKILL.md` carries `metadata.version` in its frontmatter: the number of the
+last closed program gate (`goals/PROGRAM.md`). Bump it when a gate closes and
+re-sync any installed copy of the skill; a copy that shows an older number is
+running old scripts.
+
 ## Install
 
 ```bash
