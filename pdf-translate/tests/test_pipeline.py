@@ -1493,6 +1493,66 @@ class CanonicalTextLayerTests(unittest.TestCase):
         self.assertTrue(verify.drifted_characters('a\xa0b', 'plain'))
 
 
+class GlyphCoverageTests(unittest.TestCase):
+    """Audit M5: a character the font cannot draw must fail, not fall back."""
+
+    def test_missing_glyphs_unit(self):
+        helv = pymupdf.Font('helv')
+        self.assertEqual(retypeset.missing_glyphs(helv, 'Plain ASCII'), [])
+        self.assertEqual(retypeset.missing_glyphs(helv, '\u6c17\u6301'),
+                         ['\u6c17', '\u6301'])
+        # Reported once per character, in order.
+        self.assertEqual(retypeset.missing_glyphs(helv, '\u6c17\u6c17'),
+                         ['\u6c17'])
+        # Control and format characters are never drawn.
+        self.assertEqual(retypeset.missing_glyphs(helv, 'a\u00adb\u200dc'), [])
+        self.assertEqual(retypeset.missing_glyphs(helv, ''), [])
+
+    def test_cjk_target_in_a_latin_font_fails_and_saves_nothing(self):
+        font = find_test_font()
+        latin = pymupdf.Font(fontfile=str(font))
+        target = '\u3053\u306e\u66f8\u985e'
+        if not retypeset.missing_glyphs(latin, target):
+            raise unittest.SkipTest('the test font covers CJK; nothing to miss')
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_plain_pdf(src)
+            extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            write_mapping(tr, {SOURCE_SENTENCE: target}, font)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(
+                    stripped, os.path.join(tmp, 'segments.json'), tr, out)
+            log = buf.getvalue()
+            self.assertNotEqual(rc, 0, msg=log)
+            self.assertIn('the chosen font cannot draw', log)
+            self.assertIn('U+3053', log)
+            self.assertFalse(os.path.exists(out), msg=log)
+
+    def test_a_covered_target_still_passes(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_plain_pdf(src)
+            extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            write_mapping(tr, {SOURCE_SENTENCE: TARGET_SENTENCE}, font)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(
+                    stripped, os.path.join(tmp, 'segments.json'), tr, out)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertNotIn('cannot draw', log)
+
+
 class OverflowTests(unittest.TestCase):
     def test_squeeze_below_0_7_fails_and_does_not_save(self):
         font = find_test_font()

@@ -13,7 +13,7 @@ description: >-
   "translate this document but keep the formatting". Also use it when a user
   complains that a translated PDF broke its layout or its form fields.
 metadata:
-  version: "19"
+  version: "20"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -272,6 +272,13 @@ classic failure (subsetted CFF + CJK) draws *nothing* and reports no error.
 ```bash
 python3 scripts/retypeset.py stripped.pdf segments.json translations.json out.pdf
 ```
+
+Every character of every placed run is checked against the exact font
+object that will draw it. A character the font lacks **fails the build**:
+MuPDF substitutes its own fallback face mid-string, or draws a box, and
+reports nothing — the ink gate barely moves and the text layer still reads
+correctly. Pick a font that covers the target script
+(`references/fonts.md`); the run names the code points.
 
 Rotated lines (side labels, margin stamps) keep their angle: the extractor
 records each line's direction and retypeset morphs the run about its own

@@ -21,6 +21,10 @@ document gets the same behavior:
   FAILS (exit 1) if any exist — missing text must never ship silently
 - any run scaled below 0.7× FAILS unless its core (or merge first line) is
   in allow_scale — tiny type must not ship as a note
+- every character of every placed run is checked against the exact font
+  object that will draw it; a character the font lacks FAILS, because
+  MuPDF substitutes a fallback face mid-string (or draws a box) and
+  reports nothing
 - RTL targets (Hebrew/Arabic) are written with right_to_left and wrapped in
   /ActualText so the logical string is in the text layer; layout stays LTR
   unless translations.json sets mirror: true (opt-in x-flip of text +
@@ -47,6 +51,7 @@ import math
 import re
 import sys
 import time
+import unicodedata
 from pathlib import PurePath
 
 import pymupdf
@@ -216,6 +221,29 @@ def wrap_last_stream_actualtext(page, logical):
         return
     tail = (chr(10) + 'EMC' + chr(10)).encode('ascii')
     page.parent.update_stream(xref, _actualtext_bdc(logical) + data + tail)
+
+
+def missing_glyphs(font, text):
+    """Characters of text this font cannot draw.
+
+    MuPDF does not report a missing glyph: it silently substitutes its own
+    fallback face mid-string, and draws a box when the fallback has nothing
+    either. Both look like a rendering choice, not a defect, so nothing
+    downstream catches them — the ink gate barely moves and the text layer
+    reads correctly. Control and format characters (soft hyphen, ZWJ,
+    newlines) are not drawn and are not counted.
+    """
+    out = []
+    seen = set()
+    for ch in text or '':
+        if ch in seen or ch in '\n\r\t':
+            continue
+        if unicodedata.category(ch) in ('Cc', 'Cf'):
+            continue
+        seen.add(ch)
+        if not font.has_glyph(ord(ch)):
+            out.append(ch)
+    return out
 
 
 # ---------------------------------------------------- canonical text layer
@@ -439,6 +467,17 @@ def retypeset(stripped, segf, trf, out):
 
     missing = []
     rotated_shaped = []
+    glyph_misses = []
+    seen_glyph_miss = set()
+
+    def check_glyphs(pno, font, text, key, label):
+        for ch in missing_glyphs(font, text):
+            sig = (pno, label, ch)
+            if sig in seen_glyph_miss:
+                continue
+            seen_glyph_miss.add(sig)
+            glyph_misses.append((pno, label, ch, key))
+
     over_by_page = {}
     for o in overrides:
         over_by_page.setdefault(o['page'], []).append(o)
@@ -492,6 +531,8 @@ def retypeset(stripped, segf, trf, out):
                     f = font_b if part.get('bold') else font_r
                     x = part.get('x', ox)
                     t = part['text']
+                    check_glyphs(pno, f, t, ov.get('contains') or t,
+                                 'bold' if part.get('bold') else 'regular')
                     w = f.text_length(t, fs)
                     maxw = part.get('max_width', 10_000)
                     fs2 = fs if w <= maxw else max(4.0, fs * maxw / w)
@@ -524,6 +565,7 @@ def retypeset(stripped, segf, trf, out):
                     missing.append((pno, core))
                 f = hebo if seg['bold'] else helv
                 raw = seg['text'].rstrip()
+                check_glyphs(pno, f, raw, raw, 'Helvetica (pass-through)')
                 if rot:
                     place_rotated(ox, oy, [(raw, f, fs)],
                                   int(seg.get('color', 0)), dx, dy)
@@ -533,13 +575,20 @@ def retypeset(stripped, segf, trf, out):
                 continue
             parts = []
             if marker:
-                parts.append((marker + ' ', hebo if seg['bold'] else helv))
+                mk_font = hebo if seg['bold'] else helv
+                check_glyphs(pno, mk_font, marker, core,
+                             'Helvetica (list marker)')
+                parts.append((marker + ' ', mk_font))
             if '‖' in jp:
                 bp, rp = jp.split('‖', 1)
                 parts.append((bp, font_b))
                 parts.append((rp, font_r))
             else:
                 parts.append((jp, font_b if seg['bold'] else font_r))
+            for t, f in parts:
+                check_glyphs(pno, f, t, core,
+                             'bold' if f is font_b else
+                             ('regular' if f is font_r else 'Helvetica'))
             wsum = sum(f.text_length(t, fs) for t, f in parts)
             rtl_body = is_rtl_text(jp)
             shaped = needs_shaping(jp)
@@ -560,6 +609,7 @@ def retypeset(stripped, segf, trf, out):
                 if n:
                     tw.append((dstart, oy), '.' * n, font=helv, fontsize=fs)
                 if tail:
+                    check_glyphs(pno, helv, tail, core, 'Helvetica (tail)')
                     tw.append((cur_end + 2, oy), tail, font=helv, fontsize=fs)
                 continue
             maxw = (direction_limit(page, seg, dx, dy) if rot
@@ -622,6 +672,10 @@ def retypeset(stripped, segf, trf, out):
             consider_ratio(pno, key, scale)
 
     for (pno, r, html, align, size, lh, color, merge_key, merge_opt) in merge_jobs:
+        plain_html = re.sub(r'<[^>]+>', '', html or '')
+        check_glyphs(pno, font_r, plain_html, merge_key, 'regular')
+        if re.search(r'<(b|strong)\b', html or '', re.I):
+            check_glyphs(pno, font_b, plain_html, merge_key, 'bold')
         pw = doc[pno].rect.width
         if mirror:
             r = pymupdf.Rect(pw - r.x1, r.y0, pw - r.x0, r.y1)
@@ -645,13 +699,22 @@ def retypeset(stripped, segf, trf, out):
               f'(shorten the translation or add allow_scale):')
         for p, ratio, c in overflow[:30]:
             print(f'  p{p} {ratio:.2f}x: {c}')
+    if glyph_misses:
+        print(f'FAIL: {len(glyph_misses)} character(s) the chosen font cannot '
+              f'draw. MuPDF substitutes a fallback face mid-string or draws a '
+              f'box and reports nothing; pick a font that covers the target '
+              f'script (references/fonts.md):')
+        for pno, label, ch, key in glyph_misses[:30]:
+            name = unicodedata.name(ch, '?')
+            print(f'  p{pno} [{label}] U+{ord(ch):04X} {name} ({ch}) in: '
+                  f'{(key or "")[:40]}')
     if rotated_shaped:
         print(f'FAIL: {len(rotated_shaped)} rotated segments whose target needs '
               f'shaping. The Story engine places shaped runs upright; drawing '
               f'them flat on a rotated label would ship confidently wrong text:')
         for p, c in rotated_shaped[:30]:
             print(f'  p{p}: {c}')
-    if missing or overflow or rotated_shaped:
+    if missing or overflow or rotated_shaped or glyph_misses:
         doc.close()
         return 1
 
