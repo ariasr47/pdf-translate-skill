@@ -7,7 +7,7 @@ directory**. The repo already contains a finished Grok run and a complete
 ## What you do
 
 1. Create an empty folder, e.g.
-   `C:\Dev\pdf-translate-provider-neutral\runs\haiku`
+   `<REPO>/runs/haiku`
    (then `runs\sonnet`, `runs\opus-high`).
 2. Open a **new** Claude session with this repo available.
 3. Set cwd to that empty folder if you can; if not, the prompt tells it where
@@ -26,9 +26,9 @@ them in NOTES.md.
 
 This repo is already on disk. Use these paths exactly:
 
-    SKILL_DIR = C:\Dev\pdf-translate-provider-neutral\pdf-translate
-    SOURCE_PDF = C:\Dev\pdf-translate-provider-neutral\fl150_original.pdf
-    OUT_DIR    = C:\Dev\pdf-translate-provider-neutral\runs\<MODEL>
+    SKILL_DIR = <REPO>/pdf-translate
+    SOURCE_PDF = <REPO>/fl150_original.pdf
+    OUT_DIR    = <REPO>/runs/<MODEL>
 
 Replace `<MODEL>` with `haiku`, `sonnet`, or `opus-high` — the folder for
 THIS session only. Create it if needed. Write every deliverable into OUT_DIR.
@@ -62,7 +62,7 @@ interpreter is `py -3` (not `python3`). Dependencies should already be
 installed (`pymupdf`, `pikepdf`, `fonttools`). If `pyftsubset` is missing
 from PATH, the prepare-font script will look next to the interpreter or use
 `py -3 -m fontTools.subset`. A glyf Noto Sans JP TTF may already exist at
-`C:\Dev\pdf-translate-provider-neutral\work\NotoSansJP-wght.ttf` and
+`<REPO>/work/NotoSansJP-wght.ttf` and
 `NotoSansJP-Regular-full.ttf` — you may reuse those **font files only**,
 not the translations sitting beside them.
 

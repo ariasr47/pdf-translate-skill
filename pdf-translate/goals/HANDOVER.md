@@ -5,7 +5,7 @@ into a **new** agent session that has no memory of prior work. Then do
 **one** next sitting. Do not start two gates. Do not mix a bakeoff with
 a gate.
 
-**Repo:** `C:\Dev\pdf-translate-provider-neutral`  
+**Repo:** `<REPO>`  
 **Skill dir:** `pdf-translate/`  
 **Interpreter:** `py -3`  
 **Tests:** from `pdf-translate/`:  
@@ -242,7 +242,7 @@ construct ONE tiny LTR PDF
 Start: copy the matching `goals/NN-….md` into `/goal`. Add:
 
 ```
-Work in C:\Dev\pdf-translate-provider-neutral\pdf-translate.
+Work in <REPO>/pdf-translate.
 Interpreter: py -3. Do not start the next number. Do not mix a bakeoff.
 ```
 
@@ -294,7 +294,7 @@ Confirm with `git status` before you commit.
 ```
 Read pdf-translate/goals/HANDOVER.md and pdf-translate/SKILL.md.
 
-Work in C:\Dev\pdf-translate-provider-neutral\pdf-translate.
+Work in <REPO>/pdf-translate.
 Interpreter: py -3.
 
 08–10 and 13 are closed and committed. Do not redo them.
