@@ -10,15 +10,26 @@ fixture: rows 18, 19 and 20 in `dev/goals/PROGRAM.md`, with measurements in
 `dev/canary/runs/`. One sitting each, cheapest first. When they are done,
 do not invent a fourth — run the canary again.
 
-**Repo:** `<REPO>`
+**Repo:** `<REPO>` — GitHub `ariasr47/pdf-translate-skill`, branch `main`
 **Skill dir:** `pdf-translate/` (the only directory you install)
 **Dev material:** `dev/` — this file, the goal briefs, the canary, explainers
-**Interpreter:** `py -3` on Windows, `python3` elsewhere
+**Interpreter:** `python3` (`py -3` on Windows; bare `python` is the Store alias)
 **Tests:** from `pdf-translate/`:
-`python3 tools/fetch_test_fonts.py` (optional, stops the shaping tests
-skipping), then
-`python3 -m unittest tests.test_pipeline tests.test_corpus_verdicts -v`
-**Branch:** `main`. Everything below is committed.
+
+```bash
+python3 -m pip install -r requirements.txt
+python3 tools/fetch_test_fonts.py      # or the shaping tests skip
+python3 -m unittest tests.test_pipeline tests.test_corpus_verdicts -v
+```
+
+**State of play, 2 September 2026, end of session:**
+
+- **157 tests, no skips**, ~25 s locally. Green on GitHub Actions across
+  Linux and Windows, Python 3.10 and 3.13.
+- `SKILL.md` is at `metadata.version: "29"`.
+- Working tree clean, everything pushed. Nothing is half-finished.
+- Program rows 01–17 and the whole September audit roadmap are **closed**.
+- The canary has run once. It opened rows **18, 19 and 20** — see §5.
 
 ---
 
@@ -152,28 +163,47 @@ always deleted and reported; a certified source is flagged. The orphaned
 
 ---
 
-## 5. What is genuinely not done
+## 5. What is not done
 
-**Rows 18, 19 and 20** (see §above and `PROGRAM.md`). One sitting each.
+### Three rows, and nobody invented them
 
-**Re-sync the installed copy.** It is on `metadata.version` 16; the repo is
-well past that. It lives on a Windows machine
-(`%APPDATA%\Claude\…\skills\pdf-translate`), not this one, so it cannot
-be done from a macOS session.
+The 2 September canary put Opus 5, Fable 5.1 and Haiku 4.5 on the same
+two-page fixture with the same one-line prompt. Opus and Fable scored 5/5,
+Haiku 3/5. All three produced a structurally sound file — so the pipeline
+is not what separates models — and between them they walked into three
+defects. Each has a measurement in `dev/canary/runs/` and a brief to copy
+into `/goal`:
 
-**The audit HTML.** `docs/audit-2026-09-01.html` still shows 16 "Open"
-badges for findings that are all fixed. The markdown audit is current; the
-page a reader lands on is not.
+| # | Brief | What | Found by |
+|---|---|---|---|
+| **18** | `goals/18-center-example.md` | `center` is documented for "signature captions", the one case where it is wrong: those are left-flush under a rule, and centring moved one 7.5 pt off its own rule, past every gate. The example is the defect. Minutes. | Haiku 4.5 |
+| **19** | `goals/19-list-marker-gap.md` | retypeset re-emits `marker + ' '` where the source had two spaces, shifting every list body **3.06 pt left** (measured). Touches the segment schema and every placement path. | Opus 5 |
+| **20** | `goals/20-notice-title-leak.md` | `compliance.md` tells the author to name the source form title in the notice; the leak scan then FAILs that title as untranslated running text. Two features disagreeing. | Fable 5.1 |
 
-**The canary has run once** (2 September, Opus 5 / Fable 5.1 / Haiku 4.5 —
-5/5, 5/5, 3/5). Run it again after 18–20 close, on a different day from any
-of them. No winner in `SKILL.md`.
+Do them **one sitting each, in that order** — cheapest first, and 18 is a
+documentation defect with a demonstrated victim. When they are closed, do
+**not** invent a row 21: run the canary again and see what it walks into.
 
-Out of scope forever unless the user reverses it: a shipped glossary, OCR
-implementation, a semantic term checker, a winner in `SKILL.md`, FL-150 as
-gold.
+One defect from that canary is already fixed: the placement gate could not
+pass a wrapped merge, which broke paragraph mode on the day it shipped
+(`MergePlacementGateTests`).
 
----
+### Two things this machine could not do
+
+- **The installed skill copy is stale** — `metadata.version` 16 against the
+  repo's 29, so anything invoking it gets the pre-audit pipeline. It lives
+  at `%APPDATA%\Claude\…\skills\pdf-translate` on a **Windows** box, not
+  the macOS machine this was built on. Copy the whole of `pdf-translate/`
+  minus `tests/fonts/*.ttf` and `evals/fixtures/`, and refresh the manifest
+  description.
+- **`docs/audit-2026-09-01.html` is stale** — 16 "Open" badges for findings
+  that are all fixed. `docs/RESEARCH-AND-FINDINGS.md` is current; the HTML
+  page a reader actually opens is not. ~20 minutes.
+
+### Out of scope forever, unless the user reverses it
+
+A shipped glossary, OCR implementation, a semantic term checker, a winner
+model named in `SKILL.md`, FL-150 as a gold fixture.
 
 ## 6. How to run a sitting, when there is one
 
@@ -209,3 +239,31 @@ construct ONE tiny PDF that shows the defect
 
 `work/`, `runs/`, `fl150_original.pdf`, `tests/fonts/*.ttf` and the generated
 eval fixtures are gitignored.
+
+---
+
+## 8. First message for the next session (copy this)
+
+```
+Read dev/goals/HANDOVER.md, then pdf-translate/SKILL.md.
+
+Work in <REPO>. Interpreter: python3 (py -3 on Windows).
+Tests, from pdf-translate/:
+  python3 tools/fetch_test_fonts.py
+  python3 -m unittest tests.test_pipeline tests.test_corpus_verdicts
+
+157 tests, no skips, green on CI. Everything is committed and pushed.
+Program rows 01-17 and the whole audit roadmap are closed. Do not redo them.
+
+Next sitting: copy dev/goals/18-center-example.md into /goal and close that
+bar only. Do not start 19 or 20 in the same session. Do not mix in a canary
+run. No glossary. Not FL-150 as a fixture.
+
+When the bar is green: full unittest + corpus, bump metadata.version in
+SKILL.md, commit, stop.
+```
+
+Swap `18-center-example.md` for `19-list-marker-gap.md` or
+`20-notice-title-leak.md` when those are the sitting. If the user wants the
+stale audit HTML or the installed-copy re-sync instead, say so and do only
+that — neither is a gate, and neither needs a fixture.

@@ -126,11 +126,11 @@ queue and of the audit roadmap is closed. **The next three rows exist and
 were not invented** — the 2 September canary produced them, each from a
 model doing a real job, each with a measurement in `dev/canary/runs/`:
 
-| # | What | Found by |
-|---|---|---|
-| **18** | `center` is documented for "signature captions", the one case where it is wrong (left-anchored under a rule). Fix the example | Haiku 4.5 |
-| **19** | List markers lose the source's gap: `marker + ' '` shifts every list body 3.06 pt left. Touches the segment schema | Opus 5 |
-| **20** | The compliance notice's source-language title trips the leak scan. A title quoted in a notice is an identifier by the skill's own rule | Fable 5.1 |
+| # | Brief | What | Found by |
+|---|---|---|---|
+| **18** | `goals/18-center-example.md` | `center` is documented for "signature captions", the one case where it is wrong (left-flush under a rule). Fix the example | Haiku 4.5 |
+| **19** | `goals/19-list-marker-gap.md` | List markers lose the source's gap: `marker + ' '` shifts every list body 3.06 pt left. Touches the segment schema | Opus 5 |
+| **20** | `goals/20-notice-title-leak.md` | The compliance notice's source-language title trips the leak scan. A title quoted in a notice is an identifier by the skill's own rule | Fable 5.1 |
 
 One sitting each, in that order (cheapest first, and 18 is a documentation
 defect that demonstrably misled a model). After those, do not invent the
