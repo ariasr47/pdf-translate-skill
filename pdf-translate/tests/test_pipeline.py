@@ -77,40 +77,53 @@ def _covers(path, *chars):
     return all(f.has_glyph(ord(c)) for c in chars)
 
 
+SYSTEM_FONTS = [
+    Path(r'C:\Windows\Fonts\arial.ttf'),
+    Path(r'C:\Windows\Fonts\Arial.ttf'),
+    Path(r'C:\Windows\Fonts\calibri.ttf'),
+    Path(r'C:\Windows\Fonts\segoeui.ttf'),
+    Path(r'C:\Windows\Fonts\Nirmala.ttf'),
+    Path('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'),
+    Path('/System/Library/Fonts/Supplemental/Arial.ttf'),
+    # Local convenience only: never let a gitignored font decide whether
+    # the suite is green (Arial's cmap reports soft hyphens and NBSPs,
+    # which is exactly what the gates must cope with).
+    Path(__file__).resolve().parents[2] / 'work' / 'NotoSansJP-Regular-full.ttf',
+]
+
+
+def font_candidates():
+    """Fetched faces first, then whatever the host happens to ship."""
+    out = []
+    if VENDORED_FONTS.is_dir():
+        out.extend(sorted(VENDORED_FONTS.glob('*.ttf')))
+    out.extend(p for p in SYSTEM_FONTS if p.is_file())
+    return out
+
+
+def find_font_for(*texts, what=None):
+    """A TTF covering every character of texts.
+
+    Asking for one font that covers two unrelated scripts is how these
+    tests used to SKIP on Linux: Arial happens to carry Arabic AND Hebrew,
+    no Noto face does, and each test only ever needs one of them.
+    """
+    want = sorted({c for t in texts for c in t if not c.isspace()})
+    for path in font_candidates():
+        if _covers(path, *want):
+            return path
+    raise unittest.SkipTest(
+        f'no TTF covering {what or "".join(want)[:40]}')
+
+
 def find_rtl_font():
-    fetched = vendored('NotoNaskhArabic-Regular.ttf')
-    if fetched and _covers(fetched, AR_TARGET[0]):
-        # Naskh has no Hebrew; the Hebrew tests fall back below.
-        if _covers(fetched, HE_TARGET[0]):
-            return fetched
-    font = find_test_font()
-    if _covers(font, AR_TARGET[0], HE_TARGET[0]):
-        return font
-    arial = Path(r'C:\Windows\Fonts\arial.ttf')
-    if arial.is_file() and _covers(arial, AR_TARGET[0], HE_TARGET[0]):
-        return arial
-    raise unittest.SkipTest('no TTF with Arabic and Hebrew glyphs')
+    """Arabic. Hebrew-only tests ask for HE_TARGET explicitly."""
+    return find_font_for(AR_TARGET, AR_PHRASE, what='Arabic')
 
 
 def find_test_font():
-    fetched = vendored('NotoSans-Regular.ttf')
-    if fetched:
-        return fetched
-    candidates = [
-        Path(r'C:\Windows\Fonts\arial.ttf'),
-        Path(r'C:\Windows\Fonts\Arial.ttf'),
-        Path(r'C:\Windows\Fonts\calibri.ttf'),
-        Path(r'C:\Windows\Fonts\segoeui.ttf'),
-        Path('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'),
-        Path('/System/Library/Fonts/Supplemental/Arial.ttf'),
-        # Local convenience only: never let a gitignored font decide whether
-        # the suite is green (Arial's cmap reports soft hyphens and NBSPs,
-        # which is exactly what the gates must cope with).
-        Path(__file__).resolve().parents[2] / 'work' / 'NotoSansJP-Regular-full.ttf',
-    ]
-    for p in candidates:
-        if p.is_file():
-            return p
+    for path in font_candidates():
+        return path
     raise unittest.SkipTest('no glyf TTF available for tests')
 
 
@@ -4007,7 +4020,9 @@ class EmptyTargetTests(unittest.TestCase):
 
 class RtlTextLayerTests(unittest.TestCase):
     def _retypeset_pair(self, tmp, source, target):
-        font = find_rtl_font()
+        # Arabic and Hebrew live in different Noto faces; ask for the one
+        # this target actually needs.
+        font = find_font_for(target)
         src = os.path.join(tmp, 'orig.pdf')
         stripped = os.path.join(tmp, 'stripped.pdf')
         out = os.path.join(tmp, 'out.pdf')
@@ -4229,7 +4244,7 @@ class ShapedLeaderTests(unittest.TestCase):
             self.assertEqual(rc, 0, msg=buf.getvalue())
 
     def test_hebrew_label_keeps_its_leaders(self):
-        font = find_rtl_font()
+        font = find_font_for(HE_TARGET, what='Hebrew')
         with tempfile.TemporaryDirectory() as tmp:
             src, out, tr = self._run(tmp, HE_TARGET, font)
             self.assertTrue(len(self.leader_run(out)) >= 3,

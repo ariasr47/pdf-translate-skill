@@ -42,6 +42,12 @@ FONTS = {
         'https://raw.githubusercontent.com/notofonts/arabic/'
         'main/fonts/NotoNaskhArabic/hinted/ttf/NotoNaskhArabic-Regular.ttf',
     ),
+    'NotoSansHebrew-Regular.ttf': (
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/'
+        'main/fonts/NotoSansHebrew/hinted/ttf/NotoSansHebrew-Regular.ttf',
+        'https://raw.githubusercontent.com/notofonts/hebrew/'
+        'main/fonts/NotoSansHebrew/hinted/ttf/NotoSansHebrew-Regular.ttf',
+    ),
     'NotoSansDevanagari-Regular.ttf': (
         'https://raw.githubusercontent.com/notofonts/notofonts.github.io/'
         'main/fonts/NotoSansDevanagari/hinted/ttf/'

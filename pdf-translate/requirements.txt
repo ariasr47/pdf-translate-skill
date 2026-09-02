@@ -2,6 +2,11 @@
 # releases (TextPage/displaylist shapes, Story engine, insert_htmlbox
 # signature), and this pipeline reads several of them directly. Raise a
 # bound only with the full suite green on the new version.
+#
+# pikepdf 9 and 10 differ in behaviour this code depends on: asking a
+# non-dictionary object for a key raises on 9 and returns None on 10.
+# Both are supported and both are exercised (CI resolves 9, the usual
+# development venv is on 10).
 pymupdf>=1.24,<1.30
-pikepdf>=8.0,<10
+pikepdf>=8.0,<11
 fonttools>=4.40,<5

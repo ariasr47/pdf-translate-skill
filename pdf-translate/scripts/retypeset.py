@@ -473,10 +473,15 @@ def canonicalize_text_layer(path, fontfiles, texts):
     pdf = pikepdf.open(path, allow_overwriting_input=True)
     try:
         for obj in pdf.objects:
+            # pdf.objects yields every indirect object, including arrays,
+            # numbers and strings. Asking one of those for a key raises,
+            # and WHICH exception depends on the pikepdf version
+            # (ValueError on 9.x, TypeError elsewhere) — so catch the
+            # attempt, not a guessed type.
             try:
                 if obj.get('/Type') != pikepdf.Name('/Font'):
                     continue
-            except (AttributeError, TypeError):
+            except Exception:
                 continue
             gidmap = maps.get(_font_key(obj.get('/BaseFont')))
             tu = obj.get('/ToUnicode')
