@@ -163,6 +163,13 @@ broken. The channel always writes `[export, display]` pairs and refuses a
 spec that touches a choice field's `/V`; `verify.py` compares export
 values against the original and FAILs any drift.
 
+One thing to expect on the visual pass: **MuPDF's own appearance generator
+draws a choice field's `/V` verbatim**, so a render made with PyMuPDF shows
+the *export* value ("First") where a conforming viewer shows the translated
+display half ("Primero"). The file is right; the preview renderer is
+simple. Do not "fix" it by translating the export — that is the failure this
+whole section is about. Check a dropdown in a real viewer instead.
+
 ## 13. Rotated lines re-typeset flat
 
 Page `/Rotate` is harmless — origins come back in unrotated space. A

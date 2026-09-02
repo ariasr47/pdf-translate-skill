@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "27"
+  version: "28"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -189,6 +189,11 @@ entry becomes `[export, display]` and only the display half is
 translated, so `/V` and everything the form submits keep working. A spec
 that asks to translate a choice field's `/V` is refused; verify's `/Opt`
 parity gate fails any output whose export values moved.
+
+On the visual pass, expect a rendered dropdown to still show the **export**
+value: MuPDF's appearance generator draws `/V` verbatim, while a conforming
+viewer shows the translated display half. The file is right; check one
+dropdown in a real viewer rather than translating the export.
 
 Strip is also a gate. After saving, it re-reads the stripped file with
 annotation appearances excluded; if any page still has text it prints

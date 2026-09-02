@@ -126,3 +126,11 @@ queue and of the audit roadmap is closed.** Do not invent the next row.
 Wait for a new silent-PASS class — gates green, output wrong — then one
 constructed fixture, one sitting. Do not paste Grok NOTES,
 `work/translations.json`, or bakeoff scores into that session.
+
+## Versioning
+
+`SKILL.md`'s `metadata.version` is a monotonic integer, bumped whenever the
+shipped scripts or the workflow change. It began as the last closed gate
+number and kept counting past 17 as the audit roadmap closed, so it is an
+ordering, not a row number. Bump it in the same commit as the change, and
+re-sync any installed copy.

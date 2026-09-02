@@ -49,10 +49,12 @@ person with Python.
 
 ## Versioning
 
-`pdf-translate/SKILL.md` carries `metadata.version`: the number of the last
-closed program row (see `dev/goals/PROGRAM.md`). Bump it when a row closes
-and re-sync any installed copy of the skill; a copy showing an older number
-is running old scripts.
+`pdf-translate/SKILL.md` carries `metadata.version`: a monotonic integer,
+bumped whenever the shipped scripts or the workflow change. It began as the
+number of the last closed program gate and kept counting past 17 as the
+audit roadmap closed, so it is no longer a row number — just an ordering.
+Re-sync any installed copy when it moves; a copy showing an older number is
+running old scripts.
 
 ## Licence
 

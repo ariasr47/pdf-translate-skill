@@ -23,11 +23,13 @@ This uses **strip-and-retypeset**: delete the text at the content-stream level
 (which leaves graphics, images, and field widgets untouched), then re-insert
 translated text at the original baselines.
 
-`SKILL.md` carries `metadata.version` in its frontmatter: the number of the
-last closed program row (`../dev/goals/PROGRAM.md`, outside the skill). Bump
-it when a row closes and re-sync any installed copy of the skill; a copy that
-shows an older number is running old scripts. The frontmatter also carries
-`license: MIT` and a `compatibility:` line.
+`SKILL.md` carries `metadata.version` in its frontmatter: a monotonic
+integer, bumped whenever the scripts or the workflow change. It began as the
+number of the last closed program gate (`../dev/goals/PROGRAM.md`, outside
+the skill) and kept counting past 17 as the audit roadmap closed. Re-sync any
+installed copy when it moves; a copy that shows an older number is running
+old scripts. The frontmatter also carries `license: MIT` and a
+`compatibility:` line.
 
 ## Install
 
