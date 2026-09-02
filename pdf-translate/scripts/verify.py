@@ -60,6 +60,11 @@
                   initial or medial form) was drawn letter by letter and
                   FAILs. Reads the glyph forms, not /ActualText. Silent
                   when the page has no Arabic presentation forms.
+13. override markers with --translations: an override replaces its whole
+                  span, so its parts must keep the source segment's list
+                  marker (d.) and tail ($). Needs segments.json: --segments
+                  PATH, else the file beside translations.json; without
+                  one the gate is SKIPped, not failed.
 
 These gates catch structural failures. They do NOT catch visual defects —
 after they pass you still render pages side-by-side and look at them.
@@ -69,7 +74,7 @@ Usage:
       [--fill-text "value in target script"] [--allow WORD,WORD,...] \
       [--min-ink 0.4] [--source-regex "[A-Za-z]{4,}"] \
       [--source-words-from segments.json] [--allow-extra-prefix tr_] \
-      [--translations translations.json]
+      [--translations translations.json] [--segments segments.json]
 """
 import json
 import os
@@ -482,6 +487,47 @@ def missing_identifier_spans(page_text, spans, allow_translate=None):
     return missing
 
 
+def override_marker_misses(conf, segments):
+    """[(contains, token)] for override parts that drop a source marker or tail.
+
+    An override replaces the whole span, so the list marker ('d.') and the
+    tail after the dot leaders ('$') only survive if some part carries them.
+    Overrides whose `contains` matches no segment are not this gate's job.
+    """
+    by_page = {}
+    for seg in segments or []:
+        by_page.setdefault(seg.get('page'), []).append(seg)
+    misses = []
+    for ov in conf.get('overrides') or []:
+        contains = ov.get('contains') or ''
+        if not contains:
+            continue
+        parts_text = normalize_ws_nbsp(' '.join(
+            str(part.get('text') or '') for part in (ov.get('parts') or [])))
+        for seg in by_page.get(ov.get('page'), []):
+            if contains not in seg.get('text', ''):
+                continue
+            for token in ((seg.get('marker') or '').strip(), (seg.get('tail') or '').strip()):
+                if token and token not in parts_text and (contains, token) not in misses:
+                    misses.append((contains, token))
+    return misses
+
+
+def load_segments_for(translations_path, segments_path=None):
+    """segments.json for the override gate: --segments, else beside the mapping."""
+    path = segments_path
+    if not path and translations_path:
+        candidate = os.path.join(os.path.dirname(os.path.abspath(translations_path)),
+                                 'segments.json')
+        if os.path.isfile(candidate):
+            path = candidate
+    if not path or not os.path.isfile(path):
+        return None
+    with open(path, encoding='utf-8') as f:
+        data = json.load(f)
+    return data.get('segments') if isinstance(data, dict) else data
+
+
 def scan_leaks(text, allow, source_words=None, src_re=None, script='Latin'):
     """Split surviving source-script tokens into running vs isolated.
 
@@ -630,7 +676,7 @@ def ink(page):
 
 def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
            source_regex=None, source_words_from=None, allow_extra_prefix=None,
-           translations=None):
+           translations=None, segments=None):
     """Run structural gates. Returns 0 on pass, 1 on any failure."""
     allow = set(w.lower() for w in (allow or []) if w)
 
@@ -694,7 +740,7 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
         try:
             j.save(fill_path)
             t = pymupdf.open(fill_path)
-            got_t = any(w.field_value == fill_text for p in t for w in p.widgets()
+            got_t = (ttarget is None) or any(w.field_value == fill_text for p in t for w in p.widgets()
                         if w.field_name == ttarget)
             got_cb = (cbtarget is None) or any(
                 w.field_value for p in t for w in p.widgets()
@@ -832,6 +878,20 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
         else:
             print('PASS caption width')
 
+        segs = load_segments_for(translations, segments)
+        if segs is None:
+            print('SKIP override marker gate (no segments.json beside the mapping; '
+                  'pass --segments)')
+        else:
+            misses = override_marker_misses(conf, segs)
+            if misses:
+                print(f'FAIL override drops source marker or tail ({len(misses)}):')
+                for contains, token in misses[:20]:
+                    print(f'   "{contains}" is missing "{token}"')
+                fail = 1
+            elif conf.get('overrides'):
+                print('PASS override parts keep markers and tails')
+
         spans = collect_identifier_spans(o)
         missing_ids = missing_identifier_spans(
             hay, spans, allow_translate=conf.get('allow_translate') or [])
@@ -863,6 +923,7 @@ def main(argv=None):
         source_words_from=_arg(argv, '--source-words-from', None),
         allow_extra_prefix=_arg(argv, '--allow-extra-prefix', None),
         translations=_arg(argv, '--translations', None),
+        segments=_arg(argv, '--segments', None),
     )
     print(f'elapsed {time.perf_counter()-t0:.2f}s')
     return rc

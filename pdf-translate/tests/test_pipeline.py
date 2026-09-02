@@ -9,6 +9,7 @@ pre-stripped stand-in when checking strip.
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -490,6 +491,44 @@ def render_region(page, rect, dpi=100):
 
 def pixel_diff(a, b):
     return sum(1 for x, y in zip(a, b) if abs(x - y) > 40)
+
+
+OVERRIDE_CORE = 'Public aid'
+OVERRIDE_LINE = 'd. ' + OVERRIDE_CORE + (' ' * 8) + '.... $'
+OVERRIDE_OTHER = 'Other text line.'
+
+
+def build_override_pdf(path):
+    """One inner-gap row `d. Public aid      [cb] .... $` plus a plain line."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_text((72, 100), OVERRIDE_LINE, fontsize=11)
+    cb = pymupdf.Widget()
+    cb.field_name = 'Aid'
+    cb.field_type = pymupdf.PDF_WIDGET_TYPE_CHECKBOX
+    cb.rect = pymupdf.Rect(150, 88, 164, 102)
+    page.add_widget(cb)
+    page.insert_text((72, 140), OVERRIDE_OTHER, fontsize=11)
+    doc.save(path)
+    doc.close()
+
+
+def override_mapping(path, font, parts):
+    """Mapping for build_override_pdf with one override on the inner-gap row."""
+    data = {
+        'fonts': {'regular': str(font), 'bold': str(font)},
+        'translations': {OVERRIDE_CORE: 'Ayuda', OVERRIDE_OTHER: 'Otra linea.'},
+        'merges': [],
+        'overrides': [{'page': 0, 'contains': OVERRIDE_CORE, 'parts': parts}],
+        'center': [],
+        'skip': [],
+    }
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=1)
+
+
+PARTS_KEEP = [{'text': 'd. Ayuda', 'x': 72.0}, {'text': '.... $', 'x': 180.0}]
+PARTS_DROP = [{'text': 'Ayuda', 'x': 72.0}]
 
 
 class ImportSafeTests(unittest.TestCase):
@@ -1068,6 +1107,31 @@ class FieldsLinksTests(unittest.TestCase):
             self.assertIn('PASS fill round-trip', log)
             self.assertIn('PASS page 1 ink ratio', log)
             self.assertIn('PASS no untranslated running text', log)
+
+
+class CheckboxOnlyFormTests(unittest.TestCase):
+    def test_checkbox_only_form_passes_fill_round_trip(self):
+        # Consent sheets and questionnaires often have tick boxes and no text
+        # field. The fill gate must not fail them for lacking a text field.
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'boxes.pdf')
+            doc = pymupdf.open()
+            page = doc.new_page(width=612, height=792)
+            page.insert_text((72, 80), 'Tick all that apply.', fontsize=12)
+            for i, name in enumerate(('Agree', 'Consent')):
+                cb = pymupdf.Widget()
+                cb.field_name = name
+                cb.field_type = pymupdf.PDF_WIDGET_TYPE_CHECKBOX
+                cb.rect = pymupdf.Rect(72, 100 + 20 * i, 86, 114 + 20 * i)
+                page.add_widget(cb)
+            doc.save(src)
+            doc.close()
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, src, min_ink=0.2)
+            log = buf.getvalue()
+            self.assertIn('PASS fill round-trip', log)
+            self.assertNotIn('FAIL fill round-trip', log)
 
 
 class NonFormTests(unittest.TestCase):
@@ -2528,6 +2592,97 @@ class ShapedScriptTests(unittest.TestCase):
             self.assertEqual(rc, 1, msg=buf.getvalue())
             self.assertIn('scaled below', buf.getvalue())
             self.assertFalse(os.path.exists(out))
+
+
+class OverrideMarkerTests(unittest.TestCase):
+    """Goal 11: an override replaces the whole span, so its parts must keep
+    the source marker (d.) and tail ($); verify --translations fails if not."""
+
+    def _run(self, tmp, parts, font):
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        build_override_pdf(src)
+        strip_text.strip_text(src, stripped)
+        res = extract_segments.extract_segments(src, outdir=tmp)
+        self.assertTrue(any(w.get('kind') == 'inner-gap' for w in res['warnings']), msg=res['warnings'])
+        override_mapping(tr, font, parts)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(stripped, os.path.join(tmp, 'segments.json'), tr, out)
+        self.assertEqual(rc, 0, msg=buf.getvalue())
+        return src, out, tr, os.path.join(tmp, 'segments.json')
+
+    def test_override_marker_misses_unit(self):
+        segs = [{'page': 0, 'text': OVERRIDE_LINE, 'marker': 'd.', 'core': OVERRIDE_CORE,
+                 'dots': '....', 'tail': '$'},
+                {'page': 0, 'text': OVERRIDE_OTHER, 'marker': '', 'core': OVERRIDE_OTHER,
+                 'dots': '', 'tail': ''}]
+        conf = {'overrides': [{'page': 0, 'contains': OVERRIDE_CORE, 'parts': PARTS_DROP}]}
+        self.assertEqual(verify.override_marker_misses(conf, segs),
+                         [(OVERRIDE_CORE, 'd.'), (OVERRIDE_CORE, '$')])
+        conf['overrides'][0]['parts'] = PARTS_KEEP
+        self.assertEqual(verify.override_marker_misses(conf, segs), [])
+        conf['overrides'][0]['contains'] = 'Other text'
+        self.assertEqual(verify.override_marker_misses(conf, segs), [])
+
+    def test_override_keeps_marker_and_tail_passes(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, segs = self._run(tmp, PARTS_KEEP, font)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr, min_ink=0.2)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('PASS override parts keep', log)
+
+    def test_override_drops_marker_and_tail_fails(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, segs = self._run(tmp, PARTS_DROP, font)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr, min_ink=0.2)
+            log = buf.getvalue()
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn('FAIL override', log)
+            self.assertIn('d.', log)
+            self.assertIn('$', log)
+            self.assertIn(OVERRIDE_CORE, log)
+
+    def test_omit_translations_does_not_run_override_gate(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, segs = self._run(tmp, PARTS_DROP, font)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, min_ink=0.2)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertNotIn('override', log.lower())
+
+    def test_segments_flag_and_sibling_default_cli(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, segs = self._run(tmp, PARTS_DROP, font)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.main([src, out, '--translations', tr, '--segments', segs, '--min-ink', '0.2'])
+            self.assertEqual(rc, 1, msg=buf.getvalue())
+            self.assertIn('FAIL override', buf.getvalue())
+            # A mapping with no segments.json beside it and no flag: the gate is skipped, not failed.
+            alone = os.path.join(tmp, 'alone')
+            os.makedirs(alone)
+            tr2 = os.path.join(alone, 'translations.json')
+            shutil.copy(tr, tr2)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.main([src, out, '--translations', tr2, '--min-ink', '0.2'])
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('SKIP override', log)
 
 
 class ProviderAgnosticTests(unittest.TestCase):

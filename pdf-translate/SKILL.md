@@ -217,7 +217,11 @@ The language decisions that matter:
   convention requires it *and* the document is not instructing a filing
   convention — say so when you do.
 - Heed the extractor's warnings about in-span gaps — each needs an
-  `overrides` entry with explicit x positions.
+  `overrides` entry with explicit x positions. An override replaces the
+  whole span, so its parts must carry the source list marker (`d.`) and
+  the tail after the dot leaders (`$`); `--translations` fails an override
+  that drops them (verify reads `segments.json` beside the mapping, or
+  `--segments`).
 
 ### 4. Fonts
 
@@ -289,7 +293,10 @@ The same flag also checks **write/find/say identifiers**. Quoted strings and
 `Form` / `Schedule` / `Attachment` / `Exhibit` names from the original page
 must still appear in the output text layer. Missing ones FAIL and are
 listed. If you meant to translate a span, list it in `allow_translate` and
-record why in NOTES (scripts do not read NOTES). Omit `--translations`:
+record why in NOTES (scripts do not read NOTES). It also checks that every
+override's parts still carry the source marker and tail (`d.`, `$`); it
+needs `segments.json` beside `translations.json` or `--segments`, and
+SKIPs rather than fails without one. Omit `--translations`:
 field / fill / ink / leak / scan gates are unchanged.
 
 All gates must pass. Then the step that actually creates the quality:

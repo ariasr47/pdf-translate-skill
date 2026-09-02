@@ -107,6 +107,7 @@ field identity; no redaction; glyf fonts + rasterization assert;
 | **10** | Output pushbutton `/CA` wider than widget (helv `text_length`, pad 2 pt) FAIL | `CaptionWidthTests` |
 | **13** | Stripped file re-read without annotation appearances must have no page text; nested Form XObjects and `/Resources` inherited from `/Pages` are stripped; FAIL deletes the file | `StripCompletenessTests` + corpus strip-clean assertion; `corpus/nested_xobject.pdf` |
 | **14** | Invisible text layer (OCR'd scan): stripping the text changes under 3% of its span pixels → extract + verify FAIL; scans refused with or without OCR | `InvisibleTextTests`; `corpus/ocr_layer.pdf` `refuse+ocr-layer` |
+| **11** | Override parts must keep the source segment's marker (`d.`) and tail (`$`); verify reads `segments.json` beside the mapping or `--segments`, SKIPs without one | `OverrideMarkerTests` |
 | **16** | Runs whose target script needs shaping (Arabic, Indic, Thai, Khmer, Myanmar) are placed with the Story engine on the original baseline, logical string in `/ActualText`; verify FAILs Arabic drawn unshaped | `ShapedScriptTests` |
 | **15** | Leak scan keyed to the source document's script; same-script pairs use document words automatically; shared spaceless family is REVIEW-only | `ScriptAwareLeakTests`; `corpus/ja_source.pdf`, `corpus/ar_source.pdf` |
 

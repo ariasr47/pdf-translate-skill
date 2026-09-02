@@ -65,7 +65,10 @@ this file is where your judgment lives.
   // Manual placements for segments the extractor flagged (in-span gaps —
   // phrases separated by wide spaces with widgets between them). Matched by
   // substring; each part is placed at an explicit x on the original
-  // baseline. Get x values from the original's span positions.
+  // baseline. Get x values from the original's span positions. Parts
+  // replace the WHOLE span: keep the list marker ("d.") and the tail after
+  // the leaders ("$") in some part, or verify --translations fails naming
+  // the dropped token (it reads segments.json beside this file).
   "overrides": [
     {
       "page": 1,
