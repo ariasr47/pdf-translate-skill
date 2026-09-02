@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Hot-path wrappers around the seven stage scripts.
+"""Hot-path wrappers around the stage scripts.
 
 The deterministic pipeline is a few seconds. Wall-clock is the translation
 and visual loop. Use `rebuild` after the first extract instead of re-running
