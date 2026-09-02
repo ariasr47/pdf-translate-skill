@@ -104,7 +104,8 @@ def scaffold_from_cores(to_translate_path, out_path, force=False):
         if text:
             translations[text] = None
     conf = {
-        'fonts': {'regular': 'font-sub.ttf', 'bold': 'font-sub.ttf'},
+        'fonts': {'regular': 'font-sub.ttf', 'bold': 'font-sub.ttf',
+                  'italic': 'font-sub.ttf', 'bold_italic': 'font-sub.ttf'},
         # BCP-47 tag of the TARGET language, e.g. "es-MX". retypeset writes
         # it to /Lang and to dc:language; verify REVIEWs a mapping without
         # one, because the output otherwise tells screen readers it is
@@ -114,6 +115,7 @@ def scaffold_from_cores(to_translate_path, out_path, force=False):
         'merges': [],
         'overrides': [],
         'center': [],
+        'right': [],
         'skip': [],
         'allow_scale': [],
     }

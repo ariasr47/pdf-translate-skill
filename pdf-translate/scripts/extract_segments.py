@@ -50,6 +50,10 @@ Segmentation rules (why they matter):
 - Consecutive same-column lines that look like a wrapped paragraph are
   flagged as merge *candidates*. Never auto-merged; declare each merge
   explicitly in translations.json.
+- Segments that share a right edge while their left edges differ are
+  flagged "right-aligned": a longer translation anchored at the left grows
+  past the edge it was tucked against. The author lists those cores in
+  "right"; nothing is realigned automatically.
 - Three or more stacked cores sharing a skinny column (same left edge,
   bbox under 90 pt wide) are flagged "narrow-column": a pay-stub box or
   label stack, where translating each line-break on its own turns the
@@ -277,6 +281,48 @@ def document_strings(src):
         doc.close()
 
 
+RIGHT_EDGE_TOL = 1.5
+RIGHT_LEFT_SPREAD = 4.0
+
+
+def right_alignment_warnings(segments):
+    """Propose cores that look right-aligned. Never applied automatically.
+
+    Only `center` existed, so a right-aligned label grew rightward past its
+    original right edge: "Total" at x1 540 became "Gesamt" ending at 555.3,
+    over the rule it was tucked against. Segments that share a right edge
+    while their left edges differ are a right-aligned column; the author
+    puts those cores in "right".
+    """
+    warnings = []
+    by_page = {}
+    for s in segments:
+        if s['passthrough']:
+            continue
+        by_page.setdefault(s['page'], []).append(s)
+    for page, segs in sorted(by_page.items()):
+        buckets = {}
+        for s in segs:
+            buckets.setdefault(round(s['bbox'][2] / RIGHT_EDGE_TOL), []).append(s)
+        for _, group in sorted(buckets.items()):
+            if len(group) < 2:
+                continue
+            lefts = [s['bbox'][0] for s in group]
+            if max(lefts) - min(lefts) <= RIGHT_LEFT_SPREAD:
+                continue
+            warnings.append({
+                'page': page,
+                'kind': 'right-aligned',
+                'ids': [s['id'] for s in group],
+                'right_edge': round(max(s['bbox'][2] for s in group), 2),
+                'why': 'these share a right edge but not a left one, so they '
+                       'are right-aligned. A longer translation anchored left '
+                       'grows past that edge — list these cores in "right"',
+                'lines': [s['core'] for s in group],
+            })
+    return warnings
+
+
 def extract_segments(src, outdir='.', gap=12.0):
     """Extract geometry + unique cores. Writes segments.json and to_translate.json."""
     os.makedirs(outdir, exist_ok=True)
@@ -394,6 +440,7 @@ def extract_segments(src, outdir='.', gap=12.0):
 
     warnings.extend(merge_candidate_warnings(segments))
     warnings.extend(narrow_column_warnings(segments))
+    warnings.extend(right_alignment_warnings(segments))
 
     invisible = invisible_text_pages(src)
     for pno, fraction in invisible:

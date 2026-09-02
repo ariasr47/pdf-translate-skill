@@ -306,6 +306,14 @@ def drifted_characters(out_text, authored_text):
     return sorted(counts.items())
 
 
+# Same narrow inline markup retypeset accepts in a single-line target.
+INLINE_TAGS = re.compile(r'</?(?:b|i|em|strong)\s*/?>', re.I)
+
+
+def strip_inline_markup(text):
+    return INLINE_TAGS.sub('', text or '')
+
+
 def collect_translation_targets(conf, exclude_cores=None):
     """Authored strings that should land in get_text() (not skip / not passthrough).
 
@@ -319,7 +327,7 @@ def collect_translation_targets(conf, exclude_cores=None):
     for core, tgt in (conf.get('translations') or {}).items():
         if core in skip or core in exclude or tgt is None:
             continue
-        for part in str(tgt).split('‖'):
+        for part in strip_inline_markup(str(tgt)).split('‖'):
             targets.append(part)
     for merge in conf.get('merges') or []:
         html = merge.get('html') or ''
@@ -384,7 +392,8 @@ def _authored_text_is_empty(raw):
     """True when normalize + strip leaves nothing. Length-1 'Z' is not empty."""
     if raw is None:
         return False
-    return len(normalize_ws_nbsp(str(raw)).strip()) == 0
+    plain = strip_inline_markup(str(raw))
+    return len(normalize_ws_nbsp(plain).strip()) == 0
 
 
 def _merge_plain_text(html):

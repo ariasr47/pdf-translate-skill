@@ -13,7 +13,7 @@ description: >-
   "translate this document but keep the formatting". Also use it when a user
   complains that a translated PDF broke its layout or its form fields.
 metadata:
-  version: "22"
+  version: "23"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -214,7 +214,9 @@ The extractor also prints warnings: in-span gaps (need `overrides`),
 write/find/say candidates (quoted strings, `Form`/`Schedule` names, URLs —
 halt-and-confirm, not optional color), possible wrapped-paragraph
 merges (declare them explicitly; never auto-merge by geometry, it swallows
-sibling list items), and `narrow-column` stacks — three or more cores
+sibling list items), `right-aligned` groups (segments sharing a right edge
+but not a left one — put those cores in `right` or a longer translation
+grows past the rule they sit against), and `narrow-column` stacks — three or more cores
 sharing a column under 90 pt wide (pay-stub boxes, label stacks). Those
 are warn-only; nothing merges them for you.
 
@@ -297,6 +299,13 @@ MuPDF substitutes its own fallback face mid-string, or draws a box, and
 reports nothing — the ink gate barely moves and the text layer still reads
 correctly. Pick a font that covers the target script
 (`references/fonts.md`); the run names the code points.
+
+**Alignment and weight.** `center` re-centers on the original midpoint;
+`right` re-anchors on the original right edge. `fonts` takes four roles —
+`regular`, `bold`, `italic`, `bold_italic` — each falling back to the
+nearest one you named, so a Times Italic source no longer comes back
+upright. A single-line target may carry inline `<b>`/`<i>` for mixed
+weights within one line.
 
 **Document metadata is retargeted here too.** Set `"lang"` in
 translations.json to the target BCP-47 tag: retypeset writes it to `/Lang`

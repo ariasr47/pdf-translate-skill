@@ -6,8 +6,11 @@ this file is where your judgment lives.
 ```jsonc
 {
   "fonts": {
-    "regular": "font-sub.ttf",      // required; path relative to cwd
-    "bold": "font-sub-bold.ttf"     // optional; falls back to regular
+    "regular": "font-sub.ttf",           // required; path relative to cwd
+    "bold": "font-sub-bold.ttf",         // optional; falls back to regular
+    "italic": "font-sub-italic.ttf",     // optional; falls back to regular
+    "bold_italic": "font-sub-bi.ttf"     // optional; falls back to bold,
+                                         // then italic, then regular
   },
 
   // BCP-47 tag of the TARGET language. retypeset writes it to /Lang and to
@@ -26,6 +29,11 @@ this file is where your judgment lives.
   // the placement gate does not look for them in the text layer.
   "translations": {
     "NAME:": "氏名：",
+    // A single-line target may carry inline <b>/<i> (or <strong>/<em>),
+    // the way a merge's html can; it is then placed through the Story
+    // engine against the four font roles. Only those four tags count as
+    // markup, so a translation that really contains "<" is left alone.
+    "Read the notice.": "Lea el <b>aviso</b> con <i>atencion</i>.",
     // '‖' splits a bold lead-in from a regular remainder, for lines that
     // mix weights (bold heading + regular parenthetical):
     "Employment (Give information on your current job.)":
@@ -51,6 +59,13 @@ this file is where your judgment lives.
   // midpoint (column headers, titles, signature captions). Without this a
   // shorter translation sits visibly left of center.
   "center": ["CASE NUMBER:", "Total"],
+
+  // Cores anchored on the original bbox RIGHT edge instead of the left:
+  // amount columns, right-hand labels tucked against a rule. Without this
+  // a longer translation grows rightward past that edge. The extractor
+  // proposes candidates as `right-aligned` warnings (segments that share a
+  // right edge while their left edges differ); nothing realigns itself.
+  "right": ["Total", "Subtotal"],
 
   // Exact segment texts to drop entirely — e.g. page text duplicated by a
   // widget caption that renders on top of it (failure-modes.md #6).

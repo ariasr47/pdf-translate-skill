@@ -88,9 +88,12 @@ def find_test_font():
 
 
 def write_mapping(path, translations, font, skip=None, allow_scale=None,
-                  mirror=False, allow_translate=None, lang=None):
+                  mirror=False, allow_translate=None, lang=None, right=None,
+                  italic=None):
     data = {
-        'fonts': {'regular': str(font), 'bold': str(font)},
+        'fonts': {'regular': str(font), 'bold': str(font),
+                  'italic': str(italic or font),
+                  'bold_italic': str(italic or font)},
         'translations': translations,
         'merges': [],
         'overrides': [],
@@ -106,6 +109,8 @@ def write_mapping(path, translations, font, skip=None, allow_scale=None,
         data['allow_translate'] = list(allow_translate)
     if lang is not None:
         data['lang'] = lang
+    if right is not None:
+        data['right'] = list(right)
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
 
@@ -1808,6 +1813,187 @@ class DocumentMetadataTests(unittest.TestCase):
         self.assertEqual(retypeset.retarget_xmp('<x/>', 'es'), ('<x/>', False))
         self.assertEqual(retypeset.retarget_xmp('', 'es'), ('', False))
         self.assertEqual(retypeset.retarget_xmp(plain, ''), (plain, False))
+
+
+RIGHT_LABELS = ['Total', 'Subtotal amount', 'Tax']
+RIGHT_EDGE = 300.0
+ITALIC_CORE = 'Read the notice carefully.'
+
+
+def build_right_aligned_pdf(path):
+    """Three labels sharing a right edge, plus one left-aligned column."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=400, height=300)
+    helv = pymupdf.Font('helv')
+    for i, label in enumerate(RIGHT_LABELS):
+        w = helv.text_length(label, 11)
+        page.insert_text((RIGHT_EDGE - w, 60 + 20 * i), label, fontsize=11)
+    for i, label in enumerate(['Name', 'Address', 'City']):
+        page.insert_text((40, 160 + 20 * i), label, fontsize=11)
+    doc.save(path)
+    doc.close()
+
+
+def right_edges(pdf_path):
+    doc = pymupdf.open(pdf_path)
+    try:
+        out = {}
+        for page in doc:
+            for b in page.get_text('dict')['blocks']:
+                for line in b.get('lines', []):
+                    for sp in line['spans']:
+                        key = verify.normalize_ws_nbsp(sp['text'])
+                        if key:
+                            out[key] = round(sp['bbox'][2], 1)
+        return out
+    finally:
+        doc.close()
+
+
+class AlignmentAndFontRoleTests(unittest.TestCase):
+    """Audit M1/M2: right anchoring, four font roles, inline b/i."""
+
+    def test_extractor_proposes_right_aligned_cores(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_right_aligned_pdf(src)
+            result = extract_segments.extract_segments(src, outdir=tmp)
+            hits = [w for w in result['warnings']
+                    if w.get('kind') == 'right-aligned']
+            self.assertTrue(hits, msg=result['warnings'])
+            proposed = set()
+            for w in hits:
+                proposed.update(w['lines'])
+            self.assertTrue(set(RIGHT_LABELS) <= proposed, msg=proposed)
+            # The left-aligned column shares a LEFT edge, not a right one.
+            self.assertNotIn('Address', proposed)
+
+    def test_right_alignment_unit_needs_differing_left_edges(self):
+        def seg(i, x0, x1, y):
+            return {'id': i, 'page': 0, 'bbox': [x0, y - 10, x1, y + 2],
+                    'origin': [x0, y], 'size': 10.0, 'core': f'c{i}',
+                    'passthrough': False}
+
+        aligned = [seg(0, 100, 300, 60), seg(1, 200, 300, 80)]
+        self.assertEqual(
+            len(extract_segments.right_alignment_warnings(aligned)), 1)
+        # Same left edge too: an ordinary block, not a right-aligned column.
+        block = [seg(0, 100, 300, 60), seg(1, 100, 300, 80)]
+        self.assertFalse(extract_segments.right_alignment_warnings(block))
+        # Different right edges.
+        ragged = [seg(0, 100, 300, 60), seg(1, 200, 280, 80)]
+        self.assertFalse(extract_segments.right_alignment_warnings(ragged))
+        # Passthrough rows never propose anything.
+        nums = [seg(0, 100, 300, 60), seg(1, 200, 300, 80)]
+        nums[0]['passthrough'] = True
+        self.assertFalse(extract_segments.right_alignment_warnings(nums))
+
+    def test_right_list_anchors_the_right_edge(self):
+        font = find_test_font()
+        longer = {'Total': 'Gesamtbetrag', 'Subtotal amount': 'Zwischensumme',
+                  'Tax': 'Steuer', 'Name': 'Name', 'Address': 'Adresse',
+                  'City': 'Stadt'}
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            left_out = os.path.join(tmp, 'left.pdf')
+            right_out = os.path.join(tmp, 'right.pdf')
+            tr_l = os.path.join(tmp, 'left.json')
+            tr_r = os.path.join(tmp, 'right.json')
+            build_right_aligned_pdf(src)
+            extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            segs = os.path.join(tmp, 'segments.json')
+            write_mapping(tr_l, longer, font)
+            write_mapping(tr_r, longer, font, right=RIGHT_LABELS)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                self.assertEqual(
+                    retypeset.retypeset(stripped, segs, tr_l, left_out), 0)
+                self.assertEqual(
+                    retypeset.retypeset(stripped, segs, tr_r, right_out), 0)
+            src_edges = right_edges(src)
+            left_edges = right_edges(left_out)
+            right_out_edges = right_edges(right_out)
+            # Anchored left, the longer German word runs past the edge.
+            self.assertGreater(left_edges['Gesamtbetrag'],
+                               src_edges['Total'] + 1)
+            # In "right", it ends where the source ended.
+            self.assertAlmostEqual(right_out_edges['Gesamtbetrag'],
+                                   src_edges['Total'], delta=1.0)
+            # The left column is untouched by either mapping.
+            self.assertAlmostEqual(right_out_edges['Adresse'],
+                                   left_edges['Adresse'], delta=0.1)
+
+    def test_font_roles_fall_back_to_the_nearest_named_face(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_plain_pdf(src)
+            extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            conf = {
+                'fonts': {'regular': str(font)},   # nothing else named
+                'translations': {SOURCE_SENTENCE: TARGET_SENTENCE},
+                'merges': [], 'overrides': [], 'center': [], 'skip': [],
+            }
+            Path(tr).write_text(json.dumps(conf), encoding='utf-8')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(
+                    stripped, os.path.join(tmp, 'segments.json'), tr, out)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            doc = pymupdf.open(out)
+            try:
+                self.assertIn(TARGET_SENTENCE, doc[0].get_text())
+            finally:
+                doc.close()
+
+    def test_inline_markup_lands_as_plain_text_and_passes_the_gates(self):
+        font = find_test_font()
+        marked = 'El <b>solicitante</b> debe <i>presentar</i> esto hoy.'
+        plain = 'El solicitante debe presentar esto hoy.'
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_plain_pdf(src)
+            extract_segments.extract_segments(src, outdir=tmp)
+            segs = os.path.join(tmp, 'segments.json')
+            strip_text.strip_text(src, stripped)
+            write_mapping(tr, {SOURCE_SENTENCE: marked}, font)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(stripped, segs, tr, out)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            doc = pymupdf.open(out)
+            try:
+                layer = doc[0].get_text()
+            finally:
+                doc.close()
+            self.assertIn(plain, verify.normalize_ws_nbsp(layer))
+            self.assertNotIn('<b>', layer)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr,
+                                   source_words_from=segs)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('PASS authored translations present', log)
+
+    def test_inline_markup_helpers_are_narrow(self):
+        self.assertTrue(retypeset.has_inline_markup('a <b>x</b>'))
+        self.assertTrue(retypeset.has_inline_markup('<em>x</em>'))
+        self.assertFalse(retypeset.has_inline_markup('a < b and c > d'))
+        self.assertFalse(retypeset.has_inline_markup('<span>x</span>'))
+        self.assertEqual(retypeset.strip_inline_markup('a <b>x</b> y'),
+                         'a x y')
+        self.assertEqual(verify.strip_inline_markup('<i>x</i>'), 'x')
+        self.assertEqual(retypeset.strip_inline_markup('a < b'), 'a < b')
 
 
 class OverflowTests(unittest.TestCase):

@@ -15,7 +15,12 @@ document gets the same behavior:
 - '‖' in a translation splits a bold lead-in from a regular remainder
 - declared merges rendered as re-flowed paragraphs via insert_htmlbox
   with auto-shrink (scale_low=0)
-- centered strings re-centered on the original bbox midpoint
+- centered strings re-centered on the original bbox midpoint; strings in
+  "right" re-anchored on the original bbox RIGHT edge, so a longer
+  translation grows leftward instead of past the rule it sat against
+- four font roles (regular, bold, italic, bold-italic) chosen from the
+  source span's flags; a single-line target may carry inline <b>/<i>
+  (or <strong>/<em>) and is then placed through the Story engine
 - pass-through segments re-inserted verbatim in Helvetica
 - every non-passthrough segment lacking a translation is reported; the run
   FAILS (exit 1) if any exist — missing text must never ship silently
@@ -163,16 +168,35 @@ def needs_shaping(text):
     return False
 
 
-def place_shaped(page, x, baseline, text, bold, fs, color_int, avail, css, arch):
-    """Draw one shaped run with the Story engine; returns the scale applied."""
+def _family(bold, italic):
+    return ('trbi' if bold else 'tri') if italic else ('trb' if bold else 'tr')
+
+
+def place_story_line(page, x, baseline, inner_html, bold, italic, fs,
+                     color_int, avail, css, arch, logical=None):
+    """Draw one line through the Story engine at the ORIGINAL baseline.
+
+    Used for two jobs a TextWriter cannot do: scripts that need shaping
+    (joining, conjuncts) and single-line targets that carry inline <b>/<i>.
+    inner_html is already-built markup, so callers escape their own text.
+    """
     top = baseline - SHAPED_BASELINE * fs
     rect = pymupdf.Rect(x, top, x + max(avail, 1.0) + 1.0, top + SHAPED_LINE * fs)
-    fam = 'trb' if bold else 'tr'
-    body = (f'<div style="font-family:{fam}; font-size:{fs:.2f}px; line-height:1; '
-            f'color:#{color_int:06x}; margin:0; padding:0">{htmlmod.escape(text)}</div>')
+    body = (f'<div style="font-family:{_family(bold, italic)}; '
+            f'font-size:{fs:.2f}px; line-height:1; '
+            f'color:#{color_int:06x}; margin:0; padding:0">{inner_html}</div>')
     _, scale = page.insert_htmlbox(rect, body, css=css, archive=arch, scale_low=0)
-    wrap_last_stream_actualtext(page, text)
+    if logical:
+        wrap_last_stream_actualtext(page, logical)
     return scale
+
+
+def place_shaped(page, x, baseline, text, bold, fs, color_int, avail, css,
+                 arch, italic=False):
+    """Draw one shaped run with the Story engine; returns the scale applied."""
+    return place_story_line(page, x, baseline, htmlmod.escape(text), bold,
+                            italic, fs, color_int, avail, css, arch,
+                            logical=text)
 
 
 def _actualtext_bdc(text):
@@ -226,6 +250,30 @@ def wrap_last_stream_actualtext(page, logical):
         return
     tail = (chr(10) + 'EMC' + chr(10)).encode('ascii')
     page.parent.update_stream(xref, _actualtext_bdc(logical) + data + tail)
+
+
+# Inline weight/style markup allowed in a SINGLE-LINE target, the way
+# merges already allow it. Deliberately narrow: only these tags count as
+# markup, so a translation that genuinely contains "<" is left alone.
+INLINE_TAGS = re.compile(r'</?(?:b|i|em|strong)\s*/?>', re.I)
+
+
+def has_inline_markup(text):
+    return bool(INLINE_TAGS.search(text or ''))
+
+
+def strip_inline_markup(text):
+    return INLINE_TAGS.sub('', text or '')
+
+
+def _role_name(bold, italic):
+    if bold and italic:
+        return 'bold-italic'
+    return 'bold' if bold else ('italic' if italic else 'regular')
+
+
+def _font_label(font, labels):
+    return labels.get(id(font), 'font')
 
 
 def missing_glyphs(font, text):
@@ -458,6 +506,7 @@ def retypeset(stripped, segf, trf, out):
     T = conf['translations']
     merges = conf.get('merges', [])
     center = set(conf.get('center', []))
+    right = set(conf.get('right') or [])
     skip = set(conf.get('skip', []))
     allow_scale = set(conf.get('allow_scale') or [])
     overrides = conf.get('overrides', [])
@@ -529,10 +578,39 @@ def retypeset(stripped, segf, trf, out):
             print(f'  p{p}: {c}')
         return 1
 
-    font_r = pymupdf.Font(fontfile=fonts['regular'])
-    font_b = pymupdf.Font(fontfile=fonts.get('bold', fonts['regular']))
+    # Four roles, each falling back to the nearest one the mapping named.
+    # A document set in Times Italic used to come back upright Arial: the
+    # extractor recorded italic and retypeset had nowhere to put it.
+    f_regular = fonts['regular']
+    f_bold = fonts.get('bold') or f_regular
+    f_italic = fonts.get('italic') or f_regular
+    f_bold_italic = fonts.get('bold_italic') or fonts.get('bold') or f_italic
+    font_r = pymupdf.Font(fontfile=f_regular)
+    font_b = pymupdf.Font(fontfile=f_bold)
+    font_i = pymupdf.Font(fontfile=f_italic)
+    font_bi = pymupdf.Font(fontfile=f_bold_italic)
     helv = pymupdf.Font('helv')
     hebo = pymupdf.Font('hebo')
+    heit = pymupdf.Font('heit')
+    hebi = pymupdf.Font('hebi')
+
+    def role(bold, italic):
+        if bold and italic:
+            return font_bi
+        if bold:
+            return font_b
+        if italic:
+            return font_i
+        return font_r
+
+    def helv_role(bold, italic):
+        if bold and italic:
+            return hebi
+        if bold:
+            return hebo
+        if italic:
+            return heit
+        return helv
 
     doc = pymupdf.open(stripped)
     widg = {p.number: [w.rect for w in p.widgets()] for p in doc}
@@ -540,12 +618,19 @@ def retypeset(stripped, segf, trf, out):
     # MuPDF's CSS parser eats backslashes, so a Windows path in url() loses
     # its separators and the engine silently falls back to a font without
     # the target script. Always hand it POSIX separators.
-    css_regular = PurePath(fonts['regular']).as_posix()
-    css_bold = PurePath(fonts.get('bold', fonts['regular'])).as_posix()
+    css_regular = PurePath(f_regular).as_posix()
+    css_bold = PurePath(f_bold).as_posix()
+    css_italic = PurePath(f_italic).as_posix()
+    css_bold_italic = PurePath(f_bold_italic).as_posix()
     css = (f"@font-face {{font-family: tr; src: url({css_regular});}}"
            f"@font-face {{font-family: trb; src: url({css_bold});}}"
+           f"@font-face {{font-family: tri; src: url({css_italic});}}"
+           f"@font-face {{font-family: trbi; src: url({css_bold_italic});}}"
            "body {font-family: tr; margin: 0; padding: 0;}"
-           "b {font-family: trb; font-weight: normal;}")
+           "b, strong {font-family: trb; font-weight: normal;}"
+           "i, em {font-family: tri; font-style: normal;}"
+           "b i, b em, i b, em b, strong i, strong em "
+           "{font-family: trbi; font-weight: normal; font-style: normal;}")
 
     def right_limit(pno, seg, segs):
         x0 = seg['origin'][0]
@@ -591,6 +676,7 @@ def retypeset(stripped, segf, trf, out):
         # One writer per rotated run: a morph rotates a whole TextWriter
         # about a single pivot, and each run must turn about its own origin.
         rot_jobs = []
+        inline_jobs = []
 
         def place_rotated(px, py, parts_fs, cint, dx, dy, rtl=False,
                           logical=''):
@@ -626,11 +712,12 @@ def retypeset(stripped, segf, trf, out):
                        if o['contains'] in text), None)
             if ov:
                 for part in ov['parts']:
-                    f = font_b if part.get('bold') else font_r
+                    f = role(part.get('bold'), part.get('italic'))
                     x = part.get('x', ox)
                     t = part['text']
                     check_glyphs(pno, f, t, ov.get('contains') or t,
-                                 'bold' if part.get('bold') else 'regular')
+                                 _role_name(part.get('bold'),
+                                            part.get('italic')))
                     w = f.text_length(t, fs)
                     maxw = part.get('max_width', 10_000)
                     fs2 = fs if w <= maxw else max(4.0, fs * maxw / w)
@@ -643,7 +730,8 @@ def retypeset(stripped, segf, trf, out):
                         avail = maxw if maxw < 5000 else page.rect.width - 32 - x
                         shaped_jobs.append((mirror_left(x, w, page.rect.width), oy, t,
                                             bool(part.get('bold')), fs, int(seg.get('color', 0)),
-                                            avail, ov.get('contains') or t))
+                                            avail, ov.get('contains') or t,
+                                            bool(part.get('italic'))))
                     elif rot:
                         place_rotated(x, oy, [(t, f, fs2)],
                                       int(seg.get('color', 0)), dx, dy,
@@ -661,7 +749,7 @@ def retypeset(stripped, segf, trf, out):
             if jp is None:
                 if not seg['passthrough']:
                     missing.append((pno, core))
-                f = hebo if seg['bold'] else helv
+                f = helv_role(seg['bold'], seg.get('italic'))
                 raw = seg['text'].rstrip()
                 check_glyphs(pno, f, raw, raw, 'Helvetica (pass-through)')
                 if rot:
@@ -671,22 +759,42 @@ def retypeset(stripped, segf, trf, out):
                 tw.append((mirror_left(ox, f.text_length(raw, fs), page.rect.width),
                            oy), raw, font=f, fontsize=fs)
                 continue
+            if has_inline_markup(jp) and not rot:
+                # Mixed weights inside one line: the Story engine resolves
+                # <b>/<i> against the four font roles, the way merges do.
+                plain = strip_inline_markup(jp).replace('‖', '')
+                check_glyphs(pno, font_r, plain, core, 'regular')
+                if re.search(r'<(b|strong)\b', jp, re.I):
+                    check_glyphs(pno, font_b, plain, core, 'bold')
+                if re.search(r'<(i|em)\b', jp, re.I):
+                    check_glyphs(pno, font_i, plain, core, 'italic')
+                bx = ox
+                if marker:
+                    mfont = helv_role(seg['bold'], seg.get('italic'))
+                    tw.append((bx, oy), marker + ' ', font=mfont, fontsize=fs)
+                    bx += mfont.text_length(marker + ' ', fs)
+                avail = right_limit(pno, seg, segs) - bx
+                inline_jobs.append((bx, oy, jp.replace('‖', ''),
+                                    bool(seg['bold']), bool(seg.get('italic')),
+                                    fs, int(seg.get('color', 0)), avail, core,
+                                    plain))
+                continue
             parts = []
             if marker:
-                mk_font = hebo if seg['bold'] else helv
+                mk_font = helv_role(seg['bold'], seg.get('italic'))
                 check_glyphs(pno, mk_font, marker, core,
                              'Helvetica (list marker)')
                 parts.append((marker + ' ', mk_font))
             if '‖' in jp:
                 bp, rp = jp.split('‖', 1)
-                parts.append((bp, font_b))
-                parts.append((rp, font_r))
+                parts.append((bp, role(True, seg.get('italic'))))
+                parts.append((rp, role(False, seg.get('italic'))))
             else:
-                parts.append((jp, font_b if seg['bold'] else font_r))
+                parts.append((jp, role(seg['bold'], seg.get('italic'))))
             for t, f in parts:
-                check_glyphs(pno, f, t, core,
-                             'bold' if f is font_b else
-                             ('regular' if f is font_r else 'Helvetica'))
+                check_glyphs(pno, f, t, core, _font_label(f, {
+                    id(font_r): 'regular', id(font_b): 'bold',
+                    id(font_i): 'italic', id(font_bi): 'bold-italic'}))
             wsum = sum(f.text_length(t, fs) for t, f in parts)
             rtl_body = is_rtl_text(jp)
             shaped = needs_shaping(jp)
@@ -716,11 +824,15 @@ def retypeset(stripped, segf, trf, out):
             if fs and fs2 < fs and not shaped:
                 consider_ratio(pno, core, fs2 / fs)
             x = ox
-            if core in center and not rot:
-                w2 = sum(f.text_length(t, fs2) for t, f in parts)
-                cx = (seg['bbox'][0] + seg['bbox'][2]) / 2
-                x = max(ox - 200, cx - w2 / 2)
             run_w = sum(f.text_length(t, fs2) for t, f in parts)
+            if core in center and not rot:
+                cx = (seg['bbox'][0] + seg['bbox'][2]) / 2
+                x = max(ox - 200, cx - run_w / 2)
+            elif core in right and not rot:
+                # Anchor the run's RIGHT edge where the source's was. A
+                # longer translation grows leftward instead of over the
+                # rule the column was tucked against.
+                x = max(0.0, seg['bbox'][2] - run_w)
             if not rot:
                 x = mirror_left(x, run_w, page.rect.width)
             if rot:
@@ -739,16 +851,17 @@ def retypeset(stripped, segf, trf, out):
                 # feeds the overflow gate.
                 bx = x
                 if marker:
-                    mfont = hebo if seg['bold'] else helv
+                    mfont = helv_role(seg['bold'], seg.get('italic'))
                     tw.append((bx, oy), marker + ' ', font=mfont, fontsize=fs)
                     bx += mfont.text_length(marker + ' ', fs)
                 shaped_jobs.append((bx, oy, jp.replace('‖', ''), bool(seg['bold']), fs,
-                                    int(seg.get('color', 0)), maxw - (bx - x), core))
+                                    int(seg.get('color', 0)), maxw - (bx - x), core,
+                                    bool(seg.get('italic'))))
                 continue
             if rtl_body:
                 logical = jp.replace('‖', '')
                 rtl_jobs.append((x, oy, logical,
-                                 font_b if seg['bold'] else font_r, fs2,
+                                 role(seg['bold'], seg.get('italic')), fs2,
                                  int(seg.get('color', 0)), logical))
             else:
                 for t, f in parts:
@@ -765,8 +878,14 @@ def retypeset(stripped, segf, trf, out):
             rtw.append((rx, ry), t, font=fnt, fontsize=fsz, right_to_left=True)
             rtw.write_text(page, color=rgb_of(cint))
             wrap_last_bt_actualtext(page, logical)
-        for (sx, sy, text, bold, fsz, cint, avail, key) in shaped_jobs:
-            scale = place_shaped(page, sx, sy, text, bold, fsz, cint, avail, css, arch)
+        for (ix, iy, body, ibold, iital, ifs, icint, iavail, ikey,
+             iplain) in inline_jobs:
+            scale = place_story_line(page, ix, iy, body, ibold, iital, ifs,
+                                     icint, iavail, css, arch)
+            consider_ratio(pno, ikey, scale)
+        for (sx, sy, text, bold, fsz, cint, avail, key, ital) in shaped_jobs:
+            scale = place_shaped(page, sx, sy, text, bold, fsz, cint, avail,
+                                 css, arch, italic=ital)
             consider_ratio(pno, key, scale)
 
     for (pno, r, html, align, size, lh, color, merge_key, merge_opt) in merge_jobs:
