@@ -53,6 +53,13 @@ def cmd_init(argv):
     report = strip_text(src, stripped, captions=captions)
     print(f'strip: xfa_removed={report.get("xfa_removed")} '
           f'dead_buttons={len(report.get("dead_buttons") or [])}')
+    leftover = report.get('leftover_text') or []
+    if leftover:
+        print(f'FAIL: page text survived strip on {len(leftover)} page(s); '
+              f'{stripped} was not written:')
+        for item in leftover:
+            print(f"  p{item['page']}: {item['text']}")
+        return 1
     rc = extract_main([src, '--outdir', work])
     print(f'elapsed {time.perf_counter()-t0:.2f}s -> {work}')
     return rc

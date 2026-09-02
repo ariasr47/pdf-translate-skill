@@ -6,6 +6,7 @@
   "expansion.pdf": "translate",
   "image_only.pdf": "refuse+OCR",
   "multicolumn.pdf": "translate",
+  "nested_xobject.pdf": "translate",
   "pale_blank.pdf": "skip-ink",
   "rotated.pdf": "translate",
   "rtl_source.pdf": "translate",

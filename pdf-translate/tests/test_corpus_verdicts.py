@@ -14,6 +14,7 @@ import sys
 sys.path.insert(0, str(SCRIPTS))
 
 import extract_segments  # noqa: E402
+import strip_text  # noqa: E402
 import verify  # noqa: E402
 
 ALLOWED = {'translate', 'refuse+OCR', 'skip-ink'}
@@ -70,6 +71,14 @@ class CorpusVerdictTests(unittest.TestCase):
                         segs = json.loads(
                             Path(tmp, 'segments.json').read_text(encoding='utf-8'))
                         self.assertGreater(len(segs['segments']), 0, msg=name)
+                        stripped = str(Path(tmp, 'stripped.pdf'))
+                        buf = io.StringIO()
+                        with redirect_stdout(buf):
+                            report = strip_text.strip_text(str(pdf), stripped)
+                        leftover = report.get('leftover_text')
+                        self.assertIsNotNone(leftover, msg='strip has no completeness gate')
+                        self.assertEqual(leftover, [], msg=f'{name}: {leftover}')
+                        self.assertTrue(Path(stripped).is_file(), msg=name)
 
 
 if __name__ == '__main__':

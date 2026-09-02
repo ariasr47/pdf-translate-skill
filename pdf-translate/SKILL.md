@@ -7,11 +7,11 @@ description: >-
   never redaction) with bundled scripts for text stripping, segmentation,
   font preparation, re-typesetting, and verification. Use this skill whenever
   the user wants a PDF translated, localized, or converted to another
-  language — especially government/court/tax/immigration forms, contracts,
-  applications, or any fillable PDF — even if they only say "make this form
-  Japanese", "Spanish version of this PDF", or "translate this document but
-  keep the formatting". Also use it when a user complains that a translated
-  PDF broke its layout or its form fields.
+  language — government, court, tax, immigration, or medical forms; contracts;
+  applications; manuals; brochures; or any born-digital PDF — even if they
+  only say "make this form Japanese", "Spanish version of this PDF", or
+  "translate this document but keep the formatting". Also use it when a user
+  complains that a translated PDF broke its layout or its form fields.
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -24,22 +24,24 @@ are working elsewhere.*
 
 Produce a translated PDF that is visually indistinguishable from the original
 — same tables, rules, columns, checkboxes, dot leaders, page count — with
-every fillable field preserved and working. The architecture that achieves
-this is **strip-and-retypeset**: delete the original text at the
-content-stream level, then re-insert translated text at the original
-coordinates. Overlaying white boxes looks like a scanlation; regenerating the
-document never matches; redaction annotations **delete form fields**. Don't
-use those.
+every fillable field preserved and working. Any born-digital PDF, any
+language pair the pipeline can place. The architecture that achieves this
+is **strip-and-retypeset**: delete the
+original text at the content-stream level, then re-insert translated text at
+the original coordinates. Overlaying white boxes looks like a scanlation;
+regenerating the document never matches; redaction annotations **delete form
+fields**. Don't use those.
 
 The seven scripts are **provider-neutral**: plain Python, no vendor SDK, no
 assumption about which model or CLI is driving. Source-string translation is
 a JSON mapping any person or any model can author; the rest of the pipeline
-runs without that author. Do not ship a terminology glossary to compensate
-for a weak model — register is the mapping author’s job, and a public skill
+runs without that author. Do not ship a terminology glossary. Lexicon is
+*this document's*: name what it is, look up the issuer's translation or that
+class's established usage (step 1), then author the mapping. A public skill
 cannot maintain per-domain dictionaries. A model that will not inspect page
-images or iterate should not author `translations.json`. The visual pass is
-not optional — roughly half of all real defects are invisible to every
-automated gate.
+images, will not look up, or will not iterate should not author
+`translations.json`. The visual pass is not optional — roughly half of all
+real defects are invisible to every automated gate.
 
 Priority order when requirements conflict: **1) structure** (fields, links,
 bookmarks must survive and work) > **2) layout** (only the text changes) >
@@ -69,8 +71,8 @@ Confidently wrong text direction is worse than a halt.
 ## Workflow
 
 Run the bundled scripts from `scripts/` in this order. They do all the
-deterministic work; your work is the language (translating, deciding
-paragraph merges) and the visual inspection loop.
+deterministic work; your work is the identity record, the mapping, and
+the visual inspection loop.
 
 **Where the time goes.** On a 4-page form the seven scripts finish in a few
 seconds. A 30–40 minute run is almost entirely translation authoring and
@@ -87,7 +89,7 @@ seconds. A 30–40 minute run is almost entirely translation authoring and
 ```bash
 python3 scripts/pipeline.py init original.pdf --work .
 python3 scripts/pipeline.py from-cores --work .
-# author every null in translations.json, prepare_font once
+# write identity record, author every null, prepare_font once
 python3 scripts/pipeline.py rebuild --work . original.pdf out.pdf \
     --fill-text "text in target script" --source-words-from segments.json
 python3 scripts/pipeline.py render original.pdf out.pdf renders/
@@ -95,11 +97,31 @@ python3 scripts/pipeline.py render original.pdf out.pdf renders/
 
 ### 1. Recon
 
-Open the PDF and note: page count, fields per page (`page.widgets()`), fonts,
-whether `'/XFA' in pdf.Root.AcroForm` (hybrid LiveCycle form — Acrobat
-renders the XFA layer instead of your edited pages until it's removed).
-Read `references/failure-modes.md` **now** — it is short and every item in it
-was a real, silent, hours-costing failure.
+**Geometry.** Open the PDF and note: page count, fields per page
+(`page.widgets()`), fonts, whether `'/XFA' in pdf.Root.AcroForm` (hybrid
+LiveCycle form — Acrobat renders the XFA layer instead of your edited pages
+until it's removed). Read `references/failure-modes.md` **now** — it is short
+and every item in it was a real, silent, hours-costing failure.
+
+**Identity — write this down before filling any translation.** Session notes
+or `NOTES.md`, not `translations.json` (the scripts do not read it). Four
+facts:
+
+1. **Class** — one sentence a librarian could file (court income form,
+   hospital consent, tax instructions, product brochure, …).
+2. **Issuer** — who published it, or `none` / `unknown`.
+3. **Parallel text** — URL or path of *this same document* in the target
+   language, or `none`, or `not searched`.
+4. **Identifiers** — names on *this* PDF the reader must still write, find,
+   or say in the source language. Fill after extract (step 3).
+
+**Lookup.** If you can search, you must. Search where a translator of this
+class would look: the issuer's catalog (form number or title), the regulator,
+the vendor's localized product. If a published translation of this same
+document exists, **those terms of art win**. If none exists, use established
+usage for that class in the target language — not a calque, not a word
+invented on the page. If you cannot search, record `not searched` and do not
+pretend you matched an official file.
 
 ### 2. Strip
 
@@ -114,9 +136,18 @@ Removes all page text, keeps graphics/images/widgets, wraps content in q/Q,
 removes XFA, and reports pushbuttons with no action (dead XFA scripts). Prefer
 `--captions captions.json` (field-name → caption) to rewrite `/MK /CA` in
 place and drop stale `/AP` streams so the widget count stays exact and
-viewers do not keep drawing the source-language caption. Hide
+viewers do not keep drawing the source-language caption. The new caption
+must fit the widget; verify `--translations` fails overflow. Hide
 (`--hide-buttons`) only when the button should disappear; hiding plus a
 drawn replacement adds widgets unless you are replacing, not duplicating.
+
+Strip is also a gate. After saving, it re-reads the stripped file with
+annotation appearances excluded; if any page still has text it prints
+`FAIL` with the page and the text, exits non-zero and **does not leave the
+stripped file on disk** (the same rule as retypeset on overflow). Text
+inside nested Form XObjects and under `/Resources` inherited from the page
+tree is stripped like page text. Widget captions and field values are
+appearance streams, not page text; they never trip this gate.
 
 ### 3. Extract and translate
 
@@ -138,15 +169,19 @@ fails until you fill them in. It will not overwrite an existing file unless
 you pass `--force`. Format in `references/translations-format.md`.
 The extractor also prints warnings: in-span gaps (need `overrides`),
 write/find/say candidates (quoted strings, `Form`/`Schedule` names, URLs —
-confirm before translating), and possible wrapped-paragraph merges (declare
-them explicitly; never auto-merge by geometry, it swallows sibling list
-items).
+halt-and-confirm, not optional color), and possible wrapped-paragraph
+merges (declare them explicitly; never auto-merge by geometry, it swallows
+sibling list items).
+
+Finish the identity record **before** filling any translation: copy
+write/find/say warnings into **Identifiers** (halt-and-confirm, not optional
+color) and finish **Parallel text** if the form number was not visible at
+recon.
 
 The language decisions that matter:
 
-- **Register**: match the document's domain (legal, medical, marketing) and
-  use that domain's established terminology in the target language, not
-  literal renderings.
+- **Register**: step 1 lookup. Parallel text wins; else that class's
+  established usage in the target language. Do not calque.
 - **Length**: expansion varies by pair (EN→DE grows ~30%, EN→JA often
   shrinks). Retypeset **fails** if a segment scales below 0.7×. Reword more
   compactly. If a cell must stay tiny, add its core to `allow_scale`.
@@ -155,24 +190,25 @@ The language decisions that matter:
   auto-merge by geometry, it swallows sibling list items.
 - **Leave verbatim — apply the write/find/say test.** Before translating any
   name or quoted string, ask: *will the reader have to write this, hand it to
-  someone, or search for it?* If yes, it stays in the source language, because
-  translating it breaks the thing it is for. Three kinds recur:
-  - **Strings the form tells the reader to write.** FL-150 says: attach a sheet
-    and write `"Question 1—Other Jobs"` at the top, and label an attachment
-    `"Question 10g"`. That paper goes to a court whose staff reads the source
-    language; a translated label cannot be matched to its question. Quoted
-    strings inside an instruction are almost always this case — check every one.
-  - **Official document and form names**: `Schedule C`, `Form W-2`,
-    `Form I-130`. The reader must locate a real document carrying that exact
-    name; スケジュールC sends them hunting for something that does not exist.
+  someone, or search for it?* If yes, it stays in the source language,
+  because translating it breaks the thing it is for. Recurring kinds:
+  - **Quoted payload inside an instruction.** Translate “Write … at the top”;
+    keep the quoted span exactly. That paper is matched by people who read
+    the source language.
+  - **Official document and form names** the reader must locate (`Schedule C`,
+    `Form W-2`, `Form I-130`). Transliteration is a defect: it is neither
+    meaning nor a search hit.
   - **Statutes, acronyms, URLs, emails, case and form numbers.**
-  When a name is only being *referred to* rather than written or searched —
-  "Social Security", "State of California" — translating is fine. For statutes
-  a reader might look up ("Family Code"), a bilingual form such as
-  `家族法（Family Code）` serves both, and beats a transliteration like
-  ファミリーコード, which is neither meaningful nor searchable.
-  Numbers and currency adapt only where target convention requires it, and say
-  so when you do.
+  - **Units the document tells the reader to use** — paper size
+    (`8 1/2-by-11-inch` stays; do not convert to A4 on a US filing), currency
+    symbols the issuer printed (`$` stays `$` on a US form). Revision codes
+    stay; a calendar date may localize.
+  When a name is only *referred to* rather than written or searched,
+  translating is fine. A name a reader might look up can be bilingual
+  (`target (Source)`); that beats a transliteration, which is neither
+  meaningful nor searchable. Numbers and currency adapt only where target
+  convention requires it *and* the document is not instructing a filing
+  convention — say so when you do.
 - Heed the extractor's warnings about in-span gaps — each needs an
   `overrides` entry with explicit x positions.
 
@@ -229,7 +265,16 @@ and draw on top of the page; `get_text()` still sees them. Either rewrite
 them in place with `--captions` at strip time (field count stays exact), or
 put the caption in `skip` and leave the button as UI chrome. If the original
 caption is still in the output and you did neither, verify fails and lists
-it. Do not hide a button and draw a second widget. Omit `--translations`:
+it. Do not hide a button and draw a second widget. Captions must **fit the
+widget rect**: `--translations` FAILs if Helvetica `text_length` of the
+output `/CA` is wider than the button minus a 2 pt pad each side. Prefer
+short chrome (`Print` / `OK`) over a sentence in a tiny button.
+
+The same flag also checks **write/find/say identifiers**. Quoted strings and
+`Form` / `Schedule` / `Attachment` / `Exhibit` names from the original page
+must still appear in the output text layer. Missing ones FAIL and are
+listed. If you meant to translate a span, list it in `allow_translate` and
+record why in NOTES (scripts do not read NOTES). Omit `--translations`:
 field / fill / ink / leak / scan gates are unchanged.
 
 All gates must pass. Then the step that actually creates the quality:
@@ -258,14 +303,15 @@ python3 scripts/compare.py original.pdf final.pdf comparison.html \
 ```
 
 Deliver three things: the translated PDF, the original used, and the
-side-by-side comparison HTML. Summarize every judgment call: structural
-changes (XFA removed, buttons replaced), compressed translations, locale
-adaptations — the user should learn your decisions from you, not discover
-them later.
+side-by-side comparison HTML. Summarize every judgment call: the four
+identity facts (class, issuer, parallel text or `none`/`not searched`,
+identifiers), structural changes (XFA removed, buttons replaced), compressed
+translations, locale adaptations — the user should learn your decisions from
+you, not discover them later.
 
 ## References
 
-- `references/failure-modes.md` — the eight silent failures and their fixes.
+- `references/failure-modes.md` — the ten silent failures and their fixes.
   Read during recon, before touching the file.
 - `references/translations-format.md` — the translations.json contract
   (translations, merges, overrides, center, skip, fonts). Read before

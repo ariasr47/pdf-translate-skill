@@ -59,6 +59,10 @@ ABOVE page content. Translating the page text underneath just double-draws:
 English caption on top, your translation peeking out. Either hide the button
 and draw a translated replacement, or skip translating that page text (add
 it to `skip` in translations.json) and leave the button as UI chrome.
+A rewritten `/CA` can still **clip**: gate 02 only checks leftover English;
+`--translations` also measures Helvetica caption width against the widget
+rect (2 pt pad each side) and FAILs if the string does not fit. Short
+chrome, not a sentence in a 17-pt-tall button.
 
 ## 7. Dropped text color turns white headings black
 
@@ -92,6 +96,21 @@ when a page has an image or visible ink but no extractable text — OCR first.
 A related false failure: a pale or blank page has ~0 dark pixels, so
 `ratio = translated / max(original, 1)` becomes 0.00 and fails a correct
 file. Verify skips the ink ratio when the original has negligible ink.
+
+## 10. Text hiding in nested XObjects and inherited resources
+
+Letterheads, imposed pages and anything built with `show_pdf_page` put
+text inside a Form XObject inside another Form XObject; some producers
+put the page `/Resources` on the `/Pages` node instead of the page. A
+walker that reads the page's own resources one level deep strips
+nothing there and reports `form_xobjects_stripped: []`. MuPDF still
+extracts that text, so retypeset draws the translation on top of the
+surviving source and every structural gate stays green. `strip_text.py`
+now recurses through XObject resources, follows `/Parent` inheritance,
+and re-reads the stripped file with annotation appearances excluded:
+any page text left is a FAIL, the message lists page and text, and the
+stripped file is not written. Do not work around that FAIL by hand; it
+means the walker has a blind spot worth a fixture.
 
 ## Also worth knowing
 

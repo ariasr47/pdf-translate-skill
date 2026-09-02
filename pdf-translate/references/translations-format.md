@@ -44,11 +44,19 @@ this file is where your judgment lives.
 
   // Exact segment texts to drop entirely — e.g. page text duplicated by a
   // widget caption that renders on top of it (failure-modes.md #6).
+  // Use skip to drop a span. Do not map a core to "" — that is not a
+  // translation; verify --translations FAILs and names the core.
   "skip": ["Print this form"],
 
   // Cores (or merge first lines / override "contains") allowed to scale
   // below 0.7×. Without this, retypeset FAILS and does not save.
   "allow_scale": ["very long column header"],
+
+  // Source write/find/say spans (quoted payload, Form/Schedule/Attachment/
+  // Exhibit names) the author *meant* to translate. verify --translations
+  // otherwise FAILs if those tokens are missing from the output. Omit the
+  // key: same as []. Record why in NOTES; scripts do not read NOTES.
+  // "allow_translate": ["Attachment A"],
 
   // Opt-in RTL *layout*: flip text x and field/link rects. Default omitted
   // = LTR skeleton (04). Graphics are not mirrored. Look at the renders.
@@ -77,10 +85,16 @@ Authoring order that works well:
    `from-cores` writes this file with a **null** per core — not a translation.
    Retypeset still fails until you replace those nulls. It will not overwrite
    without `--force`. Do not identity-map as a shortcut; that ships source
-   text. Open `to_translate.json`.
+   text. Open `to_translate.json`. JSON `null` is “not yet authored”
+   (retypeset refuses). `""` and whitespace-only values are not
+   translations: `verify --translations` FAILs and names the core. Use
+   `skip` to drop a span, not `""`.
 2. Translate every core (they're deduplicated — typically far fewer than the
-   segment count). Keep domain register; keep verbatim items verbatim by
-   simply not translating differently (e.g. `"FL-150": "FL-150"`).
+   segment count). Match the recon lookup in `SKILL.md` step 1; keep verbatim
+   items verbatim by simply not translating differently (e.g.
+   `"Form W-2": "Form W-2"`). Extractor write/find/say warnings are
+   halt-and-confirm: a missing source token fails `--translations` unless
+   that span is listed in `allow_translate`.
 3. Scan `segments.json` for multi-line paragraphs (same block, consecutive
    y, sentence flows on) and declare merges for them.
 4. Add overrides for every extractor warning.

@@ -27,6 +27,21 @@
                   rewritten (--captions). Otherwise FAIL and list the caption.
                   Omit the flag: this gate does not run. Field count stays
                   the field-parity gate — do not add widgets.
+8. identifiers    with --translations: quoted and form-name write/find/say
+                  spans from the original page (shipped write_find_say_hits)
+                  must appear in the output text layer unless listed in
+                  allow_translate. Missing ones FAIL and are listed.
+                  Omit the flag: this gate does not run. url-or-email is not
+                  a hard fail.
+9. empty targets  with --translations: a non-skip, non-null translations
+                  value (also merge html / override parts) whose
+                  NBSP-normalized strip is empty FAILs and names the core.
+                  Omit the flag: this gate does not run. Length-1 non-empty
+                  placement skip is unchanged. JSON null is retypeset's job.
+10. caption width with --translations: output pushbutton /MK /CA wider
+                  than the widget rect (helv text_length, pad 2 pt each
+                  side) FAILs listing field name and caption. Omit the
+                  flag: this gate does not run. Measures output /CA only.
 
 These gates catch structural failures. They do NOT catch visual defects —
 after they pass you still render pages side-by-side and look at them.
@@ -46,6 +61,11 @@ import tempfile
 import time
 
 import pymupdf
+
+_SCRIPTS = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPTS not in sys.path:
+    sys.path.insert(0, _SCRIPTS)
+from extract_segments import write_find_say_hits  # noqa: E402
 
 WORD = re.compile(r"[A-Za-z][A-Za-z'\-]*")
 RUN = re.compile(r"[A-Za-z][A-Za-z'\-]*(?:\s+[A-Za-z][A-Za-z'\-]*){2,}")
@@ -114,6 +134,54 @@ def collect_translation_targets(conf):
             if t:
                 targets.append(t)
     return targets
+
+
+def _authored_text_is_empty(raw):
+    """True when normalize + strip leaves nothing. Length-1 'Z' is not empty."""
+    if raw is None:
+        return False
+    return len(normalize_ws_nbsp(str(raw)).strip()) == 0
+
+
+def _merge_plain_text(html):
+    text = html or ''
+    text = re.sub(r'<br\s*/?>', ' ', text, flags=re.I)
+    return re.sub(r'<[^>]+>', '', text)
+
+
+def empty_translation_targets(conf):
+    """Labels for authored empty/whitespace values (not skip, not null).
+
+    Returns cores / merge first lines / override contains so FAIL can name
+    them. Whitespace includes NBSP. Skip entries are omitted even if the
+    mapped string is empty.
+    """
+    skip = set(conf.get('skip') or [])
+    empty = []
+    seen = set()
+
+    def add(label):
+        if label and label not in seen:
+            seen.add(label)
+            empty.append(label)
+
+    for core, tgt in (conf.get('translations') or {}).items():
+        if core in skip or tgt is None:
+            continue
+        if _authored_text_is_empty(tgt):
+            add(core)
+    for merge in conf.get('merges') or []:
+        if _authored_text_is_empty(_merge_plain_text(merge.get('html'))):
+            lines = merge.get('lines') or []
+            add(lines[0] if lines else '(merge)')
+    for override in conf.get('overrides') or []:
+        for part in override.get('parts') or []:
+            t = part.get('text')
+            if t is None:
+                continue
+            if _authored_text_is_empty(t):
+                add(override.get('contains') or '(override)')
+    return empty
 
 
 _ACTUALTEXT_HEX = re.compile(rb'/ActualText\s*<\s*([0-9A-Fa-f]+)\s*>')
@@ -204,6 +272,83 @@ def leftover_button_captions(orig_caps, out_caps, out_text, skip=None):
             continue
         leftover.append((name, cap))
     return leftover
+
+
+def caption_overflows(caption, rect_width, fs):
+    """True if Helvetica caption is wider than rect_width minus 2 pt pad each side."""
+    cap = (caption or '').strip()
+    if not cap:
+        return False
+    width = pymupdf.Font('helv').text_length(cap, fontsize=fs)
+    return width > rect_width - 4
+
+
+def caption_fontsize(widget):
+    """widget.text_fontsize if > 0, else max(4, rect.height - 4)."""
+    fs = getattr(widget, 'text_fontsize', 0) or 0
+    try:
+        fs = float(fs)
+    except (TypeError, ValueError):
+        fs = 0.0
+    if fs > 0:
+        return fs
+    return max(4.0, float(widget.rect.height) - 4.0)
+
+
+def overflowing_button_captions(doc):
+    """Output pushbuttons whose /CA does not fit the widget rect."""
+    hits = []
+    for page in doc:
+        for w in page.widgets() or []:
+            if not (w.field_flags & PUSHBUTTON):
+                continue
+            cap = (w.button_caption or '').strip()
+            if not cap:
+                continue
+            if caption_overflows(cap, w.rect.width, caption_fontsize(w)):
+                hits.append((w.field_name, cap))
+    return hits
+
+
+IDENTIFIER_KINDS = ('quoted', 'form-name')
+
+
+def collect_identifier_spans(orig_doc):
+    """Unique quoted / form-name write/find/say spans from original pages.
+
+    Uses shipped extract_segments.write_find_say_hits — do not copy its regexes.
+    url-or-email hits are not collected (not a hard fail this sitting).
+    """
+    spans = []
+    seen = set()
+    for page in orig_doc:
+        for kind, snippet in write_find_say_hits(page.get_text() or ''):
+            if kind not in IDENTIFIER_KINDS:
+                continue
+            nt = normalize_ws_nbsp(snippet)
+            if len(nt) < 2 or nt in seen:
+                continue
+            seen.add(nt)
+            spans.append(snippet)
+    return spans
+
+
+def missing_identifier_spans(page_text, spans, allow_translate=None):
+    """Return identifier spans absent from page_text, minus allow_translate.
+
+    Same NBSP/hyphen normalize as placement. Omit allow_translate (or [])
+    means every span is required.
+    """
+    allow = {normalize_ws_nbsp(s) for s in (allow_translate or []) if s}
+    hay = normalize_ws_nbsp(page_text)
+    missing = []
+    for raw in spans:
+        nt = normalize_ws_nbsp(raw)
+        if nt in allow:
+            continue
+        if nt not in hay:
+            missing.append(raw)
+    return missing
 
 
 def scan_leaks(text, allow, source_words=None, src_re=None):
@@ -394,6 +539,14 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
         with open(translations, encoding='utf-8') as f:
             conf = json.load(f)
         hay = '\n'.join(page_search_text(jc[i]) for i in range(len(jc)))
+        blanks = empty_translation_targets(conf)
+        if blanks:
+            print(f'FAIL empty translation targets ({len(blanks)}):')
+            for t in blanks[:30]:
+                print(f'   {t.replace(chr(10), " ")[:80]}')
+            fail = 1
+        else:
+            print('PASS no empty translation targets')
         targets = collect_translation_targets(conf)
         missing = missing_translation_targets(hay, targets)
         if missing:
@@ -417,6 +570,26 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
             fail = 1
         else:
             print('PASS button captions')
+
+        clipped = overflowing_button_captions(jc)
+        if clipped:
+            print(f'FAIL caption wider than widget ({len(clipped)}):')
+            for name, cap in clipped[:20]:
+                print(f'   {cap} ({name})')
+            fail = 1
+        else:
+            print('PASS caption width')
+
+        spans = collect_identifier_spans(o)
+        missing_ids = missing_identifier_spans(
+            hay, spans, allow_translate=conf.get('allow_translate') or [])
+        if missing_ids:
+            print(f'FAIL missing write/find/say identifiers ({len(missing_ids)}):')
+            for t in missing_ids[:30]:
+                print(f'   {t.replace(chr(10), " ")[:80]}')
+            fail = 1
+        else:
+            print('PASS write/find/say identifiers')
 
     o.close()
     j.close()

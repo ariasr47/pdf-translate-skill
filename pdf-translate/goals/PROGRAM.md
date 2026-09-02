@@ -50,8 +50,22 @@ launder their output.
 | 06 | Corpus axis: structure | Queue 01–03 are content; this is documents | One new constructed class (radio/dropdown **or** mixed rotation **or** attachments) with a recorded verdict |
 | 07 | One-command init | Ease, not quality | `pipeline.py init` already exists; add `pipeline.py from-cores` scaffold of empty translations.json — no LLM |
 
+01–07 are **closed**. Next rows (skill leftovers, then one `/goal` each):
+`goals/IMPLEMENTATION.md`. Copy the matching file into `/goal`.
+
+| # | Session title | Why this next | Closed done bar (sketch) |
+|---|---|---|---|
+| **0** | Skill leftovers | Identity is in SKILL.md; some layout nits are not | Narrow columns, `allow_scale` last, second-reader deliver — no new gate |
+| **08** | Quoted names survive | **Closed** | Source write/find/say tokens in output unless `allow_translate` |
+| **09** | Empty is not a translation | **Closed** | Non-skip empty/whitespace targets FAIL named |
+| **10** | Caption vs rect | **Closed** | `/CA` width > button width − pad → FAIL |
+| **11** | Override keeps `d.` / `$` | **Next `/goal`** | Override parts must contain source marker and tail |
+| **12** | Skinny column warning | After 11 | Extractor `narrow-column` warning; no auto-merge |
+| **13** | Strip completeness | **Closed** | Stripped file, re-read without annotation appearances, has no page text; nested XObjects and inherited `/Resources` stripped; FAIL leaves no file |
+
 Never combine 04+05. Never combine a bakeoff with a gate. Never put OCR
-implementation in this skill (refusal is the product).
+implementation in this skill (refusal is the product). After 08, a canary
+on the toy PDF is a **different day**, not this sitting.
 
 ## What is already locked (do not regress)
 
@@ -63,8 +77,12 @@ implementation in this skill (refusal is the product).
 - Same-script leak uses this document’s words
 - `pipeline.py rebuild` / `render` for the inner loop
 - RTL **docs** match measurement (visual-order, not mirrored)
+- Strip gate: stripped file has no page text (annotation appearances
+  excluded); nested XObjects and inherited `/Resources` are stripped
 
 ## How to start a session
 
-Copy `goals/01-mapping-in-the-pdf.md` into `/goal`. Do not paste Grok NOTES,
+New session: read `goals/HANDOVER.md` first. Next gate: copy
+`goals/11-override-markers.md` into `/goal`. Do not paste Grok NOTES,
 `work/translations.json`, or bakeoff scores into that session.
+Remaining queue: `goals/IMPLEMENTATION.md` (08–10 and 13 are committed).

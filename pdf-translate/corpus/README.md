@@ -11,6 +11,7 @@ Every PDF here has exactly one expected verdict:
 | `expansion.pdf` | `translate` | short labels |
 | `image_only.pdf` | `refuse+OCR` | raster, no text layer |
 | `multicolumn.pdf` | `translate` | two columns |
+| `nested_xobject.pdf` | `translate` | text two Form XObjects deep; page `/Resources` inherited from `/Pages`; strip must leave no page text |
 | `pale_blank.pdf` | `skip-ink` | negligible dark pixels, not a scan |
 | `rotated.pdf` | `translate` | `/Rotate 90` |
 | `rtl_source.pdf` | `translate` | LTR English source (layout not mirrored) |

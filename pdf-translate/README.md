@@ -72,11 +72,11 @@ SKILL.md                        the workflow, start here
 README.md                       this file
 requirements.txt
 references/
-  failure-modes.md              8 silent failures and their fixes — read before you start
+  failure-modes.md              10 silent failures and their fixes — read before you start
   translations-format.md        the translations.json contract
   fonts.md                      per-script font sourcing; the glyf-flavor rule
 scripts/
-  strip_text.py                 remove text + XFA, keep graphics and widgets
+  strip_text.py                 remove text + XFA (nested XObjects too), keep graphics and widgets; fails if page text survives
   extract_segments.py           geometry, color, markers, dot leaders -> segments.json
   prepare_font.py               subset + instance a font, assert it rasterizes
   retypeset.py                  place translations; shrink-to-fit; colors; merges

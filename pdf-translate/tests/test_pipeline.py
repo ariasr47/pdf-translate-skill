@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from contextlib import redirect_stdout
 from pathlib import Path
 
@@ -36,6 +37,8 @@ import verify  # noqa: E402
 
 SOURCE_SENTENCE = 'The applicant must file this form today.'
 TARGET_SENTENCE = 'El solicitante debe presentar este formulario hoy.'
+EMPTY_CORE = 'are living with me'
+EMPTY_HAPPY = 'viven conmigo ahora'
 URI = 'https://example.gov/forms'
 BOOKMARK = 'Section One'
 WHITE = 16777215
@@ -77,7 +80,7 @@ def find_test_font():
 
 
 def write_mapping(path, translations, font, skip=None, allow_scale=None,
-                  mirror=False):
+                  mirror=False, allow_translate=None):
     data = {
         'fonts': {'regular': str(font), 'bold': str(font)},
         'translations': translations,
@@ -91,6 +94,8 @@ def write_mapping(path, translations, font, skip=None, allow_scale=None,
         data['allow_scale'] = list(allow_scale)
     if mirror:
         data['mirror'] = True
+    if allow_translate is not None:
+        data['allow_translate'] = list(allow_translate)
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
 
@@ -187,6 +192,65 @@ def build_plain_pdf(path):
     doc.close()
 
 
+LONG_CAPTION = 'X' * 40
+SHORT_CAPTION = 'OK'
+NARROW_BTN = 'TinyBtn'
+
+
+def build_narrow_button_pdf(path):
+    """One 60-pt-wide pushbutton plus a translatable sentence and a text field."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_text((72, 80), SOURCE_SENTENCE, fontsize=12)
+    tf = pymupdf.Widget()
+    tf.field_name = 'ApplicantName'
+    tf.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+    tf.rect = pymupdf.Rect(72, 200, 280, 218)
+    page.add_widget(tf)
+    btn = pymupdf.Widget()
+    btn.field_name = NARROW_BTN
+    btn.field_type = pymupdf.PDF_WIDGET_TYPE_BUTTON
+    btn.field_flags = 1 << 16
+    btn.rect = pymupdf.Rect(72, 400, 132, 424)  # width 60, height 24
+    btn.button_caption = SHORT_CAPTION
+    page.add_widget(btn)
+    doc.save(path)
+    doc.close()
+
+
+def build_empty_target_pdf(path):
+    """Two cores: one real translation, one that tests empty mapping values."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_text((72, 80), SOURCE_SENTENCE, fontsize=12)
+    page.insert_text((72, 110), EMPTY_CORE, fontsize=12)
+    page.draw_rect(pymupdf.Rect(72, 140, 200, 160), color=(0, 0, 0), width=1)
+    doc.save(path)
+    doc.close()
+
+
+QUOTE_LINE = 'Write "Attachment A" at the top.'
+SCHED_LINE = 'Please attach Schedule Q.'
+KEEP_IDENT_TR = {
+    QUOTE_LINE: 'Escriba "Attachment A" arriba.',
+    SCHED_LINE: 'Adjunte Schedule Q.',
+}
+VANISH_IDENT_TR = {
+    QUOTE_LINE: 'Escriba "Anexo A" arriba.',
+    SCHED_LINE: 'Adjunte Anexo Q.',
+}
+
+
+def build_identifier_pdf(path):
+    """LTR page whose extractor must see quoted Attachment A and Schedule Q."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_text((72, 80), QUOTE_LINE, fontsize=12)
+    page.insert_text((72, 110), SCHED_LINE, fontsize=12)
+    doc.save(path)
+    doc.close()
+
+
 def widget_map(pdf_path):
     doc = pymupdf.open(pdf_path)
     out = {w.field_name: (w.field_type_string, pymupdf.Rect(w.rect))
@@ -215,6 +279,56 @@ def dot_chars_overlap_widget(pdf_path, field_name):
                         break
     doc.close()
     return hit
+
+
+NESTED_PAGE = 'Page body text stays on the page.'
+NESTED_MID = 'Middle band text lives in a Form XObject.'
+NESTED_INNER = 'Inner letterhead text is two XObjects deep.'
+
+
+def build_nested_xobject_pdf(path, inherit_resources=False):
+    """Page text plus a Form XObject that contains text AND a second Form
+    XObject with text (two levels deep). A vector rule and a text field sit
+    on the page so tests can assert graphics and widgets survive. With
+    inherit_resources the page's /Resources move to the /Pages node, which
+    some producers do and which a per-page walker never sees."""
+    inner = pymupdf.open()
+    ip = inner.new_page(width=200, height=100)
+    ip.insert_text((10, 50), NESTED_INNER, fontsize=9)
+    mid = pymupdf.open()
+    mp = mid.new_page(width=300, height=200)
+    mp.show_pdf_page(pymupdf.Rect(20, 20, 280, 120), inner, 0)
+    mp.insert_text((10, 190), NESTED_MID, fontsize=9)
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_text((72, 80), NESTED_PAGE, fontsize=12)
+    page.show_pdf_page(pymupdf.Rect(72, 100, 372, 300), mid, 0)
+    page.draw_line(pymupdf.Point(72, 320), pymupdf.Point(400, 320),
+                   color=(0, 0, 0), width=1.5)
+    tf = pymupdf.Widget()
+    tf.field_name = 'ApplicantName'
+    tf.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+    tf.rect = pymupdf.Rect(72, 340, 280, 358)
+    page.add_widget(tf)
+    doc.save(path)
+    doc.close()
+    mid.close()
+    inner.close()
+    if inherit_resources:
+        # pikepdf/QPDF push inherited attributes back onto the page when
+        # saving, so the move has to be PyMuPDF xref surgery to survive on
+        # disk. MuPDF resolves the inheritance when rendering/extracting.
+        doc = pymupdf.open(path)
+        page = doc[0]
+        kind, val = doc.xref_get_key(page.xref, 'Resources')
+        assert kind != 'null', 'page has no /Resources to move'
+        parent_xref = int(doc.xref_get_key(page.xref, 'Parent')[1].split()[0])
+        doc.xref_set_key(parent_xref, 'Resources', val)
+        doc.xref_set_key(page.xref, 'Resources', 'null')
+        moved = path + '.inherited.pdf'
+        doc.save(moved)
+        doc.close()
+        os.replace(moved, path)
 
 
 class ImportSafeTests(unittest.TestCase):
@@ -285,6 +399,139 @@ class StripTests(unittest.TestCase):
                     found = True
             pdf.close()
             self.assertTrue(found)
+
+
+class StripCompletenessTests(unittest.TestCase):
+    """Goal 13: strip must leave no page text, however deep it hides, and
+    must refuse (and write nothing) when it cannot prove that."""
+
+    def _assert_clean(self, dst, report):
+        self.assertEqual(report['leftover_text'], [], msg=report)
+        self.assertEqual(strip_text.leftover_page_text(dst), [])
+        after = pymupdf.open(dst)
+        text = after[0].get_text()
+        for s in (NESTED_PAGE, NESTED_MID, NESTED_INNER):
+            self.assertNotIn(s, text)
+        self.assertIn('ApplicantName', {w.field_name for w in after[0].widgets()})
+        self.assertGreaterEqual(len(after[0].get_drawings()), 1)
+        after.close()
+
+    def test_nested_xobject_text_is_stripped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            dst = os.path.join(tmp, 'stripped.pdf')
+            build_nested_xobject_pdf(src)
+            before = pymupdf.open(src)
+            for s in (NESTED_PAGE, NESTED_MID, NESTED_INNER):
+                self.assertIn(s, before[0].get_text())
+            before.close()
+            report = strip_text.strip_text(src, dst)
+            self._assert_clean(dst, report)
+            depths = {x.get('depth') for x in report['form_xobjects_stripped']}
+            self.assertIn(2, depths, msg=report['form_xobjects_stripped'])
+
+    def test_inherited_resources_xobject_text_is_stripped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            dst = os.path.join(tmp, 'stripped.pdf')
+            build_nested_xobject_pdf(src, inherit_resources=True)
+            doc = pymupdf.open(src)
+            self.assertEqual(doc.xref_get_key(doc[0].xref, 'Resources')[0], 'null')
+            parent_xref = int(doc.xref_get_key(doc[0].xref, 'Parent')[1].split()[0])
+            self.assertNotEqual(doc.xref_get_key(parent_xref, 'Resources')[0], 'null')
+            for t in (NESTED_PAGE, NESTED_MID, NESTED_INNER):
+                self.assertIn(t, doc[0].get_text())
+            doc.close()
+            report = strip_text.strip_text(src, dst)
+            self._assert_clean(dst, report)
+
+    def test_nested_xobject_text_round_trips_through_retypeset(self):
+        font = find_test_font()
+        targets = {
+            NESTED_PAGE: 'El cuerpo del texto se queda en la pagina.',
+            NESTED_MID: 'La banda central vive en un Form XObject.',
+            NESTED_INNER: 'El membrete interior esta dos XObjects abajo.',
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            dst = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_nested_xobject_pdf(src, inherit_resources=True)
+            strip_text.strip_text(src, dst)
+            res = extract_segments.extract_segments(src, outdir=tmp)
+            origins = {seg['core']: seg['origin'] for seg in res['segments']}
+            self.assertEqual(set(origins), set(targets), msg=list(origins))
+            write_mapping(tr, targets, font, skip=[])
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(dst, os.path.join(tmp, 'segments.json'), tr, out)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            placed = {}
+            doc = pymupdf.open(out)
+            for b in doc[0].get_text('dict')['blocks']:
+                for line in b.get('lines', []):
+                    for span in line['spans']:
+                        placed[verify.normalize_ws_nbsp(span['text']).strip()] = span['origin']
+            doc.close()
+            for core, target in targets.items():
+                self.assertIn(target, placed, msg=list(placed))
+                ox, oy = origins[core]
+                px, py = placed[target]
+                self.assertAlmostEqual(ox, px, delta=1.0, msg=target)
+                self.assertAlmostEqual(oy, py, delta=1.0, msg=target)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, source_words_from=os.path.join(tmp, 'segments.json'),
+                                   translations=tr)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+
+    def test_leftover_page_text_ignores_widget_appearance_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            dst = os.path.join(tmp, 'stripped.pdf')
+            build_form_pdf(src)
+            before = strip_text.leftover_page_text(src)
+            self.assertTrue(before)
+            self.assertIn(SOURCE_SENTENCE[:20], before[0][1])
+            strip_text.strip_text(src, dst)
+            self.assertEqual(strip_text.leftover_page_text(dst), [])
+            after = pymupdf.open(dst)
+            # Widget chrome still draws (get_text sees /AP); it is not page text.
+            self.assertIn('Print', after[0].get_text())
+            after.close()
+
+    @staticmethod
+    def _keep_everything(owner, pdf=None):
+        import pikepdf
+        ops = pikepdf.parse_content_stream(owner)
+        return pikepdf.unparse_content_stream(ops), 0
+
+    def test_leftover_text_fails_and_does_not_save(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            dst = os.path.join(tmp, 'stripped.pdf')
+            build_plain_pdf(src)
+            with mock.patch.object(strip_text, 'strip_ops', self._keep_everything):
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    rc = strip_text.main([src, dst])
+            log = buf.getvalue()
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn('FAIL', log)
+            self.assertIn(SOURCE_SENTENCE[:20], log)
+            self.assertFalse(os.path.exists(dst))
+
+    def test_pipeline_init_fails_on_leftover_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_plain_pdf(src)
+            with mock.patch.object(strip_text, 'strip_ops', self._keep_everything):
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    rc = pipeline.main(['init', src, '--work', tmp])
+            self.assertNotEqual(rc, 0, msg=buf.getvalue())
+            self.assertFalse(os.path.exists(os.path.join(tmp, 'stripped.pdf')))
 
 
 class ExtractTests(unittest.TestCase):
@@ -1326,6 +1573,365 @@ class ChromeTests(unittest.TestCase):
             self.assertIn('PASS field parity', log)
             self.assertIn('PASS fill round-trip', log)
             self.assertNotIn('button captions', log)
+
+
+class CaptionWidthTests(unittest.TestCase):
+    """Output pushbutton /CA wider than the widget rect is a FAIL."""
+
+    def _build(self, tmp, caption):
+        font = find_test_font()
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        build_narrow_button_pdf(src)
+        extract_segments.extract_segments(src, outdir=tmp)
+        segs = os.path.join(tmp, 'segments.json')
+        strip_text.strip_text(src, stripped, captions={NARROW_BTN: caption})
+        mapping = {SOURCE_SENTENCE: TARGET_SENTENCE}
+        cores = json.loads(
+            Path(tmp, 'to_translate.json').read_text(encoding='utf-8'))['cores']
+        for c in cores:
+            if c['text'] == SHORT_CAPTION:
+                continue
+            mapping.setdefault(c['text'], c['text'])
+        mapping[SOURCE_SENTENCE] = TARGET_SENTENCE
+        write_mapping(tr, mapping, font, skip=[SHORT_CAPTION])
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(stripped, segs, tr, out)
+        self.assertEqual(rc, 0, msg=buf.getvalue())
+        return src, out, tr, segs
+
+    def test_caption_overflows_unit(self):
+        fs = max(4, 24 - 4)
+        self.assertTrue(verify.caption_overflows(LONG_CAPTION, 60, fs))
+        self.assertFalse(verify.caption_overflows(SHORT_CAPTION, 60, fs))
+        self.assertFalse(verify.caption_overflows('Fit', 60, fs))
+        self.assertFalse(verify.caption_overflows('', 60, fs))
+        self.assertFalse(verify.caption_overflows(None, 60, fs))
+        self.assertTrue(verify.caption_overflows(LONG_CAPTION, 60, 12))
+        self.assertFalse(verify.caption_overflows(SHORT_CAPTION, 120, 20))
+
+    def test_long_caption_fails_short_passes_field_count_exact(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, segs = self._build(tmp, LONG_CAPTION)
+            orig_names = widget_map(src)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr,
+                                   source_words_from=segs)
+            log = buf.getvalue()
+            self.assertNotEqual(rc, 0, msg=log)
+            self.assertIn('FAIL caption wider than widget', log)
+            self.assertIn(NARROW_BTN, log)
+            self.assertIn(LONG_CAPTION, log)
+            self.assertEqual(set(widget_map(out)), set(orig_names))
+            self.assertEqual(len(widget_map(out)), len(orig_names))
+
+            src, out, tr, segs = self._build(tmp, SHORT_CAPTION)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr,
+                                   source_words_from=segs)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertNotIn('FAIL caption wider than widget', log)
+            self.assertEqual(set(widget_map(out)), set(widget_map(src)))
+
+    def test_omit_translations_does_not_run_caption_width_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, segs = self._build(tmp, LONG_CAPTION)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, source_words_from=segs)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertNotIn('caption wider than widget', log)
+            self.assertNotIn(LONG_CAPTION, log)
+
+    def test_verify_cli_twice_overflow_and_twice_short(self):
+        script = str(SCRIPTS / 'verify.py')
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, segs = self._build(tmp, LONG_CAPTION)
+            args = [
+                sys.executable, script, src, out,
+                '--source-words-from', segs, '--translations', tr,
+            ]
+            logs = []
+            for _ in range(2):
+                r = subprocess.run(
+                    args, capture_output=True, text=True, encoding='utf-8')
+                self.assertNotEqual(r.returncode, 0, msg=r.stdout + r.stderr)
+                self.assertIn('FAIL caption wider than widget', r.stdout)
+                self.assertIn(NARROW_BTN, r.stdout)
+                logs.append(r.stdout)
+            self.assertEqual(logs[0].split('elapsed')[0],
+                             logs[1].split('elapsed')[0])
+
+            src, out, tr, segs = self._build(tmp, SHORT_CAPTION)
+            args = [
+                sys.executable, script, src, out,
+                '--source-words-from', segs, '--translations', tr,
+            ]
+            logs = []
+            for _ in range(2):
+                r = subprocess.run(
+                    args, capture_output=True, text=True, encoding='utf-8')
+                self.assertEqual(r.returncode, 0, msg=r.stdout + r.stderr)
+                self.assertNotIn('FAIL caption wider than widget', r.stdout)
+                logs.append(r.stdout)
+            self.assertEqual(logs[0].split('elapsed')[0],
+                             logs[1].split('elapsed')[0])
+
+
+class IdentifierTests(unittest.TestCase):
+    """Quoted / form-name write/find/say spans must survive unless opted out."""
+
+    def _build(self, tmp, translations, allow_translate=None):
+        font = find_test_font()
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        build_identifier_pdf(src)
+        extract_segments.extract_segments(src, outdir=tmp)
+        segs = os.path.join(tmp, 'segments.json')
+        strip_text.strip_text(src, stripped)
+        write_mapping(tr, translations, font, allow_translate=allow_translate)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(stripped, segs, tr, out)
+        self.assertEqual(rc, 0, msg=buf.getvalue())
+        return src, stripped, out, tr, segs
+
+    def test_shipped_hits_see_attachment_a_and_schedule_q(self):
+        hits = extract_segments.write_find_say_hits(
+            QUOTE_LINE + ' ' + SCHED_LINE)
+        snippets = {s for _, s in hits}
+        kinds = {k for k, _ in hits}
+        self.assertIn('quoted', kinds)
+        self.assertIn('form-name', kinds)
+        self.assertIn('Attachment A', snippets)
+        self.assertIn('Schedule Q', snippets)
+
+    def test_missing_identifier_spans_unit(self):
+        keep = 'Escriba "Attachment A" arriba. Adjunte Schedule Q.'
+        gone = 'Escriba "Anexo A" arriba. Adjunte Anexo Q.'
+        spans = ['Attachment A', 'Schedule Q']
+        self.assertEqual(verify.missing_identifier_spans(keep, spans), [])
+        self.assertEqual(
+            set(verify.missing_identifier_spans(gone, spans)),
+            set(spans))
+        self.assertEqual(
+            verify.missing_identifier_spans(
+                gone, spans, allow_translate=spans),
+            [])
+        self.assertEqual(
+            verify.missing_identifier_spans(gone, spans, allow_translate=None),
+            verify.missing_identifier_spans(gone, spans, allow_translate=[]))
+
+    def test_keep_tokens_pass_vanish_fails_allow_translate_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, _, out, tr, segs = self._build(tmp, KEEP_IDENT_TR)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr,
+                                   source_words_from=segs)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('PASS write/find/say identifiers', log)
+            self.assertNotIn('FAIL missing write/find/say identifiers', log)
+
+            src, _, out, tr, segs = self._build(tmp, VANISH_IDENT_TR)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr,
+                                   source_words_from=segs)
+            log = buf.getvalue()
+            self.assertNotEqual(rc, 0, msg=log)
+            self.assertIn('FAIL missing write/find/say identifiers', log)
+            self.assertIn('Attachment A', log)
+            self.assertIn('Schedule Q', log)
+
+            src, _, out, tr, segs = self._build(
+                tmp, VANISH_IDENT_TR,
+                allow_translate=['Attachment A', 'Schedule Q'])
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr,
+                                   source_words_from=segs)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('PASS write/find/say identifiers', log)
+            self.assertNotIn('FAIL missing write/find/say identifiers', log)
+
+    def test_omit_translations_does_not_run_identifier_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, _, out, tr, segs = self._build(tmp, VANISH_IDENT_TR)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, source_words_from=segs)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertNotIn('write/find/say identifiers', log)
+            self.assertNotIn('Attachment A', log)
+            self.assertNotIn('Schedule Q', log)
+
+    def test_verify_cli_twice_keep_and_twice_vanish(self):
+        script = str(SCRIPTS / 'verify.py')
+        with tempfile.TemporaryDirectory() as tmp:
+            src, _, out, tr, segs = self._build(tmp, KEEP_IDENT_TR)
+            args = [
+                sys.executable, script, src, out,
+                '--source-words-from', segs, '--translations', tr,
+            ]
+            logs = []
+            for _ in range(2):
+                r = subprocess.run(
+                    args, capture_output=True, text=True, encoding='utf-8')
+                self.assertEqual(r.returncode, 0, msg=r.stdout + r.stderr)
+                self.assertIn('PASS write/find/say identifiers', r.stdout)
+                logs.append(r.stdout)
+            self.assertEqual(logs[0].split('elapsed')[0],
+                             logs[1].split('elapsed')[0])
+
+            src, _, out, tr, segs = self._build(tmp, VANISH_IDENT_TR)
+            args = [
+                sys.executable, script, src, out,
+                '--source-words-from', segs, '--translations', tr,
+            ]
+            logs = []
+            for _ in range(2):
+                r = subprocess.run(
+                    args, capture_output=True, text=True, encoding='utf-8')
+                self.assertNotEqual(r.returncode, 0, msg=r.stdout + r.stderr)
+                self.assertIn('FAIL missing write/find/say identifiers', r.stdout)
+                self.assertIn('Attachment A', r.stdout)
+                self.assertIn('Schedule Q', r.stdout)
+                logs.append(r.stdout)
+            self.assertEqual(logs[0].split('elapsed')[0],
+                             logs[1].split('elapsed')[0])
+
+
+class EmptyTargetTests(unittest.TestCase):
+    """Authored empty/whitespace values are not translations."""
+
+    def _build(self, tmp, empty_value):
+        font = find_test_font()
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        build_empty_target_pdf(src)
+        extract_segments.extract_segments(src, outdir=tmp)
+        segs = os.path.join(tmp, 'segments.json')
+        strip_text.strip_text(src, stripped)
+        write_mapping(tr, {
+            SOURCE_SENTENCE: TARGET_SENTENCE,
+            EMPTY_CORE: empty_value,
+        }, font)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(stripped, segs, tr, out)
+        self.assertEqual(rc, 0, msg=buf.getvalue())
+        return src, out, tr, segs
+
+    def test_empty_translation_targets_unit(self):
+        conf = {
+            'skip': ['Print'],
+            'translations': {
+                EMPTY_CORE: '',
+                'space': ' ',
+                'nbsp': '\u00a0',
+                'Name:': 'Name:',
+                'Z': 'Z',
+                'Print': '',
+                'nullcore': None,
+                'ok': 'hola',
+            },
+            'merges': [{'lines': ['merge first'], 'html': '  '}],
+            'overrides': [{'contains': 'All other', 'parts': [{'text': ''}]}],
+        }
+        got = verify.empty_translation_targets(conf)
+        self.assertIn(EMPTY_CORE, got)
+        self.assertIn('space', got)
+        self.assertIn('nbsp', got)
+        self.assertIn('merge first', got)
+        self.assertIn('All other', got)
+        self.assertNotIn('Name:', got)
+        self.assertNotIn('Z', got)
+        self.assertNotIn('Print', got)
+        self.assertNotIn('nullcore', got)
+        self.assertNotIn('ok', got)
+
+    def test_empty_space_nbsp_fail_happy_and_identity_pass(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, segs = self._build(tmp, EMPTY_HAPPY)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr,
+                                   source_words_from=segs)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertNotIn('FAIL empty translation target', log)
+            self.assertIn('PASS authored translations present', log)
+
+            for blank in ('', ' ', '\u00a0'):
+                src, out, tr, segs = self._build(tmp, blank)
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    rc = verify.verify(src, out, translations=tr,
+                                       source_words_from=segs)
+                log = buf.getvalue()
+                self.assertNotEqual(rc, 0, msg=log)
+                self.assertIn('FAIL empty translation target', log)
+                self.assertIn(EMPTY_CORE, log)
+
+    def test_omit_translations_does_not_run_empty_target_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, segs = self._build(tmp, '')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, source_words_from=segs)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertNotIn('empty translation target', log)
+            self.assertNotIn(EMPTY_CORE, log)
+
+    def test_verify_cli_twice_empty_and_twice_happy(self):
+        script = str(SCRIPTS / 'verify.py')
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, segs = self._build(tmp, '')
+            args = [
+                sys.executable, script, src, out,
+                '--source-words-from', segs, '--translations', tr,
+            ]
+            logs = []
+            for _ in range(2):
+                r = subprocess.run(
+                    args, capture_output=True, text=True, encoding='utf-8')
+                self.assertNotEqual(r.returncode, 0, msg=r.stdout + r.stderr)
+                self.assertIn('FAIL empty translation target', r.stdout)
+                self.assertIn(EMPTY_CORE, r.stdout)
+                logs.append(r.stdout)
+            self.assertEqual(logs[0].split('elapsed')[0],
+                             logs[1].split('elapsed')[0])
+
+            src, out, tr, segs = self._build(tmp, EMPTY_HAPPY)
+            args = [
+                sys.executable, script, src, out,
+                '--source-words-from', segs, '--translations', tr,
+            ]
+            logs = []
+            for _ in range(2):
+                r = subprocess.run(
+                    args, capture_output=True, text=True, encoding='utf-8')
+                self.assertEqual(r.returncode, 0, msg=r.stdout + r.stderr)
+                self.assertNotIn('FAIL empty translation target', r.stdout)
+                logs.append(r.stdout)
+            self.assertEqual(logs[0].split('elapsed')[0],
+                             logs[1].split('elapsed')[0])
 
 
 class RtlTextLayerTests(unittest.TestCase):
