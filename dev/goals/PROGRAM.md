@@ -121,10 +121,20 @@ implementation in this skill (refusal is the product). The canary
 
 ## How to start a session
 
-New session: read `dev/goals/HANDOVER.md` first. **Every row of the repo's
-queue and of the audit roadmap is closed.** Do not invent the next row.
-Wait for a new silent-PASS class — gates green, output wrong — then one
-constructed fixture, one sitting. Do not paste Grok NOTES,
+New session: read `dev/goals/HANDOVER.md` first. Every row of the repo's
+queue and of the audit roadmap is closed. **The next three rows exist and
+were not invented** — the 2 September canary produced them, each from a
+model doing a real job, each with a measurement in `dev/canary/runs/`:
+
+| # | What | Found by |
+|---|---|---|
+| **18** | `center` is documented for "signature captions", the one case where it is wrong (left-anchored under a rule). Fix the example | Haiku 4.5 |
+| **19** | List markers lose the source's gap: `marker + ' '` shifts every list body 3.06 pt left. Touches the segment schema | Opus 5 |
+| **20** | The compliance notice's source-language title trips the leak scan. A title quoted in a notice is an identifier by the skill's own rule | Fable 5.1 |
+
+One sitting each, in that order (cheapest first, and 18 is a documentation
+defect that demonstrably misled a model). After those, do not invent the
+next row: run the canary again and see what it walks into. Do not paste Grok NOTES,
 `work/translations.json`, or bakeoff scores into that session.
 
 ## Versioning

@@ -3,10 +3,12 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-**The queue is empty.** Every row of `dev/goals/PROGRAM.md` and every row of
-the audit roadmap in `docs/checklist.html` is closed, with tests. Do not
-invent the next row. Wait for a new silent-PASS class — gates green, output
-wrong — then do one constructed fixture, one sitting.
+**There are exactly three rows, and they were not invented.** The audit
+roadmap and the repo's own queue are closed. The 2 September canary then
+produced three defects, each from a model doing a real job against the
+fixture: rows 18, 19 and 20 in `dev/goals/PROGRAM.md`, with measurements in
+`dev/canary/runs/`. One sitting each, cheapest first. When they are done,
+do not invent a fourth — run the canary again.
 
 **Repo:** `<REPO>`
 **Skill dir:** `pdf-translate/` (the only directory you install)
@@ -152,11 +154,20 @@ always deleted and reported; a certified source is flagged. The orphaned
 
 ## 5. What is genuinely not done
 
-**The canary run.** `dev/canary/README.md` has the fixtures command, the
-prompt and the five-axis rubric. Nobody has run it. One strong and one weak
-model on the generated fixtures, scored on identity record, lookup,
-identifiers kept, visual pass and honest delivery. A different day from any
-gate; no winner in `SKILL.md`.
+**Rows 18, 19 and 20** (see §above and `PROGRAM.md`). One sitting each.
+
+**Re-sync the installed copy.** It is on `metadata.version` 16; the repo is
+well past that. It lives on a Windows machine
+(`%APPDATA%\Claude\…\skills\pdf-translate`), not this one, so it cannot
+be done from a macOS session.
+
+**The audit HTML.** `docs/audit-2026-09-01.html` still shows 16 "Open"
+badges for findings that are all fixed. The markdown audit is current; the
+page a reader lands on is not.
+
+**The canary has run once** (2 September, Opus 5 / Fable 5.1 / Haiku 4.5 —
+5/5, 5/5, 3/5). Run it again after 18–20 close, on a different day from any
+of them. No winner in `SKILL.md`.
 
 Out of scope forever unless the user reverses it: a shipped glossary, OCR
 implementation, a semantic term checker, a winner in `SKILL.md`, FL-150 as

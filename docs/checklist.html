@@ -72,9 +72,9 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 </style>
 
 <div class="page">
-  <div class="eyebrow">Program tracker · after the audit roadmap · updated 2 Sep 2026</div>
+  <div class="eyebrow">Program tracker · after the canary · updated 2 Sep 2026</div>
   <h1>pdf-translate Checklist</h1>
-  <p class="lede">Every row of the repository's own queue and of the September audit's roadmap is closed, with tests. One item is left, and it is a model run rather than a code change. Ticks are saved in this browser only.</p>
+  <p class="lede">Every row of the repository's own queue and of the September audit's roadmap is closed, with tests, and the canary has run. What is open now was found by that canary rather than planned: three defects three models walked into. Ticks are saved in this browser only.</p>
 
   <div class="progress" role="status" aria-live="polite">
     <div class="bar"><span id="bar"></span></div>
@@ -83,21 +83,39 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
   </div>
 
   <section>
-    <h2>Open</h2>
-    <p>Not a gate, and deliberately a different day from one.</p>
+    <h2>Open — found by the canary</h2>
+    <p>The canary ran on 2 September and produced these. Not invented: each came out of a model doing a real job against the fixture, and each is recorded with a measurement in <code>dev/canary/runs/</code>. One sitting each.</p>
     <ol class="items">
-      <li class="item" data-id="canary">
-        <input type="checkbox" id="c-canary"><div class="head"><span class="title"><label for="c-canary">Canary run on the toy PDFs</label></span><span class="chip p3">P3</span><span class="chip neutral">S</span></div>
-        <p class="detail">One strong and one weak model on the generated fixtures, scored on identity record, lookup, identifiers kept, visual pass and honest delivery. Fixtures, prompt and the five-axis rubric are in <code>dev/canary/README.md</code>; nobody has run it. No winner in <code>SKILL.md</code>.</p>
-        <p class="meta">needs two model sessions · scripts unchanged</p>
+      <li class="item" data-id="centerdoc">
+        <input type="checkbox" id="c-centerdoc"><div class="head"><span class="title"><label for="c-centerdoc">The <code>center</code> example is wrong for signature captions</label></span><span class="chip p1">P1</span><span class="chip neutral">XS</span></div>
+        <p class="detail"><code>translations-format.md</code> offers <code>center</code> for "column headers, titles, signature captions" — and a signature caption under a rule is left-anchored, not centred. Haiku followed the example and shipped a caption hanging 7.5 pt off the rule it labels, past every gate. Fix the example; a warning for a centred run that ends up wider than its source box is a separate, softer question.</p>
+        <p class="meta">found by Haiku 4.5 · documentation defect, minutes</p>
+      </li>
+      <li class="item" data-id="markergap">
+        <input type="checkbox" id="c-markergap"><div class="head"><span class="title"><label for="c-markergap">List markers lose the source's gap</label></span><span class="chip p1">P1</span><span class="chip neutral">M</span></div>
+        <p class="detail">retypeset re-emits <code>marker + ' '</code> where the source had two spaces, shifting every list body <strong>3.06 pt left</strong> on the canary fixture — measured, and systematic on any list whose source aligns bodies with more than one space. The fix means recording the marker's trailing whitespace in the segment, so it touches the schema and every placement path.</p>
+        <p class="meta">found by Opus 5 · silent fidelity loss</p>
+      </li>
+      <li class="item" data-id="noticeleak">
+        <input type="checkbox" id="c-noticeleak"><div class="head"><span class="title"><label for="c-noticeleak">The compliance notice trips the leak scan</label></span><span class="chip p2">P2</span><span class="chip neutral">S</span></div>
+        <p class="detail"><code>compliance.md</code> tells the author to name the source form title in the notice; the leak scan then reads that English title as untranslated running text and FAILs. A title quoted inside a notice is a write/find/say identifier by the skill's own rule, so verify could treat spans matching the original <code>/Title</code> the way it already treats <code>Form</code>/<code>Schedule</code> names.</p>
+        <p class="meta">found by Fable 5.1 · two features disagreeing</p>
       </li>
     </ol>
   </section>
 
   <section>
     <h2>Closed since the audit</h2>
-    <p>In the order they were done. Each landed with in-repo tests, and the full suite stayed green: 154 tests, no skips, green on Linux and Windows under Python 3.10 and 3.13.</p>
+    <p>In the order they were done. Each landed with in-repo tests, and the full suite stayed green: 157 tests, no skips, green on Linux and Windows under Python 3.10 and 3.13.</p>
     <ol class="items">
+      <li class="item" data-id="canary">
+        <input type="checkbox" id="c-canary" checked><div class="head"><span class="title"><label for="c-canary">Canary run on the toy PDFs</label></span><span class="chip p3">P3</span><span class="done-mark">done</span></div>
+        <p class="detail">Opus 5, Fable 5.1 and Haiku 4.5 on the two-page fixture, same one-line prompt, isolated directories. Opus and Fable 5/5; Haiku 3/5, losing the two axes that need judgement — it did not look up, and it reported a visual pass over a visible regression. All three were structurally sound, so the pipeline is not what separates them. Reports in <code>dev/canary/runs/</code>; no winner in <code>SKILL.md</code>.</p>
+      </li>
+      <li class="item" data-id="mergegate">
+        <input type="checkbox" id="c-mergegate" checked><div class="head"><span class="title"><label for="c-mergegate">The placement gate could not pass a wrapped merge</label></span><span class="chip p0">P0</span><span class="done-mark">done</span></div>
+        <p class="detail">Found by the canary and fixed the same sitting. A re-flowed paragraph wraps, so <code>get_text()</code> returns a newline where the authored html has a space — every merge longer than one line failed an otherwise-perfect build, which broke paragraph mode on the day it shipped. <code>normalize_ws</code> collapses wrapping whitespace only; NBSP and the hyphen variants stay unfolded, because drift belongs to the canonical-layer gate.</p>
+      </li>
       <li class="item" data-id="g12">
         <input type="checkbox" id="c-g12" checked><div class="head"><span class="title"><label for="c-g12">Program row 12: narrow-column warning</label></span><span class="chip p1">P1</span><span class="done-mark">done</span></div>
         <p class="detail">The extractor warns <code>narrow-column</code> on three or more stacked cores under 90 pt wide. Warn only — merge candidates fire on open sentences, so a pay-stub box of one-word labels never tripped them. Landed with the skill-text leftovers: reword before <code>allow_scale</code>, one merge or one override with <code>max_width</code> per narrow column, and a second human reviser named for official work.</p>
@@ -201,7 +219,7 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
 <script>
 (function () {
-  var KEY = 'pdf-translate-checklist-v2';
+  var KEY = 'pdf-translate-checklist-v3';
   var boxes = Array.prototype.slice.call(document.querySelectorAll('li.item input[type=checkbox]'));
   var bar = document.getElementById('bar');
   var count = document.getElementById('count');
