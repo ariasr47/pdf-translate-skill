@@ -98,7 +98,8 @@ document's register** > file size and everything else.
 
 ## Scope
 
-Born-digital PDFs. A scanned PDF needs OCR first — a different problem; say so
-rather than producing a bad overlay. Right-to-left and vertical scripts need
+Born-digital PDFs. Scans are out of scope with or without an OCR layer: the
+words the reader sees are pixels, and extract/verify refuse such pages; say so
+rather than producing a double-printed overlay. Right-to-left and vertical scripts need
 shaping that plain glyph placement does not do: verify a rendered sample before
 committing, and stop and say so if you cannot (see `references/fonts.md`).

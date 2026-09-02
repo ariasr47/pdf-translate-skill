@@ -56,10 +56,13 @@ fonts; a missing non-passthrough translation fails the build.
 ## Requirements
 
 Python with `pymupdf`, `pikepdf`, `fonttools` (`pip install pymupdf pikepdf
-fonttools`). Born-digital PDFs only — a scanned PDF needs OCR first.
-`extract_segments.py` and `verify.py` **fail** if a page has visible ink or
-an embedded image but no extractable text; do not ship that file as a
-translation. If the target script is RTL, retypeset writes `/ActualText` in
+fonttools`). Born-digital PDFs only. Scans are out of scope with or without an OCR
+layer: `extract_segments.py` and `verify.py` **fail** when a page has ink
+or an image but no text, and also when a page's text is invisible (an OCR
+layer over the scanned pixels, or text hidden under an image). In both
+cases the words the reader sees are pixels; strip-and-retypeset would
+print the translation over them, and this pipeline has no masking mode.
+Tell the user; do not ship that file as a translation. If the target script is RTL, retypeset writes `/ActualText` in
 logical order and `--translations` looks there as well as `get_text()`
 (which may still be visual-order for Arabic). **Layout is not mirrored
 unless** translations.json sets `"mirror": true` (flips text x and

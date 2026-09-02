@@ -91,7 +91,16 @@ removes nothing, extract emits zero segments, retypeset writes the same
 bytes, verify sees no fields, ink ratio 1.00, and "no untranslated running
 text" is vacuously true. The user is handed a file described as translated
 that is the original. `extract_segments.py` and `verify.py` now **fail**
-when a page has an image or visible ink but no extractable text — OCR first.
+when a page has an image or visible ink but no extractable text.
+
+The OCR'd version of that scan is not better. An OCR layer is invisible
+text (render mode 3) laid over the image so the pixels become searchable.
+Extract sees text, strip removes it, retypeset prints the translation over
+the scanned pixels, the ink ratio stays under the 3× ceiling, and the reader
+gets both languages on top of each other. Both scripts now compare a render
+of the page with and without its text: if stripping the text changes almost
+nothing (under 3% of the text-span area), the text is invisible and the page
+is refused. This pipeline has no masking mode; say so instead of shipping.
 
 A related false failure: a pale or blank page has ~0 dark pixels, so
 `ratio = translated / max(original, 1)` becomes 0.00 and fails a correct

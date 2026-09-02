@@ -29,6 +29,10 @@ Segmentation rules (why they matter):
 - Consecutive same-column lines that look like a wrapped paragraph are
   flagged as merge *candidates*. Never auto-merged; declare each merge
   explicitly in translations.json.
+- A page whose text is invisible (an OCR layer over a scanned image, or
+  text hidden under an image) is refused: the words the reader sees are
+  pixels, and retypeset would print the translation over them. The
+  script exits non-zero and names the pages (kind: invisible-text).
 
 Usage:
   python3 extract_segments.py ORIGINAL.pdf [--gap 12] [--outdir .]
@@ -39,6 +43,11 @@ import re
 import sys
 
 import pymupdf
+
+_SCRIPTS = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPTS not in sys.path:
+    sys.path.insert(0, _SCRIPTS)
+from strip_text import invisible_text_pages  # noqa: E402
 
 MARKER = re.compile(
     r'^\s*(\(?[a-z]\.|\([a-z0-9]{1,3}\)|\d{1,2}\.)\s+'
@@ -223,12 +232,24 @@ def extract_segments(src, outdir='.', gap=12.0):
                 'page': pno,
                 'kind': 'no-text-layer',
                 'why': 'visible ink or an embedded image but no extractable '
-                       'text — this looks scanned. OCR first; do not ship an '
-                       'untranslated file',
+                       'text — this looks scanned. Scans are out of scope with or '
+                       'without an OCR layer; do not ship an untranslated file',
             })
     doc.close()
 
     warnings.extend(merge_candidate_warnings(segments))
+
+    invisible = invisible_text_pages(src)
+    for pno, fraction in invisible:
+        warnings.append({
+            'page': pno,
+            'kind': 'invisible-text',
+            'fraction': fraction,
+            'why': 'the text layer is invisible (an OCR layer over a scanned '
+                   'image, or text hidden under an image): stripping it '
+                   'changes nothing the reader sees. The visible words are '
+                   'pixels; do not ship',
+        })
 
     uniq = {}
     for s in segments:
@@ -248,6 +269,7 @@ def extract_segments(src, outdir='.', gap=12.0):
         'warnings': warnings,
         'cores': cores,
         'unextractable_pages': unextractable_pages,
+        'invisible_text_pages': invisible,
         'segments_path': seg_path,
         'to_translate_path': to_path,
     }
@@ -272,12 +294,22 @@ def main(argv=None):
             preview = w.get('text') or (w.get('lines') or [''])[0]
             pid = w.get('id', ','.join(str(i) for i in w.get('ids', [])))
             print(f"  p{w['page']} seg {pid}{extra}: {preview}")
+    rc = 0
     if result.get('unextractable_pages'):
         pages = ', '.join(str(p) for p in result['unextractable_pages'])
         print(f'FAIL: pages with visible content but no extractable text: {pages}')
-        print('  This looks scanned. OCR first; the pipeline cannot translate images.')
-        return 1
-    return 0
+        print('  This looks scanned. The pipeline cannot translate images, and an '
+              'OCR layer would not help (it is refused too); say so.')
+        rc = 1
+    if result.get('invisible_text_pages'):
+        pages = ', '.join(f'{p} ({f:.1%} of text area changes)'
+                          for p, f in result['invisible_text_pages'])
+        print(f'FAIL: pages whose text layer is invisible: {pages}')
+        print('  This looks like an OCR\'d scan (image + invisible OCR text layer). '
+              'The words the reader sees are pixels; strip-and-retypeset would print '
+              'the translation over them. This pipeline has no masking mode; do not ship.')
+        rc = 1
+    return rc
 
 
 if __name__ == '__main__':

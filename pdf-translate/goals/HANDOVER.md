@@ -10,7 +10,7 @@ a gate.
 **Interpreter:** `py -3`  
 **Tests:** from `pdf-translate/`:  
 `py -3 -m unittest tests.test_pipeline tests.test_corpus_verdicts -v`  
-**Branch:** `main`. Gates 01–13 and the any-PDF skill text are committed (`git log -1` shows the latest).  
+**Branch:** `main`. Gates 01–14 and the any-PDF skill text are committed (`git log -1` shows the latest).  
 **After that commit** only bakeoff material, session prompts and HTML explainers remain untracked or ignored; see §9.
 
 ---
@@ -98,7 +98,7 @@ Also locked: scan/image-only → `refuse+OCR`; pale blank → `skip-ink`;
 field identity; no redaction; glyf fonts + rasterization assert;
 `pipeline.py rebuild` / `render`; corpus `verdicts.json`.
 
-### PROGRAM 08–10 and 13 (committed)
+### PROGRAM 08–10, 13 and 14 (committed)
 
 | # | What | Tests |
 |---|---|---|
@@ -106,6 +106,7 @@ field identity; no redaction; glyf fonts + rasterization assert;
 | **09** | Empty / whitespace-only mapping values FAIL, named by core. `skip`/`null` unchanged. Use `skip` not `""` | `EmptyTargetTests` |
 | **10** | Output pushbutton `/CA` wider than widget (helv `text_length`, pad 2 pt) FAIL | `CaptionWidthTests` |
 | **13** | Stripped file re-read without annotation appearances must have no page text; nested Form XObjects and `/Resources` inherited from `/Pages` are stripped; FAIL deletes the file | `StripCompletenessTests` + corpus strip-clean assertion; `corpus/nested_xobject.pdf` |
+| **14** | Invisible text layer (OCR'd scan): stripping the text changes under 3% of its span pixels → extract + verify FAIL; scans refused with or without OCR | `InvisibleTextTests`; `corpus/ocr_layer.pdf` `refuse+ocr-layer` |
 
 `--translations` omitted → 01/02/08/09/10 do not run.
 
@@ -271,7 +272,7 @@ Do not paste bakeoff scores, `work/translations.json`, or old NOTES.
 
 ## 9. Uncommitted / untracked (as of this handover)
 
-**Committed:** gates 08–13 (verify gates 08–10, strip gate 13), the any-PDF skill text, goal briefs 08–13, HANDOVER / IMPLEMENTATION / RECOMMENDATIONS, `corpus/nested_xobject.pdf`, `.gitignore` (`runs/`).
+**Committed:** gates 08–14 (verify gates 08–10, strip gate 13, OCR-layer refusal 14), the any-PDF skill text, goal briefs 08–13, HANDOVER / IMPLEMENTATION / RECOMMENDATIONS, `corpus/nested_xobject.pdf`, `.gitignore` (`runs/`).
 
 **Untracked, keep with the skill (not yet committed):**  
 `recommendations.html`, `quality-bakeoff.html`, `CHATGPT_SESSION_PROMPT.md`

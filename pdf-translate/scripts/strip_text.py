@@ -38,6 +38,7 @@ contained text (also stripped, with nesting depth), and leftover_text
 import json
 import os
 import sys
+import tempfile
 
 import pikepdf
 import pymupdf
@@ -147,6 +148,77 @@ def leftover_page_text(path):
     finally:
         doc.close()
     return out
+
+
+# Invisible-text oracle (goal 14). Real text changes the render when it is
+# stripped: glyph ink covers at least ~10% of a span's bbox for any legible
+# face. An OCR layer (render mode 3) or text hidden under an image changes
+# nothing. 3% leaves headroom; both renders share every non-text pixel, so
+# there is no anti-aliasing noise to absorb.
+INVISIBLE_TEXT_MAX_CHANGED = 0.03
+CHANGED_CHANNEL_DELTA = 16   # per-channel difference that counts as a change
+INK_SKIP = 20                # same floor as verify: below this the page is blank
+
+
+def text_span_area(page):
+    """Sum of text-span bbox areas (pt²) from page content, annotations excluded."""
+    dl = page.get_displaylist(annots=False)
+    tp = dl.get_textpage()
+    if not isinstance(tp, pymupdf.TextPage):
+        tp = pymupdf.TextPage(tp)
+    area = 0.0
+    for block in tp.extractDICT().get('blocks', []):
+        for line in block.get('lines', []):
+            for span in line.get('spans', []):
+                if not span.get('text', '').strip():
+                    continue
+                x0, y0, x1, y1 = span['bbox']
+                area += max(0.0, x1 - x0) * max(0.0, y1 - y0)
+    return area
+
+
+def _changed_pixels(a, b, n, delta=CHANGED_CHANNEL_DELTA):
+    """Approximate number of pixels whose colour differs between two renders."""
+    changed = sum(1 for x, y in zip(a, b) if abs(x - y) > delta)
+    return changed / max(n, 1)
+
+
+def invisible_text_pages(src):
+    """[(page_index, changed_fraction)] for pages whose text is not what the reader sees.
+
+    Strips a temporary copy and compares 72-dpi renders. If removing the
+    text changes fewer than INVISIBLE_TEXT_MAX_CHANGED of the page's
+    text-span area (in pixels), the text was invisible: an OCR layer over a
+    scanned image, or text hidden under an image. Pages with negligible ink
+    are skipped (a pale blank page is not a scan). If strip itself refuses
+    the file, nothing is judged; that refusal already blocks the pipeline.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        report = strip_text(src, stripped)
+        if report['leftover_text'] or not os.path.isfile(stripped):
+            return []
+        o, s = pymupdf.open(src), pymupdf.open(stripped)
+        out = []
+        try:
+            for i in range(min(len(o), len(s))):
+                area = text_span_area(o[i])
+                if area <= 0:
+                    continue
+                po, ps = o[i].get_pixmap(dpi=72), s[i].get_pixmap(dpi=72)
+                if (po.width, po.height, po.n) != (ps.width, ps.height, ps.n):
+                    continue
+                bo, bs = bytes(po.samples), bytes(ps.samples)
+                dark = sum(1 for k in range(0, len(bo), po.n) if bo[k] < 100)
+                if dark < INK_SKIP:
+                    continue
+                fraction = _changed_pixels(bo, bs, po.n) / area
+                if fraction < INVISIBLE_TEXT_MAX_CHANGED:
+                    out.append((i, round(fraction, 4)))
+        finally:
+            o.close()
+            s.close()
+        return out
 
 
 def strip_text(src, dst, hide_buttons=None, captions=None):

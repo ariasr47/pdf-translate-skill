@@ -7,6 +7,7 @@
   "image_only.pdf": "refuse+OCR",
   "multicolumn.pdf": "translate",
   "nested_xobject.pdf": "translate",
+  "ocr_layer.pdf": "refuse+ocr-layer",
   "pale_blank.pdf": "skip-ink",
   "rotated.pdf": "translate",
   "rtl_source.pdf": "translate",

@@ -17,7 +17,7 @@ import extract_segments  # noqa: E402
 import strip_text  # noqa: E402
 import verify  # noqa: E402
 
-ALLOWED = {'translate', 'refuse+OCR', 'skip-ink'}
+ALLOWED = {'translate', 'refuse+OCR', 'refuse+ocr-layer', 'skip-ink'}
 
 
 def load_verdicts():
@@ -62,6 +62,11 @@ class CorpusVerdictTests(unittest.TestCase):
                         self.assertTrue(
                             'OCR' in verify_log or 'scanned' in verify_log.lower(),
                             msg=verify_log)
+                    elif expected == 'refuse+ocr-layer':
+                        self.assertNotEqual(extract_rc, 0, msg=extract_log)
+                        self.assertIn('invisible', extract_log.lower())
+                        self.assertNotEqual(verify_rc, 0, msg=verify_log)
+                        self.assertIn('invisible', verify_log.lower())
                     elif expected == 'skip-ink':
                         self.assertNotIn('FAIL page 1 ink ratio', verify_log)
                         self.assertIn('SKIP page 1 ink ratio', verify_log)

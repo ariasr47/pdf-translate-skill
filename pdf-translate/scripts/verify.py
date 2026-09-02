@@ -14,7 +14,8 @@
                   names (Schedule C, Form W-2), statutes and proper nouns are
                   supposed to survive translation intact
 5. text layer     a page with visible ink or an embedded image but no
-                  extractable text is treated as a scan and fails (OCR first).
+                  extractable text is treated as a scan and fails (scans are out of
+                  scope; an OCR layer is refused by gate 11).
                   Ink ratio is skipped when the original has negligible ink,
                   instead of failing a pale/blank page with ratio 0.00.
 6. placement      if --translations is given, every non-passthrough target
@@ -42,6 +43,10 @@
                   than the widget rect (helv text_length, pad 2 pt each
                   side) FAILs listing field name and caption. Omit the
                   flag: this gate does not run. Measures output /CA only.
+11. invisible text a page of the ORIGINAL whose text is not what the reader
+                  sees (stripping it changes under 3% of the text-span
+                  area in pixels: an OCR layer over a scan, or text under
+                  an image) FAILs. Always runs. Refusal, not a fix.
 
 These gates catch structural failures. They do NOT catch visual defects —
 after they pass you still render pages side-by-side and look at them.
@@ -66,6 +71,7 @@ _SCRIPTS = os.path.dirname(os.path.abspath(__file__))
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 from extract_segments import write_find_say_hits  # noqa: E402
+from strip_text import invisible_text_pages  # noqa: E402
 
 WORD = re.compile(r"[A-Za-z][A-Za-z'\-]*")
 RUN = re.compile(r"[A-Za-z][A-Za-z'\-]*(?:\s+[A-Za-z][A-Za-z'\-]*){2,}")
@@ -487,7 +493,7 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
             nimg = len(o[i].get_images())
             print(f'FAIL page {i+1} no extractable text with visible content '
                   f'(images={nimg}, ink={ink(o[i])}). '
-                  f'This looks scanned — OCR first; do not ship.')
+                  f'This looks scanned — scans are out of scope with or without an OCR layer; do not ship.')
             fail = 1
             continue
         do, dj = ink(o[i]), ink(jc[i])
@@ -498,6 +504,15 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
         ok = min_ink <= ratio <= 3.0
         print(f'{"PASS" if ok else "FAIL"} page {i+1} ink ratio: {ratio:.2f}')
         fail |= (0 if ok else 1)
+
+    invisible = invisible_text_pages(orig)
+    for pno, fraction in invisible:
+        print(f'FAIL page {pno+1} invisible text layer: stripping the text changes '
+              f'{fraction:.1%} of its span area. This looks like an OCR\'d scan; the '
+              f'words the reader sees are pixels. Do not ship.')
+        fail = 1
+    if not invisible:
+        print('PASS text layer is visible')
 
     # Two buckets, because "a Latin word survived" and "a sentence went
     # untranslated" are completely different findings and must not score alike.

@@ -331,6 +331,52 @@ def build_nested_xobject_pdf(path, inherit_resources=False):
         os.replace(moved, path)
 
 
+OCR_HEADING = 'NOTICE OF HEARING'
+OCR_BODY = 'You must appear in court on the date shown below.'
+
+
+def _render_text_png(path, heading, body, dpi=150):
+    tmp = pymupdf.open()
+    page = tmp.new_page(width=612, height=792)
+    page.insert_text((72, 80), heading, fontsize=20)
+    page.insert_text((72, 120), body, fontsize=12)
+    page.get_pixmap(dpi=dpi).save(path)
+    tmp.close()
+
+
+def build_ocr_layer_pdf(path):
+    """A scan that was OCR'd: a full-page image of the text plus an invisible
+    (render mode 3) text layer at the same positions. The words the reader
+    sees are pixels; the text layer only makes them searchable."""
+    png = path + '.scan.png'
+    _render_text_png(png, OCR_HEADING, OCR_BODY)
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_image(page.rect, filename=png)
+    page.insert_text((72, 80), OCR_HEADING, fontsize=20, render_mode=3)
+    page.insert_text((72, 120), OCR_BODY, fontsize=12, render_mode=3)
+    doc.save(path)
+    doc.close()
+    os.remove(png)
+
+
+def build_text_over_image_pdf(path):
+    """Real, visible text over a full-page light background image, as in a
+    brochure. Must NOT be mistaken for an OCR layer."""
+    pix = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 200, 260), False)
+    pix.clear_with(236)
+    png = path + '.bg.png'
+    pix.save(png)
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_image(page.rect, filename=png)
+    page.insert_text((72, 80), OCR_HEADING, fontsize=20)
+    page.insert_text((72, 120), OCR_BODY, fontsize=12)
+    doc.save(path)
+    doc.close()
+    os.remove(png)
+
+
 class ImportSafeTests(unittest.TestCase):
     def test_field_fonts_and_compare_import_without_argv(self):
         # These two historically read sys.argv at import time, which crashes
@@ -532,6 +578,58 @@ class StripCompletenessTests(unittest.TestCase):
                     rc = pipeline.main(['init', src, '--work', tmp])
             self.assertNotEqual(rc, 0, msg=buf.getvalue())
             self.assertFalse(os.path.exists(os.path.join(tmp, 'stripped.pdf')))
+
+
+class InvisibleTextTests(unittest.TestCase):
+    """Goal 14: an OCR'd scan (image + invisible text layer) is refused;
+    visible text over a background image is not."""
+
+    def test_invisible_text_pages_unit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ocr = os.path.join(tmp, 'ocr.pdf')
+            plain = os.path.join(tmp, 'plain.pdf')
+            over = os.path.join(tmp, 'over.pdf')
+            build_ocr_layer_pdf(ocr)
+            build_plain_pdf(plain)
+            build_text_over_image_pdf(over)
+            flagged = strip_text.invisible_text_pages(ocr)
+            self.assertEqual([pg for pg, _ in flagged], [0], msg=flagged)
+            self.assertLess(flagged[0][1], strip_text.INVISIBLE_TEXT_MAX_CHANGED)
+            self.assertEqual(strip_text.invisible_text_pages(plain), [])
+            self.assertEqual(strip_text.invisible_text_pages(over), [])
+
+    def test_ocr_layer_fails_extract_and_verify(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ocr = os.path.join(tmp, 'ocr.pdf')
+            build_ocr_layer_pdf(ocr)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = extract_segments.main([ocr, '--outdir', tmp])
+            log = buf.getvalue()
+            self.assertNotEqual(rc, 0, msg=log)
+            self.assertIn('invisible', log.lower())
+            self.assertIn('OCR', log)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(ocr, ocr)
+            log = buf.getvalue()
+            self.assertNotEqual(rc, 0, msg=log)
+            self.assertIn('invisible', log.lower())
+
+    def test_visible_text_over_image_is_not_flagged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            over = os.path.join(tmp, 'over.pdf')
+            build_text_over_image_pdf(over)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = extract_segments.main([over, '--outdir', tmp])
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertNotIn('invisible', log.lower())
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                verify.verify(over, over)
+            self.assertNotIn('invisible', buf.getvalue().lower())
 
 
 class ExtractTests(unittest.TestCase):

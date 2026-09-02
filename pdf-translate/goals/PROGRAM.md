@@ -61,6 +61,7 @@ launder their output.
 | **10** | Caption vs rect | **Closed** | `/CA` width > button width − pad → FAIL |
 | **11** | Override keeps `d.` / `$` | **Next `/goal`** | Override parts must contain source marker and tail |
 | **12** | Skinny column warning | After 11 | Extractor `narrow-column` warning; no auto-merge |
+| **14** | OCR'd scan refusal | **Closed** | Stripping a page's text changes under 3% of its text-span pixels → extract + verify FAIL naming the invisible (OCR) layer; `corpus/ocr_layer.pdf` `refuse+ocr-layer` |
 | **13** | Strip completeness | **Closed** | Stripped file, re-read without annotation appearances, has no page text; nested XObjects and inherited `/Resources` stripped; FAIL leaves no file |
 
 Never combine 04+05. Never combine a bakeoff with a gate. Never put OCR
@@ -79,10 +80,12 @@ on the toy PDF is a **different day**, not this sitting.
 - RTL **docs** match measurement (visual-order, not mirrored)
 - Strip gate: stripped file has no page text (annotation appearances
   excluded); nested XObjects and inherited `/Resources` are stripped
+- OCR'd scan (invisible text layer) → `refuse+ocr-layer`; scans are out
+  of scope with or without OCR
 
 ## How to start a session
 
 New session: read `goals/HANDOVER.md` first. Next gate: copy
 `goals/11-override-markers.md` into `/goal`. Do not paste Grok NOTES,
 `work/translations.json`, or bakeoff scores into that session.
-Remaining queue: `goals/IMPLEMENTATION.md` (08–10 and 13 are committed).
+Remaining queue: `goals/IMPLEMENTATION.md` (08–10, 13 and 14 are committed).
