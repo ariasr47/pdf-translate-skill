@@ -56,6 +56,13 @@
                   sees (stripping it changes under 3% of the text-span
                   area in pixels: an OCR layer over a scan, or text under
                   an image) FAILs. Always runs. Refusal, not a fix.
+17. shaped marks  with --translations: every target whose script needs
+                  shaping (Arabic family, Indic, Thai, Lao, Khmer, Myanmar,
+                  Tibetan) must appear in an /ActualText span. retypeset
+                  marks every Story-engine run that way, so a shaped target
+                  that is missing was drawn glyph by glyph. This is the
+                  Indic check: a broken conjunct leaves no code-point tell,
+                  but who drew the run does.
 12. unshaped Arabic an output page whose Arabic letters are all isolated
                   presentation forms (three or more joining letters, no
                   initial or medial form) was drawn letter by letter and
@@ -463,6 +470,51 @@ def page_search_text(page):
     parts = [page.get_text() or '']
     parts.extend(extract_actualtext(page))
     return '\n'.join(parts)
+
+
+# Scripts whose letters must be shaped before they are drawn. Same table
+# retypeset uses to decide what goes through the Story engine.
+_SHAPING_RANGES = (
+    (0x0600, 0x06FF), (0x0750, 0x077F), (0x08A0, 0x08FF),
+    (0xFB50, 0xFDFF), (0xFE70, 0xFEFC),
+    (0x0700, 0x074F), (0x07C0, 0x07FF),
+    (0x0900, 0x0DFF),
+    (0x0E00, 0x0EFF), (0x0F00, 0x0FFF),
+    (0x1000, 0x109F), (0x1780, 0x17FF),
+)
+
+
+def needs_shaping(text):
+    for ch in text or '':
+        o = ord(ch)
+        for a, b in _SHAPING_RANGES:
+            if a <= o <= b:
+                return True
+    return False
+
+
+def unmarked_shaped_targets(actual_texts, targets):
+    """Shaped-script targets that no /ActualText span carries.
+
+    Arabic has a glyph-form tell — isolated presentation forms mean the
+    run was drawn letter by letter. Devanagari and Thai have none: the
+    shaper writes glyph ids, so a broken conjunct and a correct one look
+    the same in the text layer. What IS deterministic is who drew the run.
+    retypeset places every shaping-script run through the Story engine and
+    marks it with /ActualText; a run that reached the page any other way
+    was drawn glyph by glyph, and that is the defect. Cheaper and more
+    certain than comparing renders against a reference.
+    """
+    hay = '\n'.join(actual_texts)
+    missing, seen = [], set()
+    for raw in targets:
+        text = normalize_ws(raw)
+        if len(text) < 2 or text in seen or not needs_shaping(text):
+            continue
+        seen.add(text)
+        if text not in hay:
+            missing.append(raw)
+    return missing
 
 
 def missing_translation_targets(page_text, targets):
@@ -1039,6 +1091,19 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
             fail = 1
         else:
             print('PASS authored translations present')
+
+        marks = [ '\n'.join(extract_actualtext(jc[i])) for i in range(len(jc))]
+        unmarked = unmarked_shaped_targets(marks, targets)
+        if unmarked:
+            print(f'FAIL shaped-script targets not drawn by the Story engine '
+                  f'({len(unmarked)}): no /ActualText span carries them, so '
+                  f'they were placed glyph by glyph — joining and conjuncts '
+                  f'are broken:')
+            for t in unmarked[:20]:
+                print(f'   {t.replace(chr(10), " ")[:80]}')
+            fail = 1
+        elif any(needs_shaping(t) for t in targets):
+            print('PASS shaped-script targets carry /ActualText')
 
         leftover = leftover_button_captions(
             pushbutton_captions(o),

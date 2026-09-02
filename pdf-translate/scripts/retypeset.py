@@ -11,7 +11,8 @@ document gets the same behavior:
 - shrink-to-fit bounded by the nearest same-row obstacle (next segment or
   widget rect) so text never overlaps fields or neighboring cells
 - dot leaders refilled anchored to the RIGHT at most the original run width
-  (keeps leaders out of mid-line checkbox gaps)
+  (keeps leaders out of mid-line checkbox gaps), including on labels drawn
+  by the Story engine (shaped scripts) or right-to-left
 - '‖' in a translation splits a bold lead-in from a regular remainder
 - declared merges rendered as re-flowed paragraphs via insert_htmlbox
   with auto-shrink (scale_low=0)
@@ -798,10 +799,64 @@ def retypeset(stripped, segf, trf, out):
             wsum = sum(f.text_length(t, fs) for t, f in parts)
             rtl_body = is_rtl_text(jp)
             shaped = needs_shaping(jp)
-            if dots and not rtl_body and not shaped and not mirror and not rot:
-                cur_end = seg['bbox'][2] - (
+            def leader_geometry():
+                end = seg['bbox'][2] - (
                     helv.text_length(tail, fs) + 2 if tail else 0)
-                label_max = cur_end - ox - 8
+                return end, end - ox - 8
+
+            def fill_leaders(label_end, cur_end):
+                """Refill dots from the label's end to the original right edge.
+
+                Anchored right and never longer than the source run, so
+                leaders cannot invade a mid-line checkbox gap.
+                """
+                dw = helv.text_length('.', fs)
+                dstart = max(label_end + 1, cur_end - len(dots) * dw)
+                n = max(0, int((cur_end - dstart) / dw))
+                if n:
+                    tw.append((dstart, oy), '.' * n, font=helv, fontsize=fs)
+                if tail:
+                    check_glyphs(pno, helv, tail, core, 'Helvetica (tail)')
+                    tw.append((cur_end + 2, oy), tail, font=helv, fontsize=fs)
+
+            if dots and (shaped or rtl_body) and not mirror and not rot:
+                # The label goes through the Story engine (shaped) or a
+                # right-to-left TextWriter; the leaders are still ordinary
+                # Helvetica dots, so they are refilled here instead of
+                # being dropped with the whole dot path.
+                cur_end, label_max = leader_geometry()
+                body = jp.replace('‖', '')
+                cint = int(seg.get('color', 0))
+                body_font = role(seg['bold'], seg.get('italic'))
+                bx = ox
+                if marker:
+                    mfont = helv_role(seg['bold'], seg.get('italic'))
+                    tw.append((bx, oy), marker + ' ', font=mfont, fontsize=fs)
+                    bx += mfont.text_length(marker + ' ', fs)
+                room = max(label_max - (bx - ox), 1.0)
+                if shaped:
+                    # Shaping usually narrows a run (ligatures, conjuncts),
+                    # so the unshaped measurement is a safe upper bound for
+                    # the box; anything wider is scaled by the engine and
+                    # caught by the 0.7x gate.
+                    width = min(room, body_font.text_length(body, fs))
+                    shaped_jobs.append((bx, oy, body, bool(seg['bold']), fs,
+                                        cint, width, core,
+                                        bool(seg.get('italic'))))
+                else:
+                    w = body_font.text_length(body, fs)
+                    fs2 = fs if w <= room else max(4.0, fs * room / w)
+                    if fs and fs2 < fs:
+                        consider_ratio(pno, core, fs2 / fs)
+                    check_glyphs(pno, body_font, body, core,
+                                 _role_name(seg['bold'], seg.get('italic')))
+                    rtl_jobs.append((bx, oy, body, body_font, fs2, cint, body))
+                    width = body_font.text_length(body, fs2)
+                fill_leaders(bx + width, cur_end)
+                continue
+
+            if dots and not rtl_body and not shaped and not mirror and not rot:
+                cur_end, label_max = leader_geometry()
                 fs2 = fs if wsum <= label_max else max(4.0, fs * label_max / wsum)
                 if fs and fs2 < fs:
                     consider_ratio(pno, core, fs2 / fs)
@@ -809,14 +864,7 @@ def retypeset(stripped, segf, trf, out):
                 for t, f in parts:
                     tw.append((x, oy), t, font=f, fontsize=fs2)
                     x += f.text_length(t, fs2)
-                dw = helv.text_length('.', fs)
-                dstart = max(x + 1, cur_end - len(dots) * dw)
-                n = max(0, int((cur_end - dstart) / dw))
-                if n:
-                    tw.append((dstart, oy), '.' * n, font=helv, fontsize=fs)
-                if tail:
-                    check_glyphs(pno, helv, tail, core, 'Helvetica (tail)')
-                    tw.append((cur_end + 2, oy), tail, font=helv, fontsize=fs)
+                fill_leaders(x, cur_end)
                 continue
             maxw = (direction_limit(page, seg, dx, dy) if rot
                     else right_limit(pno, seg, segs) - ox)

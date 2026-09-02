@@ -130,8 +130,11 @@ string from `/ActualText`, and the ink ratio barely moves. Runs whose
 target script needs shaping now go through the Story engine (the merges
 path), and `verify.py` FAILs an output whose Arabic letters are all
 isolated forms. Indic scripts leave no code-point signal in the text
-layer (the shaper writes glyph ids), so for them the visual pass is the
-check.
+layer (the shaper writes glyph ids), so the gate there is *who drew the
+run*: every Story-engine run is marked with `/ActualText`, and a
+shaping-script target that no `/ActualText` span carries was drawn glyph
+by glyph. Dot leaders and the `$` tail are refilled after a shaped or
+right-to-left label; they used to be dropped with the whole leader path.
 
 ## 12. Widget text is invisible to strip-and-retypeset — twice over
 

@@ -9,6 +9,7 @@ pre-stripped stand-in when checking strip.
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -3567,6 +3568,163 @@ class RtlLayoutTests(unittest.TestCase):
             with redirect_stdout(buf):
                 rc = verify.verify(src, out_rtl, translations=tr_rtl, min_ink=0.2)
             self.assertEqual(rc, 0, msg=buf.getvalue())
+
+
+DOTS_SOURCE = 'Monthly income'
+DOTS_LINE = 'Monthly income ................. $'
+
+
+def build_dot_leader_pdf(path, text=DOTS_LINE, x=72, y=80, size=11):
+    doc = pymupdf.open()
+    page = doc.new_page(width=400, height=200)
+    page.insert_text((x, y), text, fontsize=size)
+    doc.save(path)
+    doc.close()
+
+
+class ShapedLeaderTests(unittest.TestCase):
+    """Goal 16 leftover: dot leaders on a Story-engine or RTL label."""
+
+    def _run(self, tmp, target, font):
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'tr.json')
+        build_dot_leader_pdf(src)
+        extract_segments.extract_segments(src, outdir=tmp)
+        strip_text.strip_text(src, stripped)
+        result = json.loads(
+            Path(tmp, 'segments.json').read_text(encoding='utf-8'))
+        cores = {sg['core'] for sg in result['segments']}
+        self.assertIn(DOTS_SOURCE, cores, msg=sorted(cores))
+        write_mapping(tr, {DOTS_SOURCE: target}, font, skip=[])
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(
+                stripped, os.path.join(tmp, 'segments.json'), tr, out)
+        self.assertEqual(rc, 0, msg=buf.getvalue())
+        return src, out, tr
+
+    def leader_run(self, path):
+        doc = pymupdf.open(path)
+        try:
+            text = doc[0].get_text()
+        finally:
+            doc.close()
+        runs = re.findall(r'\.{3,}', text)
+        return max(runs, key=len) if runs else ''
+
+    def test_latin_label_still_gets_leaders_and_tail(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = self._run(tmp, 'Ingresos mensuales', font)
+            self.assertTrue(len(self.leader_run(out)) >= 3,
+                            msg=repr(self.leader_run(out)))
+            doc = pymupdf.open(out)
+            try:
+                self.assertIn('$', doc[0].get_text())
+            finally:
+                doc.close()
+
+    def test_shaped_label_keeps_its_leaders(self):
+        font = find_rtl_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = self._run(tmp, AR_TARGET, font)
+            leaders = self.leader_run(out)
+            self.assertTrue(len(leaders) >= 3,
+                            msg=f'shaped label lost its leaders: {leaders!r}')
+            doc = pymupdf.open(out)
+            try:
+                page = doc[0]
+                self.assertIn('$', page.get_text())
+                self.assertTrue(
+                    any(AR_TARGET in a
+                        for a in verify.extract_actualtext(page)))
+                # Leaders must not run through the label.
+                dots = [w for w in page.get_text('words')
+                        if set(w[4]) <= {'.'} and len(w[4]) >= 3]
+                self.assertTrue(dots, msg=page.get_text('words'))
+                self.assertGreater(min(d[0] for d in dots), 72.0)
+            finally:
+                doc.close()
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr, min_ink=0.2)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+
+    def test_hebrew_label_keeps_its_leaders(self):
+        font = find_rtl_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = self._run(tmp, HE_TARGET, font)
+            self.assertTrue(len(self.leader_run(out)) >= 3,
+                            msg=repr(self.leader_run(out)))
+
+    def test_unmarked_shaped_target_fails_the_gate(self):
+        self.assertTrue(verify.needs_shaping(AR_TARGET))
+        self.assertTrue(verify.needs_shaping('\u0928\u092e\u0938\u094d\u0924\u0947'))
+        self.assertFalse(verify.needs_shaping('Hola'))
+        self.assertFalse(verify.needs_shaping(HE_TARGET))
+        # Present in an /ActualText span: fine.
+        self.assertEqual(
+            verify.unmarked_shaped_targets([AR_TARGET], [AR_TARGET, 'Hola']),
+            [])
+        # Absent: the run was drawn glyph by glyph.
+        self.assertEqual(
+            verify.unmarked_shaped_targets(['something else'],
+                                           [AR_TARGET, 'Hola']),
+            [AR_TARGET])
+
+    def test_arabic_target_drawn_glyph_by_glyph_fails_the_marks_gate(self):
+        font = find_rtl_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            bad = os.path.join(tmp, 'bad.pdf')
+            tr = os.path.join(tmp, 'tr.json')
+            build_one_line_pdf(src)
+            extract_segments.extract_segments(src, outdir=tmp)
+            write_mapping(tr, {SHAPE_SOURCE: AR_TARGET}, font, skip=[])
+            doc = pymupdf.open()
+            page = doc.new_page(width=612, height=792)
+            tw = pymupdf.TextWriter(page.rect)
+            tw.append((72, 80), AR_TARGET,
+                      font=pymupdf.Font(fontfile=str(font)), fontsize=12,
+                      right_to_left=True)
+            tw.write_text(page)
+            doc.save(bad)
+            doc.close()
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, bad, translations=tr, min_ink=0.05)
+            log = buf.getvalue()
+            self.assertNotEqual(rc, 0, msg=log)
+            self.assertIn('not drawn by the Story engine', log)
+
+    def test_indic_target_drawn_glyph_by_glyph_fails_verify(self):
+        font = find_devanagari_font()
+        target = '\u0928\u092e\u0938\u094d\u0924\u0947 \u0926\u0941\u0928\u093f\u092f\u093e'
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            bad = os.path.join(tmp, 'bad.pdf')
+            tr = os.path.join(tmp, 'tr.json')
+            build_one_line_pdf(src)
+            extract_segments.extract_segments(src, outdir=tmp)
+            write_mapping(tr, {SHAPE_SOURCE: target}, font, skip=[])
+            # A TextWriter run: the logical string is in the text layer, but
+            # nothing marks it, because nothing shaped it.
+            doc = pymupdf.open()
+            page = doc.new_page(width=612, height=792)
+            tw = pymupdf.TextWriter(page.rect)
+            tw.append((72, 80), target, font=pymupdf.Font(fontfile=str(font)),
+                      fontsize=12)
+            tw.write_text(page)
+            doc.save(bad)
+            doc.close()
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, bad, translations=tr, min_ink=0.05)
+            log = buf.getvalue()
+            self.assertNotEqual(rc, 0, msg=log)
+            self.assertIn('not drawn by the Story engine', log)
 
 
 class ShapedScriptTests(unittest.TestCase):

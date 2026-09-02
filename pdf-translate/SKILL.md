@@ -13,7 +13,7 @@ description: >-
   "translate this document but keep the formatting". Also use it when a user
   complains that a translated PDF broke its layout or its form fields.
 metadata:
-  version: "23"
+  version: "24"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -67,8 +67,12 @@ print the translation over them, and this pipeline has no masking mode.
 Tell the user; do not ship that file as a translation. If the target script needs shaping (Arabic, every Indic script, Thai,
 Khmer, Myanmar), retypeset places those runs with the Story engine so
 letters join and conjuncts form, and writes `/ActualText` in logical
-order; `--translations` looks there as well as `get_text()`. Hebrew is
-direction only. verify fails an output whose Arabic came out unshaped. **Layout is not mirrored
+order; `--translations` looks there as well as `get_text()`. Dot leaders
+and the `$` tail are refilled on those labels too. Hebrew is
+direction only. verify fails an output whose Arabic came out unshaped,
+and — since a broken Devanagari conjunct leaves no code-point tell — it
+also fails any shaping-script target that no `/ActualText` span carries,
+because that run was drawn glyph by glyph. **Layout is not mirrored
 unless** translations.json sets `"mirror": true` (flips text x and
 field/link rects; graphics stay). Read `references/fonts.md` and halt
 unless you have checked the render, the logical text layer, *and*
