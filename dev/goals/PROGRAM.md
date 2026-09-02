@@ -129,11 +129,11 @@ model doing a real job, each with a measurement in `dev/canary/runs/`:
 | # | Brief | What | Found by |
 |---|---|---|---|
 | **18** | `goals/18-center-example.md` | **Closed 2 Sep.** `center` was documented for "signature captions", the one case where it is wrong (left-flush under a rule). Example corrected, SKILL.md step 5 says it, a constructed fixture locks the geometry (a wider translation `center`ed lands left of the source x0; anchored left it lands on it; verify passes both). No warning, by decision | Haiku 4.5 |
-| **19** | `goals/19-list-marker-gap.md` | List markers lose the source's gap: `marker + ' '` shifts every list body 3.06 pt left. Touches the segment schema | Opus 5 |
+| **19** | `goals/19-list-marker-gap.md` | **Closed 2 Sep.** List markers lost the source's gap: `marker + ' '` shifted every list body 3.06 pt left. Segments now record the `gap`; retypeset re-emits it; old files fall back to one space | Opus 5 |
 | **20** | `goals/20-notice-title-leak.md` | The compliance notice's source-language title trips the leak scan. A title quoted in a notice is an identifier by the skill's own rule | Fable 5.1 |
 
-One sitting each, in that order (cheapest first). 18 is closed; 19 is
-next, then 20. After those, do not invent the next row: run the canary
+One sitting each, in that order (cheapest first). 18 and 19 are closed;
+20 is next. After those, do not invent the next row: run the canary
 again and see what it walks into. Do not paste Grok NOTES,
 `work/translations.json`, or bakeoff scores into that session.
 
@@ -160,11 +160,12 @@ are in `docs/REVIEW-2026-09-02.md` §5; this is the queue.
 
 | # | Brief | Trigger |
 |---|---|---|
-| 19 | `goals/19-list-marker-gap.md` | Opus 5, measured 3.06 pt |
+| 19 | `goals/19-list-marker-gap.md` | **Closed 2 Sep evening.** Segments record the whitespace after a marker (`gap`); retypeset re-emits it in every marker path; absent key → one space, so stale work directories still build. Was Opus 5, measured 3.06 pt; 0.00 after |
 | 20 | `goals/20-notice-title-leak.md` | Fable 5.1 and Opus 5 both had to allowlist |
 | C2 | canary run 2 — after P3, so it also tests the shorter skill; one deliberately long session | — |
 | **21** | `goals/21-right-aligned-on-text.md` | wild corpus: 1,485 `right-aligned` groups, 11,507 segments proposed for `right` on 17 documents, most of them justified text |
 | **22** | `goals/22-merge-candidate-kind.md` | wild corpus: merge candidates carry no `kind`; 2,484 of them were mislabelled by the first tool keyed on it |
+| **23** | `goals/23-marker-font-metrics.md` | wild corpus, while closing 19: the body still starts at Helvetica's width of marker + gap, so one-space lists whose marker font is not Helvetica-metric drift — 1.3 pt on Medicare, 4.9 pt on FL-300, every gate green |
 
 **Lane B — product rows.** New. Triggered by product evidence, not by a
 model's defect; never a gate.
@@ -178,7 +179,7 @@ model's defect; never a gate.
 | **P4** | Eval automation | Three `evals/**/case.yaml` cases with graders wrapping `dev/canary/score.py` plus an LLM grader for the identity and honest-delivery axes; `claude plugin eval . --runs 1 --json` produces a report; a `--threshold` documents the bar; one report committed under `dev/canary/runs/` | Running in CI on every push; naming a winner; scoring the visual pass by machine |
 | P5 | One source of truth | **Closed 2 Sep evening**: README count removed and CI badge added; audit HTML is a banner-marked snapshot; findings §15; tracker carries both lanes. Rule: `checklist.html` tracks, this file queues, `HANDOVER.md` cold-starts; nothing else states counts or open rows | — |
 
-**Order:** 19 → 20 → 22 → 21 → P2 → P6 → P3 → C2 → P4.
+**Order:** 20 → 22 → 21 → 23 → P2 → P6 → P3 → C2 → P4.
 
 **Hypotheses, after the wild corpus** (`dev/wild/ANALYSIS.md` §5): hybrid
 XFA — answered on page 1 of eight forms, the AcroForm layer renders

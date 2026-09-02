@@ -2208,6 +2208,131 @@ def qa_kinds(findings):
     return {(f['kind'], f['severity']) for f in findings}
 
 
+# Row 19: a list body starts where the source put it. The first line has
+# two spaces after its marker, the second one; both must land on the source
+# body x, and the one-space line must not move at all.
+LIST_TWO_CORE = 'Two spaces after the marker'
+LIST_ONE_CORE = 'One space after the marker'
+LIST_TWO = '1.  ' + LIST_TWO_CORE
+LIST_ONE = '2. ' + LIST_ONE_CORE
+LIST_TARGETS = {LIST_TWO_CORE: 'Dos espacios tras la marca',
+                LIST_ONE_CORE: 'Un espacio tras la marca'}
+
+
+def build_list_pdf(path):
+    doc = pymupdf.open()
+    page = doc.new_page(width=400, height=300)
+    page.insert_text((72, 100), LIST_TWO, fontsize=11)
+    page.insert_text((72, 140), LIST_ONE, fontsize=11)
+    doc.save(path)
+    doc.close()
+
+
+def body_x0(pdf_path, body):
+    """x of the first glyph of `body` on page 1, from the raw character boxes.
+
+    A span's bbox is not enough: in the original the marker and the body
+    share one span, so the body's own start is only visible per character.
+    """
+    doc = pymupdf.open(pdf_path)
+    try:
+        for b in doc[0].get_text('rawdict')['blocks']:
+            for line in b.get('lines', []):
+                chars = [c for sp in line['spans'] for c in sp['chars']]
+                s = ''.join(c['c'] for c in chars)
+                i = s.find(body)
+                if i >= 0:
+                    return round(chars[i]['origin'][0], 2)
+    finally:
+        doc.close()
+    raise AssertionError(f'{body!r} not found in {pdf_path}')
+
+
+class ListMarkerGapTests(unittest.TestCase):
+    """Row 19: retypeset used to re-emit marker + one space whatever the
+    source printed, shifting every two-space list body 3.06 pt left on the
+    canary fixture. The segment now records the gap and retypeset re-emits
+    it; a segments.json without the key falls back to one space."""
+
+    def _build(self, tmp, drop_gap=False):
+        font = find_test_font()
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        segs = os.path.join(tmp, 'segments.json')
+        build_list_pdf(src)
+        extract_segments.extract_segments(src, outdir=tmp)
+        if drop_gap:
+            data = json.loads(Path(segs).read_text(encoding='utf-8'))
+            for s in data['segments']:
+                s.pop('gap', None)
+            Path(segs).write_text(json.dumps(data), encoding='utf-8')
+        strip_text.strip_text(src, stripped)
+        write_mapping(tr, LIST_TARGETS, font)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(stripped, segs, tr, out)
+        self.assertEqual(rc, 0, msg=buf.getvalue())
+        return src, out
+
+    def test_extractor_records_the_gap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_list_pdf(src)
+            result = extract_segments.extract_segments(src, outdir=tmp)
+            by_core = {s['core']: s for s in result['segments']}
+            self.assertEqual(by_core[LIST_TWO_CORE]['marker'], '1.')
+            self.assertEqual(by_core[LIST_TWO_CORE]['gap'], '  ')
+            self.assertEqual(by_core[LIST_ONE_CORE]['marker'], '2.')
+            self.assertEqual(by_core[LIST_ONE_CORE]['gap'], ' ')
+
+    def test_multi_span_line_after_a_marker_still_extracts(self):
+        """Real lines have several spans (a bold lead-in, a regular rest).
+
+        The fixtures above are single-span lines, so a bug that only bites
+        when the extractor compares span gaps *after* a list item passed the
+        whole suite and failed on all seventeen wild-corpus files at once.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            doc = pymupdf.open()
+            page = doc.new_page(width=400, height=300)
+            page.insert_text((72, 100), LIST_TWO, fontsize=11)
+            page.insert_text((72, 140), 'Bold lead-in', fontsize=11,
+                             fontname='hebo')
+            lead = pymupdf.Font('hebo').text_length('Bold lead-in', 11)
+            page.insert_text((72 + lead + 3, 140), 'then the rest', fontsize=11)
+            doc.save(src)
+            doc.close()
+            result = extract_segments.extract_segments(src, outdir=tmp)
+            texts = [s['text'].strip() for s in result['segments']]
+            self.assertIn(LIST_TWO, texts)
+            # Two spans within the split threshold are one segment.
+            self.assertTrue(any('Bold lead-in' in t and 'then the rest' in t
+                                for t in texts), msg=texts)
+
+    def test_body_lands_where_the_source_put_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out = self._build(tmp)
+            for core, target in LIST_TARGETS.items():
+                self.assertAlmostEqual(body_x0(out, target), body_x0(src, core),
+                                       delta=0.5, msg=core)
+
+    def test_old_segments_without_gap_fall_back_to_one_space(self):
+        helv = pymupdf.Font('helv')
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out = self._build(tmp, drop_gap=True)
+            # One-space list: unchanged.
+            self.assertAlmostEqual(body_x0(out, LIST_TARGETS[LIST_ONE_CORE]),
+                                   body_x0(src, LIST_ONE_CORE), delta=0.5)
+            # Two-space list: the pre-row-19 placement, exactly one Helvetica
+            # space short of the source. A stale work directory still builds.
+            self.assertAlmostEqual(body_x0(out, LIST_TARGETS[LIST_TWO_CORE]),
+                                   body_x0(src, LIST_TWO_CORE) - helv.text_length(' ', 11),
+                                   delta=0.5)
+
+
 class MergePlacementGateTests(unittest.TestCase):
     """A re-flowed merge wraps; the gate must not read that as missing.
 

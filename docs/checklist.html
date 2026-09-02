@@ -86,11 +86,6 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
     <h2>Open — found by measurement: the canary and the wild corpus</h2>
     <p>The canary ran on 2 September and produced three. Not invented: each came out of a model doing a real job against the fixture, and each is recorded with a measurement in <code>dev/canary/runs/</code>. One sitting each; the first, the <code>center</code> example, closed the same day and is listed below. The wild corpus (<code>dev/wild/</code>, seventeen public PDFs) ran the same evening and added rows 21 and 22 — friction on real documents, not wrong verdicts.</p>
     <ol class="items">
-      <li class="item" data-id="markergap">
-        <input type="checkbox" id="c-markergap"><div class="head"><span class="title"><label for="c-markergap">List markers lose the source's gap</label></span><span class="chip p1">P1</span><span class="chip neutral">M</span></div>
-        <p class="detail">retypeset re-emits <code>marker + ' '</code> where the source had two spaces, shifting every list body <strong>3.06 pt left</strong> on the canary fixture — measured, and systematic on any list whose source aligns bodies with more than one space. The fix means recording the marker's trailing whitespace in the segment, so it touches the schema and every placement path.</p>
-        <p class="meta">found by Opus 5 · silent fidelity loss</p>
-      </li>
       <li class="item" data-id="noticeleak">
         <input type="checkbox" id="c-noticeleak"><div class="head"><span class="title"><label for="c-noticeleak">The compliance notice trips the leak scan</label></span><span class="chip p2">P2</span><span class="chip neutral">S</span></div>
         <p class="detail"><code>compliance.md</code> tells the author to name the source form title in the notice; the leak scan then reads that English title as untranslated running text and FAILs. A title quoted inside a notice is a write/find/say identifier by the skill's own rule, so verify could treat spans matching the original <code>/Title</code> the way it already treats <code>Form</code>/<code>Schedule</code> names.</p>
@@ -106,12 +101,17 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
         <p class="detail">Every other warning names its kind; paragraph proposals do not, so <code>propose-merges</code> keys on <code>None</code>, the extractor prints them untagged, and the wild-corpus probe miscounted 2,484 of them until a human read one. Add <code>merge-candidate</code>, keep accepting <code>None</code> from old work directories, lock both with a test.</p>
         <p class="meta">found by the wild corpus · <code>dev/goals/22-merge-candidate-kind.md</code></p>
       </li>
+      <li class="item" data-id="markermetrics">
+        <input type="checkbox" id="c-markermetrics"><div class="head"><span class="title"><label for="c-markermetrics">Row 23: a list body starts at the measured source x, whatever the marker font</label></span><span class="chip p1">P1</span><span class="chip neutral">M</span></div>
+        <p class="detail">Row 19 re-emits the source's whitespace, but the marker is drawn in Helvetica, so the body starts at Helvetica's width of marker + gap. Measured with per-character geometry on the wild corpus: 0.00 pt on the W-9, 1.3 pt on Medicare, 4.9 pt on FL-300, every gate green. Record the body's measured offset at extract time and place there; keep <code>gap</code>; old files unchanged.</p>
+        <p class="meta">found by the wild corpus while closing row 19 · <code>dev/goals/23-marker-font-metrics.md</code></p>
+      </li>
     </ol>
   </section>
 
   <section>
     <h2>Open — product lane, groomed 2 Sep 2026</h2>
-    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Order after 19, 20, 22 and 21: P2, P6, P3, canary run 2, P4.</p>
+    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Order after 20, 22, 21 and 23: P2, P6, P3, canary run 2, P4.</p>
     <ol class="items">
       <li class="item" data-id="packaging">
         <input type="checkbox" id="c-packaging"><div class="head"><span class="title"><label for="c-packaging">P2: package as a Claude Code plugin</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
@@ -138,8 +138,13 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
   <section>
     <h2>Closed since the audit</h2>
-    <p>In the order they were done. Each landed with in-repo tests, and the full suite stayed green: 158 tests, no skips; 157 of them green on Linux and Windows under Python 3.10 and 3.13, the newest green locally and awaiting CI.</p>
+    <p>In the order they were done. Each landed with in-repo tests, and the full suite stayed green: 162 tests, no skips; 158 of them green on Linux and Windows under Python 3.10 and 3.13, the four from row 19 green locally and awaiting CI.</p>
     <ol class="items">
+      <li class="item" data-id="markergap">
+        <input type="checkbox" id="c-markergap" checked><div class="head"><span class="title"><label for="c-markergap">Row 19: list markers keep the source's gap</label></span><span class="chip p1">P1</span><span class="done-mark">done</span></div>
+        <p class="detail">Segments record the whitespace after a marker (<code>gap</code>) and retypeset re-emits it in every marker path; a segments.json without the key gets one space, so stale work directories still build. On the fixture the two-space body sat 3.06 pt left before and 0.00 pt off after; the one-space line did not move. The wild corpus says two-space gaps are common (426 on the GDPR) and measured a second, font-metric drift on one-space lists — row 23.</p>
+        <p class="meta">closed 2 Sep 2026, evening · <code>ListMarkerGapTests</code> · found by Opus 5</p>
+      </li>
       <li class="item" data-id="wildcorpus">
         <input type="checkbox" id="c-wildcorpus" checked><div class="head"><span class="title"><label for="c-wildcorpus">P1: wild corpus, measured</label></span><span class="chip p0">P0</span><span class="done-mark">done</span></div>
         <p class="detail">Seventeen public born-digital PDFs — IRS, USCIS, Judicial Council, OPM, State, FDA, an EU regulation, an arXiv paper, the Medicare handbook, a datasheet; 449 pages, eight hybrid-XFA forms — through the shipped strip and extract in one subprocess each: 17/17 <code>translate</code>, zero crashes, zero timeouts, 126 pages in 37 s, everything left after strip is annotation text, page-1 renders keep every graphic. It opened rows 21 and 22 and P6. Sources with sizes in <code>dev/wild/SOURCES.md</code>; analysis in <code>dev/wild/ANALYSIS.md</code>; PDFs never committed.</p>

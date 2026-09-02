@@ -5,7 +5,7 @@
 Reads text with exact geometry and writes two files:
 
   segments.json     every placeable segment: page, bbox, baseline origin,
-                    font size, bold/italic, raw text, parsed marker / core /
+                    font size, bold/italic, raw text, parsed marker / gap / core /
                     dot-leader info. retypeset.py consumes this.
   to_translate.json unique normalized "core" strings that need translation,
                     with occurrence counts. Author translations for ALL of
@@ -36,7 +36,9 @@ Segmentation rules (why they matter):
   lines (side labels, stamps) keep their angle at re-typeset time; a
   rotated line is never gap-split, because the x distance between its
   spans is not a horizontal gap.
-- List markers (a., (1), 12.) are peeled off and kept verbatim.
+- List markers (a., (1), 12.) are peeled off and kept verbatim, together
+  with the whitespace that followed them ("gap"), so retypeset starts the
+  body where the source did and not one space after the marker.
 - Trailing dot leaders + optional currency symbol are peeled off; retypeset
   refills dots anchored to the right so they never invade mid-line gaps.
 - Segments whose core is empty or purely numbers/symbols are pass-through
@@ -446,9 +448,18 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None):
                         continue
                     text = g['text'].strip()
                     m = MARKER.match(text)
-                    marker, core = '', text
+                    # `gap` is this function's split threshold; the marker's
+                    # whitespace gets its own name. Shadowing it once made
+                    # every multi-span line after a list item raise on the
+                    # wild corpus while the single-span fixtures stayed green.
+                    marker, core, marker_gap = '', text, ''
                     if m:
                         marker = m.group(0).strip()
+                        # The whitespace the source printed between marker
+                        # and body, verbatim. retypeset re-emits it; until
+                        # row 19 it wrote one space whatever the source had,
+                        # and a two-space list body moved 3.06 pt left.
+                        marker_gap = text[len(marker):m.end()]
                         core = text[m.end():].strip()
                     dm = DOTS.match(core)
                     dots, tail = None, ''
@@ -470,7 +481,8 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None):
                         # this origin. Without it a 90-degree side label is
                         # re-typeset flat across the page.
                         'dir': g.get('dir', [1.0, 0.0]),
-                        'text': g['text'], 'marker': marker, 'core': core,
+                        'text': g['text'], 'marker': marker,
+                        'gap': marker_gap, 'core': core,
                         'dots': dots or '', 'tail': tail,
                         'passthrough': bool(not core or PASS.match(core)),
                     }

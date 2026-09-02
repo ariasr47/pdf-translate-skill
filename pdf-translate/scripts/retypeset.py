@@ -8,6 +8,9 @@ and writes the translated PDF. All layout mechanics live here so every
 document gets the same behavior:
 
 - single-line segments -> TextWriter at the ORIGINAL baseline origin
+- a list marker is re-emitted in Helvetica followed by the whitespace the
+  source printed after it (segment "gap"; one space when a segments.json
+  predates the key), so the body starts where it did
 - shrink-to-fit bounded by the nearest same-row obstacle (next segment or
   widget rect) so text never overlaps fields or neighboring cells
 - dot leaders refilled anchored to the RIGHT at most the original run width
@@ -766,6 +769,14 @@ def retypeset(stripped, segf, trf, out):
                 continue
             core, marker, dots, tail = (
                 seg['core'], seg['marker'], seg['dots'], seg['tail'])
+            # The whitespace the source printed after the marker (row 19).
+            # A segments.json from before the key gets one space, which is
+            # what every build wrote until then: a stale work directory
+            # must rebuild, not crash.
+            gap = seg.get('gap')
+            if gap is None:
+                gap = ' '
+            mk = marker + gap
             jp = T.get(core)
             if jp is None:
                 if not seg['passthrough']:
@@ -792,8 +803,8 @@ def retypeset(stripped, segf, trf, out):
                 bx = ox
                 if marker:
                     mfont = helv_role(seg['bold'], seg.get('italic'))
-                    tw.append((bx, oy), marker + ' ', font=mfont, fontsize=fs)
-                    bx += mfont.text_length(marker + ' ', fs)
+                    tw.append((bx, oy), mk, font=mfont, fontsize=fs)
+                    bx += mfont.text_length(mk, fs)
                 avail = right_limit(pno, seg, segs) - bx
                 inline_jobs.append((bx, oy, jp.replace('‖', ''),
                                     bool(seg['bold']), bool(seg.get('italic')),
@@ -803,9 +814,9 @@ def retypeset(stripped, segf, trf, out):
             parts = []
             if marker:
                 mk_font = helv_role(seg['bold'], seg.get('italic'))
-                check_glyphs(pno, mk_font, marker, core,
+                check_glyphs(pno, mk_font, mk, core,
                              'Helvetica (list marker)')
-                parts.append((marker + ' ', mk_font))
+                parts.append((mk, mk_font))
             if '‖' in jp:
                 bp, rp = jp.split('‖', 1)
                 parts.append((bp, role(True, seg.get('italic'))))
@@ -851,8 +862,8 @@ def retypeset(stripped, segf, trf, out):
                 bx = ox
                 if marker:
                     mfont = helv_role(seg['bold'], seg.get('italic'))
-                    tw.append((bx, oy), marker + ' ', font=mfont, fontsize=fs)
-                    bx += mfont.text_length(marker + ' ', fs)
+                    tw.append((bx, oy), mk, font=mfont, fontsize=fs)
+                    bx += mfont.text_length(mk, fs)
                 room = max(label_max - (bx - ox), 1.0)
                 if shaped:
                     # Shaping usually narrows a run (ligatures, conjuncts),
@@ -920,8 +931,8 @@ def retypeset(stripped, segf, trf, out):
                 bx = x
                 if marker:
                     mfont = helv_role(seg['bold'], seg.get('italic'))
-                    tw.append((bx, oy), marker + ' ', font=mfont, fontsize=fs)
-                    bx += mfont.text_length(marker + ' ', fs)
+                    tw.append((bx, oy), mk, font=mfont, fontsize=fs)
+                    bx += mfont.text_length(mk, fs)
                 shaped_jobs.append((bx, oy, jp.replace('‖', ''), bool(seg['bold']), fs,
                                     int(seg.get('color', 0)), maxw - (bx - x), core,
                                     bool(seg.get('italic'))))
@@ -1040,7 +1051,9 @@ def retypeset(stripped, segf, trf, out):
     for o in overrides:
         placed.extend(part.get('text') or '' for part in o.get('parts') or [])
     for seg in segments:
-        placed.extend((seg.get('marker') or '', seg.get('tail') or ''))
+        placed.extend(((seg.get('marker') or '')
+                       + (' ' if seg.get('gap') is None else seg['gap']),
+                       seg.get('tail') or ''))
         if seg.get('passthrough'):
             placed.append(seg.get('text') or '')
     fontfiles = [fonts['regular'], fonts.get('bold', fonts['regular'])]
