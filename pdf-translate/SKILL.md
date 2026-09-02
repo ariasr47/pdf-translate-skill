@@ -13,7 +13,7 @@ description: >-
   "translate this document but keep the formatting". Also use it when a user
   complains that a translated PDF broke its layout or its form fields.
 metadata:
-  version: "20"
+  version: "21"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -107,8 +107,11 @@ python3 scripts/pipeline.py render original.pdf out.pdf renders/
 **Geometry.** Open the PDF and note: page count, fields per page
 (`page.widgets()`), fonts, whether `'/XFA' in pdf.Root.AcroForm` (hybrid
 LiveCycle form — Acrobat renders the XFA layer instead of your edited pages
-until it's removed). Read `references/failure-modes.md` **now** — it is short
-and every item in it was a real, silent, hours-costing failure.
+until it's removed), and whether the file is **encrypted, certified or
+Reader-extended** (`pdf.is_encrypted`, `pdf.allow`, `pdf.Root.Perms`).
+`strip_text.py` reports all of these. Read `references/failure-modes.md`
+**now** — it is short and every item in it was a real, silent,
+hours-costing failure.
 
 **Identity — write this down before filling any translation.** Session notes
 or `NOTES.md`, not `translations.json` (the scripts do not read it). Four
@@ -147,6 +150,19 @@ viewers do not keep drawing the source-language caption. The new caption
 must fit the widget; verify `--translations` fails overflow. Hide
 (`--hide-buttons`) only when the button should disappear; hiding plus a
 drawn replacement adds widgets unless you are replacing, not duplicating.
+
+**Encryption, usage rights and certification.** Strip always deletes
+`/Perms` and says what was there. `/Perms /UR3` (Adobe Reader extensions)
+and `/Perms /DocMDP` (certification) sign the bytes this pipeline rewrites,
+so they are invalid the moment text is stripped; leaving them is what makes
+Acrobat announce "extended features are no longer available" or "the
+document has been altered" over an otherwise correct file. Signature
+*fields* are left alone — removing a widget would break field parity. If
+the source was **certified**, say in the delivery that the translation is
+not. An encrypted source comes out unencrypted unless you pass
+`--keep-encryption`, which re-applies its permission bits with an **empty
+owner password** (the original cannot be recovered from the file, so those
+permissions are advisory) — say that too.
 
 **Widget text is not page text.** Tooltips (`/TU`), dropdown labels
 (`/Opt`) and text-field defaults (`/V`, `/DV`) live in the annotation
@@ -387,9 +403,11 @@ python3 scripts/compare.py original.pdf final.pdf comparison.html \
 Deliver three things: the translated PDF, the original used, and the
 side-by-side comparison HTML. Summarize every judgment call: the four
 identity facts (class, issuer, parallel text or `none`/`not searched`,
-identifiers), structural changes (XFA removed, buttons replaced), compressed
-translations, `allow_scale` cores, locale adaptations — the user should
-learn your decisions from you, not discover them later.
+identifiers), structural changes (XFA removed, `/Perms` deleted, buttons
+replaced), whether the source was encrypted or certified and what the
+output has instead, compressed translations, `allow_scale` cores, locale
+adaptations — the user should learn your decisions from you, not discover
+them later.
 
 **Name a second reader for official work.** For court, government, medical
 and legal filings, say plainly in the delivery that a qualified human

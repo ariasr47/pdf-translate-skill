@@ -9,6 +9,7 @@ strip / extract / prepare_font / compare every round.
 Usage:
   python3 pipeline.py init ORIGINAL.pdf --work DIR [--captions captions.json]
                                                   [--widget-text wt.json]
+                                                  [--keep-encryption]
       strip + extract into DIR (stripped.pdf, segments.json,
       to_translate.json, widget_text.json). Run it once bare to get the
       widget_text.json scaffold, author the targets, then run it again with
@@ -59,12 +60,21 @@ def cmd_init(argv):
     t0 = time.perf_counter()
     try:
         report = strip_text(src, stripped, captions=captions,
-                            widget_text=widget_text)
+                            widget_text=widget_text,
+                            keep_encryption='--keep-encryption' in argv)
     except WidgetTextError as exc:
         print(f'FAIL widget text: {exc}')
         return 2
     print(f'strip: xfa_removed={report.get("xfa_removed")} '
           f'dead_buttons={len(report.get("dead_buttons") or [])}')
+    if report.get('perms_removed'):
+        print(f'strip: deleted /Perms {report["perms_removed"]}')
+    if report.get('certified'):
+        print('WARNING: the source was CERTIFIED (/Perms /DocMDP); the '
+              'translation is not. Say so when you deliver it.')
+    if report.get('encryption', {}).get('encrypted') and not report.get('reencrypted'):
+        print('NOTE: the source was encrypted; the output is not '
+              '(--keep-encryption re-applies its permission bits).')
     leftover = report.get('leftover_text') or []
     if leftover:
         print(f'FAIL: page text survived strip on {len(leftover)} page(s); '

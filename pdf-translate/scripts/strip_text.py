@@ -25,6 +25,7 @@ Usage:
   python3 strip_text.py IN.pdf OUT.pdf [--hide-buttons name1,name2,...]
                                        [--captions captions.json]
                                        [--widget-text widget_text.json]
+                                       [--keep-encryption]
 
 --captions rewrites pushbutton /MK /CA strings in place (field count stays
 exact). --hide-buttons sets the Hidden flag instead. Prefer captions when
@@ -36,6 +37,19 @@ strings and text-field /V /DV defaults. Export values are preserved (an
 /Opt entry becomes [export, display]); a spec that would translate a
 choice /V is refused, not ignored. extract_segments.py writes the
 scaffold. Exit 2 on a mapping that is unauthored or wrong.
+
+/Perms is always deleted and reported. /Perms /UR3 (Adobe Reader
+extensions) and /Perms /DocMDP (certification) sign the bytes this script
+rewrites, so both are invalid the moment text is stripped; leaving them is
+what makes Acrobat announce "extended features are no longer available" or
+"the document has been altered" over an otherwise correct file. A
+certified source is flagged so the deliverable can say the certification
+is gone. Signature fields themselves are left alone (field parity).
+
+The output is unencrypted unless --keep-encryption, which re-applies the
+source's permission bits with an EMPTY owner password — the original
+cannot be recovered from the file, so those permissions are advisory. Say
+so when you deliver.
 
 Prints a JSON report to stdout: pages processed, XFA removed or not,
 pushbuttons that have no /A action (dead if XFA was removed — decide
@@ -52,6 +66,46 @@ import tempfile
 import pikepdf
 import pymupdf
 from pikepdf import Name, parse_content_stream, unparse_content_stream
+
+
+def encryption_report(pdf):
+    """What the source's encryption and permissions are, for the recon note.
+
+    An encrypted source comes out unencrypted unless you ask for
+    --keep-encryption, and permissions are the issuer's decision, not
+    ours: say what you changed.
+    """
+    if not pdf.is_encrypted:
+        return {'encrypted': False}
+    info = pdf.encryption
+    return {
+        'encrypted': True,
+        'method': str(getattr(info, 'file_method', '')),
+        'bits': getattr(info, 'bits', None),
+        'empty_user_password': getattr(info, 'user_password', b'') == b'',
+        'permissions': {k: bool(v) for k, v in zip(
+            pikepdf.Permissions._fields, pdf.allow)},
+    }
+
+
+def remove_perms(pdf, report):
+    """Delete /Perms and record what was there.
+
+    /Perms /UR3 is Adobe's Reader-extensions (usage rights) signature and
+    /Perms /DocMDP is a certification signature. Both sign the bytes we are
+    about to rewrite, so both are invalid the moment text is stripped.
+    Leaving them is what makes Acrobat announce "extended features are no
+    longer available" or "the document has been altered" over a file that
+    is otherwise correct. Signature FIELDS are left alone: removing a widget
+    would break field parity.
+    """
+    perms = pdf.Root.get('/Perms')
+    if perms is None:
+        return
+    keys = sorted(str(k) for k in perms.keys())
+    report['perms_removed'] = keys
+    report['certified'] = '/DocMDP' in keys
+    del pdf.Root['/Perms']
 
 
 def strip_ops(owner, pdf=None):
@@ -466,7 +520,8 @@ def apply_widget_text(annot, spec, field, report):
     return bool(changed)
 
 
-def strip_text(src, dst, hide_buttons=None, captions=None, widget_text=None):
+def strip_text(src, dst, hide_buttons=None, captions=None, widget_text=None,
+               keep_encryption=False):
     """Strip page text, wrap content in q/Q, remove XFA. Returns a report dict.
 
     hide_buttons: iterable of field names (base name, without [0] suffix).
@@ -475,6 +530,10 @@ def strip_text(src, dst, hide_buttons=None, captions=None, widget_text=None):
         (see apply_widget_text). Rewrites annotation text that never
         reaches the content stream. Raises WidgetTextError on a mapping
         that is unauthored (null target) or would break export values.
+    keep_encryption: re-encrypt the output with the source's permission
+        bits. The original owner password cannot be recovered from the
+        file, so the output gets an EMPTY owner password: the permissions
+        are advisory again, and the deliverable has to say so.
 
     report['leftover_text'] lists pages whose content still had text after
     stripping (annotation appearances excluded). When it is not empty the
@@ -489,7 +548,10 @@ def strip_text(src, dst, hide_buttons=None, captions=None, widget_text=None):
     report = {'xfa_removed': False, 'pages': [], 'dead_buttons': [],
               'form_xobjects_stripped': [], 'hidden': [],
               'rewritten_captions': [], 'rewritten_widget_text': [],
+              'perms_removed': [], 'certified': False,
+              'encryption': encryption_report(pdf), 'reencrypted': False,
               'leftover_text': []}
+    remove_perms(pdf, report)
 
     acro = pdf.Root.get('/AcroForm')
     if acro is not None and '/XFA' in acro:
@@ -547,8 +609,25 @@ def strip_text(src, dst, hide_buttons=None, captions=None, widget_text=None):
             acro = pdf.Root.AcroForm
         acro.NeedAppearances = True
 
-    pdf.save(dst)
+    if keep_encryption and report['encryption'].get('encrypted'):
+        pdf.save(dst, encryption=pikepdf.Encryption(
+            owner='', user='', allow=pdf.allow))
+        report['reencrypted'] = True
+    else:
+        pdf.save(dst)
     pdf.close()
+
+    if report['reencrypted']:
+        # Read back what the writer actually granted: modern encryption
+        # revisions always allow accessibility extraction, so the applied
+        # bits are not always the bits we asked for.
+        back = pikepdf.open(dst)
+        try:
+            report['encryption_applied'] = {
+                k: bool(v) for k, v in zip(pikepdf.Permissions._fields,
+                                           back.allow)}
+        finally:
+            back.close()
 
     leftover = leftover_page_text(dst)
     report['leftover_text'] = [{'page': p, 'text': t} for p, t in leftover]
@@ -583,11 +662,23 @@ def main(argv=None):
             widget_text = json.load(f)
     try:
         report = strip_text(src, dst, hide_buttons=hide, captions=captions,
-                            widget_text=widget_text)
+                            widget_text=widget_text,
+                            keep_encryption='--keep-encryption' in argv)
     except WidgetTextError as exc:
         _say(f'FAIL widget text: {exc}')
         return 2
     _say(json.dumps(report, indent=2, ensure_ascii=False))
+    if report.get('perms_removed'):
+        _say(f"NOTE: deleted /Perms {report['perms_removed']} — those "
+             f"signatures cover the bytes this script rewrites and cannot "
+             f"survive editing.")
+    if report.get('certified'):
+        _say('WARNING: the source was a CERTIFIED document (/Perms /DocMDP). '
+             'The translation is not certified. Say so when you deliver it.')
+    if report['encryption'].get('encrypted') and not report.get('reencrypted'):
+        _say('NOTE: the source was encrypted; the output is not. Pass '
+             '--keep-encryption to re-apply its permission bits (with an '
+             'empty owner password).')
     if report['leftover_text']:
         _say(f"FAIL: page text survived strip on {len(report['leftover_text'])} "
              f"page(s); {dst} was not written. Text hiding somewhere the "

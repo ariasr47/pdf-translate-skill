@@ -1553,6 +1553,103 @@ class GlyphCoverageTests(unittest.TestCase):
             self.assertNotIn('cannot draw', log)
 
 
+def build_certified_pdf(path):
+    """A page plus /Perms /UR3 and /Perms /DocMDP signature stand-ins."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=400, height=200)
+    page.insert_text((50, 60), SOURCE_SENTENCE, fontsize=11)
+    doc.save(path)
+    doc.close()
+    pdf = pikepdf.open(path, allow_overwriting_input=True)
+    sig = pikepdf.Dictionary(Type=pikepdf.Name('/Sig'),
+                             Filter=pikepdf.Name('/Adobe.PPKLite'))
+    pdf.Root.Perms = pikepdf.Dictionary(
+        UR3=pdf.make_indirect(sig), DocMDP=pdf.make_indirect(sig))
+    pdf.save(path)
+    pdf.close()
+
+
+class EncryptionAndPermsTests(unittest.TestCase):
+    """Audit M3: say what happened to encryption, usage rights and DocMDP."""
+
+    def test_perms_are_deleted_and_certification_is_flagged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            dst = os.path.join(tmp, 'stripped.pdf')
+            build_certified_pdf(src)
+            report = strip_text.strip_text(src, dst)
+            self.assertEqual(report['perms_removed'], ['/DocMDP', '/UR3'])
+            self.assertTrue(report['certified'])
+            pdf = pikepdf.open(dst)
+            try:
+                self.assertNotIn('/Perms', pdf.Root)
+            finally:
+                pdf.close()
+
+    def test_cli_warns_about_certification_and_encryption(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            dst = os.path.join(tmp, 'stripped.pdf')
+            build_certified_pdf(src)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = strip_text.main([src, dst])
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('deleted /Perms', log)
+            self.assertIn('CERTIFIED', log)
+
+    def test_plain_pdf_reports_no_encryption_and_no_perms(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            dst = os.path.join(tmp, 'stripped.pdf')
+            build_plain_pdf(src)
+            report = strip_text.strip_text(src, dst)
+            self.assertEqual(report['encryption'], {'encrypted': False})
+            self.assertEqual(report['perms_removed'], [])
+            self.assertFalse(report['certified'])
+            self.assertFalse(report['reencrypted'])
+
+    def test_encrypted_source_is_reported_and_can_keep_permissions(self):
+        pdf_path = CORPUS / 'encrypted.pdf'
+        with tempfile.TemporaryDirectory() as tmp:
+            plain = os.path.join(tmp, 'plain.pdf')
+            kept = os.path.join(tmp, 'kept.pdf')
+            report = strip_text.strip_text(str(pdf_path), plain)
+            enc = report['encryption']
+            self.assertTrue(enc['encrypted'])
+            self.assertIn('permissions', enc)
+            self.assertFalse(report['reencrypted'])
+            opened = pikepdf.open(plain)
+            try:
+                self.assertFalse(opened.is_encrypted)
+            finally:
+                opened.close()
+
+            report = strip_text.strip_text(str(pdf_path), kept,
+                                           keep_encryption=True)
+            self.assertTrue(report['reencrypted'])
+            self.assertIn('encryption_applied', report)
+            opened = pikepdf.open(kept)
+            try:
+                self.assertTrue(opened.is_encrypted)
+                # print_highres was denied in the source and stays denied.
+                self.assertEqual(
+                    report['encryption_applied']['print_highres'],
+                    enc['permissions']['print_highres'])
+            finally:
+                opened.close()
+
+    def test_signature_fields_are_not_removed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            dst = os.path.join(tmp, 'stripped.pdf')
+            build_form_pdf(src)
+            before = widget_map(src)
+            strip_text.strip_text(src, dst)
+            self.assertEqual(set(widget_map(dst)), set(before))
+
+
 class OverflowTests(unittest.TestCase):
     def test_squeeze_below_0_7_fails_and_does_not_save(self):
         font = find_test_font()
