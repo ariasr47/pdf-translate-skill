@@ -60,7 +60,7 @@ launder their output.
 | **09** | Empty is not a translation | **Closed** | Non-skip empty/whitespace targets FAIL named |
 | **10** | Caption vs rect | **Closed** | `/CA` width > button width − pad → FAIL |
 | **11** | Override keeps `d.` / `$` | **Closed** | Override parts must contain source marker and tail; verify reads `segments.json` beside the mapping or `--segments` |
-| **12** | Skinny column warning | **Next `/goal`** | Extractor `narrow-column` warning; no auto-merge |
+| **12** | Skinny column warning | **Closed** | Extractor `narrow-column` warning on >=3 stacked cores under 90 pt; no auto-merge, no verify gate |
 | **16** | Shaped scripts | **Closed** | Arabic/Indic/Thai runs placed through the Story engine on the original baseline with `/ActualText`; verify FAILs unshaped Arabic |
 | **15** | Script-aware leak scan | **Closed** | Gate 4 keyed to the source document's script (words for space-delimited, six-char runs for spaceless); same-script pairs use document words automatically; `corpus/ja_source.pdf`, `corpus/ar_source.pdf` |
 | **14** | OCR'd scan refusal | **Closed** | Stripping a page's text changes under 3% of its text-span pixels → extract + verify FAIL naming the invisible (OCR) layer; `corpus/ocr_layer.pdf` `refuse+ocr-layer` |
@@ -88,10 +88,12 @@ on the toy PDF is a **different day**, not this sitting.
   behaviour unchanged; same spaceless family is REVIEW-only
 - Shaped scripts (Arabic, Indic, Thai…) go through the Story engine with
   `/ActualText`; unshaped Arabic in an output is a verify FAIL
+- `narrow-column` is a *warning*: skinny stacked columns are never merged
+  by geometry and never fail verify
 
 ## How to start a session
 
-New session: read `goals/HANDOVER.md` first. Next gate: copy
-`goals/12-narrow-column-warning.md` into `/goal`. Do not paste Grok NOTES,
-`work/translations.json`, or bakeoff scores into that session.
-Remaining queue: `goals/IMPLEMENTATION.md` (08–10 and 13–16 are committed).
+New session: read `goals/HANDOVER.md` first. The repo's own queue (01–16)
+is closed; what remains is the audit roadmap in `docs/checklist.html`, one
+row per sitting. Do not paste Grok NOTES, `work/translations.json`, or
+bakeoff scores into that session.

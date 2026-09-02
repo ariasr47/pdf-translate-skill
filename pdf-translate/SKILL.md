@@ -176,9 +176,11 @@ fails until you fill them in. It will not overwrite an existing file unless
 you pass `--force`. Format in `references/translations-format.md`.
 The extractor also prints warnings: in-span gaps (need `overrides`),
 write/find/say candidates (quoted strings, `Form`/`Schedule` names, URLs —
-halt-and-confirm, not optional color), and possible wrapped-paragraph
+halt-and-confirm, not optional color), possible wrapped-paragraph
 merges (declare them explicitly; never auto-merge by geometry, it swallows
-sibling list items).
+sibling list items), and `narrow-column` stacks — three or more cores
+sharing a column under 90 pt wide (pay-stub boxes, label stacks). Those
+are warn-only; nothing merges them for you.
 
 Finish the identity record **before** filling any translation: copy
 write/find/say warnings into **Identifiers** (halt-and-confirm, not optional
@@ -190,11 +192,21 @@ The language decisions that matter:
 - **Register**: step 1 lookup. Parallel text wins; else that class's
   established usage in the target language. Do not calque.
 - **Length**: expansion varies by pair (EN→DE grows ~30%, EN→JA often
-  shrinks). Retypeset **fails** if a segment scales below 0.7×. Reword more
-  compactly. If a cell must stay tiny, add its core to `allow_scale`.
+  shrinks). Retypeset **fails** if a segment scales below 0.7×. **Reword
+  first** — a shorter, equally correct phrase is almost always available,
+  and it is the fix that keeps the page readable. `allow_scale` is the
+  **last resort**, for a cell whose geometry genuinely cannot hold the
+  target at full size; every core you list there ships as smaller type,
+  so name them in the delivery summary.
 - **Merges**: multi-line paragraphs must be translated as one unit and
   re-flowed. Declare each merge explicitly by its member lines — never
   auto-merge by geometry, it swallows sibling list items.
+- **Narrow columns**: when the extractor reports a `narrow-column` stack,
+  treat the box as *one* decision, not five. Either declare one merge over
+  those lines and let it re-flow, or write one `overrides` entry with a
+  `max_width` per part so the target wraps inside the column. Translating
+  each line-break on its own is how a pay-stub box turns to crumbs — the
+  target's word order rarely breaks where the source's did.
 - **Leave verbatim — apply the write/find/say test.** Before translating any
   name or quoted string, ask: *will the reader have to write this, hand it to
   someone, or search for it?* If yes, it stays in the source language,
@@ -328,8 +340,16 @@ Deliver three things: the translated PDF, the original used, and the
 side-by-side comparison HTML. Summarize every judgment call: the four
 identity facts (class, issuer, parallel text or `none`/`not searched`,
 identifiers), structural changes (XFA removed, buttons replaced), compressed
-translations, locale adaptations — the user should learn your decisions from
-you, not discover them later.
+translations, `allow_scale` cores, locale adaptations — the user should
+learn your decisions from you, not discover them later.
+
+**Name a second reader for official work.** For court, government, medical
+and legal filings, say plainly in the delivery that a qualified human
+reviser should read the target text before it is relied on, and that the
+scripts are not that person. Every gate here checks structure; none of them
+can tell a plausible wrong term from the right one (養子支援 on a
+child-support page passes every gate). The professional standard for this
+class of work is a second linguist, and the honest deliverable says so.
 
 ## References
 

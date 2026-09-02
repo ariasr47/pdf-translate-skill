@@ -29,6 +29,10 @@ Segmentation rules (why they matter):
 - Consecutive same-column lines that look like a wrapped paragraph are
   flagged as merge *candidates*. Never auto-merged; declare each merge
   explicitly in translations.json.
+- Three or more stacked cores sharing a skinny column (same left edge,
+  bbox under 90 pt wide) are flagged "narrow-column": a pay-stub box or
+  label stack, where translating each line-break on its own turns the
+  box to crumbs. Warn only — never merged, and no verify gate.
 - A page whose text is invisible (an OCR layer over a scanned image, or
   text hidden under an image) is refused: the words the reader sees are
   pixels, and retypeset would print the translation over them. The
@@ -128,6 +132,65 @@ def merge_candidate_warnings(segments):
             stacked = 0.5 < dy < max(prev['size'], s['size']) * 2.2
             prev_open = not ender.search(prev['core'].rstrip())
             if same_col and stacked and prev_open:
+                run.append(s)
+            else:
+                flush()
+                run = [s]
+        flush()
+    return warnings
+
+
+NARROW_WIDTH = 90.0
+NARROW_RUN = 3
+
+
+def narrow_column_warnings(segments):
+    """Warn on >=3 stacked short cores in a skinny column. Never merge them.
+
+    Pay-stub boxes and label stacks are many one-word cores at the same x
+    with a bbox about one word wide. merge_candidate_warnings only fires on
+    *open sentences*, so a stack of short labels never trips it and the
+    author translates each fragment independently -- the box turns to
+    crumbs. Warn; the author decides whether one override with a max_width
+    is right. Merging by geometry would swallow sibling list items, which
+    is why this stays a warning.
+    """
+    warnings = []
+    by_page = {}
+    for s in segments:
+        if s['passthrough']:
+            continue
+        if s['bbox'][2] - s['bbox'][0] >= NARROW_WIDTH:
+            continue
+        by_page.setdefault(s['page'], []).append(s)
+    for page, segs in sorted(by_page.items()):
+        segs = sorted(segs, key=lambda s: (s['bbox'][0], s['origin'][1]))
+        run = []
+
+        def flush():
+            if len(run) >= NARROW_RUN:
+                warnings.append({
+                    'page': page,
+                    'kind': 'narrow-column',
+                    'ids': [s['id'] for s in run],
+                    'width': round(max(s['bbox'][2] - s['bbox'][0]
+                                       for s in run), 2),
+                    'why': 'stacked cores share a column narrower than '
+                           f'{NARROW_WIDTH:g} pt; translating each line on '
+                           'its own breaks the box. Consider one merge, or '
+                           'one override with max_width. Not auto-merged',
+                    'lines': [s['core'] for s in run],
+                })
+
+        for s in segs:
+            if not run:
+                run = [s]
+                continue
+            prev = run[-1]
+            same_col = abs(s['bbox'][0] - run[0]['bbox'][0]) < 4
+            dy = s['origin'][1] - prev['origin'][1]
+            stacked = 0.5 < dy < max(prev['size'], s['size']) * 2.2
+            if same_col and stacked:
                 run.append(s)
             else:
                 flush()
@@ -238,6 +301,7 @@ def extract_segments(src, outdir='.', gap=12.0):
     doc.close()
 
     warnings.extend(merge_candidate_warnings(segments))
+    warnings.extend(narrow_column_warnings(segments))
 
     invisible = invisible_text_pages(src)
     for pno, fraction in invisible:

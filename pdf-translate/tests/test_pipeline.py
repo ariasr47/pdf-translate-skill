@@ -255,6 +255,32 @@ def build_identifier_pdf(path):
     doc.close()
 
 
+NARROW_WORDS = ['Gross', 'Taxes', 'Net', 'Hours', 'Rate']
+WIDE_LINES = [
+    'The court will review every declaration filed before the hearing date',
+    'and the clerk will mail one conformed copy back to each party listed',
+    'so that everybody knows which documents the judge actually received.',
+]
+
+
+def build_narrow_column_pdf(path):
+    """A 5-row pay-stub column beside a wide paragraph and wide list items."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    for i, word in enumerate(NARROW_WORDS):
+        page.insert_text((72, 80 + 14 * i), word, fontsize=10)
+    for i, line in enumerate(WIDE_LINES):
+        page.insert_text((220, 80 + 14 * i), line, fontsize=8)
+    # Sibling list items: same left edge, stacked, but each is wider than
+    # the 90 pt threshold. The warning must not reach for these.
+    for i, item in enumerate(['a. First remedy requested by the applicant',
+                              'b. Second remedy requested by the applicant',
+                              'c. Third remedy requested by the applicant']):
+        page.insert_text((72, 300 + 16 * i), item, fontsize=9)
+    doc.save(path)
+    doc.close()
+
+
 def widget_map(pdf_path):
     doc = pymupdf.open(pdf_path)
     out = {w.field_name: (w.field_type_string, pymupdf.Rect(w.rect))
@@ -809,6 +835,76 @@ class ExtractTests(unittest.TestCase):
                             or any(w.get('hit') == 'form-name' for w in wfs),
                             msg=hits)
             self.assertTrue(any('Question 1' in h for h in hits), msg=hits)
+
+
+class NarrowColumnTests(unittest.TestCase):
+    """Gate 12: the extractor yells at skinny stacked columns. Warn only."""
+
+    def narrow_warnings(self, result):
+        return [w for w in result['warnings']
+                if w.get('kind') == 'narrow-column']
+
+    def test_skinny_stack_warns_wide_paragraph_and_list_do_not(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_narrow_column_pdf(src)
+            result = extract_segments.extract_segments(src, outdir=tmp)
+            by_id = {s['id']: s for s in result['segments']}
+            narrow = self.narrow_warnings(result)
+            self.assertTrue(narrow, msg=result['warnings'])
+
+            covered = set()
+            for w in narrow:
+                covered.update(w['ids'])
+                self.assertEqual(w['page'], 0)
+                self.assertGreaterEqual(len(w['ids']), 3)
+                self.assertLess(w['width'], extract_segments.NARROW_WIDTH)
+                self.assertEqual(w['lines'],
+                                 [by_id[i]['core'] for i in w['ids']])
+
+            words = {by_id[i]['core'] for i in covered}
+            self.assertTrue(set(NARROW_WORDS) <= words, msg=sorted(words))
+            # Neither the wide paragraph nor the wide list items may appear.
+            for wide in WIDE_LINES:
+                self.assertNotIn(wide, words)
+            self.assertFalse([w for w in words if w.startswith('First remedy')],
+                             msg=sorted(words))
+
+    def test_narrow_column_never_merges_segments_or_cores(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_narrow_column_pdf(src)
+            result = extract_segments.extract_segments(src, outdir=tmp)
+            cores = {c['text'] for c in result['cores']}
+            for word in NARROW_WORDS:
+                self.assertIn(word, cores)
+            # Warning only: no verify gate, no combined core.
+            self.assertNotIn(' '.join(NARROW_WORDS), cores)
+
+    def test_unit_needs_three_stacked_same_column_narrow_segments(self):
+        def seg(i, x, y, w, size=10.0):
+            return {'id': i, 'page': 0, 'bbox': [x, y - size, x + w, y + 2],
+                    'origin': [x, y], 'size': size, 'core': f'c{i}',
+                    'passthrough': False}
+
+        stack = [seg(0, 72, 80, 40), seg(1, 72, 94, 40), seg(2, 72, 108, 40)]
+        self.assertEqual(
+            len(extract_segments.narrow_column_warnings(stack)), 1)
+        # Two is not a stack.
+        self.assertFalse(extract_segments.narrow_column_warnings(stack[:2]))
+        # A different left edge breaks the run.
+        moved = [seg(0, 72, 80, 40), seg(1, 200, 94, 40), seg(2, 72, 108, 40)]
+        self.assertFalse(extract_segments.narrow_column_warnings(moved))
+        # Wide segments are not a skinny column.
+        wide = [seg(i, 72, 80 + 14 * i, 120) for i in range(3)]
+        self.assertFalse(extract_segments.narrow_column_warnings(wide))
+        # A big vertical gap is a different block.
+        apart = [seg(0, 72, 80, 40), seg(1, 72, 94, 40), seg(2, 72, 400, 40)]
+        self.assertFalse(extract_segments.narrow_column_warnings(apart))
+        # Passthrough rows (bare numbers) never count toward the run.
+        nums = [seg(i, 72, 80 + 14 * i, 40) for i in range(3)]
+        nums[1]['passthrough'] = True
+        self.assertFalse(extract_segments.narrow_column_warnings(nums))
 
 
 class RetypesetTests(unittest.TestCase):
