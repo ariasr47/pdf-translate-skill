@@ -47,6 +47,9 @@ Segmentation rules (why they matter):
   translations.json rather than a plain translation.
 - Write/find/say candidates (quoted strings, form/document names, URLs,
   emails) are flagged for confirmation — they often must stay verbatim.
+- Image regions big enough to carry words (banners, seals, stamps,
+  screenshots) are listed as "image-region" review items. Nothing here
+  translates pixels; a person looks at each one.
 - Consecutive same-column lines that look like a wrapped paragraph are
   flagged as merge *candidates*. Never auto-merged; declare each merge
   explicitly in translations.json.
@@ -354,6 +357,41 @@ def parse_pages(spec, npages):
     return out
 
 
+IMAGE_REVIEW_MIN_AREA = 400.0
+
+
+def image_region_warnings(doc, wanted):
+    """List image regions per page as review items.
+
+    Nothing in this pipeline can translate pixels. A banner, a masthead, a
+    seal or a "SAMPLE" stamp with words baked into it survives untouched
+    and looks deliberate — the page renders perfectly and every gate is
+    green. The reader still meets the source language. Listing the regions
+    is the whole fix: a person looks at each one and decides.
+    """
+    warnings = []
+    for pno, page in enumerate(doc):
+        if pno not in wanted:
+            continue
+        for info in page.get_image_info() or []:
+            bbox = info.get('bbox')
+            if not bbox:
+                continue
+            x0, y0, x1, y1 = bbox
+            if (x1 - x0) * (y1 - y0) < IMAGE_REVIEW_MIN_AREA:
+                continue
+            warnings.append({
+                'page': pno,
+                'kind': 'image-region',
+                'bbox': [round(v, 2) for v in bbox],
+                'why': 'an image this size can carry words (banner, seal, '
+                       'stamp, screenshot). Nothing here translates pixels: '
+                       'look at it, and tell the user if text stays in the '
+                       'source language',
+            })
+    return warnings
+
+
 def extract_segments(src, outdir='.', gap=12.0, pages=None):
     """Extract geometry + unique cores. Writes segments.json and to_translate.json."""
     os.makedirs(outdir, exist_ok=True)
@@ -491,6 +529,11 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None):
         })
 
     document = document_strings(src)
+    doc_for_images = pymupdf.open(src)
+    try:
+        warnings.extend(image_region_warnings(doc_for_images, wanted))
+    finally:
+        doc_for_images.close()
 
     uniq = {}
     for s in segments:

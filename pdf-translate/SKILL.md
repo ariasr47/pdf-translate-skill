@@ -13,7 +13,7 @@ description: >-
   "translate this document but keep the formatting". Also use it when a user
   complains that a translated PDF broke its layout or its form fields.
 metadata:
-  version: "26"
+  version: "27"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -224,7 +224,10 @@ fails until you fill them in. It will not overwrite an existing file unless
 you pass `--force`. Format in `references/translations-format.md`.
 The extractor also prints warnings: in-span gaps (need `overrides`),
 write/find/say candidates (quoted strings, `Form`/`Schedule` names, URLs —
-halt-and-confirm, not optional color), possible wrapped-paragraph
+halt-and-confirm, not optional color), `image-region` items (banners, seals,
+stamps and screenshots big enough to carry words — nothing here translates
+pixels, so look at each one and tell the user what stays in the source
+language), possible wrapped-paragraph
 merges (declare them explicitly; never auto-merge by geometry, it swallows
 sibling list items), `right-aligned` groups (segments sharing a right edge
 but not a left one — put those cores in `right` or a longer translation
@@ -333,6 +336,13 @@ python3 scripts/prepare_font.py FONT.ttf translations.json font-sub.ttf \
 
 The script asserts the font actually rasterizes — never skip this; the
 classic failure (subsetted CFF + CJK) draws *nothing* and reports no error.
+It also reads `OS/2.fsType` and **refuses** a font whose vendor forbids
+embedding or subsetting: that licence problem would otherwise sit inside a
+file somebody else redistributes, invisible because the PDF renders
+perfectly. Use an OFL font (the Noto family always is);
+`--allow-restricted` downgrades the refusal if you hold a licence that
+permits embedding, though FreeType declines to load a restricted-licence
+face at all.
 `pyftsubset` is found on PATH, next to the interpreter, or as
 `python -m fontTools.subset` — it does not have to be on PATH.
 
@@ -484,8 +494,11 @@ python3 scripts/field_fonts.py out.pdf FULL_FONT.ttf final.pdf
 ```
 
 Users type arbitrary names — characters outside your translation's subset —
-so this embeds a FULL-coverage font, points every text field's default
-appearance at it, and sets NeedAppearances. Skip only for non-form PDFs.
+so this embeds a FULL-coverage font, points every text **and choice** field's
+default appearance at it, and sets NeedAppearances. A combo box renders its
+selection from `/DA` exactly as a text field renders a typed value, so
+leaving choice fields on a Latin default is the same tofu one widget over.
+Skip only for non-form PDFs.
 
 ### 8. Deliver
 

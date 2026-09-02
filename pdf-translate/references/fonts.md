@@ -88,6 +88,10 @@ and approximate weight. Expansion warning: EN→DE/FR/ES/RU typically grows
   glyphs in a user's typed name is the worse trade.
 - Re-run prepare_font.py whenever translations change: a character added
   after subsetting renders as nothing.
+- `prepare_font.py` refuses a source font whose `OS/2.fsType` forbids
+  embedding or subsetting. Noto, DejaVu and the other OFL families are
+  always fine; a system font shipped with an operating system usually is
+  not licensed for redistribution inside your output.
 - `retypeset.py` checks every character of every placed run against the
   exact font object that will draw it and FAILs on a miss, naming the code
   points. It is the cheapest signal that you picked the wrong face: MuPDF

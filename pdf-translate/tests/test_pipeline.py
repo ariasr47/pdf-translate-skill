@@ -2381,6 +2381,171 @@ class ParagraphAndSplitTests(unittest.TestCase):
                 doc.close()
 
 
+def patch_fstype(src, dst, value):
+    """Copy a TTF with only OS/2.fsType changed, byte for byte otherwise.
+
+    Re-saving through fontTools produces a font this machine's MuPDF will
+    not rasterize, which would make the licence fixture fail for an
+    unrelated reason.
+    """
+    import struct
+    data = bytearray(Path(src).read_bytes())
+    num_tables = struct.unpack('>H', data[4:6])[0]
+    for i in range(num_tables):
+        rec = 12 + i * 16
+        if bytes(data[rec:rec + 4]) == b'OS/2':
+            offset = struct.unpack('>I', data[rec + 8:rec + 12])[0]
+            struct.pack_into('>H', data, offset + 8, value)
+            Path(dst).write_bytes(bytes(data))
+            return dst
+    raise unittest.SkipTest('test font has no OS/2 table')
+
+
+class SmallGuardTests(unittest.TestCase):
+    """Three guards the audit called out: images, choice /DA, font licence."""
+
+    def test_image_regions_are_listed_as_review_items(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            png = os.path.join(tmp, 'banner.png')
+            _render_text_png(png, 'OFFICIAL BANNER', 'do not translate me')
+            doc = pymupdf.open()
+            page = doc.new_page(width=400, height=300)
+            page.insert_text((40, 240), SOURCE_SENTENCE, fontsize=10)
+            page.insert_image(pymupdf.Rect(40, 40, 360, 140), filename=png)
+            doc.save(src)
+            doc.close()
+            result = extract_segments.extract_segments(src, outdir=tmp)
+            hits = [w for w in result['warnings']
+                    if w.get('kind') == 'image-region']
+            self.assertEqual(len(hits), 1, msg=result['warnings'])
+            self.assertEqual(hits[0]['page'], 0)
+            self.assertEqual(len(hits[0]['bbox']), 4)
+            self.assertIn('pixels', hits[0]['why'])
+
+    def test_a_page_without_images_reports_none(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_plain_pdf(src)
+            result = extract_segments.extract_segments(src, outdir=tmp)
+            self.assertFalse([w for w in result['warnings']
+                              if w.get('kind') == 'image-region'])
+
+    def test_choice_field_default_appearance_is_rewritten(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = str(CORPUS / 'choice_fields.pdf')
+            out = os.path.join(tmp, 'final.pdf')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = field_fonts.field_fonts(src, str(font), out)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            pdf = pikepdf.open(out)
+            try:
+                das = {}
+                for page in pdf.pages:
+                    for a in page.get('/Annots', []):
+                        parent = a.get('/Parent')
+                        ft = a.get('/FT') or (parent and parent.get('/FT'))
+                        if ft == pikepdf.Name('/Ch'):
+                            das[str(a.get('/T', ''))] = str(a.get('/DA', ''))
+                self.assertTrue(das, msg='no choice fields in the fixture')
+                for name, da in das.items():
+                    self.assertIn('/TransFF', da, msg=f'{name}: {da}')
+            finally:
+                pdf.close()
+
+    def test_choice_values_survive_the_field_font_pass(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = str(CORPUS / 'choice_fields.pdf')
+            out = os.path.join(tmp, 'final.pdf')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                field_fonts.field_fonts(src, str(font), out)
+            self.assertEqual(strip_text.choice_exports(out),
+                             strip_text.choice_exports(src))
+            self.assertEqual(set(widget_map(out)), set(widget_map(src)))
+
+    def test_fstype_refuses_a_restricted_font(self):
+        font = find_test_font()
+        fs, reason = prepare_font.embedding_permission(str(font))
+        self.assertIsNone(reason, msg=f'test font is not embeddable: {reason}')
+        with tempfile.TemporaryDirectory() as tmp:
+            restricted = patch_fstype(str(font),
+                                      os.path.join(tmp, 'restricted.ttf'),
+                                      prepare_font.FSTYPE_RESTRICTED)
+            fs, reason = prepare_font.embedding_permission(restricted)
+            self.assertEqual(fs, prepare_font.FSTYPE_RESTRICTED)
+            self.assertIn('forbids embedding', reason)
+
+            tr = write_qa_mapping(os.path.join(tmp, 'translations.json'),
+                                  {'Hello': 'Hola'})
+            out = os.path.join(tmp, 'sub.ttf')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = prepare_font.prepare_font(restricted, tr, out,
+                                               sample='Hola')
+            self.assertEqual(rc, 1, msg=buf.getvalue())
+            self.assertIn('OS/2.fsType', buf.getvalue())
+            self.assertFalse(os.path.exists(out))
+
+            # --allow-restricted downgrades the licence refusal to a
+            # warning. It does not conjure a usable font: FreeType declines
+            # to load a restricted-licence face at all, so the
+            # rasterization assert refuses it a second time.
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = prepare_font.prepare_font(restricted, tr, out,
+                                               sample='Hola',
+                                               allow_restricted=True)
+            log = buf.getvalue()
+            self.assertIn('WARNING', log)
+            self.assertIn('OS/2.fsType', log)
+            self.assertNotIn('FAIL: the font', log)
+            if rc:
+                self.assertIn('cannot draw the sample', log)
+
+            # A no-subsetting font is one the renderer WILL load, so the
+            # override actually produces a font there.
+            nosub = patch_fstype(str(font), os.path.join(tmp, 'nosub.ttf'),
+                                 prepare_font.FSTYPE_NO_SUBSET)
+            out2 = os.path.join(tmp, 'sub2.ttf')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = prepare_font.prepare_font(nosub, tr, out2, sample='Hola')
+            self.assertEqual(rc, 1, msg=buf.getvalue())
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = prepare_font.prepare_font(nosub, tr, out2, sample='Hola',
+                                               allow_restricted=True)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            self.assertTrue(os.path.exists(out2))
+
+    def test_no_subset_and_bitmap_only_are_refused_too(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            for bit, needle in ((prepare_font.FSTYPE_NO_SUBSET,
+                                 'forbids subsetting'),
+                                (prepare_font.FSTYPE_BITMAP_ONLY,
+                                 'bitmap embedding only')):
+                path = patch_fstype(str(font),
+                                    os.path.join(tmp, f'f{bit}.ttf'), bit)
+                _, reason = prepare_font.embedding_permission(path)
+                self.assertIn(needle, reason)
+            # Editable and preview-print licences are fine.
+            for bit in (0x0004, 0x0008):
+                path = patch_fstype(str(font),
+                                    os.path.join(tmp, f'ok{bit}.ttf'), bit)
+                _, reason = prepare_font.embedding_permission(path)
+                self.assertIsNone(reason, msg=reason)
+
+    def test_unreadable_font_is_a_note_not_a_refusal(self):
+        fs, reason = prepare_font.embedding_permission('/no/such/font.ttf')
+        self.assertIsNone(fs)
+        self.assertIn('could not read', reason)
+
+
 class OverflowTests(unittest.TestCase):
     def test_squeeze_below_0_7_fails_and_does_not_save(self):
         font = find_test_font()

@@ -11,9 +11,18 @@ are safe. For CJK, start from a variable TTF (e.g. Google Fonts Noto Sans JP)
 and pass --instance to extract a weight. See references/fonts.md for
 per-script font sources.
 
+It also reads the source font's OS/2.fsType and REFUSES a font whose vendor
+forbids embedding or subsetting: that licence problem would otherwise end up
+inside a file somebody else redistributes. --allow-restricted downgrades the
+refusal to a warning if you hold a licence that permits embedding — but a
+restricted-licence face is one FreeType itself declines to load, so the
+rasterization assert usually refuses it anyway. Pick an OFL font (the Noto
+family always is).
+
 Usage:
   python3 prepare_font.py FONT.ttf translations.json OUT.ttf \
       [--instance wght=700] [--sample "text in target script"]
+      [--allow-restricted]
 
 Skip subsetting entirely (use the font as-is) when the font is already small,
 or when it will also serve form-field input (users type characters outside
@@ -43,18 +52,71 @@ def find_pyftsubset():
     return [sys.executable, '-m', 'fontTools.subset']
 
 
-def prepare_font(font_in, trf, font_out, instance=None, sample=None):
+# OS/2.fsType, the font's own embedding permission. Bit 1 set (and bits 2/3
+# clear) means "restricted licence": the vendor forbids embedding at all.
+# Bit 9 is "no subsetting" and bit 8 is "bitmap embedding only" — neither is
+# a font this pipeline can use, since it embeds a subset outline font.
+FSTYPE_RESTRICTED = 0x0002
+FSTYPE_NO_SUBSET = 0x0100
+FSTYPE_BITMAP_ONLY = 0x0200
+
+
+def embedding_permission(path):
+    """(fsType, reason) — reason is None when embedding a subset is allowed.
+
+    A font is a licensed asset. Embedding one whose vendor forbids it puts
+    the licence problem inside a file somebody else will redistribute, and
+    nothing downstream can see it: the PDF renders perfectly.
+    """
+    try:
+        from fontTools import ttLib
+        with ttLib.TTFont(path, lazy=True) as font:
+            os2 = font.get('OS/2')
+            fs = int(getattr(os2, 'fsType', 0) or 0) if os2 is not None else 0
+    except Exception as exc:
+        return None, f'could not read OS/2.fsType ({exc})'
+    if fs & FSTYPE_RESTRICTED and not (fs & 0x000C):
+        return fs, ('the font\'s OS/2.fsType says restricted licence: the '
+                    'vendor forbids embedding it in a document')
+    if fs & FSTYPE_NO_SUBSET:
+        return fs, ('the font\'s OS/2.fsType forbids subsetting, and this '
+                    'pipeline embeds a subset')
+    if fs & FSTYPE_BITMAP_ONLY:
+        return fs, ('the font\'s OS/2.fsType allows bitmap embedding only; '
+                    'this pipeline embeds outlines')
+    return fs, None
+
+
+def prepare_font(font_in, trf, font_out, instance=None, sample=None,
+                 allow_restricted=False):
     """Subset (and optionally instance) a font; rasterization-assert the result.
 
     Returns 0 on success, 1 if the font does not rasterize the sample.
     """
+    fs, reason = embedding_permission(font_in)
+    if reason and fs is not None:
+        if allow_restricted:
+            print(f'WARNING: {reason} (fsType {fs}). Continuing because '
+                  f'--allow-restricted was passed; the licence is yours to '
+                  f'clear. The renderer may still refuse the font: FreeType '
+                  f'declines to load a restricted-licence face at all, so '
+                  f'the rasterization assert below can fail anyway.')
+        else:
+            print(f'FAIL: {reason} (OS/2.fsType {fs}). Pick a font licensed '
+                  f'for embedding — the Noto family is OFL and always is '
+                  f'(references/fonts.md). --allow-restricted overrides this '
+                  f'if you hold a licence that permits it.')
+            return 1
+    elif reason:
+        print(f'NOTE: {reason}; embedding permission not checked.')
+
     with open(trf, encoding='utf-8') as f:
         conf = json.load(f)
     chars = set(string.printable)
     for v in conf['translations'].values():
         chars.update(v)
     for m in conf.get('merges', []):
-        chars.update(m['html'])
+        chars.update(m.get('html') or '')
     for o in conf.get('overrides', []):
         for p in o['parts']:
             chars.update(p['text'])
@@ -113,10 +175,22 @@ def prepare_font(font_in, trf, font_out, instance=None, sample=None):
     doc = pymupdf.open()
     p = doc.new_page()
     tw = pymupdf.TextWriter(p.rect)
-    tw.append((72, 100), sample, font=font, fontsize=14)
-    tw.write_text(p)
-    pix = p.get_pixmap(dpi=100, clip=pymupdf.Rect(60, 80, 560, 120))
-    dark = sum(1 for i in range(0, len(pix.samples), pix.n) if pix.samples[i] < 128)
+    try:
+        tw.append((72, 100), sample, font=font, fontsize=14)
+        tw.write_text(p)
+        pix = p.get_pixmap(dpi=100, clip=pymupdf.Rect(60, 80, 560, 120))
+        dark = sum(1 for i in range(0, len(pix.samples), pix.n)
+                   if pix.samples[i] < 128)
+    except Exception as exc:
+        # MuPDF raises rather than returning when it cannot even build a
+        # face for the sample. That is the same answer as "draws nothing":
+        # report it, do not traceback.
+        doc.close()
+        print(f'FAIL: the subset font cannot draw the sample '
+              f'"{sample[:30]}" ({exc}). Use a glyf-flavored TTF that '
+              f'covers the target script, or pass --sample text the font '
+              f'actually has.')
+        return 1
     per_char = dark / max(len(sample.strip()), 1)
     doc.close()
     if per_char < 15:
@@ -135,7 +209,9 @@ def main(argv=None):
                 if '--instance' in argv else None)
     sample = (argv[argv.index('--sample') + 1]
               if '--sample' in argv else None)
-    return prepare_font(font_in, trf, font_out, instance=instance, sample=sample)
+    return prepare_font(font_in, trf, font_out, instance=instance,
+                        sample=sample,
+                        allow_restricted='--allow-restricted' in argv)
 
 
 if __name__ == '__main__':

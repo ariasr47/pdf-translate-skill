@@ -12,7 +12,9 @@ What this does:
      users type arbitrary names containing characters the document never used)
   2. registers it in /AcroForm /DR /Font, creating /DR and /Font if absent
      (many forms ship a /DA referencing /Helv with no /DR at all)
-  3. rewrites every text field's /DA to that font, preserving the original size
+  3. rewrites every text AND choice field's /DA to that font, preserving the
+     original size (a combo box renders its selection from /DA the same way a
+     text field renders a typed value)
   4. adds /Helv and /ZaDb alongside it: NeedAppearances makes viewers rebuild
      appearance streams, and a rebuilt checkbox draws its tick from ZapfDingbats
   5. sets an AcroForm-level /DA fallback and /NeedAppearances
@@ -86,7 +88,10 @@ def field_fonts(inp, font, out, name='TransFF'):
             for a in page.get('/Annots', []):
                 parent = a.get('/Parent')
                 ft = a.get('/FT') or (parent and parent.get('/FT'))
-                if ft == pikepdf.Name('/Tx'):
+                # Choice fields (/Ch) render typed or selected text from
+                # their own /DA exactly as text fields do. Leaving them on a
+                # Latin default is the same tofu, one widget over.
+                if ft in (pikepdf.Name('/Tx'), pikepdf.Name('/Ch')):
                     fix_da(a)
                     if parent is not None:
                         key = parent.objgen
@@ -109,11 +114,11 @@ def field_fonts(inp, font, out, name='TransFF'):
             print(f'(temp cleanup skipped: {e})')
         else:
             raise
-    print(f'registered /{name} in /DR, rewrote /DA on {count} text field '
-          f'objects -> {out}')
+    print(f'registered /{name} in /DR, rewrote /DA on {count} text and '
+          f'choice field objects -> {out}')
     if count == 0:
-        print('  (no text fields found — checkboxes and buttons are '
-              'unaffected by design)')
+        print('  (no text or choice fields found — checkboxes and buttons '
+              'are unaffected by design)')
     return 0
 
 
