@@ -16,7 +16,10 @@ queue in `PROGRAM.md` → *Backlog after the review*) added a second,
 *product* lane. Lane A — 19, 20, then canary run 2 — is unchanged and still
 goes first. Lane B rows (plugin packaging, a measured wild corpus,
 `SKILL.md` under 500 lines, eval automation) each have a closed bar and one
-sitting; the wild corpus needs the user's approval to download public PDFs.
+sitting. The wild corpus ran that same evening (P1 closed): seventeen
+public PDFs, no crashes, no wrong verdicts, and it opened rows **21** and
+**22** and lane B row **P6** — `dev/wild/ANALYSIS.md` has the numbers.
+The PDFs are re-fetched from `dev/wild/SOURCES.md`, never committed.
 
 **Repo:** `<REPO>` — GitHub `ariasr47/pdf-translate-skill`, branch `main`
 **Skill dir:** `pdf-translate/` (the only directory you install)

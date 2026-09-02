@@ -83,8 +83,8 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
   </div>
 
   <section>
-    <h2>Open — found by the canary</h2>
-    <p>The canary ran on 2 September and produced three. Not invented: each came out of a model doing a real job against the fixture, and each is recorded with a measurement in <code>dev/canary/runs/</code>. One sitting each; the first, the <code>center</code> example, closed the same day and is listed below.</p>
+    <h2>Open — found by measurement: the canary and the wild corpus</h2>
+    <p>The canary ran on 2 September and produced three. Not invented: each came out of a model doing a real job against the fixture, and each is recorded with a measurement in <code>dev/canary/runs/</code>. One sitting each; the first, the <code>center</code> example, closed the same day and is listed below. The wild corpus (<code>dev/wild/</code>, seventeen public PDFs) ran the same evening and added rows 21 and 22 — friction on real documents, not wrong verdicts.</p>
     <ol class="items">
       <li class="item" data-id="markergap">
         <input type="checkbox" id="c-markergap"><div class="head"><span class="title"><label for="c-markergap">List markers lose the source's gap</label></span><span class="chip p1">P1</span><span class="chip neutral">M</span></div>
@@ -96,22 +96,32 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
         <p class="detail"><code>compliance.md</code> tells the author to name the source form title in the notice; the leak scan then reads that English title as untranslated running text and FAILs. A title quoted inside a notice is a write/find/say identifier by the skill's own rule, so verify could treat spans matching the original <code>/Title</code> the way it already treats <code>Form</code>/<code>Schedule</code> names.</p>
         <p class="meta">found by Fable 5.1 · two features disagreeing</p>
       </li>
+      <li class="item" data-id="rightaligned">
+        <input type="checkbox" id="c-rightaligned"><div class="head"><span class="title"><label for="c-rightaligned">Row 21: the <code>right-aligned</code> warning proposes running text</label></span><span class="chip p1">P1</span><span class="chip neutral">M</span></div>
+        <p class="detail">Segments sharing a right edge with spread left edges is the shape of a label column — and of every justified paragraph with an indented first line. On the wild corpus: 1,485 groups, 11,507 segments proposed for <code>right</code>; 7,135 of them on the IRS booklet. The skill tells the author to list those cores in <code>right</code>. Fix the rule with fixtures that fail first (justified paragraph, hanging indent) while the label column keeps warning; report the corpus count after.</p>
+        <p class="meta">found by the wild corpus · <code>dev/goals/21-right-aligned-on-text.md</code></p>
+      </li>
+      <li class="item" data-id="mergekind">
+        <input type="checkbox" id="c-mergekind"><div class="head"><span class="title"><label for="c-mergekind">Row 22: merge candidates carry no <code>kind</code></label></span><span class="chip p2">P2</span><span class="chip neutral">XS</span></div>
+        <p class="detail">Every other warning names its kind; paragraph proposals do not, so <code>propose-merges</code> keys on <code>None</code>, the extractor prints them untagged, and the wild-corpus probe miscounted 2,484 of them until a human read one. Add <code>merge-candidate</code>, keep accepting <code>None</code> from old work directories, lock both with a test.</p>
+        <p class="meta">found by the wild corpus · <code>dev/goals/22-merge-candidate-kind.md</code></p>
+      </li>
     </ol>
   </section>
 
   <section>
     <h2>Open — product lane, groomed 2 Sep 2026</h2>
-    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Order after 19 and 20: P2, P1, P3, canary run 2, P4.</p>
+    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Order after 19, 20, 22 and 21: P2, P6, P3, canary run 2, P4.</p>
     <ol class="items">
       <li class="item" data-id="packaging">
         <input type="checkbox" id="c-packaging"><div class="head"><span class="title"><label for="c-packaging">P2: package as a Claude Code plugin</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
         <p class="detail"><code>.claude-plugin/plugin.json</code> and <code>marketplace.json</code> at the repo root; <code>claude plugin validate . --strict</code> in CI (already passes on a scratch root-as-plugin manifest, and <code>claude --plugin-dir</code> lists the skill from it); the skill loads from the plugin dir and installs with <code>/plugin marketplace add ariasr47/pdf-translate-skill</code>; plugin version mirrors <code>metadata.version</code>. Deletes the manual re-sync chore for good.</p>
         <p class="meta">not done: public marketplace · renaming the skill dir · touching SKILL.md</p>
       </li>
-      <li class="item" data-id="wildcorpus">
-        <input type="checkbox" id="c-wildcorpus"><div class="head"><span class="title"><label for="c-wildcorpus">P1: wild corpus, measured</label></span><span class="chip p0">P0</span><span class="chip neutral">M</span></div>
-        <p class="detail">A dev-only probe runs strip + extract (no translation) over ~20 public born-digital PDFs — IRS, USCIS including one hybrid-XFA form, two non-FL-150 Judicial Council forms, SSA, UK, EU, a hospital consent, manuals, a newsletter, a brochure — and records verdict, segments, warnings by kind, seconds and tracebacks. Zero uncaught exceptions is the bar; each crash or wrong verdict becomes a lane-A-style row with a constructed fixture. Real-world coverage today is n = 1.</p>
-        <p class="meta">needs the user's approval to download · not done: translating any of them · gates in the same sitting · committing PDFs</p>
+      <li class="item" data-id="warningsscale">
+        <input type="checkbox" id="c-warningsscale"><div class="head"><span class="title"><label for="c-warningsscale">P6: the extractor's warnings scale to a real document</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
+        <p class="detail">6,191 warnings across the seventeen corpus files, printed line by line; 1,093 write/find/say hits on one booklet that the skill says to halt-and-confirm one at a time. A per-kind digest before the list, skill text that says what each kind wants of the author, and one sentence that a widget value which is data (the USCIS barcode payload) is identity-mapped. No kind is silenced; nothing is auto-accepted.</p>
+        <p class="meta">from the wild corpus · <code>dev/goals/P6-warnings-at-scale.md</code></p>
       </li>
       <li class="item" data-id="skilllength">
         <input type="checkbox" id="c-skilllength"><div class="head"><span class="title"><label for="c-skilllength">P3: <code>SKILL.md</code> under 500 lines</label></span><span class="chip p1">P1</span><span class="chip neutral">M</span></div>
@@ -130,6 +140,11 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
     <h2>Closed since the audit</h2>
     <p>In the order they were done. Each landed with in-repo tests, and the full suite stayed green: 158 tests, no skips; 157 of them green on Linux and Windows under Python 3.10 and 3.13, the newest green locally and awaiting CI.</p>
     <ol class="items">
+      <li class="item" data-id="wildcorpus">
+        <input type="checkbox" id="c-wildcorpus" checked><div class="head"><span class="title"><label for="c-wildcorpus">P1: wild corpus, measured</label></span><span class="chip p0">P0</span><span class="done-mark">done</span></div>
+        <p class="detail">Seventeen public born-digital PDFs — IRS, USCIS, Judicial Council, OPM, State, FDA, an EU regulation, an arXiv paper, the Medicare handbook, a datasheet; 449 pages, eight hybrid-XFA forms — through the shipped strip and extract in one subprocess each: 17/17 <code>translate</code>, zero crashes, zero timeouts, 126 pages in 37 s, everything left after strip is annotation text, page-1 renders keep every graphic. It opened rows 21 and 22 and P6. Sources with sizes in <code>dev/wild/SOURCES.md</code>; analysis in <code>dev/wild/ANALYSIS.md</code>; PDFs never committed.</p>
+        <p class="meta">closed 2 Sep 2026, evening · <code>dev/wild/probe.py</code></p>
+      </li>
       <li class="item" data-id="sourceoftruth">
         <input type="checkbox" id="c-sourceoftruth" checked><div class="head"><span class="title"><label for="c-sourceoftruth">P5: one source of truth for status</label></span><span class="chip p3">P3</span><span class="done-mark">done</span></div>
         <p class="detail">Three documents disagreed on counts and open rows. The README's hard-coded test count is gone and a CI badge stands in; the audit page carries a snapshot banner and is no longer maintained; <code>RESEARCH-AND-FINDINGS.md</code> §1/§12 are marked superseded with §15 appended; this tracker carries both lanes. Rule: this page tracks, <code>PROGRAM.md</code> queues, <code>HANDOVER.md</code> cold-starts.</p>

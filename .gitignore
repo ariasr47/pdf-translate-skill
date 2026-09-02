@@ -34,3 +34,7 @@ pdf-translate/evals/fixtures/
 # Test fonts are fetched (pdf-translate/tools/fetch_test_fonts.py), not committed
 pdf-translate/tests/fonts/*.ttf
 dev/canary/fixtures/
+
+# Wild-corpus PDFs are downloaded by dev/wild (public, recorded by URL and size), never committed
+dev/wild/files/
+dev/wild/work/
