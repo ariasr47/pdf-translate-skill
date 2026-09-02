@@ -27,3 +27,9 @@ v1_vs_v2_report.html
 /pdf-translate/quality-bakeoff.html
 /pdf-translate/recommendations.html
 /pdf-translate/CHATGPT_SESSION_PROMPT.md
+
+# Eval fixtures are generated (evals/make_fixtures.py), not committed
+pdf-translate/evals/fixtures/
+
+# Test fonts are fetched (pdf-translate/tools/fetch_test_fonts.py), not committed
+pdf-translate/tests/fonts/*.ttf

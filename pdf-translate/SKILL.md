@@ -3,26 +3,28 @@ name: pdf-translate
 description: >-
   Translate a PDF from any language to any language while keeping the visual
   layout pixel-faithful and every fillable form field working — same field
-  names, types, positions. Uses a strip-and-retypeset pipeline (never overlay,
-  never redaction) with bundled scripts for text stripping, segmentation,
-  font preparation, re-typesetting, and verification. Use this skill whenever
-  the user wants a PDF translated, localized, or converted to another
-  language — government, court, tax, immigration, or medical forms; contracts;
-  applications; manuals; brochures; or any born-digital PDF — even if they
-  only say "make this form Japanese", "Spanish version of this PDF", or
-  "translate this document but keep the formatting". Also use it when a user
-  complains that a translated PDF broke its layout or its form fields.
+  names, types, positions. Use this skill whenever the user wants a PDF
+  translated, localized, or converted to another language — government,
+  court, tax, immigration, or medical forms; contracts; applications;
+  manuals; brochures; or any born-digital PDF — even if they only say
+  "make this form Japanese", "Spanish version of this PDF", or "translate
+  this document but keep the formatting". Also use it when a user complains
+  that a translated PDF broke its layout or its form fields.
+license: MIT
+compatibility: >-
+  Python 3.10+ with pymupdf, pikepdf and fonttools (see requirements.txt for
+  the tested ranges). Needs a harness that can view images, because the
+  visual pass is part of the workflow. Network access is optional but
+  strongly preferred: fonts for the target script (the Noto family) and the
+  issuer's own published translation are both looked up online.
 metadata:
   version: "27"
 ---
 
 # pdf-translate: high-fidelity PDF translation
 
-*The YAML block above is optional metadata for systems that auto-load skills;
-ignore it if yours doesn't. This document is self-contained — it works as plain
-instructions for any agent or person with Python. Paths below are relative to
-this file's directory; set `SK=/path/to/pdf-translate` and prefix them if you
-are working elsewhere.*
+*Paths below are relative to this file's directory; set
+`SK=/path/to/pdf-translate` and prefix them if you are working elsewhere.*
 
 Produce a translated PDF that is visually indistinguishable from the original
 — same tables, rules, columns, checkboxes, dot leaders, page count — with

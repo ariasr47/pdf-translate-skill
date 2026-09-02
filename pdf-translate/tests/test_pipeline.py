@@ -58,20 +58,44 @@ AR_SOURCE = 'Need help today.'
 HE_SOURCE = 'Please send aid now.'
 
 
+# Fonts fetched by tools/fetch_test_fonts.py. Preferred over whatever the
+# host happens to ship, so the shaping tests behave the same everywhere
+# instead of SKIPping on Linux.
+VENDORED_FONTS = Path(__file__).resolve().parent / 'fonts'
+
+
+def vendored(*names):
+    for name in names:
+        path = VENDORED_FONTS / name
+        if path.is_file():
+            return path
+    return None
+
+
+def _covers(path, *chars):
+    f = pymupdf.Font(fontfile=str(path))
+    return all(f.has_glyph(ord(c)) for c in chars)
+
+
 def find_rtl_font():
+    fetched = vendored('NotoNaskhArabic-Regular.ttf')
+    if fetched and _covers(fetched, AR_TARGET[0]):
+        # Naskh has no Hebrew; the Hebrew tests fall back below.
+        if _covers(fetched, HE_TARGET[0]):
+            return fetched
     font = find_test_font()
-    f = pymupdf.Font(fontfile=str(font))
-    if f.has_glyph(ord(AR_TARGET[0])) and f.has_glyph(ord(HE_TARGET[0])):
+    if _covers(font, AR_TARGET[0], HE_TARGET[0]):
         return font
     arial = Path(r'C:\Windows\Fonts\arial.ttf')
-    if arial.is_file():
-        f = pymupdf.Font(fontfile=str(arial))
-        if f.has_glyph(ord(AR_TARGET[0])) and f.has_glyph(ord(HE_TARGET[0])):
-            return arial
+    if arial.is_file() and _covers(arial, AR_TARGET[0], HE_TARGET[0]):
+        return arial
     raise unittest.SkipTest('no TTF with Arabic and Hebrew glyphs')
 
 
 def find_test_font():
+    fetched = vendored('NotoSans-Regular.ttf')
+    if fetched:
+        return fetched
     candidates = [
         Path(r'C:\Windows\Fonts\arial.ttf'),
         Path(r'C:\Windows\Fonts\Arial.ttf'),
@@ -581,6 +605,9 @@ AR_CONNECTED_FORMS = {b + 2 for b in _AR_GROUPS} | {b + 3 for b in _AR_GROUPS}
 
 
 def find_devanagari_font():
+    fetched = vendored('NotoSansDevanagari-Regular.ttf')
+    if fetched:
+        return fetched
     for name in ('Nirmala.ttc', 'Nirmala.ttf', 'mangal.ttf', 'Mangal.ttf'):
         path = Path(r'C:\Windows\Fonts') / name
         if path.is_file():

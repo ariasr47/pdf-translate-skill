@@ -1,3 +1,7 @@
-pymupdf>=1.24
-pikepdf>=8.0
-fonttools>=4.40
+# Upper bounds are deliberate: PyMuPDF moves surfaces between minor
+# releases (TextPage/displaylist shapes, Story engine, insert_htmlbox
+# signature), and this pipeline reads several of them directly. Raise a
+# bound only with the full suite green on the new version.
+pymupdf>=1.24,<1.30
+pikepdf>=8.0,<10
+fonttools>=4.40,<5

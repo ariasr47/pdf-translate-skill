@@ -1,0 +1,52 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unittest:
+    name: ${{ matrix.os }} / py${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.13']
+    defaults:
+      run:
+        working-directory: pdf-translate
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      # The shaping tests need real OFL faces with GSUB tables. They are
+      # fetched, never committed; a fetch failure must not turn into a
+      # silent skip, so the check step is separate and fatal.
+      - name: Cache test fonts
+        uses: actions/cache@v4
+        with:
+          path: pdf-translate/tests/fonts
+          key: noto-fonts-v1
+
+      - name: Fetch test fonts
+        run: python tools/fetch_test_fonts.py
+
+      - name: Verify test fonts are present
+        run: python tools/fetch_test_fonts.py --check
+
+      - name: Run the suite
+        run: python -m unittest tests.test_pipeline tests.test_corpus_verdicts -v
+
+      - name: Build the eval fixtures
+        run: python evals/make_fixtures.py --outdir "${{ runner.temp }}/fixtures"

@@ -4,9 +4,9 @@ Translate a PDF from any language to any language while keeping the visual
 layout pixel-faithful and every fillable form field working.
 
 **Provider-neutral.** Nothing here depends on a particular model, vendor, or
-agent framework. The pipeline is seven plain Python scripts; `SKILL.md` is the
-workflow an agent (or a person) follows. It runs the same in any CLI or
-notebook that can execute Python and read files.
+agent framework. The pipeline is plain Python; `SKILL.md` is the workflow an
+agent (or a person) follows. It runs the same in any CLI or notebook that can
+execute Python and read files.
 
 ## Why this exists
 
@@ -24,9 +24,10 @@ This uses **strip-and-retypeset**: delete the text at the content-stream level
 translated text at the original baselines.
 
 `SKILL.md` carries `metadata.version` in its frontmatter: the number of the
-last closed program gate (`goals/PROGRAM.md`). Bump it when a gate closes and
-re-sync any installed copy of the skill; a copy that shows an older number is
-running old scripts.
+last closed program row (`../dev/goals/PROGRAM.md`, outside the skill). Bump
+it when a row closes and re-sync any installed copy of the skill; a copy that
+shows an older number is running old scripts. The frontmatter also carries
+`license: MIT` and a `compatibility:` line.
 
 ## Install
 
@@ -62,8 +63,14 @@ python3 $SK/scripts/pipeline.py rebuild --work . original.pdf out.pdf \
 python3 $SK/scripts/pipeline.py render original.pdf out.pdf renders/
 ```
 
-From `$SK`, `python3 -m unittest tests.test_pipeline -v` drives the shipped
-stages on tiny constructed PDFs (fillable and non-form).
+From `$SK`:
+
+```bash
+python3 tools/fetch_test_fonts.py     # optional; stops the shaping tests skipping
+python3 -m unittest tests.test_pipeline tests.test_corpus_verdicts -v
+```
+
+drives the shipped stages on tiny constructed PDFs (fillable and non-form).
 
 Then **render every page next to the original and look at them.** The gates
 catch structural failures; roughly half of all real defects are visible only
@@ -75,25 +82,38 @@ right.
 ```
 SKILL.md                        the workflow, start here
 README.md                       this file
-requirements.txt
+LICENSE                         MIT
+requirements.txt                tested version ranges (upper bounds are deliberate)
 references/
-  failure-modes.md              11 silent failures and their fixes — read before you start
+  failure-modes.md              14 silent failures and their fixes — read before you start
   translations-format.md        the translations.json contract
   fonts.md                      per-script font sourcing; the glyf-flavor rule
+  review.md                     the reviewer checklist, MQM prompt, review.json schema
+  compliance.md                 when a notice belongs in the document; certification template
 scripts/
-  strip_text.py                 remove text + XFA (nested XObjects too), keep graphics and widgets; fails if page text survives
-  extract_segments.py           geometry, color, markers, dot leaders -> segments.json
-  prepare_font.py               subset + instance a font, assert it rasterizes
-  retypeset.py                  place translations; shrink-to-fit; colors; merges
-  verify.py                     field parity, fill round-trip, ink density, leak scan
-  field_fonts.py                make typed-in target-script text render in fields
+  strip_text.py                 remove text + XFA (nested XObjects too), keep graphics and widgets;
+                                rewrite captions and widget text; delete /Perms; fails if page text survives
+  extract_segments.py           geometry, direction, color, markers, dot leaders, warnings -> segments.json
+  prepare_font.py               subset + instance a font, assert it rasterizes, refuse restricted licences
+  retypeset.py                  place translations; rotation; shrink-to-fit; colors; merges; canonical text layer
+  verify.py                     seventeen structural gates
+  qa_check.py                   linguistic QA on the mapping (numbers, dates, consistency, expansion)
+  field_fonts.py                make typed-in target-script text render in text and choice fields
   compare.py                    self-contained side-by-side HTML
+  bilingual.py                  optional interleaved source/target reading copy
   render_pages.py               orig/out PNGs for the visual inspect loop
-  pipeline.py                   init / rebuild / render / finish wrappers
+  pipeline.py                   init / from-cores / propose-merges / merge-mappings / qa /
+                                rebuild / render / finish / bilingual wrappers
+tools/fetch_test_fonts.py       fetch OFL Noto faces into tests/fonts (never committed)
 tests/test_pipeline.py          constructed-PDF tests of the shipped stages
-explainer.html                  what this skill pass changed (open in a browser)
-evals/evals.json                optional eval prompts (not required to run)
+tests/test_corpus_verdicts.py   the corpus table
+corpus/                         tiny adversarial PDFs + their recorded verdicts
+evals/evals.json                optional eval prompts; make_fixtures.py builds their PDFs
 ```
+
+Development material — the improvement program, session prompts and the
+HTML explainers — lives in `../dev/`, outside the skill, so an installed
+copy carries only what the workflow needs.
 
 ## The guarantee, and its priority order
 
