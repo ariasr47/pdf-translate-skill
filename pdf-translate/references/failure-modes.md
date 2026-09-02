@@ -78,11 +78,12 @@ with it. This is the clearest case of why the visual pass is mandatory.
 ## 8. Things only your eyes catch
 
 The verify gates check structure. They cannot see: a label shrunk to 4pt,
-a header centered on the wrong midpoint, a paragraph that re-wrapped one
-line taller and now kisses the rule below it, two segments overlapping by a
-few points. Render every page beside the original and look. This is not
-optional polish — in practice it is where half the defects surface, and it
-is the difference between "plausible" and "indistinguishable".
+a header centered on the wrong midpoint, a left-flush caption that `center`
+moved off the rule it labels, a paragraph that re-wrapped one line taller
+and now kisses the rule below it, two segments overlapping by a few points.
+Render every page beside the original and look. This is not optional
+polish — in practice it is where half the defects surface, and it is the
+difference between "plausible" and "indistinguishable".
 
 ## 9. A scanned page passes every gate untranslated
 

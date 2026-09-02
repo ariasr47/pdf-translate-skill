@@ -136,7 +136,7 @@ def find_test_font():
 
 def write_mapping(path, translations, font, skip=None, allow_scale=None,
                   mirror=False, allow_translate=None, lang=None, right=None,
-                  italic=None):
+                  italic=None, center=None):
     data = {
         'fonts': {'regular': str(font), 'bold': str(font),
                   'italic': str(italic or font),
@@ -144,7 +144,7 @@ def write_mapping(path, translations, font, skip=None, allow_scale=None,
         'translations': translations,
         'merges': [],
         'overrides': [],
-        'center': [],
+        'center': list(center) if center is not None else [],
         # Widget chrome ("Print") is drawn from /MK /CA, not page text.
         'skip': list(skip) if skip is not None else ['Print'],
     }
@@ -1936,7 +1936,8 @@ def build_right_aligned_pdf(path):
     doc.close()
 
 
-def right_edges(pdf_path):
+def span_edges(pdf_path):
+    """text -> (x0, x1) of every span, whitespace-normalized."""
     doc = pymupdf.open(pdf_path)
     try:
         out = {}
@@ -1946,10 +1947,36 @@ def right_edges(pdf_path):
                     for sp in line['spans']:
                         key = verify.normalize_ws_nbsp(sp['text'])
                         if key:
-                            out[key] = round(sp['bbox'][2], 1)
+                            out[key] = (round(sp['bbox'][0], 1),
+                                        round(sp['bbox'][2], 1))
         return out
     finally:
         doc.close()
+
+
+def right_edges(pdf_path):
+    return {k: x1 for k, (_, x1) in span_edges(pdf_path).items()}
+
+
+# Row 18: signature captions are flush left with the rule they label.
+CAPTION = 'Signature of parent or guardian'
+CAPTION_ES = 'Firma del padre, madre o tutor legal'
+DATE_CAPTION = 'Date'
+DATE_ES = 'Fecha'
+RULE_X0 = 72.0
+DATE_X0 = 300.0
+
+
+def build_caption_pdf(path):
+    """Two signature rules, each with its caption starting where it starts."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=400, height=300)
+    page.draw_line((RULE_X0, 100), (RULE_X0 + 180, 100))
+    page.draw_line((DATE_X0, 100), (DATE_X0 + 80, 100))
+    page.insert_text((RULE_X0, 112), CAPTION, fontsize=9)
+    page.insert_text((DATE_X0, 112), DATE_CAPTION, fontsize=9)
+    doc.save(path)
+    doc.close()
 
 
 class AlignmentAndFontRoleTests(unittest.TestCase):
@@ -2026,6 +2053,61 @@ class AlignmentAndFontRoleTests(unittest.TestCase):
             # The left column is untouched by either mapping.
             self.assertAlmostEqual(right_out_edges['Adresse'],
                                    left_edges['Adresse'], delta=0.1)
+
+    def test_center_moves_a_left_flush_caption_off_its_rule(self):
+        """Row 18: the one place the old `center` example was wrong.
+
+        A signature caption starts where its rule starts. Centring a wider
+        translation on the source midpoint pushes it out both sides, so it
+        hangs off the left end of the rule it labels; anchored left it
+        starts exactly where the source did. Every gate passes either way,
+        which is why the documentation must not invite it.
+        """
+        font = find_test_font()
+        tr = {CAPTION: CAPTION_ES, DATE_CAPTION: DATE_ES}
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            plain_out = os.path.join(tmp, 'plain.pdf')
+            centred_out = os.path.join(tmp, 'centred.pdf')
+            tr_plain = os.path.join(tmp, 'plain.json')
+            tr_centred = os.path.join(tmp, 'centred.json')
+            build_caption_pdf(src)
+            extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            segs = os.path.join(tmp, 'segments.json')
+            write_mapping(tr_plain, tr, font)
+            write_mapping(tr_centred, tr, font,
+                          center=[CAPTION, DATE_CAPTION])
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc_plain = retypeset.retypeset(stripped, segs, tr_plain,
+                                               plain_out)
+                rc_centred = retypeset.retypeset(stripped, segs, tr_centred,
+                                                 centred_out)
+            self.assertEqual((rc_plain, rc_centred), (0, 0),
+                             msg=buf.getvalue())
+            source = span_edges(src)
+            plain = span_edges(plain_out)
+            centred = span_edges(centred_out)
+            # The fixture only means something if the translation is wider.
+            self.assertGreater(
+                plain[CAPTION_ES][1] - plain[CAPTION_ES][0],
+                source[CAPTION][1] - source[CAPTION][0] + 10)
+            # Anchored left, each caption starts where its rule starts.
+            self.assertAlmostEqual(plain[CAPTION_ES][0], RULE_X0, delta=0.1)
+            self.assertAlmostEqual(plain[DATE_ES][0], DATE_X0, delta=0.1)
+            # Centred, each now starts left of its own rule.
+            self.assertLess(centred[CAPTION_ES][0], RULE_X0 - 1.0)
+            self.assertLess(centred[DATE_ES][0], DATE_X0 - 1.0)
+            # And no gate sees it: a silent PASS, not a refusal.
+            for out, mapping in ((plain_out, tr_plain),
+                                 (centred_out, tr_centred)):
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    rc = verify.verify(src, out, translations=mapping,
+                                       source_words_from=segs)
+                self.assertEqual(rc, 0, msg=buf.getvalue())
 
     def test_font_roles_fall_back_to_the_nearest_named_face(self):
         font = find_test_font()

@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "29"
+  version: "30"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -367,11 +367,14 @@ correctly. Pick a font that covers the target script
 (`references/fonts.md`); the run names the code points.
 
 **Alignment and weight.** `center` re-centers on the original midpoint;
-`right` re-anchors on the original right edge. `fonts` takes four roles —
-`regular`, `bold`, `italic`, `bold_italic` — each falling back to the
-nearest one you named, so a Times Italic source no longer comes back
-upright. A single-line target may carry inline `<b>`/`<i>` for mixed
-weights within one line.
+`right` re-anchors on the original right edge. Use `center` only where the
+source is centred in its own box (a column header, a title): a caption
+flush with a rule or a field is left-anchored, and centring a wider
+translation moves it off the thing it labels — past every gate. `fonts`
+takes four roles — `regular`, `bold`, `italic`, `bold_italic` — each
+falling back to the nearest one you named, so a Times Italic source no
+longer comes back upright. A single-line target may carry inline
+`<b>`/`<i>` for mixed weights within one line.
 
 **Document metadata is retargeted here too.** Set `"lang"` in
 translations.json to the target BCP-47 tag: retypeset writes it to `/Lang`

@@ -7,8 +7,9 @@ Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 roadmap and the repo's own queue are closed. The 2 September canary then
 produced three defects, each from a model doing a real job against the
 fixture: rows 18, 19 and 20 in `dev/goals/PROGRAM.md`, with measurements in
-`dev/canary/runs/`. One sitting each, cheapest first. When they are done,
-do not invent a fourth — run the canary again.
+`dev/canary/runs/`. One sitting each, cheapest first. **Row 18 is closed**
+(2 September, version 30); 19 and 20 remain. When they are done, do not
+invent a fourth — run the canary again.
 
 **Repo:** `<REPO>` — GitHub `ariasr47/pdf-translate-skill`, branch `main`
 **Skill dir:** `pdf-translate/` (the only directory you install)
@@ -22,14 +23,21 @@ python3 tools/fetch_test_fonts.py      # or the shaping tests skip
 python3 -m unittest tests.test_pipeline tests.test_corpus_verdicts -v
 ```
 
-**State of play, 2 September 2026, end of session:**
+On the macOS box, bare `python3` is Apple's 3.9 with none of the
+dependencies; use `pdf-translate/.venv/bin/python` (3.14, pymupdf 1.28,
+pikepdf 10) for everything above.
 
-- **157 tests, no skips**, ~25 s locally. Green on GitHub Actions across
-  Linux and Windows, Python 3.10 and 3.13.
-- `SKILL.md` is at `metadata.version: "29"`.
-- Working tree clean, everything pushed. Nothing is half-finished.
-- Program rows 01–17 and the whole September audit roadmap are **closed**.
-- The canary has run once. It opened rows **18, 19 and 20** — see §5.
+**State of play, 2 September 2026, end of the row-18 sitting:**
+
+- **158 tests, no skips**, ~25 s locally. The 157 before this sitting were
+  green on GitHub Actions across Linux and Windows, Python 3.10 and 3.13;
+  the 158th is green locally and has not been through CI yet — push and
+  check.
+- `SKILL.md` is at `metadata.version: "30"`.
+- Working tree clean, everything committed. Nothing is half-finished.
+- Program rows 01–18 and the whole September audit roadmap are **closed**.
+- The canary has run once. It opened rows **18, 19 and 20** — see §5. Row
+  18 is closed; 19 and 20 are open.
 
 ---
 
@@ -176,13 +184,13 @@ into `/goal`:
 
 | # | Brief | What | Found by |
 |---|---|---|---|
-| **18** | `goals/18-center-example.md` | `center` is documented for "signature captions", the one case where it is wrong: those are left-flush under a rule, and centring moved one 7.5 pt off its own rule, past every gate. The example is the defect. Minutes. | Haiku 4.5 |
+| **18** | `goals/18-center-example.md` | **Closed 2 Sep.** `center` was documented for "signature captions", the one case where it is wrong: those are left-flush under a rule, and centring moved one 7.5 pt off its own rule, past every gate. Example corrected, SKILL.md step 5 says it, `test_center_moves_a_left_flush_caption_off_its_rule` locks the geometry; no warning built, by decision (closing note in the brief). | Haiku 4.5 |
 | **19** | `goals/19-list-marker-gap.md` | retypeset re-emits `marker + ' '` where the source had two spaces, shifting every list body **3.06 pt left** (measured). Touches the segment schema and every placement path. | Opus 5 |
 | **20** | `goals/20-notice-title-leak.md` | `compliance.md` tells the author to name the source form title in the notice; the leak scan then FAILs that title as untranslated running text. Two features disagreeing. | Fable 5.1 |
 
-Do them **one sitting each, in that order** — cheapest first, and 18 is a
-documentation defect with a demonstrated victim. When they are closed, do
-**not** invent a row 21: run the canary again and see what it walks into.
+Do them **one sitting each, in that order** — cheapest first. 18 is closed;
+19 is next, then 20. When they are closed, do **not** invent a row 21: run
+the canary again and see what it walks into.
 
 One defect from that canary is already fixed: the placement gate could not
 pass a wrapped merge, which broke paragraph mode on the day it shipped
@@ -252,18 +260,19 @@ Tests, from pdf-translate/:
   python3 tools/fetch_test_fonts.py
   python3 -m unittest tests.test_pipeline tests.test_corpus_verdicts
 
-157 tests, no skips, green on CI. Everything is committed and pushed.
-Program rows 01-17 and the whole audit roadmap are closed. Do not redo them.
+158 tests, no skips, green locally; confirm CI after pushing. Everything is
+committed. Program rows 01-18 and the whole audit roadmap are closed. Do
+not redo them.
 
-Next sitting: copy dev/goals/18-center-example.md into /goal and close that
-bar only. Do not start 19 or 20 in the same session. Do not mix in a canary
+Next sitting: copy dev/goals/19-list-marker-gap.md into /goal and close that
+bar only. Do not start 20 in the same session. Do not mix in a canary
 run. No glossary. Not FL-150 as a fixture.
 
 When the bar is green: full unittest + corpus, bump metadata.version in
 SKILL.md, commit, stop.
 ```
 
-Swap `18-center-example.md` for `19-list-marker-gap.md` or
-`20-notice-title-leak.md` when those are the sitting. If the user wants the
+Swap `19-list-marker-gap.md` for `20-notice-title-leak.md` when that is
+the sitting. If the user wants the
 stale audit HTML or the installed-copy re-sync instead, say so and do only
 that — neither is a gate, and neither needs a fixture.

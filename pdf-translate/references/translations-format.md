@@ -59,10 +59,16 @@ this file is where your judgment lives.
     }
   ],
 
-  // Cores whose translation should be re-centered on the original bbox
-  // midpoint (column headers, titles, signature captions). Without this a
-  // shorter translation sits visibly left of center.
-  "center": ["CASE NUMBER:", "Total"],
+  // Cores whose SOURCE is centred in its own box — a column header over
+  // its column, a title over the page — re-centred on the original bbox
+  // midpoint. Without this a shorter translation sits visibly left of
+  // center. NOT for a caption flush with a rule or a field ("Signature",
+  // "Date" under a signature line): that caption is left-anchored, and
+  // centring a wider translation on the old midpoint pushes it out both
+  // sides, so it hangs off the left end of the rule it labels. No gate
+  // sees a centred caption off its rule; only the render does. Leave
+  // those cores out of this list.
+  "center": ["CASE NUMBER:", "INSTRUCTIONS"],
 
   // Cores anchored on the original bbox RIGHT edge instead of the left:
   // amount columns, right-hand labels tucked against a rule. Without this
@@ -131,5 +137,6 @@ Authoring order that works well:
    y, sentence flows on) and declare merges for them.
 4. Add overrides for every extractor warning.
 5. Run retypeset; it fails listing anything you missed — iterate to zero.
-6. After the first render pass, add `center` / `skip` entries and shorten
+6. After the first render pass, add `center` / `skip` entries (centre only
+   what the source centres — never a caption flush with a rule) and shorten
    whatever failed the 0.7× scale gate (or add those cores to `allow_scale`).

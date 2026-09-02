@@ -70,3 +70,60 @@ decide.
 ## 7. Proof
 
 The two x0 measurements, the corrected example, full unittest + corpus.
+
+---
+
+## 8. Closing note — 2 September 2026, closed
+
+**Reproduced first.** A constructed 400×300 page: a rule from x=72 with
+`Signature of parent or guardian` flush beneath it, a rule from x=300 with
+`Date` beneath it, Helvetica 9 pt. Target Noto Sans 9 pt, driven through
+the shipped `extract_segments` → `strip_text` → `retypeset`, once with an
+empty `center` list and once with both captions in it:
+
+| caption | source x0 | anchored left | in `center` |
+|---|---|---|---|
+| `Firma del padre, madre o tutor legal` (153.2 pt wide against 124.6) | 72.0 | **72.0** | **57.67** |
+| `Fecha` (24.7 pt against 19.0) | 300.0 | **300.0** | **297.17** |
+
+Both builds exit 0 from retypeset and pass `verify --translations`: the
+centred caption hanging 14.3 pt off the left end of its own rule is a
+silent PASS, exactly as the canary reported.
+
+**Done bar, item by item.**
+
+1. `references/translations-format.md`: the `center` block now says the
+   list is for a run whose *source* is centred in its own box, says a
+   caption flush with a rule or a field is left-anchored, and names the
+   failure (a wider translation hangs off the left end of the rule it
+   labels, and no gate sees it). Authoring-order step 6 says centre only
+   what the source centres. The example core `"Total"` is gone from
+   `center`, where it contradicted the `right` example beneath it.
+2. `SKILL.md` step 5, alignment paragraph: one sentence saying the same.
+   `references/failure-modes.md` §8 lists the failure among the defects
+   only eyes catch.
+3. `tests/test_pipeline.py`: `build_caption_pdf`, `span_edges`, and
+   `AlignmentAndFontRoleTests.test_center_moves_a_left_flush_caption_off_its_rule`
+   — asserts the translation is wider than the source, that the plain
+   build lands each caption on its rule's x0 (±0.1), that the `center`ed
+   build lands each more than 1 pt left of it, and that verify passes
+   both. `write_mapping` grew a `center=` parameter beside `right=`.
+4. Full unittest + corpus: 158 tests, no skips, green locally.
+   `metadata.version` 29 → 30.
+
+Not done, as the brief asked: no verify gate, no change to what `center`
+does, no alignment detection, `right` untouched.
+
+**§5, decided: nothing, for now.** The condition "a `center`ed run wider
+than its source bbox" fires for nearly every correct centred title in an
+expanding language pair (English to Spanish, French or German lengthens
+most runs), so a note keyed to it would not separate the defect from the
+intended case; it would be a line the author learns to ignore. The signal
+that does separate them is what the run is anchored to — a rule or a
+widget starting at the same x — and finding anchors is alignment
+detection, which this program does not do (§3, and "warnings propose,
+authors decide"). The extractor cannot see it at all: it does not know
+translation widths. The fix that fits is the one shipped: an example that
+no longer invites the mistake, a named failure, and the mandatory visual
+pass. If the next canary walks a model into it again despite the
+corrected text, that is the moment to reconsider, with a measurement.

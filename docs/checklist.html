@@ -74,7 +74,7 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 <div class="page">
   <div class="eyebrow">Program tracker · after the canary · updated 2 Sep 2026</div>
   <h1>pdf-translate Checklist</h1>
-  <p class="lede">Every row of the repository's own queue and of the September audit's roadmap is closed, with tests, and the canary has run. What is open now was found by that canary rather than planned: three defects three models walked into. Ticks are saved in this browser only.</p>
+  <p class="lede">Every row of the repository's own queue and of the September audit's roadmap is closed, with tests, and the canary has run. What is open now was found by that canary rather than planned: three defects three models walked into, one of them closed the same day. Ticks are saved in this browser only.</p>
 
   <div class="progress" role="status" aria-live="polite">
     <div class="bar"><span id="bar"></span></div>
@@ -84,13 +84,8 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
   <section>
     <h2>Open — found by the canary</h2>
-    <p>The canary ran on 2 September and produced these. Not invented: each came out of a model doing a real job against the fixture, and each is recorded with a measurement in <code>dev/canary/runs/</code>. One sitting each.</p>
+    <p>The canary ran on 2 September and produced three. Not invented: each came out of a model doing a real job against the fixture, and each is recorded with a measurement in <code>dev/canary/runs/</code>. One sitting each; the first, the <code>center</code> example, closed the same day and is listed below.</p>
     <ol class="items">
-      <li class="item" data-id="centerdoc">
-        <input type="checkbox" id="c-centerdoc"><div class="head"><span class="title"><label for="c-centerdoc">The <code>center</code> example is wrong for signature captions</label></span><span class="chip p1">P1</span><span class="chip neutral">XS</span></div>
-        <p class="detail"><code>translations-format.md</code> offers <code>center</code> for "column headers, titles, signature captions" — and a signature caption under a rule is left-anchored, not centred. Haiku followed the example and shipped a caption hanging 7.5 pt off the rule it labels, past every gate. Fix the example; a warning for a centred run that ends up wider than its source box is a separate, softer question.</p>
-        <p class="meta">found by Haiku 4.5 · documentation defect, minutes</p>
-      </li>
       <li class="item" data-id="markergap">
         <input type="checkbox" id="c-markergap"><div class="head"><span class="title"><label for="c-markergap">List markers lose the source's gap</label></span><span class="chip p1">P1</span><span class="chip neutral">M</span></div>
         <p class="detail">retypeset re-emits <code>marker + ' '</code> where the source had two spaces, shifting every list body <strong>3.06 pt left</strong> on the canary fixture — measured, and systematic on any list whose source aligns bodies with more than one space. The fix means recording the marker's trailing whitespace in the segment, so it touches the schema and every placement path.</p>
@@ -106,8 +101,13 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
   <section>
     <h2>Closed since the audit</h2>
-    <p>In the order they were done. Each landed with in-repo tests, and the full suite stayed green: 157 tests, no skips, green on Linux and Windows under Python 3.10 and 3.13.</p>
+    <p>In the order they were done. Each landed with in-repo tests, and the full suite stayed green: 158 tests, no skips; 157 of them green on Linux and Windows under Python 3.10 and 3.13, the newest green locally and awaiting CI.</p>
     <ol class="items">
+      <li class="item" data-id="centerdoc">
+        <input type="checkbox" id="c-centerdoc" checked><div class="head"><span class="title"><label for="c-centerdoc">Row 18: the <code>center</code> example was wrong for signature captions</label></span><span class="chip p1">P1</span><span class="done-mark">done</span></div>
+        <p class="detail"><code>translations-format.md</code> offered <code>center</code> for "column headers, titles, signature captions" — and a signature caption under a rule is left-anchored. Haiku followed the example and shipped a caption 7.5 pt off its rule, past every gate. The example now says <code>center</code> is for a run whose source is centred in its own box and names the failure; SKILL.md step 5 and failure-modes §8 agree. Locked by a constructed fixture: a wider translation <code>center</code>ed lands at x0 57.7 against a rule at 72, anchored left at 72.0, and verify passes both. No warning built, by decision: the width condition fires on nearly every correct centred title.</p>
+        <p class="meta">found by Haiku 4.5 · closed 2 Sep 2026 · <code>test_center_moves_a_left_flush_caption_off_its_rule</code></p>
+      </li>
       <li class="item" data-id="canary">
         <input type="checkbox" id="c-canary" checked><div class="head"><span class="title"><label for="c-canary">Canary run on the toy PDFs</label></span><span class="chip p3">P3</span><span class="done-mark">done</span></div>
         <p class="detail">Opus 5, Fable 5.1 and Haiku 4.5 on the two-page fixture, same one-line prompt, isolated directories. Opus and Fable 5/5; Haiku 3/5, losing the two axes that need judgement — it did not look up, and it reported a visual pass over a visible regression. All three were structurally sound, so the pipeline is not what separates them. Reports in <code>dev/canary/runs/</code>; no winner in <code>SKILL.md</code>.</p>

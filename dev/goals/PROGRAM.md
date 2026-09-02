@@ -128,13 +128,13 @@ model doing a real job, each with a measurement in `dev/canary/runs/`:
 
 | # | Brief | What | Found by |
 |---|---|---|---|
-| **18** | `goals/18-center-example.md` | `center` is documented for "signature captions", the one case where it is wrong (left-flush under a rule). Fix the example | Haiku 4.5 |
+| **18** | `goals/18-center-example.md` | **Closed 2 Sep.** `center` was documented for "signature captions", the one case where it is wrong (left-flush under a rule). Example corrected, SKILL.md step 5 says it, a constructed fixture locks the geometry (a wider translation `center`ed lands left of the source x0; anchored left it lands on it; verify passes both). No warning, by decision | Haiku 4.5 |
 | **19** | `goals/19-list-marker-gap.md` | List markers lose the source's gap: `marker + ' '` shifts every list body 3.06 pt left. Touches the segment schema | Opus 5 |
 | **20** | `goals/20-notice-title-leak.md` | The compliance notice's source-language title trips the leak scan. A title quoted in a notice is an identifier by the skill's own rule | Fable 5.1 |
 
-One sitting each, in that order (cheapest first, and 18 is a documentation
-defect that demonstrably misled a model). After those, do not invent the
-next row: run the canary again and see what it walks into. Do not paste Grok NOTES,
+One sitting each, in that order (cheapest first). 18 is closed; 19 is
+next, then 20. After those, do not invent the next row: run the canary
+again and see what it walks into. Do not paste Grok NOTES,
 `work/translations.json`, or bakeoff scores into that session.
 
 ## Versioning
