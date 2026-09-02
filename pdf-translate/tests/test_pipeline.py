@@ -3008,14 +3008,16 @@ class ScriptAwareLeakTests(unittest.TestCase):
             # instead, the same Story path the source fixture uses.
             out2 = os.path.join(tmp, 'leak.pdf')
             leaked = pymupdf.open(out)
-            base = os.path.basename(str(arfont))
-            css = ("@font-face {font-family: t; src: url(%s);} "
-                   "body {font-family: t;}" % base)
-            arch = pymupdf.Archive(os.path.dirname(str(arfont)))
-            leaked[0].insert_htmlbox(
-                pymupdf.Rect(60, 300, 500, 324),
-                '<div style="font-size:12px;direction:rtl;text-align:right">'
-                '%s</div>' % AR_LINES[0], css=css, archive=arch)
+            # A right-to-left TextWriter run, not the Story engine: the
+            # engine leaves presentation forms that extract as separate
+            # tokens, and the leak scan is about three CONSECUTIVE source
+            # words on one line. Base letterforms also keep the unshaped
+            # Arabic gate quiet, so this test fails on its own subject.
+            tw = pymupdf.TextWriter(leaked[0].rect)
+            tw.append((60, 300), AR_LINES[0],
+                      font=pymupdf.Font(fontfile=str(arfont)), fontsize=12,
+                      right_to_left=True)
+            tw.write_text(leaked[0])
             leaked.save(out2)
             leaked.close()
             rc, log = self._verify(src, out2)
