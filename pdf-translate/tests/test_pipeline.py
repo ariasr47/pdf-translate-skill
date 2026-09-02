@@ -3000,10 +3000,24 @@ class ScriptAwareLeakTests(unittest.TestCase):
             rc, log = self._verify(src, out)
             self.assertEqual(rc, 0, msg=log)
             self.assertIn('source script Arabic', log)
-            tmp2 = os.path.join(tmp, 'leak')
-            os.makedirs(tmp2)
-            out2, _ = self._translate(
-                src, tmp2, lambda cs: {**dict(zip(cs, AR_TARGETS_EN)), cs[0]: cs[0]}, arfont)
+            # The leak case needs an English page carrying one Arabic run.
+            # Building it through retypeset would need a single font that
+            # draws both scripts: Arial does, no Noto face does, and
+            # demanding one is how these tests used to skip on Linux. Draw
+            # the leftover onto the good output with the Arabic face
+            # instead, the same Story path the source fixture uses.
+            out2 = os.path.join(tmp, 'leak.pdf')
+            leaked = pymupdf.open(out)
+            base = os.path.basename(str(arfont))
+            css = ("@font-face {font-family: t; src: url(%s);} "
+                   "body {font-family: t;}" % base)
+            arch = pymupdf.Archive(os.path.dirname(str(arfont)))
+            leaked[0].insert_htmlbox(
+                pymupdf.Rect(60, 300, 500, 324),
+                '<div style="font-size:12px;direction:rtl;text-align:right">'
+                '%s</div>' % AR_LINES[0], css=css, archive=arch)
+            leaked.save(out2)
+            leaked.close()
             rc, log = self._verify(src, out2)
             self.assertEqual(rc, 1, msg=log)
             self.assertIn('FAIL untranslated running text', log)
