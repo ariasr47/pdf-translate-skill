@@ -7,6 +7,16 @@ probing the shipped scripts, and everything discovered while closing program
 gates 13–16 and row 11 afterwards. The interactive versions of the audit and the
 tracker live beside this file as `audit-2026-09-01.html` and `checklist.html`.
 
+**Status, end of 2 September 2026.** Every defect in section 4 is fixed, and
+every row of the roadmap in `checklist.html` is closed — program rows 12 and
+17, findings H1, H2, H4/H5, M1–M5, the translation-quality layer
+(`qa_check.py`, `references/review.md`, `references/compliance.md`, the
+expansion table, the per-job glossary input), paragraph mode with page
+slices and a bilingual reading copy, the three small guards, and the
+packaging work. The suite is 154 tests, about 25 seconds, green on this
+machine. One item remains and it is not a code change: nobody has run the
+canary (`dev/canary/`).
+
 Contents
 
 1. Verdict
@@ -147,7 +157,14 @@ own words, harvested automatically. Shared spaceless family (ZH↔JA): one REVIE
 line, no gate. Latin-source behaviour is byte-for-byte unchanged; two real
 FL-150 outputs reproduce the recorded results exactly.
 
-### H1. Rotated text lines re-typeset horizontally. Open
+### H1. Rotated text lines re-typeset horizontally. Fixed 2 Sep
+
+**Closed.** Segments carry `line["dir"]`; a rotated line is never gap-split;
+retypeset writes the run horizontally and morphs it about its own origin, so
+origin, bbox and direction come back identical to the source. The width
+budget runs along the direction. A rotated run whose target needs shaping is
+refused rather than drawn flat, because the Story engine places shaped text
+upright. Corpus `rotated_text.pdf`.
 
 The extractor keeps origin, bbox and size but not the line direction. A label
 written at 90° is placed flat at its origin. Page-level `/Rotate` is fine
@@ -155,7 +172,15 @@ written at 90° is placed flat at its origin. Page-level `/Rotate` is fine
 place with `TextWriter.write_text(morph=…)`, add a `rotated_text.pdf` corpus
 fixture. Re-checked 2 Sep: source direction (0,−1) still comes out (1,0).
 
-### H2. Widget appearance text leaks into extraction; tooltips and options never translated. Open, next gate
+### H2. Widget appearance text leaks into extraction; tooltips and options never translated. Fixed 2 Sep (goal 17)
+
+**Closed.** Extraction reads `page.get_displaylist(annots=False)`, so field
+values and the current dropdown selection never become cores.
+`extract_segments` writes a `widget_text.json` scaffold and
+`strip_text --widget-text` applies it; a null target is a refusal, not a
+skip. An `/Opt` entry becomes `[export, display]` and a spec that would
+translate a choice `/V` is refused. An always-on verify gate compares export
+values against the original.
 
 `get_text()` includes annotation appearance streams. A text field's default
 value and a combo box's current value appear in `to_translate.json` as page
@@ -176,7 +201,17 @@ stripped file is re-read with annotation appearances excluded and any page
 text left is a FAIL that deletes the file. Corpus `nested_xobject.pdf`; the
 corpus harness strips every `translate` fixture.
 
-### H4. Text-layer code-point drift. Open, partially mitigated
+### H4. Text-layer code-point drift. Fixed 2 Sep
+
+**Closed.** After saving, retypeset rewrites `/ToUnicode` for the glyphs it
+placed to the code points the author wrote — a CMap is executed in order, so
+an appended `bfchar` block overrides an earlier `bfrange`, and where two
+authored characters share a glyph the lower code point wins (the canonical
+one in every drift pair). An always-on gate fails any drift-prone character
+that is in neither the original nor the mapping. The placement gate now
+compares verbatim; the fold survives only where the *source* side can drift
+and we cannot rewrite it (identifier spans read out of the original, and
+whitespace-only authored values).
 
 MuPDF builds each embedded font's `ToUnicode` by reverse-mapping the font's
 cmap. When several code points share a glyph, the wrong one can be reported:
@@ -190,19 +225,38 @@ repo's own tests (see section 10) and is folded now; the root cause is not
 fixed. Fix: post-process `ToUnicode` with pikepdf to the authored code points
 or emit `/ActualText` per run, and add a canonical-text-layer gate.
 
-### M1. Right-aligned text re-anchored left. Open
+### M1. Right-aligned text re-anchored left. Fixed 2 Sep
+
+**Closed.** A `right` list anchors a core on the original bbox right edge,
+and the extractor proposes candidates (`right-aligned` warnings: segments
+sharing a right edge while their left edges differ). Nothing realigns
+itself.
 
 Only `center` exists; a right-aligned label grows rightward past its original
 right edge (`Total` at 540 → `Gesamt` ending at 555.3). Fix: a `right` list,
 proposed by the extractor from aligned right edges.
 
-### M2. Italic, serif and mixed inline styles dropped. Open
+### M2. Italic, serif and mixed inline styles dropped. Fixed 2 Sep
+
+**Closed.** `fonts` takes `regular`, `bold`, `italic` and `bold_italic`, each
+falling back to the nearest role the mapping named; pass-through runs pick
+the matching base-14 face. A single-line target may carry inline
+`<b>`/`<i>`/`<strong>`/`<em>` and is placed through the Story engine. The
+markup pattern is deliberately narrow, so a translation that really contains
+`<` is left alone.
 
 The extractor records `italic`, but retypeset has only regular and bold slots
 and one family for the whole document; Times Italic becomes upright Arial. Fix:
 font roles per family from span flags, inline `<b>`/`<i>` for single lines.
 
-### M3. Encryption dropped; usage-rights signature left invalid. Open
+### M3. Encryption dropped; usage-rights signature left invalid. Fixed 2 Sep
+
+**Closed.** strip reports encryption, permission bits and `/Perms`; always
+deletes `/Perms` and says what was there; flags a certified source
+(`/DocMDP`) so the delivery can state the translation is not certified; and
+takes `--keep-encryption`, which re-applies the permission bits with an empty
+owner password and reads back what the writer actually granted. Signature
+fields are left alone — removing a widget would break field parity.
 
 An encrypted source comes out unencrypted with permissions removed and no
 message. FL-150 carries `/Perms /UR3` (Adobe Reader extensions signature); the
@@ -211,14 +265,27 @@ outputs still carry it although the content changed, which triggers Reader's
 in Acrobat. Fix: report at recon, delete `/Perms` at strip, optional
 re-encryption, DocMDP warning.
 
-### M4. Output metadata still describes the source. Open
+### M4. Output metadata still describes the source. Fixed 2 Sep
+
+**Closed.** `segments.json` carries a `document` block (source `/Lang`,
+`/Title`, outline titles, tagged state); the title and every outline title
+are cores. retypeset writes the mapping's `lang` to `/Lang` and
+`dc:language`, translates `/Title` and the outline, and removes the orphaned
+`/StructTreeRoot` with `/MarkInfo /Marked false`. A verify gate fails a stale
+one and REVIEWs a mapping with no `lang`; the placement gate skips
+document-only cores, which are metadata rather than page text.
 
 Every FL-150 output keeps `/Lang en-US`, the English `/Title`, and an orphaned
 `/StructTreeRoot` with `/MarkInfo /Marked true`. Fix: set `/Lang` and XMP
 language, treat `/Title` as a core, translate outline titles, remove the
 orphaned tree until tags can be rebuilt.
 
-### M5. No per-character glyph coverage check. Open
+### M5. No per-character glyph coverage check. Fixed 2 Sep
+
+**Closed.** Every character of every placed run is checked against the exact
+font object that will draw it — translated parts, override parts, list
+markers, dot-leader tails, pass-through Helvetica runs and merge HTML. A miss
+FAILs and names the code points; nothing is saved.
 
 MuPDF substitutes its fallback font mid-string when the chosen font lacks a
 glyph, and draws a box when the fallback lacks it too; retypeset returned 0.
@@ -234,10 +301,15 @@ gate-16 tree (dev material excluded), the manifest description was refreshed,
 backed up. The installed copy passes the full suite and is diff-identical to
 the repo outside dev material.
 
-### L2. Documentation drift and unrunnable evals. Partly fixed
+### L2. Documentation drift and unrunnable evals. Fixed 2 Sep
 
-Failure-mode counts now agree; `evals/evals.json` still references
-`permission_form.pdf` and `garden_flyer.pdf`, which are not in the repo.
+Failure-mode counts agree. `evals/make_fixtures.py` builds the
+`permission_form.pdf` and `garden_flyer.pdf` the eval prompts referenced but
+the repo never had — generated rather than committed, so the content of each
+eval is readable as code — and the expected outputs now describe what the
+current gates actually check. The frontmatter description keeps its triggers
+and drops the pipeline mechanics; the "YAML block is optional" paragraph
+moved to the README.
 
 ## 5. Research: comparable tools and skills
 
@@ -386,18 +458,24 @@ without touching its invariants.
   get followed instead of the body. Keep the triggers, move the mechanics.
 - The body (about 340 lines, 2,500 words) is loaded whole. Write/find/say is
   explained in step 3, step 6, `translations-format.md` and `failure-modes.md`;
-  the repo's own rule is "one home per fact". A copyable checklist would make
-  the sequence trackable.
+  the repo's own rule is "one home per fact". *Partly addressed:* the
+  reviewer checklist in `references/review.md` is copyable and is now a
+  required deliverable.
 - Degrees of freedom are well chosen: exact commands for the fragile pipeline,
   judgment for language. Delivery is the one place a template would help.
+  *Fixed:* `references/review.md` and `references/compliance.md` are the
+  delivery templates.
 - The goal loop (constructed fixture, failing test, one gate per sitting) is
   close to TDD for process documentation and is the repo's strongest asset.
   The bakeoff harness exists in three duplicated copies plus a damaged zip.
 - Tests depended on system fonts and, until 2 Sep, on a gitignored font (see
-  section 10). Vendoring one OFL font would make the suite deterministic and
-  unlock CI, which does not exist.
-- `goals/`, three session prompts and four HTML explainers ship inside the
-  skill directory; `requirements.txt` has no upper bounds.
+  section 10). *Fixed:* `tools/fetch_test_fonts.py` pulls OFL Noto faces into
+  `tests/fonts/` and the helpers prefer them, and GitHub Actions runs the
+  suite on Linux and Windows.
+- `goals/`, three session prompts and four HTML explainers shipped inside the
+  skill directory; `requirements.txt` had no upper bounds. *Fixed:* dev
+  material moved to a repo-level `dev/`, and the requirement ranges are
+  bounded above.
 
 ## 10. Discoveries made while closing gates 13–16 and row 11
 
@@ -449,24 +527,50 @@ output, or fails good output, is the bug.
 | `80e40b5` | Fold soft hyphens; test font no longer depends on a gitignored file |
 | `c96319e` | Hyphen round-trip test accepts Arial's soft hyphen |
 | `ce5fa85` | Row 11, override parts keep marker and tail; fill gate fixed for checkbox-only forms |
+| `bf6103e` | Row 12, narrow-column warning; the skill-text leftovers |
+| `c297ac2` | Goal 17, widget-text channel and `/Opt` parity gate (H2) |
+| `9d162de` | Rotated lines keep their angle (H1); corpus `rotated_text.pdf` |
+| `97716d6` | Canonical text layer, `/ToUnicode` rewritten to the authored code points (H4/H5) |
+| `e8c63c5` | Per-character glyph coverage in retypeset (M5) |
+| `94834aa` | Encryption, usage rights and DocMDP (M3) |
+| `fe32df6` | Document metadata retargeted; orphaned structure tree removed (M4) |
+| `23e9183` | Right alignment and the four font roles (M1/M2) |
+| `e9ba43f` | Shaped-script leftovers: leaders on shaped labels, an `/ActualText` gate for Indic |
+| `9d92bf4` | `qa_check.py`, the reviser step, compliance wording, the expansion table |
+| `5726a8d` | Paragraph mode, page slices, bilingual reading copy |
+| `c7f6cd4` | Three small guards: image regions, choice-field `/DA`, `OS/2.fsType` |
+| `896f7d3` | Hygiene: dev material out of the skill, MIT licence, pinned ranges, CI |
 
 ## 12. What is next
 
-In order (the live tracker is `checklist.html`):
+The roadmap above is closed. What is left is one item and two standing
+obligations.
 
-1. Program row 12: narrow-column warning in the extractor (warn only).
-2. Goal 17: widget text (annotation-free extraction, a channel for tooltips,
-   choice options and defaults, `/Opt` parity gate).
-3. P1: rotated text lines; canonical text layer with a ToUnicode fix;
-   per-character glyph coverage; encryption and usage rights; output metadata;
-   right alignment and font roles; shaped-script leftovers (dot leaders on
-   shaped labels, an Indic glyph-form check by reference render).
-4. P2: `qa_check.py`; reviser step; job-level glossary input; court-form
-   notice and certification template; expansion table; paragraph mode with
-   bilingual output; image-with-text review list, choice-field `/DA`, `fsType`.
-5. P3: move dev material out of the skill directory; LICENSE and frontmatter
-   fields; CI with a vendored OFL font; description and eval-fixture drift; a
-   canary run after goal 17.
+1. **The canary has not been run.** `dev/canary/README.md` carries the
+   fixtures command, the prompt and the five-axis rubric (identity record,
+   lookup, identifiers kept, visual pass, honest delivery). One strong and
+   one weak model, on a different day from any gate, with no winner written
+   into `SKILL.md`.
+2. **Re-sync the installed copy.** It matched the gate-16 tree; it is behind
+   again. `metadata.version` is the tell.
+3. **Do not invent the next program row.** Wait for a new silent-PASS class —
+   gates green, output wrong — then one constructed fixture, one sitting.
+   Still out of scope unless the user reverses it: a shipped glossary, OCR
+   implementation, a semantic term checker, a winner in `SKILL.md`, FL-150
+   as gold.
+
+Two deviations from the roadmap as written, both deliberate:
+
+- The audit proposed closing the Indic shaping hole with a **reference render
+  comparison**. What shipped is a deterministic signal instead: retypeset
+  marks every Story-engine run with `/ActualText`, so a shaping-script target
+  that no mark carries was drawn glyph by glyph. Cheaper, and it cannot
+  disagree with itself across renderers.
+- The audit proposed **vendoring** an OFL font for CI. What shipped is
+  `tools/fetch_test_fonts.py` plus a workflow that runs it: no binaries in
+  the repository, and the licence stays with the upstream project. The URLs
+  are branch-tip rather than commit pins, and the script says so rather than
+  carrying a SHA nobody verified.
 
 ## 13. Working notes for this machine
 
@@ -476,9 +580,10 @@ In order (the live tracker is `checklist.html`):
   from `pdf-translate/`.
 - The installed skill copy lives under
   `%APPDATA%\Claude\local-agent-mode-sessions\skills-plugin\…\skills\pdf-translate`;
-  re-sync it after each gate (copy the skill without `goals/`, the session
-  prompts, the HTML explainers and `evals/`) and refresh the manifest entry's
-  description. `metadata.version` tells you when it lags.
+  re-sync it after each gate and refresh the manifest entry's description.
+  Dev material now lives in `dev/`, outside the skill, so the copy is the
+  whole of `pdf-translate/` minus `tests/fonts/*.ttf` and
+  `evals/fixtures/`. `metadata.version` tells you when it lags.
 - `work/` and `runs/` are ignored job artifacts; never let them decide a test.
 
 ## 14. Sources

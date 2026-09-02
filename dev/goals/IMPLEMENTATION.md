@@ -1,3 +1,8 @@
+> **Closed.** Every row this file queued is done, along with the audit
+> roadmap that followed it. Kept as the record of what was queued and why;
+> the current state is `dev/goals/PROGRAM.md` and `dev/goals/HANDOVER.md`,
+> and the tracker is `docs/checklist.html`.
+
 # Step-by-step: implement the recommendations
 
 > For a human or an agent. **One sitting = one row.** Do not start the

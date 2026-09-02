@@ -50,8 +50,7 @@ launder their output.
 | 06 | Corpus axis: structure | Queue 01–03 are content; this is documents | One new constructed class (radio/dropdown **or** mixed rotation **or** attachments) with a recorded verdict |
 | 07 | One-command init | Ease, not quality | `pipeline.py init` already exists; add `pipeline.py from-cores` scaffold of empty translations.json — no LLM |
 
-01–07 are **closed**. Next rows (skill leftovers, then one `/goal` each):
-`goals/IMPLEMENTATION.md`. Copy the matching file into `/goal`.
+01–07 are **closed**. So are 08–17 and the whole audit roadmap below.
 
 | # | Session title | Why this next | Closed done bar (sketch) |
 |---|---|---|---|
@@ -65,10 +64,30 @@ launder their output.
 | **15** | Script-aware leak scan | **Closed** | Gate 4 keyed to the source document's script (words for space-delimited, six-char runs for spaceless); same-script pairs use document words automatically; `corpus/ja_source.pdf`, `corpus/ar_source.pdf` |
 | **14** | OCR'd scan refusal | **Closed** | Stripping a page's text changes under 3% of its text-span pixels → extract + verify FAIL naming the invisible (OCR) layer; `corpus/ocr_layer.pdf` `refuse+ocr-layer` |
 | **13** | Strip completeness | **Closed** | Stripped file, re-read without annotation appearances, has no page text; nested XObjects and inherited `/Resources` stripped; FAIL leaves no file |
+| **17** | Widget text | **Closed** | Page text read from an annotation-free display list (field values stop leaking into cores); `widget_text.json` channel for `/TU`, `/Opt` and `/V`/`/DV`; always-on `/Opt` export parity gate |
+
+## The audit roadmap — closed
+
+`docs/checklist.html` is the reading order; every row below is done, with
+tests, and nothing regressed.
+
+| Row | What closed it |
+|---|---|
+| H1 rotated lines | Segments carry the line direction; runs are morphed about their own origin; corpus `rotated_text.pdf`. A rotated run whose target needs shaping is refused, not drawn flat |
+| H4/H5 canonical text layer | retypeset rewrites `/ToUnicode` to the authored code points after saving; always-on gate fails drift the original did not have; the placement gate compares verbatim |
+| M5 glyph coverage | Every character of every placed run checked against the exact font object |
+| M3 encryption / usage rights | Encryption and permissions reported; `/Perms` always deleted; certification flagged; `--keep-encryption` re-applies permission bits with an empty owner password |
+| M4 output metadata | `/Lang`, `dc:language`, `/Title` and outline titles retargeted; orphaned `/StructTreeRoot` removed; gate 16 |
+| M1/M2 alignment and roles | `right` list proposed by the extractor; four font roles; inline `<b>`/`<i>` in single-line targets |
+| Goal 16 leftovers | Dot leaders refilled on shaped and RTL labels; Indic covered by an `/ActualText` gate rather than a render comparison |
+| P2 quality layer | `qa_check.py`; `references/review.md`; `references/compliance.md`; the expansion table in SKILL.md; per-job `glossary.csv` input |
+| P2 paragraph mode | `propose-merges`, `--pages` slices, `merge-mappings`, `bilingual.py` |
+| P2 small guards | image-region review items; choice-field `/DA`; `OS/2.fsType` refusal |
+| P3 hygiene | dev material out of the skill; MIT licence; `compatibility:`; pinned ranges; CI on Linux and Windows with fetched OFL fonts; eval fixtures generated |
 
 Never combine 04+05. Never combine a bakeoff with a gate. Never put OCR
-implementation in this skill (refusal is the product). After 08, a canary
-on the toy PDF is a **different day**, not this sitting.
+implementation in this skill (refusal is the product). The canary
+(`dev/canary/`) is a **different day** from any gate.
 
 ## What is already locked (do not regress)
 
@@ -88,12 +107,22 @@ on the toy PDF is a **different day**, not this sitting.
   behaviour unchanged; same spaceless family is REVIEW-only
 - Shaped scripts (Arabic, Indic, Thai…) go through the Story engine with
   `/ActualText`; unshaped Arabic in an output is a verify FAIL
-- `narrow-column` is a *warning*: skinny stacked columns are never merged
-  by geometry and never fail verify
+- `narrow-column` and `right-aligned` are *warnings*: geometry proposes,
+  the author decides, nothing merges or realigns itself
+- Widget text is a separate channel with `[export, display]` `/Opt` pairs;
+  export values are data and never translated
+- The text layer reports the authored code points; drift is a FAIL, not a
+  fold
+- Document metadata (`/Lang`, `/Title`, outline) is retargeted, and the
+  orphaned structure tree is removed rather than left pointing at deleted
+  text
+- No glossary ships with the skill; `glossary.csv` is a per-job input only
+- Dev material lives in `dev/`, outside the installed skill
 
 ## How to start a session
 
-New session: read `goals/HANDOVER.md` first. The repo's own queue (01–16)
-is closed; what remains is the audit roadmap in `docs/checklist.html`, one
-row per sitting. Do not paste Grok NOTES, `work/translations.json`, or
-bakeoff scores into that session.
+New session: read `dev/goals/HANDOVER.md` first. **Every row of the repo's
+queue and of the audit roadmap is closed.** Do not invent the next row.
+Wait for a new silent-PASS class — gates green, output wrong — then one
+constructed fixture, one sitting. Do not paste Grok NOTES,
+`work/translations.json`, or bakeoff scores into that session.
