@@ -1,5 +1,7 @@
 # pdf-translate (provider-neutral)
 
+[![tests](https://github.com/ariasr47/pdf-translate-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/ariasr47/pdf-translate-skill/actions/workflows/tests.yml)
+
 A skill that translates a born-digital PDF from any language to any language
 while keeping the visual layout pixel-faithful and every fillable form field
 working: same field names, types and positions. Strip-and-retypeset at the
@@ -14,7 +16,8 @@ SDK; any person or model authors the translation mapping.
 | `dev/goals/` | The improvement program: one gate per sitting, closed briefs, handover for a cold session. |
 | `dev/*.html`, `dev/*_SESSION_PROMPT.md` | Explainers and session prompts. Development material — deliberately outside the skill. |
 | `docs/RESEARCH-AND-FINDINGS.md` | The September 2026 audit, the research behind it, and every verified defect with status. |
-| `docs/audit-2026-09-01.html`, `docs/checklist.html` | The interactive audit page and the living tracker (self-contained). |
+| `docs/REVIEW-2026-09-02.md` | The 2 September deep review: verdict, fresh research, and the two-lane backlog. |
+| `docs/audit-2026-09-01.html`, `docs/checklist.html` | The audit page (a dated snapshot) and the living tracker (self-contained). |
 
 Job artifacts (`work/`, `runs/`, session exports, bakeoff outputs, the FL-150
 sample PDFs) are ignored on purpose; they are large and not the product. So
@@ -30,8 +33,9 @@ python tools/fetch_test_fonts.py     # optional, stops the shaping tests skippin
 python -m unittest tests.test_pipeline tests.test_corpus_verdicts
 ```
 
-154 tests on constructed PDFs drive the shipped scripts, in about 25
-seconds locally and 40 on CI, with **no skips** once the fonts are there.
+The suite — constructed PDFs driving the shipped scripts; the current count
+is in the CI log and in `dev/goals/HANDOVER.md` — runs in about 25 seconds
+locally and 40 on CI, with **no skips** once the fonts are there.
 The Arabic, Hebrew and Devanagari tests need faces with real shaping
 tables: `tools/fetch_test_fonts.py` downloads four OFL Noto faces into
 `tests/fonts/` (never committed), and each test asks for a font covering

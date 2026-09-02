@@ -7,6 +7,11 @@ probing the shipped scripts, and everything discovered while closing program
 gates 13–16 and row 11 afterwards. The interactive versions of the audit and the
 tracker live beside this file as `audit-2026-09-01.html` and `checklist.html`.
 
+> **Superseded, evening of 2 September:** the canary ran, rows 18–20 came
+> out of it, 18 is closed, and the roadmap was re-groomed into two lanes —
+> see §15 and `REVIEW-2026-09-02.md`. The paragraph below is the state at
+> midday.
+
 **Status, end of 2 September 2026.** Every defect in section 4 is fixed, and
 every row of the roadmap in `checklist.html` is closed — program rows 12 and
 17, findings H1, H2, H4/H5, M1–M5, the translation-quality layer
@@ -614,3 +619,24 @@ Two deviations from the roadmap as written, both deliberate:
 - Fonts in PDF files (embedding, subsetting, fsType): https://www.prepressure.com/pdf/basics/fonts
 - iText on PDF certification and DocMDP: https://itextpdf.com/blog/itext-news-technical-notes/attacks-pdf-certification-and-what-you-can-do-about-them
 - andrewyng/translation-agent: https://github.com/andrewyng/translation-agent
+
+## 15. Update, evening of 2 September 2026
+
+Supersedes §12. The canary ran the same day on the two-page fixture with
+Opus 5, Fable 5.1 and Haiku 4.5 (`dev/canary/runs/`): 5, 5 and 3 out of 5,
+no structural escapes, three defects found by models rather than invented
+— rows 18, 19 and 20 in `dev/goals/PROGRAM.md`. Row 18 (the `center`
+example) closed in the evening; a fourth defect, the placement gate
+failing a wrapped merge, was fixed the same day as the canary. The
+installed copy is still behind (version 16 against 30).
+
+The deep review in `REVIEW-2026-09-02.md` then re-groomed the roadmap: lane
+A keeps the canary rule (19, 20, then canary run 2); lane B adds product
+rows with the same discipline — a measured wild corpus of public PDFs,
+plugin packaging (`claude plugin validate --strict` already passes a
+root-as-plugin manifest in a scratch copy, and `claude --plugin-dir` lists
+the skill from it at about 7,300 tokens on invoke), `SKILL.md` back under 500
+lines, and an automated eval built on `claude plugin eval` with the
+canary's `score.py` as grader. The hypotheses the wild corpus should test
+(visible annotation text, hybrid XFA, real fonts, scale, compaction) are
+listed there; none is a row until a real file shows it.

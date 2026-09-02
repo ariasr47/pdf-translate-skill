@@ -11,6 +11,13 @@ fixture: rows 18, 19 and 20 in `dev/goals/PROGRAM.md`, with measurements in
 (2 September, version 30); 19 and 20 remain. When they are done, do not
 invent a fourth — run the canary again.
 
+**Evening of 2 September:** a deep review (`docs/REVIEW-2026-09-02.md`;
+queue in `PROGRAM.md` → *Backlog after the review*) added a second,
+*product* lane. Lane A — 19, 20, then canary run 2 — is unchanged and still
+goes first. Lane B rows (plugin packaging, a measured wild corpus,
+`SKILL.md` under 500 lines, eval automation) each have a closed bar and one
+sitting; the wild corpus needs the user's approval to download public PDFs.
+
 **Repo:** `<REPO>` — GitHub `ariasr47/pdf-translate-skill`, branch `main`
 **Skill dir:** `pdf-translate/` (the only directory you install)
 **Dev material:** `dev/` — this file, the goal briefs, the canary, explainers

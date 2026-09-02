@@ -137,6 +137,10 @@ next, then 20. After those, do not invent the next row: run the canary
 again and see what it walks into. Do not paste Grok NOTES,
 `work/translations.json`, or bakeoff scores into that session.
 
+The evening review of 2 September (`docs/REVIEW-2026-09-02.md`) added a
+second lane — product rows with their own closed bars — without changing
+lane A's order. See **Backlog after the review** at the end of this file.
+
 ## Versioning
 
 `SKILL.md`'s `metadata.version` is a monotonic integer, bumped whenever the
@@ -144,3 +148,41 @@ shipped scripts or the workflow change. It began as the last closed gate
 number and kept counting past 17 as the audit roadmap closed, so it is an
 ordering, not a row number. Bump it in the same commit as the change, and
 re-sync any installed copy.
+
+## Backlog after the review — groomed 2 September 2026 (evening)
+
+Two lanes, one discipline: one sitting, a closed bar, explicit non-goals,
+proof, and a `metadata.version` bump whenever the shipped skill changes.
+The full done bars, the research behind them and the hypotheses to measure
+are in `docs/REVIEW-2026-09-02.md` §5; this is the queue.
+
+**Lane A — defects a model walked into.** Unchanged; still first.
+
+| # | Brief | Trigger |
+|---|---|---|
+| 19 | `goals/19-list-marker-gap.md` | Opus 5, measured 3.06 pt |
+| 20 | `goals/20-notice-title-leak.md` | Fable 5.1 and Opus 5 both had to allowlist |
+| C2 | canary run 2 — after P3, so it also tests the shorter skill; one deliberately long session | — |
+
+**Lane B — product rows.** New. Triggered by product evidence, not by a
+model's defect; never a gate.
+
+| # | Row | Closed bar (sketch) | Not done when |
+|---|---|---|---|
+| **P2** | Plugin packaging | `.claude-plugin/plugin.json` + `marketplace.json` at the repo root; `claude plugin validate . --strict` in CI; the skill loads from the plugin dir and installs via `/plugin marketplace add ariasr47/pdf-translate-skill`; plugin version mirrors `metadata.version`; the HANDOVER re-sync chore is deleted | Publishing publicly; renaming the skill dir; touching SKILL.md |
+| **P1** | Wild corpus, measured | `dev/wild/probe.py` runs strip + extract (no translation) over ~20 public born-digital PDFs (IRS, USCIS incl. one hybrid XFA, two non-FL-150 Judicial Council forms, SSA, UK, EU, hospital consent, manuals, newsletter, brochure) and writes `dev/wild/RESULTS.md`: verdict, segments, warnings by kind, seconds, tracebacks. Zero uncaught exceptions; each crash or wrong verdict becomes a lane A-style row. **Needs the user's approval to download** — list files and sizes first | Translating any of them; gates in the same sitting; committing PDFs |
+| **P3** | `SKILL.md` under 500 lines | Body < 500 lines and ~5,000 tokens (today 550 lines, ~7,300 on invoke as measured by `claude plugin details`) by *moving* detail into `references/` (gates, widget text, expansion table), one level deep, each with a contents line; frontmatter stays spec-clean; suite green; C2 scores no lower than run 1 | Removing a rule; touching the description; Claude Code-only frontmatter |
+| **P4** | Eval automation | Three `evals/**/case.yaml` cases with graders wrapping `dev/canary/score.py` plus an LLM grader for the identity and honest-delivery axes; `claude plugin eval . --runs 1 --json` produces a report; a `--threshold` documents the bar; one report committed under `dev/canary/runs/` | Running in CI on every push; naming a winner; scoring the visual pass by machine |
+| P5 | One source of truth | **Closed 2 Sep evening**: README count removed and CI badge added; audit HTML is a banner-marked snapshot; findings §15; tracker carries both lanes. Rule: `checklist.html` tracks, this file queues, `HANDOVER.md` cold-starts; nothing else states counts or open rows | — |
+
+**Order:** 19 → 20 → P2 → P1 → P3 → C2 → P4 → whatever P1 produced.
+
+**Hypotheses, not rows** (the wild corpus looks for them): visible
+annotation text (FreeText, Stamp) shipping untranslated; hybrid-XFA forms
+after XFA removal; Type3, symbolic and outlined fonts; 100-page scale; the
+skill tail lost to compaction on a long session.
+
+**Still parked, still rejected:** a shipped glossary, OCR, a semantic term
+checker, a winner model, FL-150 as gold, auto-merge or auto-realign,
+vertical CJK, tag rebuild (no library support), `paths:` auto-activation
+(Claude Code-only field — decide at P2).

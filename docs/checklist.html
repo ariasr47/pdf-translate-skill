@@ -74,7 +74,7 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 <div class="page">
   <div class="eyebrow">Program tracker · after the canary · updated 2 Sep 2026</div>
   <h1>pdf-translate Checklist</h1>
-  <p class="lede">Every row of the repository's own queue and of the September audit's roadmap is closed, with tests, and the canary has run. What is open now was found by that canary rather than planned: three defects three models walked into, one of them closed the same day. Ticks are saved in this browser only.</p>
+  <p class="lede">Every row of the repository's own queue and of the September audit's roadmap is closed, with tests, and the canary has run. What is open now was found by that canary rather than planned: three defects three models walked into, one of them closed the same day — plus a second, product lane from the evening review (<code>REVIEW-2026-09-02.md</code>). Ticks are saved in this browser only.</p>
 
   <div class="progress" role="status" aria-live="polite">
     <div class="bar"><span id="bar"></span></div>
@@ -100,9 +100,41 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
   </section>
 
   <section>
+    <h2>Open — product lane, groomed 2 Sep 2026</h2>
+    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Order after 19 and 20: P2, P1, P3, canary run 2, P4.</p>
+    <ol class="items">
+      <li class="item" data-id="packaging">
+        <input type="checkbox" id="c-packaging"><div class="head"><span class="title"><label for="c-packaging">P2: package as a Claude Code plugin</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
+        <p class="detail"><code>.claude-plugin/plugin.json</code> and <code>marketplace.json</code> at the repo root; <code>claude plugin validate . --strict</code> in CI (already passes on a scratch root-as-plugin manifest, and <code>claude --plugin-dir</code> lists the skill from it); the skill loads from the plugin dir and installs with <code>/plugin marketplace add ariasr47/pdf-translate-skill</code>; plugin version mirrors <code>metadata.version</code>. Deletes the manual re-sync chore for good.</p>
+        <p class="meta">not done: public marketplace · renaming the skill dir · touching SKILL.md</p>
+      </li>
+      <li class="item" data-id="wildcorpus">
+        <input type="checkbox" id="c-wildcorpus"><div class="head"><span class="title"><label for="c-wildcorpus">P1: wild corpus, measured</label></span><span class="chip p0">P0</span><span class="chip neutral">M</span></div>
+        <p class="detail">A dev-only probe runs strip + extract (no translation) over ~20 public born-digital PDFs — IRS, USCIS including one hybrid-XFA form, two non-FL-150 Judicial Council forms, SSA, UK, EU, a hospital consent, manuals, a newsletter, a brochure — and records verdict, segments, warnings by kind, seconds and tracebacks. Zero uncaught exceptions is the bar; each crash or wrong verdict becomes a lane-A-style row with a constructed fixture. Real-world coverage today is n = 1.</p>
+        <p class="meta">needs the user's approval to download · not done: translating any of them · gates in the same sitting · committing PDFs</p>
+      </li>
+      <li class="item" data-id="skilllength">
+        <input type="checkbox" id="c-skilllength"><div class="head"><span class="title"><label for="c-skilllength">P3: <code>SKILL.md</code> under 500 lines</label></span><span class="chip p1">P1</span><span class="chip neutral">M</span></div>
+        <p class="detail">550 body lines, ~4,600 words and ~7,300 tokens on invoke (measured by <code>claude plugin details</code>) against Anthropic's 500-line and the spec's ~5,000-token guidance. Claude Code re-attaches only the first 5,000 tokens of an invoked skill after compaction, so on a long job the tail — verify, field fonts, deliver — is what vanishes. Move detail into <code>references/</code> (gates, widget text, expansion table), one level deep; keep every rule; keep the frontmatter spec-clean. Canary run 2 is the proof it still steers.</p>
+        <p class="meta">not done: removing a rule · touching the description · Claude Code-only frontmatter</p>
+      </li>
+      <li class="item" data-id="evalauto">
+        <input type="checkbox" id="c-evalauto"><div class="head"><span class="title"><label for="c-evalauto">P4: eval automation from the canary</label></span><span class="chip p2">P2</span><span class="chip neutral">M</span></div>
+        <p class="detail"><code>claude plugin eval</code> (present in 2.1.236) runs <code>evals/**/case.yaml</code> with a no-plugin baseline arm, an LLM judge, a JSON report and a threshold exit code. Three cases (the two eval fixtures and the canary fixture) with graders wrapping <code>dev/canary/score.py</code> for the objective half; the visual-pass axis stays human; one report committed under <code>dev/canary/runs/</code>.</p>
+        <p class="meta">not done: CI on every push (cost) · naming a winner · machine-scoring the visual pass</p>
+      </li>
+    </ol>
+  </section>
+
+  <section>
     <h2>Closed since the audit</h2>
     <p>In the order they were done. Each landed with in-repo tests, and the full suite stayed green: 158 tests, no skips; 157 of them green on Linux and Windows under Python 3.10 and 3.13, the newest green locally and awaiting CI.</p>
     <ol class="items">
+      <li class="item" data-id="sourceoftruth">
+        <input type="checkbox" id="c-sourceoftruth" checked><div class="head"><span class="title"><label for="c-sourceoftruth">P5: one source of truth for status</label></span><span class="chip p3">P3</span><span class="done-mark">done</span></div>
+        <p class="detail">Three documents disagreed on counts and open rows. The README's hard-coded test count is gone and a CI badge stands in; the audit page carries a snapshot banner and is no longer maintained; <code>RESEARCH-AND-FINDINGS.md</code> §1/§12 are marked superseded with §15 appended; this tracker carries both lanes. Rule: this page tracks, <code>PROGRAM.md</code> queues, <code>HANDOVER.md</code> cold-starts.</p>
+        <p class="meta">closed 2 Sep 2026, evening review</p>
+      </li>
       <li class="item" data-id="centerdoc">
         <input type="checkbox" id="c-centerdoc" checked><div class="head"><span class="title"><label for="c-centerdoc">Row 18: the <code>center</code> example was wrong for signature captions</label></span><span class="chip p1">P1</span><span class="done-mark">done</span></div>
         <p class="detail"><code>translations-format.md</code> offered <code>center</code> for "column headers, titles, signature captions" — and a signature caption under a rule is left-anchored. Haiku followed the example and shipped a caption 7.5 pt off its rule, past every gate. The example now says <code>center</code> is for a run whose source is centred in its own box and names the failure; SKILL.md step 5 and failure-modes §8 agree. Locked by a constructed fixture: a wider translation <code>center</code>ed lands at x0 57.7 against a rule at 72, anchored left at 72.0, and verify passes both. No warning built, by decision: the width condition fires on nearly every correct centred title.</p>
