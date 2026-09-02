@@ -61,6 +61,7 @@ launder their output.
 | **10** | Caption vs rect | **Closed** | `/CA` width > button width − pad → FAIL |
 | **11** | Override keeps `d.` / `$` | **Next `/goal`** | Override parts must contain source marker and tail |
 | **12** | Skinny column warning | After 11 | Extractor `narrow-column` warning; no auto-merge |
+| **15** | Script-aware leak scan | **Closed** | Gate 4 keyed to the source document's script (words for space-delimited, six-char runs for spaceless); same-script pairs use document words automatically; `corpus/ja_source.pdf`, `corpus/ar_source.pdf` |
 | **14** | OCR'd scan refusal | **Closed** | Stripping a page's text changes under 3% of its text-span pixels → extract + verify FAIL naming the invisible (OCR) layer; `corpus/ocr_layer.pdf` `refuse+ocr-layer` |
 | **13** | Strip completeness | **Closed** | Stripped file, re-read without annotation appearances, has no page text; nested XObjects and inherited `/Resources` stripped; FAIL leaves no file |
 
@@ -82,6 +83,8 @@ on the toy PDF is a **different day**, not this sitting.
   excluded); nested XObjects and inherited `/Resources` are stripped
 - OCR'd scan (invisible text layer) → `refuse+ocr-layer`; scans are out
   of scope with or without OCR
+- Leak scan follows the source script (JA→EN, AR→EN, RU→ES); Latin-source
+  behaviour unchanged; same spaceless family is REVIEW-only
 
 ## How to start a session
 

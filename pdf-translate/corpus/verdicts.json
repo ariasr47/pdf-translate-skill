@@ -1,10 +1,12 @@
 {
+  "ar_source.pdf": "translate",
   "choice_fields.pdf": "translate",
   "colored.pdf": "translate",
   "dense_table.pdf": "translate",
   "encrypted.pdf": "translate",
   "expansion.pdf": "translate",
   "image_only.pdf": "refuse+OCR",
+  "ja_source.pdf": "translate",
   "multicolumn.pdf": "translate",
   "nested_xobject.pdf": "translate",
   "ocr_layer.pdf": "refuse+ocr-layer",

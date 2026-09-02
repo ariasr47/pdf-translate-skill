@@ -4,12 +4,14 @@ Every PDF here has exactly one expected verdict:
 
 | File | Verdict | Notes |
 |---|---|---|
+| `ar_source.pdf` | `translate` | Arabic-language source (joined letters); leak scan must follow the Arabic script |
 | `choice_fields.pdf` | `translate` | combobox (dropdown) + listbox; `/Opt` must survive strip |
 | `colored.pdf` | `translate` | white-on-dark + coloured spans |
 | `dense_table.pdf` | `translate` | tight cells, no auto-merge |
 | `encrypted.pdf` | `translate` | empty user password |
 | `expansion.pdf` | `translate` | short labels |
 | `image_only.pdf` | `refuse+OCR` | raster, no text layer |
+| `ja_source.pdf` | `translate` | Japanese-language source (bundled CJK font); leak scan must follow the CJK script |
 | `multicolumn.pdf` | `translate` | two columns |
 | `nested_xobject.pdf` | `translate` | text two Form XObjects deep; page `/Resources` inherited from `/Pages`; strip must leave no page text |
 | `ocr_layer.pdf` | `refuse+ocr-layer` | scanned image plus an invisible (render mode 3) OCR text layer; the visible words are pixels |

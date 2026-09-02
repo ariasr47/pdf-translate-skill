@@ -377,6 +377,57 @@ def build_text_over_image_pdf(path):
     os.remove(png)
 
 
+JA_LINES = ['申立人は以下の情報を正確に記入してください。', '氏名：', '住所：', '署名']
+JA_TARGETS = {
+    '申立人は以下の情報を正確に記入してください。':
+        'The petitioner must complete the information below accurately.',
+    '氏名：': 'Name:',
+    '住所：': 'Address:',
+    '署名': 'Signature',
+}
+AR_LINES = ['طلب المساعدة القانونية', 'الاسم:', 'العنوان:']
+AR_TARGETS_EN = ['Legal aid request', 'Name:', 'Address:']
+
+
+def cjk_font_file(tmp):
+    """Write the bundled CJK font (Droid Sans Fallback) to a file for retypeset."""
+    path = os.path.join(tmp, 'cjk.ttf')
+    with open(path, 'wb') as fh:
+        fh.write(pymupdf.Font('cjk').buffer)
+    return path
+
+
+def build_ja_source_pdf(path):
+    """A Japanese-language source document, set with the bundled CJK font."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=595, height=842)
+    font = pymupdf.Font('cjk')
+    tw = pymupdf.TextWriter(page.rect)
+    for i, text in enumerate(JA_LINES):
+        tw.append((60, 80 + 30 * i), text, font=font, fontsize=11)
+    tw.write_text(page)
+    doc.save(path)
+    doc.close()
+
+
+def build_ar_source_pdf(path, fontfile):
+    """An Arabic-language source document set through the HarfBuzz path so the
+    letters are joined like a real Arabic PDF."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=595, height=842)
+    base = os.path.basename(str(fontfile))
+    css = "@font-face {font-family: t; src: url(%s);} body {font-family: t;}" % base
+    arch = pymupdf.Archive(os.path.dirname(str(fontfile)))
+    for i, text in enumerate(AR_LINES):
+        y = 80 + 40 * i
+        page.insert_htmlbox(
+            pymupdf.Rect(60, y, 500, y + 24),
+            '<div style="font-size:12px;direction:rtl;text-align:right">%s</div>' % text,
+            css=css, archive=arch)
+    doc.save(path)
+    doc.close()
+
+
 class ImportSafeTests(unittest.TestCase):
     def test_field_fonts_and_compare_import_without_argv(self):
         # These two historically read sys.argv at import time, which crashes
@@ -1044,6 +1095,111 @@ class LeakScanTests(unittest.TestCase):
             source_words=src_words,
         )
         self.assertFalse(running)
+
+
+class ScriptAwareLeakTests(unittest.TestCase):
+    """Goal 15: the leak scan follows the source document's script."""
+
+    def _translate(self, src, tmp, mapping_fn, font):
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'tr.json')
+        strip_text.strip_text(src, stripped)
+        res = extract_segments.extract_segments(src, outdir=tmp)
+        cores = [c['text'] for c in res['cores']]
+        write_mapping(tr, mapping_fn(cores), font)   # default skip drops the form's 'Print' chrome
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(stripped, os.path.join(tmp, 'segments.json'), tr, out)
+        self.assertEqual(rc, 0, msg=buf.getvalue())
+        return out, cores
+
+    def _verify(self, src, out, **kw):
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = verify.verify(src, out, **kw)
+        return rc, buf.getvalue()
+
+    def test_dominant_script_unit(self):
+        self.assertEqual(verify.dominant_script('申立人は以下の情報'), 'CJK')
+        self.assertEqual(verify.dominant_script('Name of applicant 123'), 'Latin')
+        self.assertEqual(verify.dominant_script('طلب المساعدة'), 'Arabic')
+        self.assertEqual(verify.dominant_script('Заявитель'), 'Cyrillic')
+        self.assertIsNone(verify.dominant_script('123 -- 4.5'))
+
+    def test_ja_source_correct_english_output_passes(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'ja.pdf')
+            build_ja_source_pdf(src)
+            out, cores = self._translate(src, tmp, lambda cs: {c: JA_TARGETS[c] for c in cs}, font)
+            self.assertEqual(set(cores), set(JA_LINES), msg=cores)
+            rc, log = self._verify(src, out)
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('PASS no untranslated running text', log)
+            self.assertIn('source script CJK', log)
+
+    def test_ja_source_leftover_line_fails(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'ja.pdf')
+            build_ja_source_pdf(src)
+
+            def leak(cs):
+                m = {c: JA_TARGETS[c] for c in cs}
+                m[JA_LINES[0]] = JA_LINES[0]   # a whole line left untranslated
+                return m
+            out, _ = self._translate(src, tmp, leak, cjk_font_file(tmp))
+            rc, log = self._verify(src, out)
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn('FAIL untranslated running text', log)
+            self.assertIn('申立人', log)
+
+    def test_ja_source_two_char_leftover_is_review_only(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'ja.pdf')
+            build_ja_source_pdf(src)
+
+            def leak(cs):
+                m = {c: JA_TARGETS[c] for c in cs}
+                m['署名'] = '署名'
+                return m
+            out, _ = self._translate(src, tmp, leak, cjk_font_file(tmp))
+            rc, log = self._verify(src, out)
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('REVIEW isolated source-script tokens', log)
+            self.assertIn('署名', log)
+
+    def test_ar_source_english_output_passes_and_leftover_fails(self):
+        arfont = find_rtl_font()
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'ar.pdf')
+            build_ar_source_pdf(src, arfont)
+            out, cores = self._translate(
+                src, tmp, lambda cs: dict(zip(cs, AR_TARGETS_EN)), font)
+            self.assertEqual(len(cores), 3, msg=cores)
+            rc, log = self._verify(src, out)
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('source script Arabic', log)
+            tmp2 = os.path.join(tmp, 'leak')
+            os.makedirs(tmp2)
+            out2, _ = self._translate(
+                src, tmp2, lambda cs: {**dict(zip(cs, AR_TARGETS_EN)), cs[0]: cs[0]}, arfont)
+            rc, log = self._verify(src, out2)
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn('FAIL untranslated running text', log)
+
+    def test_same_script_pair_uses_document_words_without_flag(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_form_pdf(src)
+            out, _ = self._translate(src, tmp, lambda cs: form_translations(), font)
+            rc, log = self._verify(src, out, allow=['form', 'schedule', 'question', 'vease'])
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('document words', log)
 
 
 class HotLoopTests(unittest.TestCase):

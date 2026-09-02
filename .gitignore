@@ -18,3 +18,11 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Session exports and evaluation output — not the skill
+Claude Session Handover/
+Claude-Session-Handover.zip
+bakeoff/
+v1_vs_v2_report.html
+/pdf-translate/quality-bakeoff.html
+/pdf-translate/recommendations.html

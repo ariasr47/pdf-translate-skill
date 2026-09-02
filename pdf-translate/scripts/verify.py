@@ -8,11 +8,19 @@
                   save/reopen (skipped if the PDF has no fields)
 3. ink density    per-page dark-pixel ratio vs original within [--min-ink, hard
                   ceiling 3x] — catches invisible glyphs and blank regions
-4. leak scan      split in two: THREE OR MORE consecutive source-script words
-                  is untranslated running text and fails; one or two adjacent
-                  tokens are reported for review only, because official form
-                  names (Schedule C, Form W-2), statutes and proper nouns are
-                  supposed to survive translation intact
+4. leak scan      keyed to the SOURCE document's script (detected from its
+                  text layer; Han + kana count as one family, CJK). When the
+                  output is in another script: three or more consecutive
+                  source-script words (>= 4 letters for Latin, >= 2 otherwise),
+                  or a run of six or more characters of a spaceless script,
+                  is untranslated running text and fails; shorter leftovers
+                  are reported for review only, because official form names
+                  (Schedule C, Form W-2), statutes and proper nouns are
+                  supposed to survive translation intact. When source and
+                  output share a space-delimited script the scan uses the
+                  document's own words (--source-words-from, or harvested
+                  from the original automatically). A shared spaceless
+                  family (zh->ja) gets one REVIEW line, not a gate.
 5. text layer     a page with visible ink or an embedded image but no
                   extractable text is treated as a scan and fails (scans are out of
                   scope; an OCR layer is refused by gate 11).
@@ -64,6 +72,7 @@ import re
 import sys
 import tempfile
 import time
+import unicodedata
 
 import pymupdf
 
@@ -72,6 +81,118 @@ if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 from extract_segments import write_find_say_hits  # noqa: E402
 from strip_text import invisible_text_pages  # noqa: E402
+
+# Unicode letter ranges per script (goal 15). A range table, not an ICU
+# dependency: the scan only needs to tell the source script from the target
+# one. Han, hiragana and katakana are one family because Japanese mixes them.
+SCRIPT_RANGES = {
+    'Latin': ((0x41, 0x5A), (0x61, 0x7A), (0xAA, 0xAA), (0xBA, 0xBA), (0xC0, 0x24F),
+              (0x1E00, 0x1EFF), (0x2C60, 0x2C7F), (0xA720, 0xA7FF),
+              (0xFF21, 0xFF3A), (0xFF41, 0xFF5A)),
+    'Greek': ((0x370, 0x3FF), (0x1F00, 0x1FFF)),
+    'Cyrillic': ((0x400, 0x52F), (0x2DE0, 0x2DFF), (0xA640, 0xA69F)),
+    'Armenian': ((0x530, 0x58F),),
+    'Hebrew': ((0x590, 0x5FF), (0xFB1D, 0xFB4F)),
+    'Arabic': ((0x600, 0x6FF), (0x750, 0x77F), (0x8A0, 0x8FF), (0xFB50, 0xFDFF),
+               (0xFE70, 0xFEFF)),
+    'Devanagari': ((0x900, 0x97F), (0xA8E0, 0xA8FF)),
+    'Bengali': ((0x980, 0x9FF),),
+    'Gurmukhi': ((0xA00, 0xA7F),),
+    'Gujarati': ((0xA80, 0xAFF),),
+    'Tamil': ((0xB80, 0xBFF),),
+    'Telugu': ((0xC00, 0xC7F),),
+    'Kannada': ((0xC80, 0xCFF),),
+    'Malayalam': ((0xD00, 0xD7F),),
+    'Sinhala': ((0xD80, 0xDFF),),
+    'Thai': ((0xE00, 0xE7F),),
+    'Lao': ((0xE80, 0xEFF),),
+    'Tibetan': ((0xF00, 0xFFF),),
+    'Myanmar': ((0x1000, 0x109F),),
+    'Georgian': ((0x10A0, 0x10FF),),
+    'Khmer': ((0x1780, 0x17FF),),
+    'Hangul': ((0x1100, 0x11FF), (0x3130, 0x318F), (0xA960, 0xA97F), (0xAC00, 0xD7FF)),
+    'CJK': ((0x3040, 0x30FF), (0x31F0, 0x31FF), (0x3400, 0x4DBF), (0x4E00, 0x9FFF),
+            (0xF900, 0xFAFF), (0xFF66, 0xFF9F), (0x20000, 0x2FA1F)),
+}
+# No word spaces: "three words" is approximated by six consecutive characters.
+SPACELESS_SCRIPTS = {'CJK', 'Thai', 'Lao', 'Khmer', 'Myanmar', 'Tibetan'}
+SPACELESS_RUN_CHARS = 6
+# Latin keeps today's 4-letter word floor; other scripts have short real words.
+MIN_WORD_LETTERS = {'Latin': 4}
+
+
+def script_of(ch):
+    """Script name for a letter; None for digits, punctuation, unknown scripts."""
+    if not unicodedata.category(ch).startswith('L'):
+        return None
+    o = ord(ch)
+    for name, ranges in SCRIPT_RANGES.items():
+        for a, b in ranges:
+            if a <= o <= b:
+                return name
+    return None
+
+
+def dominant_script(text):
+    """The script most of the letters in text belong to, or None if no letters."""
+    counts = {}
+    for ch in text or '':
+        name = script_of(ch)
+        if name:
+            counts[name] = counts.get(name, 0) + 1
+    if not counts:
+        return None
+    return max(counts, key=counts.get)
+
+
+def _letter_bag(line):
+    return tuple(sorted(ch for ch in line if unicodedata.category(ch).startswith('L')))
+
+
+def target_script(out_text, source_text):
+    """Dominant script of the output, ignoring lines that also occur in the source.
+
+    Leaks are source text, so a large leftover would make the output's
+    dominant script look like the source's and hide itself. Lines that occur
+    in the source, verbatim or as the same bag of letters (the text layer of
+    a re-typeset RTL line can come back in another order), are set aside
+    before judging what the target is.
+    """
+    src_norm = ' '.join(normalize_ws_nbsp(source_text or '').split())
+    src_bags = set()
+    for line in (source_text or '').splitlines():
+        bag = _letter_bag(line)
+        if len(bag) >= 2:
+            src_bags.add(bag)
+    keep = []
+    for line in (out_text or '').splitlines():
+        norm = ' '.join(normalize_ws_nbsp(line).split())
+        if not norm or norm in src_norm:
+            continue
+        bag = _letter_bag(line)
+        if len(bag) >= 2 and bag in src_bags:
+            continue
+        keep.append(line)
+    return dominant_script(chr(10).join(keep))
+
+
+def script_class(script):
+    """Regex character class matching one letter of the script."""
+    parts = []
+    for a, b in SCRIPT_RANGES[script]:
+        parts.append(chr(a) if a == b else f'{chr(a)}-{chr(b)}')
+    return '[' + ''.join(parts) + ']'
+
+
+def source_words_from_text(text, allow, script='Latin'):
+    """Unique source words of the given script from text (lowercased)."""
+    if script == 'Latin':
+        words = {w.lower() for w in re.findall(r"[A-Za-z][A-Za-z'\-]{3,}", text or '')}
+    else:
+        minlen = MIN_WORD_LETTERS.get(script, 2)
+        words = {w.lower() for w in re.findall(script_class(script) + '{%d,}' % minlen, text or '')}
+    return words - set(allow)
+
 
 WORD = re.compile(r"[A-Za-z][A-Za-z'\-]*")
 RUN = re.compile(r"[A-Za-z][A-Za-z'\-]*(?:\s+[A-Za-z][A-Za-z'\-]*){2,}")
@@ -85,16 +206,11 @@ def _arg(argv, name, default=None):
     return argv[argv.index(name) + 1] if name in argv else default
 
 
-def source_words_from_segments(path, allow):
-    """Unique 4+ letter Latin tokens from this document's own segments."""
-    words = set()
+def source_words_from_segments(path, allow, script='Latin'):
+    """Unique source words of the document's script from its segments."""
     with open(path, encoding='utf-8') as f:
         segs = json.load(f)['segments']
-    for s in segs:
-        for w in re.findall(r"[A-Za-z][A-Za-z'\-]{3,}", s['text']):
-            words.add(w.lower())
-    words -= allow
-    return words
+    return source_words_from_text('\n'.join(s['text'] for s in segs), allow, script)
 
 
 # get_text() often remaps authored ASCII '-' to U+2010/U+2011 (e.g. "W-2").
@@ -357,14 +473,18 @@ def missing_identifier_spans(page_text, spans, allow_translate=None):
     return missing
 
 
-def scan_leaks(text, allow, source_words=None, src_re=None):
-    """Split surviving source-language tokens into running vs isolated.
+def scan_leaks(text, allow, source_words=None, src_re=None, script='Latin'):
+    """Split surviving source-script tokens into running vs isolated.
 
-    When source_words is provided (same-script pairs), both buckets use THIS
-    document's own source words so the translation itself is not flagged.
-    Otherwise a script regex is used (different-script default).
+    script is the SOURCE document's script. When source_words is provided
+    (same-script pairs), both buckets use THIS document's own source words so
+    the translation itself is not flagged. Otherwise runs of the source
+    script are the leaks: words for space-delimited scripts, character runs
+    for spaceless ones. Latin behaviour is unchanged from before goal 15.
     """
     running, isolated = [], []
+    if script and script != 'Latin':
+        return _scan_leaks_script(text, allow, script, source_words, src_re)
     if source_words:
         tokens = [m.group(0) for m in WORD.finditer(text)]
         i = 0
@@ -401,6 +521,54 @@ def scan_leaks(text, allow, source_words=None, src_re=None):
     return running, isolated
 
 
+def _scan_leaks_script(text, allow, script, source_words=None, src_re=None):
+    """scan_leaks for a non-Latin source script."""
+    running, isolated = [], []
+    cls = script_class(script)
+    if script in SPACELESS_SCRIPTS:
+        for m in re.finditer(cls + '+', text):
+            run = m.group(0)
+            if run.lower() in allow:
+                continue
+            if len(run) >= SPACELESS_RUN_CHARS:
+                running.append(run[:70])
+            else:
+                isolated.append(run)
+        return running, isolated
+    minlen = MIN_WORD_LETTERS.get(script, 2)
+    word = cls + '{%d,}' % minlen
+    if source_words:
+        tokens = re.findall(cls + '+', text)
+        i = 0
+        while i < len(tokens):
+            if tokens[i].lower() in source_words and tokens[i].lower() not in allow:
+                j = i
+                seq = []
+                while j < len(tokens) and tokens[j].lower() in source_words \
+                        and tokens[j].lower() not in allow:
+                    seq.append(tokens[j])
+                    j += 1
+                if len(seq) >= 3:
+                    running.append(' '.join(seq)[:70])
+                else:
+                    isolated.extend(seq)
+                i = j
+            else:
+                i += 1
+        return running, isolated
+    run_re = re.compile(word + r'(?:\s+' + word + r'){2,}')
+    for phrase in run_re.findall(text):
+        words = re.findall(cls + '+', phrase)
+        if sum(1 for w in words if w.lower() not in allow) >= 3:
+            running.append(phrase.strip()[:70])
+    masked = run_re.sub(' ', text)
+    iso_re = src_re if src_re is not None else re.compile(word)
+    for w in iso_re.findall(masked):
+        if w.lower() not in allow:
+            isolated.append(w)
+    return running, isolated
+
+
 def page_unextractable(page):
     """True when the page looks scanned: visible content, no text layer."""
     if page.get_text().strip():
@@ -423,16 +591,30 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
            translations=None):
     """Run structural gates. Returns 0 on pass, 1 on any failure."""
     allow = set(w.lower() for w in (allow or []) if w)
-    source_words = None
-    src_re = None
-    if source_words_from:
-        source_words = source_words_from_segments(source_words_from, allow)
-        print(f'leak scan: {len(source_words)} source words from {source_words_from}')
-    else:
-        src_re = re.compile(source_regex or r'[A-Za-z]{4,}')
 
     o, j = pymupdf.open(orig), pymupdf.open(trans)
     fail = 0
+
+    # Gate 4 is keyed to the source document's script, not to Latin.
+    o_text = '\n'.join(p.get_text() or '' for p in o)
+    j_text = '\n'.join(p.get_text() or '' for p in j)
+    src_script = dominant_script(o_text) or 'Latin'
+    out_script = target_script(j_text, o_text)
+    print(f'leak scan: source script {src_script}; output script {out_script or "none"}')
+    same_spaceless = src_script in SPACELESS_SCRIPTS and out_script == src_script
+    source_words = None
+    src_re = None
+    if source_words_from:
+        source_words = source_words_from_segments(source_words_from, allow, src_script)
+        print(f'leak scan: {len(source_words)} source words from {source_words_from}')
+    elif out_script == src_script and not same_spaceless:
+        source_words = source_words_from_text(o_text, allow, src_script)
+        print(f'leak scan: same script on both sides; using {len(source_words)} '
+              f'document words from the original')
+    if not source_words:
+        source_words = None
+        src_re = re.compile(source_regex or r'[A-Za-z]{4,}') if src_script == 'Latin' \
+            else (re.compile(source_regex) if source_regex else None)
 
     onames = {w.field_name: w.field_type_string for p in o for w in p.widgets()}
     jnames = {w.field_name: w.field_type_string for p in j for w in p.widgets()}
@@ -528,11 +710,16 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
     #                   form name is itself an error, since the reader has to
     #                   locate a document that carries that exact name.
     running, isolated = [], []
-    for i in range(len(jc)):
-        r, iso = scan_leaks(jc[i].get_text(), allow,
-                            source_words=source_words, src_re=src_re)
-        running.extend((i + 1, ph) for ph in r)
-        isolated.extend((i + 1, w) for w in iso)
+    if same_spaceless:
+        print(f'REVIEW leak scan: source and output share the spaceless {src_script} '
+              f'family; the scan cannot tell them apart. Rely on --translations and '
+              f'the visual pass.')
+    else:
+        for i in range(len(jc)):
+            r, iso = scan_leaks(jc[i].get_text(), allow, source_words=source_words,
+                                src_re=src_re, script=src_script)
+            running.extend((i + 1, ph) for ph in r)
+            isolated.extend((i + 1, w) for w in iso)
 
     if running:
         print(f'FAIL untranslated running text ({len(running)}):')

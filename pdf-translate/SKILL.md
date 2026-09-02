@@ -251,11 +251,19 @@ python3 scripts/verify.py original.pdf out.pdf \
     --translations translations.json
 ```
 
-Use `--source-words-from segments.json` for same-script pairs (EN→ES/FR/DE):
-the default regex flags the translation itself and tells you nothing, whereas
-this asks the only useful question — did any of *this document's own* source
-words survive? Expect a few false positives (proper nouns, words spelled the
-same in both languages) and allowlist them deliberately.
+The leak scan follows the **source document's script**, detected from its
+text layer and printed (`leak scan: source script CJK; output script
+Latin`). When the output is in another script, surviving runs of the
+source script are the leaks: three or more consecutive words, or six or
+more characters of a spaceless script (CJK, Thai, Khmer…), FAIL; shorter
+leftovers are REVIEW. When both sides share a space-delimited script
+(EN→ES/FR/DE, RU→UK) the scan uses *this document's own* source words,
+harvested from the original automatically; `--source-words-from
+segments.json` is still accepted and preferred when you pass it. Expect a
+few false positives (proper nouns, words spelled the same in both
+languages) and allowlist them deliberately. When both sides share a
+spaceless family (ZH↔JA) the scan prints one REVIEW line and cannot gate;
+lean on `--translations` and the visual pass.
 
 Pass `--translations translations.json` so verify also fails if an authored
 non-passthrough **target** (length ≥ 2, whitespace/NBSP normalized, hyphen
