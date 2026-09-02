@@ -206,6 +206,12 @@ the placement gate compares verbatim instead of folding.
   targets the STRIPPED file. Keep both; never extract from the stripped one.
 - Insert at the baseline origin from the text dict, not the bbox top —
   bbox-top insertion sits text visibly low.
+- **A span's bbox is font metadata, not ink.** Noto Naskh Arabic's
+  connecting tails reach left of the glyph origin, so MuPDF reports a box
+  starting ~11 pt right of where the letters actually are at 12 pt; Arial
+  reports one that matches. Placement is correct in both cases. Judge
+  placement by the render, not by comparing bboxes — and treat width
+  budgets derived from a source bbox as approximate on Naskh-like faces.
 - Fields' `/DA` default appearance references a Latin font; typed-in
   target-script text falls back or vanishes in some viewers until
   `field_fonts.py` rewires it. Values still store; the *rendering* is what

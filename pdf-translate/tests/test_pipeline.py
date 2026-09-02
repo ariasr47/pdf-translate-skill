@@ -672,6 +672,25 @@ def render_region(page, rect, dpi=100):
     return bytes(page.get_pixmap(dpi=dpi, clip=rect).samples)
 
 
+def ink_left_edge(page, rect, dpi=144):
+    """Left edge of the drawn ink inside rect, in points, or None.
+
+    A span's reported bbox is font metadata, not ink: Noto Naskh Arabic's
+    connecting tails reach left of the glyph origin, so MuPDF reports a
+    box 8 pt right of where the letters actually are, while Arial reports
+    one that matches. Placement tests must measure what the reader sees.
+    """
+    pix = page.get_pixmap(dpi=dpi, clip=rect)
+    w, h, n = pix.width, pix.height, pix.n
+    buf = bytes(pix.samples)
+    scale = dpi / 72.0
+    for x in range(w):
+        for y in range(h):
+            if buf[(y * w + x) * n] < 128:
+                return rect.x0 + x / scale
+    return None
+
+
 def pixel_diff(a, b):
     return sum(1 for x, y in zip(a, b) if abs(x - y) > 40)
 
@@ -1525,23 +1544,56 @@ class CanonicalTextLayerTests(unittest.TestCase):
             self.assertEqual(rc, 0, msg=log)
             self.assertIn('PASS canonical text layer', log)
 
-    def test_gate_fails_the_same_build_without_the_rewrite(self):
+    def test_gate_fails_a_drifted_text_layer(self):
+        """Drift the layer deliberately, so the gate is tested and not the font.
+
+        Whether a face's cmap reverse-maps space to NBSP is the font's
+        business: Arial's does, Noto Sans's does not. Pointing /ToUnicode
+        at the drift characters — the exact inverse of retypeset's rewrite
+        — reproduces the defect on any font, so this runs everywhere.
+        """
+        font = find_test_font()
         with tempfile.TemporaryDirectory() as tmp:
-            src, out, tr, segs = self._build(tmp, canonicalize=False)
-            layer = self.layer(out)
-            drifted = [ch for ch in ('\xa0', '\u00ad', '\u2010', '\u2011')
-                       if ch in layer]
-            if not drifted:
-                raise unittest.SkipTest(
-                    'this font\'s cmap does not reverse-map to drift '
-                    'characters, so there is nothing to canonicalize')
+            src, out, tr, segs = self._build(tmp)
+            self.assertNotIn('\xa0', self.layer(out))
+
+            drifted = os.path.join(tmp, 'drifted.pdf')
+            f = pymupdf.Font(fontfile=str(font))
+            gidmap = {f.has_glyph(0x20): 0xA0, f.has_glyph(0x2D): 0xAD}
+            gidmap.pop(0, None)
+            self.assertTrue(gidmap, msg='test font has no space or hyphen')
+            block = retypeset._override_block(gidmap)
+            pdf = pikepdf.open(out)
+            try:
+                patched = 0
+                for obj in pdf.objects:
+                    try:
+                        tu = obj.get('/ToUnicode')
+                    except Exception:
+                        continue
+                    if tu is None:
+                        continue
+                    data = bytes(tu.read_bytes())
+                    i = data.rfind(b'endcmap')
+                    if i < 0:
+                        continue
+                    obj.ToUnicode = pdf.make_stream(data[:i] + block + data[i:])
+                    patched += 1
+                self.assertTrue(patched, msg='no /ToUnicode to drift')
+                pdf.save(drifted)
+            finally:
+                pdf.close()
+
+            self.assertIn('\xa0', self.layer(drifted),
+                          msg='the fixture did not actually drift')
             buf = io.StringIO()
             with redirect_stdout(buf):
-                rc = verify.verify(src, out, translations=tr,
+                rc = verify.verify(src, drifted, translations=tr,
                                    source_words_from=segs)
             log = buf.getvalue()
             self.assertNotEqual(rc, 0, msg=log)
             self.assertIn('FAIL text layer is not canonical', log)
+            self.assertIn('U+00A0', log)
 
     def test_original_drift_is_not_the_outputs_fault(self):
         # A character already in the original is the source's business.
@@ -4377,12 +4429,20 @@ class ShapedScriptTests(unittest.TestCase):
             actual = verify.extract_actualtext(doc[0])
             bbox, origin = first_line_geometry(doc[0])
             rule = render_region(doc[0], pymupdf.Rect(150, 82, 300, 86))
+            # Where the letters actually are, not where the font metadata
+            # says the box is. Clipped above the rule at y=84, which starts
+            # at x=60 and would otherwise be the leftmost ink.
+            left = ink_left_edge(doc[0], pymupdf.Rect(60, 60, 300, 82))
             doc.close()
             self.assertTrue(AR_CONNECTED_FORMS & set(cps),
                             msg=f'no initial/medial Arabic forms in {[hex(c) for c in cps][:20]}')
             self.assertTrue(any(AR_PHRASE in a for a in actual), msg=actual)
             self.assertGreater(sum(1 for b in rule if b < 100), 50, msg='rule under the run was painted over')
-            self.assertAlmostEqual(bbox.x0, 72.0, delta=1.5, msg=bbox)
+            self.assertIsNotNone(left, msg='the shaped run drew no ink')
+            # 2 pt, not 1.5: at 144 dpi one device pixel is 0.5 pt, and the
+            # first column of anti-aliased stem ink lands a pixel or two in.
+            self.assertAlmostEqual(left, 72.0, delta=2.0,
+                                   msg=f'ink starts at {left}, bbox {bbox}')
             self.assertAlmostEqual(origin[1], 80.0, delta=1.5, msg=origin)
             buf = io.StringIO()
             with redirect_stdout(buf):
