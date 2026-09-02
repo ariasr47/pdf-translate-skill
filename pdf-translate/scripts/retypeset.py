@@ -30,12 +30,20 @@ document gets the same behavior:
   (insert_htmlbox, HarfBuzz) on the original baseline, at the original
   size and colour, then wrapped in /ActualText; TextWriter would draw
   them letter by letter (isolated Arabic forms, broken conjuncts)
+- rotated lines (side labels, stamps) keep their angle: the run is written
+  horizontally and morphed about its own origin by the segment's recorded
+  direction, so origin, bbox and line direction match the source run. The
+  width budget runs along that direction. Dot leaders, centering and the
+  RTL mirror stay horizontal-only ideas and are skipped on a rotated run;
+  a rotated run whose target also needs SHAPING is refused rather than
+  drawn flat
 
 Usage:
   python3 retypeset.py STRIPPED.pdf segments.json translations.json OUT.pdf
 """
 import html as htmlmod
 import json
+import math
 import re
 import sys
 import time
@@ -50,6 +58,57 @@ _RTL_RANGES = (
     (0xFB1D, 0xFDFF),
     (0xFE70, 0xFEFC),
 )
+
+
+def seg_dir(seg):
+    """Unit line direction of a segment; (1, 0) when absent or unusable."""
+    d = seg.get('dir') or (1.0, 0.0)
+    try:
+        dx, dy = float(d[0]), float(d[1])
+    except (TypeError, ValueError, IndexError, KeyError):
+        return 1.0, 0.0
+    n = math.hypot(dx, dy)
+    if n < 1e-9:
+        return 1.0, 0.0
+    return dx / n, dy / n
+
+
+def is_rotated(dx, dy):
+    return abs(dx - 1.0) > 1e-6 or abs(dy) > 1e-6
+
+
+def rotation_morph(x, y, dx, dy):
+    """(pivot, matrix) that turns a horizontal run into direction (dx, dy).
+
+    Verified against extraction: text written horizontally at (x, y) and
+    morphed this way comes back with the same origin, the same bbox and
+    the same line dir as the source run it replaces.
+    """
+    return (pymupdf.Point(x, y), pymupdf.Matrix(dx, -dy, dy, dx, 0, 0))
+
+
+def direction_limit(page, seg, dx, dy, margin=16.0):
+    """Room from the segment origin to the page edge ALONG its direction.
+
+    right_limit's obstacle scan is a horizontal idea (same-row neighbours,
+    widget rects to the right). Projecting every neighbour onto an
+    arbitrary axis is a different problem, and a rotated run is nearly
+    always a margin label or a stamp with nothing beyond it. The page edge
+    is the budget; the 0.7x gate still refuses a translation that cannot
+    fit in it.
+    """
+    x, y = seg['origin']
+    r = page.rect
+    limits = []
+    if dx > 1e-9:
+        limits.append((r.x1 - margin - x) / dx)
+    elif dx < -1e-9:
+        limits.append((x - r.x0 - margin) / -dx)
+    if dy > 1e-9:
+        limits.append((r.y1 - margin - y) / dy)
+    elif dy < -1e-9:
+        limits.append((y - r.y0 - margin) / -dy)
+    return max(1.0, min(limits)) if limits else 1.0
 
 
 def is_rtl_text(text):
@@ -277,6 +336,7 @@ def retypeset(stripped, segf, trf, out):
         return lim - 1.5
 
     missing = []
+    rotated_shaped = []
     over_by_page = {}
     for o in overrides:
         over_by_page.setdefault(o['page'], []).append(o)
@@ -289,6 +349,20 @@ def retypeset(stripped, segf, trf, out):
         writers = {}
         rtl_jobs = []
         shaped_jobs = []
+        # One writer per rotated run: a morph rotates a whole TextWriter
+        # about a single pivot, and each run must turn about its own origin.
+        rot_jobs = []
+
+        def place_rotated(px, py, parts_fs, cint, dx, dy, rtl=False,
+                          logical=''):
+            rtw = pymupdf.TextWriter(page.rect)
+            xx = px
+            for t, f, fsz in parts_fs:
+                rtw.append((xx, py), t, font=f, fontsize=fsz,
+                           right_to_left=rtl)
+                xx += f.text_length(t, fsz)
+            rot_jobs.append((rtw, cint, rotation_morph(px, py, dx, dy),
+                             logical if rtl else ''))
 
         def W(cint):
             if cint not in writers:
@@ -307,6 +381,8 @@ def retypeset(stripped, segf, trf, out):
                 continue
             fs = seg['size']
             ox, oy = seg['origin']
+            dx, dy = seg_dir(seg)
+            rot = is_rotated(dx, dy)
             ov = next((o for o in over_by_page.get(pno, [])
                        if o['contains'] in text), None)
             if ov:
@@ -320,10 +396,17 @@ def retypeset(stripped, segf, trf, out):
                     if fs and fs2 < fs:
                         consider_ratio(pno, ov.get('contains') or t, fs2 / fs)
                     if needs_shaping(t):
+                        if rot:
+                            rotated_shaped.append((pno, t))
+                            continue
                         avail = maxw if maxw < 5000 else page.rect.width - 32 - x
                         shaped_jobs.append((mirror_left(x, w, page.rect.width), oy, t,
                                             bool(part.get('bold')), fs, int(seg.get('color', 0)),
                                             avail, ov.get('contains') or t))
+                    elif rot:
+                        place_rotated(x, oy, [(t, f, fs2)],
+                                      int(seg.get('color', 0)), dx, dy,
+                                      rtl=is_rtl_text(t), logical=t)
                     elif is_rtl_text(t):
                         rtl_jobs.append((x, oy, t, f, fs2, int(seg.get('color', 0)), t))
                     else:
@@ -339,6 +422,10 @@ def retypeset(stripped, segf, trf, out):
                     missing.append((pno, core))
                 f = hebo if seg['bold'] else helv
                 raw = seg['text'].rstrip()
+                if rot:
+                    place_rotated(ox, oy, [(raw, f, fs)],
+                                  int(seg.get('color', 0)), dx, dy)
+                    continue
                 tw.append((mirror_left(ox, f.text_length(raw, fs), page.rect.width),
                            oy), raw, font=f, fontsize=fs)
                 continue
@@ -354,7 +441,7 @@ def retypeset(stripped, segf, trf, out):
             wsum = sum(f.text_length(t, fs) for t, f in parts)
             rtl_body = is_rtl_text(jp)
             shaped = needs_shaping(jp)
-            if dots and not rtl_body and not shaped and not mirror:
+            if dots and not rtl_body and not shaped and not mirror and not rot:
                 cur_end = seg['bbox'][2] - (
                     helv.text_length(tail, fs) + 2 if tail else 0)
                 label_max = cur_end - ox - 8
@@ -373,17 +460,29 @@ def retypeset(stripped, segf, trf, out):
                 if tail:
                     tw.append((cur_end + 2, oy), tail, font=helv, fontsize=fs)
                 continue
-            maxw = right_limit(pno, seg, segs) - ox
+            maxw = (direction_limit(page, seg, dx, dy) if rot
+                    else right_limit(pno, seg, segs) - ox)
             fs2 = fs if wsum <= maxw or wsum == 0 else max(4.0, fs * maxw / wsum)
             if fs and fs2 < fs and not shaped:
                 consider_ratio(pno, core, fs2 / fs)
             x = ox
-            if core in center:
+            if core in center and not rot:
                 w2 = sum(f.text_length(t, fs2) for t, f in parts)
                 cx = (seg['bbox'][0] + seg['bbox'][2]) / 2
                 x = max(ox - 200, cx - w2 / 2)
             run_w = sum(f.text_length(t, fs2) for t, f in parts)
-            x = mirror_left(x, run_w, page.rect.width)
+            if not rot:
+                x = mirror_left(x, run_w, page.rect.width)
+            if rot:
+                if shaped:
+                    # Drawing a shaped script flat on a rotated label is the
+                    # exact silent defect this program refuses to ship.
+                    rotated_shaped.append((pno, core))
+                    continue
+                place_rotated(x, oy, [(t, f, fs2) for t, f in parts],
+                              int(seg.get('color', 0)), dx, dy,
+                              rtl=rtl_body, logical=jp.replace('‖', ''))
+                continue
             if shaped:
                 # Marker stays a TextWriter run in Helvetica; the body is
                 # shaped at the ORIGINAL size and the engine's own scale
@@ -407,6 +506,10 @@ def retypeset(stripped, segf, trf, out):
                     x += f.text_length(t, fs2)
         for cint, w in writers.items():
             w.write_text(page, color=rgb_of(cint))
+        for (rtw, cint, morph, logical) in rot_jobs:
+            rtw.write_text(page, color=rgb_of(cint), morph=morph)
+            if logical:
+                wrap_last_bt_actualtext(page, logical)
         for (rx, ry, t, fnt, fsz, cint, logical) in rtl_jobs:
             rtw = pymupdf.TextWriter(page.rect)
             rtw.append((rx, ry), t, font=fnt, fontsize=fsz, right_to_left=True)
@@ -440,7 +543,13 @@ def retypeset(stripped, segf, trf, out):
               f'(shorten the translation or add allow_scale):')
         for p, ratio, c in overflow[:30]:
             print(f'  p{p} {ratio:.2f}x: {c}')
-    if missing or overflow:
+    if rotated_shaped:
+        print(f'FAIL: {len(rotated_shaped)} rotated segments whose target needs '
+              f'shaping. The Story engine places shaped runs upright; drawing '
+              f'them flat on a rotated label would ship confidently wrong text:')
+        for p, c in rotated_shaped[:30]:
+            print(f'  p{p}: {c}')
+    if missing or overflow or rotated_shaped:
         doc.close()
         return 1
 

@@ -333,6 +333,51 @@ def retranslate_opt_exports(src, dst, mapping):
         pdf.close()
 
 
+ROT_ROWS = [
+    # (x, y, text, rotate, expected line dir)
+    (60, 60, 'Application for benefits', 0, (1.0, 0.0)),
+    (360, 340, 'FOR OFFICE USE ONLY', 90, (0.0, -1.0)),
+    (40, 300, 'Filed copy', 270, (0.0, 1.0)),
+    (330, 30, 'Void if altered', 180, (-1.0, 0.0)),
+]
+ROT_TR = {
+    'Application for benefits': 'Solicitud de prestaciones',
+    'FOR OFFICE USE ONLY': 'USO OFICIAL',
+    'Filed copy': 'Copia',
+    'Void if altered': 'Nulo si se altera',
+}
+
+
+def build_rotated_text_pdf(path):
+    """One flat row plus a 90, a 270 and a 180 degree line on one page."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=400, height=400)
+    for x, y, text, rot, _ in ROT_ROWS:
+        page.insert_text((x, y), text, fontsize=10, rotate=rot)
+    doc.save(path)
+    doc.close()
+
+
+def line_dirs(pdf_path):
+    """{text: (dx, dy)} of every line in a PDF, rounded."""
+    doc = pymupdf.open(pdf_path)
+    try:
+        out = {}
+        for page in doc:
+            for b in page.get_text('dict')['blocks']:
+                if b['type'] != 0:
+                    continue
+                for line in b['lines']:
+                    text = verify.normalize_ws_nbsp(
+                        ''.join(sp['text'] for sp in line['spans']))
+                    if text:
+                        out[text] = (round(line['dir'][0], 3),
+                                     round(line['dir'][1], 3))
+        return out
+    finally:
+        doc.close()
+
+
 def widget_map(pdf_path):
     doc = pymupdf.open(pdf_path)
     out = {w.field_name: (w.field_type_string, pymupdf.Rect(w.rect))
@@ -1220,6 +1265,136 @@ class RetypesetTests(unittest.TestCase):
             self.assertFalse(
                 dot_chars_overlap_widget(out, 'Agree'),
                 'refilled dots overlapped the mid-line checkbox')
+
+
+class RotatedTextTests(unittest.TestCase):
+    """Audit H1: a rotated line must not be re-typeset flat."""
+
+    def test_extract_records_the_line_direction(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_rotated_text_pdf(src)
+            result = extract_segments.extract_segments(src, outdir=tmp)
+            by_core = {s['core']: s for s in result['segments']}
+            for _, _, text, _, expected in ROT_ROWS:
+                seg = by_core[text]
+                self.assertEqual(tuple(seg['dir']), expected, msg=text)
+
+    def test_unit_direction_helpers(self):
+        self.assertEqual(retypeset.seg_dir({'dir': [0, -2]}), (0.0, -1.0))
+        self.assertEqual(retypeset.seg_dir({}), (1.0, 0.0))
+        self.assertEqual(retypeset.seg_dir({'dir': [0, 0]}), (1.0, 0.0))
+        self.assertEqual(retypeset.seg_dir({'dir': 'nonsense'}), (1.0, 0.0))
+        self.assertFalse(retypeset.is_rotated(1.0, 0.0))
+        self.assertTrue(retypeset.is_rotated(0.0, -1.0))
+        page = mock.Mock()
+        page.rect = pymupdf.Rect(0, 0, 400, 400)
+        seg = {'origin': [360, 340]}
+        # Straight up from y=340: 340 - 16 of room, not the page width.
+        self.assertAlmostEqual(
+            retypeset.direction_limit(page, seg, 0.0, -1.0), 324.0)
+        self.assertAlmostEqual(
+            retypeset.direction_limit(page, seg, 1.0, 0.0), 24.0)
+
+    def test_rotated_lines_keep_their_angle_through_retypeset(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_rotated_text_pdf(src)
+            extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            write_mapping(tr, dict(ROT_TR), font, skip=[])
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(
+                    stripped, os.path.join(tmp, 'segments.json'), tr, out)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+
+            dirs = line_dirs(out)
+            src_dirs = line_dirs(src)
+            for _, _, text, _, expected in ROT_ROWS:
+                target = verify.normalize_ws_nbsp(ROT_TR[text])
+                self.assertIn(target, dirs, msg=sorted(dirs))
+                self.assertEqual(dirs[target], expected, msg=target)
+                self.assertEqual(dirs[target],
+                                 src_dirs[verify.normalize_ws_nbsp(text)],
+                                 msg=target)
+
+    def test_rotated_run_starts_at_the_original_origin(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_rotated_text_pdf(src)
+            result = extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            write_mapping(tr, dict(ROT_TR), font, skip=[])
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                retypeset.retypeset(
+                    stripped, os.path.join(tmp, 'segments.json'), tr, out)
+            origins = {}
+            doc = pymupdf.open(out)
+            for page in doc:
+                for b in page.get_text('dict')['blocks']:
+                    for line in b.get('lines', []):
+                        for sp in line['spans']:
+                            key = verify.normalize_ws_nbsp(sp['text'])
+                            if key:
+                                origins.setdefault(key, sp['origin'])
+            doc.close()
+            src_seg = {s['core']: s for s in result['segments']}
+            for _, _, text, _, _ in ROT_ROWS:
+                got = origins[verify.normalize_ws_nbsp(ROT_TR[text])]
+                want = src_seg[text]['origin']
+                self.assertAlmostEqual(got[0], want[0], places=1, msg=text)
+                self.assertAlmostEqual(got[1], want[1], places=1, msg=text)
+
+    def test_rotated_line_is_not_gap_split(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            doc = pymupdf.open()
+            page = doc.new_page(width=400, height=400)
+            page.insert_text((360, 340), 'CITY        STATE', fontsize=10,
+                             rotate=90)
+            doc.save(src)
+            doc.close()
+            result = extract_segments.extract_segments(src, outdir=tmp)
+            rotated = [s for s in result['segments']
+                       if tuple(s['dir']) != (1.0, 0.0)]
+            self.assertEqual(len(rotated), 1, msg=result['segments'])
+            self.assertIn('STATE', rotated[0]['text'])
+
+    def test_rotated_shaped_target_is_refused_not_drawn_flat(self):
+        font = find_rtl_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            doc = pymupdf.open()
+            page = doc.new_page(width=400, height=400)
+            page.insert_text((360, 340), 'FOR OFFICE USE ONLY', fontsize=10,
+                             rotate=90)
+            doc.save(src)
+            doc.close()
+            extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            write_mapping(tr, {'FOR OFFICE USE ONLY': AR_TARGET}, font,
+                          skip=[])
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(
+                    stripped, os.path.join(tmp, 'segments.json'), tr, out)
+            log = buf.getvalue()
+            self.assertNotEqual(rc, 0, msg=log)
+            self.assertIn('rotated segments whose target needs shaping', log)
+            self.assertFalse(os.path.exists(out), msg=log)
 
 
 class OverflowTests(unittest.TestCase):

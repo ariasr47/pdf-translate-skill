@@ -160,6 +160,16 @@ broken. The channel always writes `[export, display]` pairs and refuses a
 spec that touches a choice field's `/V`; `verify.py` compares export
 values against the original and FAILs any drift.
 
+## 13. Rotated lines re-typeset flat
+
+Page `/Rotate` is harmless — origins come back in unrotated space. A
+rotated *line* is not: the extractor kept origin, bbox and size but not
+direction, so a 90-degree "FOR OFFICE USE ONLY" side stamp was re-drawn
+horizontally across the middle of the form. No gate moved: the string was
+placed, the ink ratio barely changed, and the text layer read correctly.
+Only the render showed it. Segments now carry the line's direction vector
+and retypeset morphs each rotated run about its own origin.
+
 ## Also worth knowing
 
 - Extraction geometry must come from the ORIGINAL (text intact); writing

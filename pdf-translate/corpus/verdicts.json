@@ -12,6 +12,7 @@
   "ocr_layer.pdf": "refuse+ocr-layer",
   "pale_blank.pdf": "skip-ink",
   "rotated.pdf": "translate",
+  "rotated_text.pdf": "translate",
   "rtl_source.pdf": "translate",
   "xobject_text.pdf": "translate"
 }

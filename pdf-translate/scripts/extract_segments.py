@@ -27,6 +27,10 @@ Segmentation rules (why they matter):
 - A visual line is split at horizontal gaps > GAP pt between spans: one line
   often holds several independent cells (CITY: STATE: ZIP:) or a label and a
   dot-leader run separated by a checkbox gap. Each piece is placed on its own.
+- The line's direction vector is recorded per segment ("dir"). Rotated
+  lines (side labels, stamps) keep their angle at re-typeset time; a
+  rotated line is never gap-split, because the x distance between its
+  spans is not a horizontal gap.
 - List markers (a., (1), 12.) are peeled off and kept verbatim.
 - Trailing dot leaders + optional currency symbol are peeled off; retypeset
   refills dots anchored to the right so they never invade mid-line gaps.
@@ -224,11 +228,20 @@ def extract_segments(src, outdir='.', gap=12.0):
             if b['type'] != 0:
                 continue
             for line in b['lines']:
+                # Line direction as a unit vector, (1, 0) for ordinary rows.
+                # Gap-splitting is a horizontal idea: on a rotated line the
+                # x distance between spans means nothing, so a rotated line
+                # stays one group.
+                ldir = tuple(line.get('dir') or (1.0, 0.0))[:2]
+                if len(ldir) != 2:
+                    ldir = (1.0, 0.0)
+                rotated = abs(ldir[0] - 1.0) > 1e-6 or abs(ldir[1]) > 1e-6
                 groups = []
                 for s in line['spans']:
                     if not s['text'].strip() and not groups:
                         continue
-                    if groups and s['bbox'][0] - groups[-1]['bbox'][2] < gap:
+                    if groups and (rotated
+                                   or s['bbox'][0] - groups[-1]['bbox'][2] < gap):
                         g = groups[-1]
                         g['text'] += s['text']
                         g['bbox'] = [g['bbox'][0],
@@ -248,6 +261,7 @@ def extract_segments(src, outdir='.', gap=12.0):
                             'bold': 'Bold' in s['font'],
                             'italic': ('Italic' in s['font']
                                        or 'Oblique' in s['font']),
+                            'dir': [round(ldir[0], 4), round(ldir[1], 4)],
                         })
                 for g in groups:
                     if not g['text'].strip():
@@ -274,6 +288,10 @@ def extract_segments(src, outdir='.', gap=12.0):
                         # a defect the ink-density gate cannot see.
                         'color': int(g.get('color', 0)),
                         'bold': g['bold'], 'italic': g['italic'],
+                        # Line direction: retypeset rotates the run about
+                        # this origin. Without it a 90-degree side label is
+                        # re-typeset flat across the page.
+                        'dir': g.get('dir', [1.0, 0.0]),
                         'text': g['text'], 'marker': marker, 'core': core,
                         'dots': dots or '', 'tail': tail,
                         'passthrough': bool(not core or PASS.match(core)),

@@ -17,6 +17,7 @@ Every PDF here has exactly one expected verdict:
 | `ocr_layer.pdf` | `refuse+ocr-layer` | scanned image plus an invisible (render mode 3) OCR text layer; the visible words are pixels |
 | `pale_blank.pdf` | `skip-ink` | negligible dark pixels, not a scan |
 | `rotated.pdf` | `translate` | `/Rotate 90` |
+| `rotated_text.pdf` | `translate` | rotated text LINES (90/180/270) on an unrotated page; each must keep its angle through retypeset |
 | `rtl_source.pdf` | `translate` | LTR English source (layout not mirrored) |
 | `xobject_text.pdf` | `translate` | text inside a Form XObject |
 

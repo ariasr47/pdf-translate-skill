@@ -13,7 +13,7 @@ description: >-
   "translate this document but keep the formatting". Also use it when a user
   complains that a translated PDF broke its layout or its form fields.
 metadata:
-  version: "17"
+  version: "18"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -273,6 +273,15 @@ classic failure (subsetted CFF + CJK) draws *nothing* and reports no error.
 python3 scripts/retypeset.py stripped.pdf segments.json translations.json out.pdf
 ```
 
+Rotated lines (side labels, margin stamps) keep their angle: the extractor
+records each line's direction and retypeset morphs the run about its own
+origin, so origin, bbox and direction match the source. The width budget
+runs along that direction. Dot leaders, `center` and the RTL mirror are
+horizontal-only ideas and are skipped on a rotated run; a rotated run whose
+target also needs shaping (Arabic, Indic, Thai…) is **refused**, because
+the Story engine places shaped text upright and drawing it flat on a
+rotated label ships confidently wrong text.
+
 Fails loudly if any segment lacks a translation — fix and re-run until it
 passes. That exit code is your coverage gate; missing text must never ship
 silently. It also **fails** (does not save) if any run scales below 0.7×
@@ -376,7 +385,7 @@ class of work is a second linguist, and the honest deliverable says so.
 
 ## References
 
-- `references/failure-modes.md` — the twelve silent failures and their fixes.
+- `references/failure-modes.md` — the thirteen silent failures and their fixes.
   Read during recon, before touching the file.
 - `references/translations-format.md` — the translations.json contract
   (translations, merges, overrides, center, skip, fonts). Read before
