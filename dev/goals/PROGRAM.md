@@ -145,8 +145,9 @@ model doing a real job, each with a measurement in `dev/canary/runs/`:
 | **20** | `goals/20-notice-title-leak.md` | **Closed 2 Sep.** The compliance notice's source-language title tripped the leak scan. The original's `/Title` quoted as a unit is kept; `--allow` takes phrases; a longer run is still a leak | Fable 5.1 |
 
 One sitting each, in that order (cheapest first). 18, 19 and 20 are
-closed, and so are 21, 22 and 23. Lane A is empty; lane B is next (see
-*Backlog after the review*), then the canary again. Do not paste Grok NOTES,
+closed, and so are 21, 22 and 23. Canary run 2 (3 September, five runs,
+two fixtures) opened 24–29; *Backlog after the review* has the order. Do
+not paste Grok NOTES,
 `work/translations.json`, or bakeoff scores into that session.
 
 The evening review of 2 September (`docs/REVIEW-2026-09-02.md`) added a
@@ -177,7 +178,13 @@ are in `docs/REVIEW-2026-09-02.md` §5; this is the queue.
 |---|---|---|
 | 19 | `goals/19-list-marker-gap.md` | **Closed 2 Sep evening.** Segments record the whitespace after a marker (`gap`); retypeset re-emits it in every marker path; absent key → one space, so stale work directories still build. Was Opus 5, measured 3.06 pt; 0.00 after |
 | 20 | `goals/20-notice-title-leak.md` | **Closed 2 Sep evening.** The original's `/Title` quoted as a unit, and a multi-word `--allow` phrase, are kept runs in the leak scan (printed as a note); anything longer is still a leak. Was Fable 5.1 and Opus 5 both allowlisting word by word |
-| C2 | canary run 2 — after P3, so it also tests the shorter skill; one deliberately long session | — |
+| C2 | canary run 2 | **Closed 3 Sep.** Five runs, two fixtures (`dev/canary/runs/2026-09-03-summary.md`): Opus 5 and Fable 5.1 5/5, Sonnet 5 4/5, Haiku 4.5 0/5 on the permission slip; Fable 5.1 5/5 on the real FL-100 against the issuer's own FL-100 S. Opened 24–29 and gave P7 its brief |
+| **24** | `goals/24-merge-ligatures.md` | canary run 2, Sonnet 5 and Opus 5 independently: the Story engine's `fi` ligature puts U+FB01 (full font) or U+007F (subset) in a merged paragraph's text layer; the placement gate FAILs a correct paragraph under `--translations` and nothing catches it without; reproduced on a constructed merge |
+| **25** | `goals/25-shrink-band-reported.md` | canary run 2: a run scaled between 0.7× and 1.0× is reported nowhere; the same merged paragraph shipped at 0.81× (Sonnet) and 0.91× (Opus) under deliveries that say nothing shrank |
+| **26** | `goals/26-merge-box.md` | canary run 2, three runs: a merge that needs one more line than the source either shrinks or is declined and hard-wrapped at the source's line breaks; the author cannot give it a box |
+| **27** | `goals/27-kept-title-tokens.md` | canary run 2, FL-100: the quoted `/Title` `FL-100 Petition—Marriage/Domestic Partnership` is not kept because `FL` is under the word floor; the title's key must be tokenized like the run |
+| **28** | `goals/28-right-anchor-room.md` | canary run 2, FL-100: a `right` core is shrunk to the room right of the original origin before being anchored on the right edge, so labels with free room on their left ship small |
+| **29** | `goals/29-override-plain-value.md` | canary run 2, FL-100: a core fully replaced by an override still needs a plain translation that is never drawn, and `qa_check` then flags the phantom |
 | 21 | `goals/21-right-aligned-on-text.md` | **Closed 2 Sep evening.** A group is proposed only when at least half its members sit within one em of a rule, a field or the next segment; corpus 1,485 → 158 groups, 11,507 → 642 segments, FL-100's caption stacks kept, everything else identical |
 | 22 | `goals/22-merge-candidate-kind.md` | **Closed 2 Sep evening.** Merge candidates carry `kind: "merge-candidate"`; `propose_merges` still accepts a kind-less candidate from an older `segments.json`; the corpus re-run names all 2,484 |
 | 23 | `goals/23-marker-font-metrics.md` | **Closed 2 Sep evening.** Segments carry `body_dx`, measured from the source's characters; retypeset starts the body there in every marker path; absent key → row-19 placement. Corpus: 952/952 marker lines measured, drift of up to 4.9 pt (FL-300) now corrected |
@@ -192,12 +199,12 @@ model's defect; never a gate.
 | P6 | Warnings at scale | **Closed 2 Sep evening.** extract prints a per-kind digest — counts and what each kind asks — then at most `--max-per-kind` lines per kind (the booklet: 2,394 lines → 61); the skill text says what each kind wants and write/find/say is a list to confirm; widget-text data values (USCIS `PDF417BarCode1`) are identity-mapped by instruction. Nothing leaves the JSON | — |
 | P3 | `SKILL.md` under 500 lines | **Closed 2 Sep evening.** Body 573 → 493 lines, ~7.6k → ~6.4k tokens on invoke, by moving five regions into `references/` (new `gates.md`, `widget-text.md`, `retypeset.md`; sections added to `compliance.md`, `fonts.md`, `translations-format.md`), one-line rules left behind, frontmatter untouched but the version. The 5,000-token target is not met without deleting rules — C2 decides whether the tail matters | — |
 | **P4** | Eval automation | Three `evals/**/case.yaml` cases with graders wrapping `dev/canary/score.py` plus an LLM grader for the identity and honest-delivery axes; `claude plugin eval . --runs 1 --json` produces a report; a `--threshold` documents the bar; one report committed under `dev/canary/runs/` | Running in CI on every push; naming a winner; scoring the visual pass by machine |
-| P7 | Notice channel (candidate, no brief yet) | The skill has no way to add the compliance notice it requires: Fable wrote its own script and re-canonicalised the text layer afterwards; row 20's fixture draws it by hand. A `--notice` input — text, page, a rect the author chose — placed with the job's fonts at retypeset time, canonical layer kept, gates unchanged. Write the brief when it is next | Choosing the rect by geometry; adding a page; a notice the reader cannot read |
+| **P7** | Notice channel | `goals/P7-notice-channel.md`: four of five runs on a form that needs the notice wrote their own script (Fable in runs 1 and 2, Sonnet, Opus). A `notices` list in translations.json — text, page, the box the author chose — placed by retypeset with the job's fonts through the same glyph check, canonical layer and placement gate as every other run | Choosing the box by geometry; adding a page; a notice the reader cannot read |
 | P5 | One source of truth | **Closed 2 Sep evening**: README count removed and CI badge added; audit HTML is a banner-marked snapshot; findings §15; tracker carries both lanes. Rule: `checklist.html` tracks, this file queues, `HANDOVER.md` cold-starts; nothing else states counts or open rows | — |
 
-**Order:** C2 → P4. Lane A is empty: every measured
-row is closed; the next lane A rows come from canary run 2 or the next
-wild-corpus probe, never from invention.
+**Order:** 24 → 25 → 27 → 28 → P7 → 26 → 29 → P4. Every row above came
+from a measurement — canary run 2 or the wild corpus — never from
+invention; when they are closed, run the canary again.
 
 **Hypotheses, after the wild corpus** (`dev/wild/ANALYSIS.md` §5): hybrid
 XFA — answered on page 1 of eight forms, the AcroForm layer renders

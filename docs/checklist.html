@@ -84,15 +84,50 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
   <section>
     <h2>Open — found by measurement: the canary and the wild corpus</h2>
-    <p>The canary ran on 2 September and produced three. Not invented: each came out of a model doing a real job against the fixture, and each is recorded with a measurement in <code>dev/canary/runs/</code>. One sitting each; the first, the <code>center</code> example, closed the same day and is listed below. The wild corpus (<code>dev/wild/</code>, seventeen public PDFs) ran the same evening and added rows 21 and 22 — friction on real documents, not wrong verdicts.</p>
+    <p>The canary ran on 2 September and produced three. Not invented: each came out of a model doing a real job against the fixture, and each is recorded with a measurement in <code>dev/canary/runs/</code>. One sitting each; the first, the <code>center</code> example, closed the same day and is listed below. The wild corpus (<code>dev/wild/</code>, seventeen public PDFs) ran the same evening and added rows 21 and 22 — friction on real documents, not wrong verdicts. Canary run 2 (the evening of 2 September: Opus 5, Sonnet 5, Fable 5.1, Haiku 4.5 on the fixture, Fable 5.1 on the real FL-100) added rows 24 to 29 and gave P7 its brief.</p>
     <ol class="items">
+      <li class="item" data-id="mergeligatures">
+        <input type="checkbox" id="c-mergeligatures"><div class="head"><span class="title"><label for="c-mergeligatures">Row 24: a merged paragraph's text layer says what the author wrote</label></span><span class="chip p0">P0</span><span class="chip neutral">S</span></div>
+        <p class="detail">The Story engine applies the font's <code>fi</code> ligature, so a merged paragraph with "oficina" carries U+FB01 (full font) or U+007F (a subset) in its text layer; the placement gate then FAILs a correct paragraph under <code>--translations</code>, and without the flag nothing catches it. Sonnet 5 and Opus 5 found it independently on the same evening; reproduced on a constructed merge. Fix the layer (CSS ligature switch or a multi-code-point CMap entry), add U+FB00–FB06 and U+007F to the drift list, keep shaped scripts shaping.</p>
+        <p class="meta">found by canary run 2 · <code>dev/goals/24-merge-ligatures.md</code></p>
+      </li>
+      <li class="item" data-id="shrinkband">
+        <input type="checkbox" id="c-shrinkband"><div class="head"><span class="title"><label for="c-shrinkband">Row 25: every run that ships smaller than the source is reported</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
+        <p class="detail"><code>consider_ratio</code> is silent for anything at or above 0.7×, so the same merged paragraph shipped at 0.81× (Sonnet) and 0.91× (Opus) under deliveries that say nothing shrank — the skill's own "name every core that ships as smaller type" cannot be followed when the author is never told. A digest of every run below 1.0×, a <code>scale_report.json</code> beside the output, a REVIEW line in verify; the 0.7× FAIL unchanged.</p>
+        <p class="meta">found by canary run 2 · <code>dev/goals/25-shrink-band-reported.md</code></p>
+      </li>
+      <li class="item" data-id="mergebox">
+        <input type="checkbox" id="c-mergebox"><div class="head"><span class="title"><label for="c-mergebox">Row 26: a merge may take the box the author gives it</label></span><span class="chip p2">P2</span><span class="chip neutral">S</span></div>
+        <p class="detail">A merge is re-flowed into the union bbox of its member lines, so a two-line English paragraph whose Spanish needs three lines either shrinks (Sonnet, Opus) or is declined and hard-wrapped at the source's line breaks (Fable, and Opus in run 1) — with empty space right below it. An optional <code>merges[].box</code> the author writes; nothing grows by geometry; the gates unchanged.</p>
+        <p class="meta">found by canary run 2, three runs · <code>dev/goals/26-merge-box.md</code></p>
+      </li>
+      <li class="item" data-id="kepttitle">
+        <input type="checkbox" id="c-kepttitle"><div class="head"><span class="title"><label for="c-kepttitle">Row 27: a quoted title is kept however the scan tokenizes it</label></span><span class="chip p2">P2</span><span class="chip neutral">XS</span></div>
+        <p class="detail">Row 20 keeps a run whose letters equal the original <code>/Title</code>. On FL-100 the title is <code>FL-100 Petition—Marriage/Domestic Partnership</code>, the notice quotes it verbatim, and the scan's run drops <code>FL</code> under the four-letter floor, so the keep never fires and the author guessed two allowlist spellings. Build the title's key with the branch's own token filter; no prefix or substring matching.</p>
+        <p class="meta">found by canary run 2 on the real FL-100 · <code>dev/goals/27-kept-title-tokens.md</code></p>
+      </li>
+      <li class="item" data-id="rightroom">
+        <input type="checkbox" id="c-rightroom"><div class="head"><span class="title"><label for="c-rightroom">Row 28: a right-anchored run is measured against the room it will occupy</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
+        <p class="detail">A <code>right</code> core is shrunk to the room right of the <em>original</em> origin and only then anchored on the right edge, so <code>SUCURSAL:</code>, <code>CIUDAD Y C.P.:</code> and the page numbers on FL-100 shipped small with free room on their left. Measure from the nearest obstacle on the left to the original right edge; shrink only when that does not fit.</p>
+        <p class="meta">found by canary run 2 on the real FL-100 · <code>dev/goals/28-right-anchor-room.md</code></p>
+      </li>
+      <li class="item" data-id="overrideplain">
+        <input type="checkbox" id="c-overrideplain"><div class="head"><span class="title"><label for="c-overrideplain">Row 29: a core fully replaced by an override needs no plain translation</label></span><span class="chip p2">P2</span><span class="chip neutral">S</span></div>
+        <p class="detail">The coverage check and the placement gate both demand a plain translation for a core every occurrence of which an override replaces, so the author writes a value that is never drawn and <code>qa_check</code> then flags it (13 warnings on FL-100). Count the override as coverage; expect the parts in the layer; keep the marker gate.</p>
+        <p class="meta">found by canary run 2 on the real FL-100 · <code>dev/goals/29-override-plain-value.md</code></p>
+      </li>
     </ol>
   </section>
 
   <section>
     <h2>Open — product lane, groomed 2 Sep 2026</h2>
-    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Lane A is empty; next is canary run 2, then P4.</p>
+    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Lane A: 24, 25, 27, 28; then P7, 26, 29; then P4.</p>
     <ol class="items">
+      <li class="item" data-id="noticechannel">
+        <input type="checkbox" id="c-noticechannel"><div class="head"><span class="title"><label for="c-noticechannel">P7: the pipeline can add the notice it requires</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
+        <p class="detail"><code>compliance.md</code> requires a target-language notice on a form the reader signs or files, and four of five canary runs on such a form wrote their own script to add one — Fable in runs 1 and 2, Sonnet, Opus — each re-deriving fonts, placement and the canonical-layer rewrite by hand. A <code>notices</code> list in translations.json, placed by retypeset through the same gates as every other run, with the box the author chose; the leak scan already keeps the quoted title (row 20).</p>
+        <p class="meta">measured by both canary runs · <code>dev/goals/P7-notice-channel.md</code></p>
+      </li>
       <li class="item" data-id="evalauto">
         <input type="checkbox" id="c-evalauto"><div class="head"><span class="title"><label for="c-evalauto">P4: eval automation from the canary</label></span><span class="chip p2">P2</span><span class="chip neutral">M</span></div>
         <p class="detail"><code>claude plugin eval</code> (present in 2.1.236) runs <code>evals/**/case.yaml</code> with a no-plugin baseline arm, an LLM judge, a JSON report and a threshold exit code. Three cases (the two eval fixtures and the canary fixture) with graders wrapping <code>dev/canary/score.py</code> for the objective half; the visual-pass axis stays human; one report committed under <code>dev/canary/runs/</code>.</p>
@@ -105,6 +140,11 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
     <h2>Closed since the audit</h2>
     <p>In the order they were done. Each landed with in-repo tests, and the full suite stayed green: 176 tests, no skips, green on Linux and Windows under Python 3.10 and 3.13.</p>
     <ol class="items">
+      <li class="item" data-id="canary2">
+        <input type="checkbox" id="c-canary2" checked><div class="head"><span class="title"><label for="c-canary2">Canary run 2: five runs, two fixtures</label></span><span class="chip p3">P3</span><span class="done-mark">done</span></div>
+        <p class="detail">Opus 5 and Fable 5.1 5/5, Sonnet 5 4/5 (its merged paragraph shipped at 0.81× unmentioned), Haiku 4.5 0/5, on the regenerated permission slip; Fable 5.1 5/5 on the real FL-100 beside the Judicial Council's own FL-100 S, 158 fields, resumed once after a rate limit. Every file structurally sound; rows 18–23 held. Six measured defects became rows 24–29 and P7 got its brief. Records in <code>dev/canary/runs/2026-09-03-*.md</code>.</p>
+        <p class="meta">closed 3 Sep 2026 · no winner in SKILL.md</p>
+      </li>
       <li class="item" data-id="skilllength">
         <input type="checkbox" id="c-skilllength" checked><div class="head"><span class="title"><label for="c-skilllength">P3: <code>SKILL.md</code> under 500 lines</label></span><span class="chip p1">P1</span><span class="done-mark">done</span></div>
         <p class="detail">Body 573 → 493 lines, 4,833 → 4,016 words, ~7.6k → ~6.4k tokens on invoke, by moving five regions into <code>references/</code> — new <code>gates.md</code>, <code>widget-text.md</code> and <code>retypeset.md</code>, sections added to <code>compliance.md</code>, <code>fonts.md</code> and <code>translations-format.md</code> — with one-line rules left behind and every reference one level deep with a contents line. Frontmatter untouched but the version. The 5,000-token target would need deleting rules or moving the paragraphs the canary showed steer a model, so canary run 2 decides whether the remaining tail matters.</p>

@@ -26,6 +26,9 @@ the drift it corrects on every file with one-space lists. Lane B's P2,
 P6 and P3 closed the same night too: the repository is a Claude Code
 plugin, the extractor prints a digest instead of one line per warning,
 and `SKILL.md` is back under 500 lines with the detail in `references/`.
+Canary run 2 followed the same night — Opus 5 and Fable 5.1 at 5/5,
+Sonnet 5 at 4/5, Haiku 4.5 at 0/5, and Fable 5.1 at 5/5 on the real
+FL-100 beside the Judicial Council's own Spanish — and opened rows 24–29.
 
 **Repo:** `<REPO>` — GitHub `ariasr47/pdf-translate-skill`, branch `main`
 **Skill dir:** `pdf-translate/` (the only directory you install)
@@ -52,9 +55,12 @@ pikepdf 10) for everything above.
   references are one level deep and each opens with a contents line.
 - Working tree clean, everything committed. Nothing is half-finished.
 - Program rows 01–23 and the whole September audit roadmap are **closed**.
-  Lane A is empty.
-- The canary has run once and opened 18, 19 and 20; the wild corpus
-  opened 21, 22 and 23. All six closed on 2 September. Lane B is next.
+  Lane A holds **24–29**, all from canary run 2.
+- The canary has run twice. Run 1 opened 18, 19 and 20; the wild corpus
+  21, 22 and 23; all six closed on 2 September. Run 2 (the evening of
+  2 September: Opus 5, Sonnet 5, Fable 5.1 and Haiku 4.5 on the fixture,
+  Fable 5.1 on the real FL-100) opened 24–29 and gave P7 its brief —
+  `dev/canary/runs/2026-09-03-summary.md`. Row 24 is next.
 
 ---
 
@@ -217,10 +223,11 @@ into `/goal`:
 
 All six measured rows are closed, and so are lane B's P2 (the repository
 is a plugin), P6 (the warning digest) and P3 (`SKILL.md` at 493 body
-lines). Next (`PROGRAM.md`, *Backlog after the review*): canary run 2,
-then P4. P4 has its closed bar in that table and in
-`docs/REVIEW-2026-09-02.md` §5 but no brief file yet; write the brief
-from the bar first, then close it.
+lines). Canary run 2 ran on the evening of 2 September — five runs, two
+fixtures, `dev/canary/runs/2026-09-03-summary.md` — and opened rows
+24–29, each with a brief; P7 has one too. Order (`PROGRAM.md`, *Backlog
+after the review*): 24, 25, 27, 28, P7, 26, 29, then P4 (bar in the
+table and in `docs/REVIEW-2026-09-02.md` §5, no brief file yet).
 
 One defect from that canary is already fixed: the placement gate could not
 pass a wrapped merge, which broke paragraph mode on the day it shipped
@@ -308,21 +315,15 @@ Tests, from pdf-translate/:
 committed. Program rows 01-23 and the whole audit roadmap are closed. Do
 not redo them. Lane A is empty; do not invent a row.
 
-Next sitting: canary run 2 (C2). Not a /goal: follow dev/canary/README.md
-— regenerate the fixture, the one-line prompt, three models, score on the
-five axes, score.py for the objective half — on a different day from any
-gate, and write dev/canary/runs/<date>-<model>.md for each. Two additions
-this time: one deliberately long session (does the shorter SKILL.md's
-tail survive compaction?), and consider one real form from dev/wild (not
-FL-150) as a second fixture. No winner in SKILL.md. Rows come out of what
-it walks into; do not invent one.
+Next sitting: copy dev/goals/24-merge-ligatures.md into /goal and close
+that bar only. Do not start 25 in the same session. Do not mix in a
+canary run. No glossary. Not FL-150 as a fixture.
 
 When the bar is green: full unittest + corpus, bump metadata.version in
 SKILL.md, commit, stop.
 ```
 
-After C2, the queue in `PROGRAM.md` names P4 (eval automation); it has
-its bar in that table and in the review but no brief file yet — write it
-from the bar first — and then whatever C2 walked into. If the user wants the
+After 24, the queue in `PROGRAM.md` (25, 27, 28, P7, 26, 29, then P4)
+names the next brief; swap it into the message above. If the user wants the
 stale audit HTML or the installed-copy re-sync instead, say so and do only
 that — neither is a gate, and neither needs a fixture.
