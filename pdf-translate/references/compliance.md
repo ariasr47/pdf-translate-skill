@@ -118,3 +118,18 @@ Notes for the delivery, not for the certificate:
   translation changes afterwards, the certificate no longer applies.
 - The scripts in this skill cannot be the certifying party, and neither can
   a model. Name the human.
+
+## 4. Encryption, usage rights and certification
+
+Strip always deletes `/Perms` and says what was there. `/Perms /UR3`
+(Adobe Reader extensions) and `/Perms /DocMDP` (certification) sign the
+bytes this pipeline rewrites, so they are invalid the moment text is
+stripped; leaving them is what makes Acrobat announce "extended features
+are no longer available" or "the document has been altered" over an
+otherwise correct file. Signature *fields* are left alone — removing a
+widget would break field parity. If the source was **certified**, say in
+the delivery that the translation is not. An encrypted source comes out
+unencrypted unless you pass `--keep-encryption`, which re-applies its
+permission bits with an **empty owner password** (the original cannot be
+recovered from the file, so those permissions are advisory) — say that
+too.

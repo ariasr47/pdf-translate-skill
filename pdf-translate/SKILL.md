@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "36"
+  version: "37"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -66,20 +66,16 @@ or an image but no text, and also when a page's text is invisible (an OCR
 layer over the scanned pixels, or text hidden under an image). In both
 cases the words the reader sees are pixels; strip-and-retypeset would
 print the translation over them, and this pipeline has no masking mode.
-Tell the user; do not ship that file as a translation. If the target script needs shaping (Arabic, every Indic script, Thai,
-Khmer, Myanmar), retypeset places those runs with the Story engine so
-letters join and conjuncts form, and writes `/ActualText` in logical
-order; `--translations` looks there as well as `get_text()`. Dot leaders
-and the `$` tail are refilled on those labels too. Hebrew is
-direction only. verify fails an output whose Arabic came out unshaped,
-and — since a broken Devanagari conjunct leaves no code-point tell — it
-also fails any shaping-script target that no `/ActualText` span carries,
-because that run was drawn glyph by glyph. **Layout is not mirrored
-unless** translations.json sets `"mirror": true` (flips text x and
-field/link rects; graphics stay). Read `references/fonts.md` and halt
-unless you have checked the render, the logical text layer, *and*
-whether the skeleton (default) or the opt-in mirror is acceptable.
-Confidently wrong text direction is worse than a halt.
+Tell the user; do not ship that file as a translation.
+
+Shaped scripts (Arabic, every Indic script, Thai, Khmer, Myanmar) go
+through the Story engine with `/ActualText` in logical order; Hebrew is
+direction only; verify fails unshaped Arabic and any shaping-script target
+with no `/ActualText`. **Layout is not mirrored unless** translations.json
+sets `"mirror": true`. Read `references/fonts.md` and halt unless you have
+checked the render, the logical text layer, *and* whether the skeleton
+(default) or the opt-in mirror is acceptable. Confidently wrong text
+direction is worse than a halt.
 
 ## Workflow
 
@@ -155,49 +151,26 @@ python3 scripts/strip_text.py original.pdf stripped.pdf \
 ```
 
 Removes all page text, keeps graphics/images/widgets, wraps content in q/Q,
-removes XFA, and reports pushbuttons with no action (dead XFA scripts). Prefer
-`--captions captions.json` (field-name → caption) to rewrite `/MK /CA` in
-place and drop stale `/AP` streams so the widget count stays exact and
-viewers do not keep drawing the source-language caption. The new caption
-must fit the widget; verify `--translations` fails overflow. Hide
-(`--hide-buttons`) only when the button should disappear; hiding plus a
-drawn replacement adds widgets unless you are replacing, not duplicating.
+removes XFA, and reports pushbuttons with no action (dead XFA scripts).
 
-**Encryption, usage rights and certification.** Strip always deletes
-`/Perms` and says what was there. `/Perms /UR3` (Adobe Reader extensions)
-and `/Perms /DocMDP` (certification) sign the bytes this pipeline rewrites,
-so they are invalid the moment text is stripped; leaving them is what makes
-Acrobat announce "extended features are no longer available" or "the
-document has been altered" over an otherwise correct file. Signature
-*fields* are left alone — removing a widget would break field parity. If
-the source was **certified**, say in the delivery that the translation is
-not. An encrypted source comes out unencrypted unless you pass
-`--keep-encryption`, which re-applies its permission bits with an **empty
-owner password** (the original cannot be recovered from the file, so those
-permissions are advisory) — say that too.
+**Chrome and widget text are their own channel** — `references/widget-text.md`.
+Rewrite pushbutton captions in place with `--captions` (field count stays
+exact; the caption must fit the widget); hide a button only when it should
+disappear, and never draw a second widget. Tooltips, dropdown labels and
+field defaults never reach a content stream: `extract_segments.py` writes
+`widget_text.json`, you author every `target`, `--widget-text` applies it.
+A `null` target is a refusal, not a skip. **Export values stay** — only
+the display half of an `/Opt` entry is translated — and a value that is
+data (a barcode payload, an ID) gets its source string back as the target.
+A rendered dropdown still shows the export value in MuPDF; the file is
+right.
 
-**Widget text is not page text.** Tooltips (`/TU`), dropdown labels
-(`/Opt`) and text-field defaults (`/V`, `/DV`) live in the annotation
-dictionaries and never reach a content stream, so strip-and-retypeset
-cannot touch them: without this channel a "fully translated" form still
-shows the source language on every hover and in every dropdown.
-`extract_segments.py` writes the `widget_text.json` scaffold; author each
-`target`, then pass it back with `--widget-text` (or
-`pipeline.py init … --widget-text`). A `null` target is a refusal, not a
-skip — author it or delete the key. **Export values stay:** an `/Opt`
-entry becomes `[export, display]` and only the display half is
-translated, so `/V` and everything the form submits keep working. A spec
-that asks to translate a choice field's `/V` is refused; verify's `/Opt`
-parity gate fails any output whose export values moved. A `value` or
-`default` that is **data** — a 2D-barcode payload such as USCIS's
-`PDF417BarCode1` (`I-864|08/24/26|1`), an ID, a date stamp — gets its
-source string back as the target, never a translation: `null` refuses
-the build, and a translation corrupts what the form submits.
-
-On the visual pass, expect a rendered dropdown to still show the **export**
-value: MuPDF's appearance generator draws `/V` verbatim, while a conforming
-viewer shows the translated display half. The file is right; check one
-dropdown in a real viewer rather than translating the export.
+**Encryption, usage rights and certification** — `references/compliance.md`
+§4. Strip always deletes `/Perms` and says what was there; signature
+fields stay. If the source was **certified**, say in the delivery that the
+translation is not. An encrypted source comes out unencrypted unless you
+pass `--keep-encryption`, which re-applies its permission bits with an
+**empty owner password** — say that too.
 
 Strip is also a gate. After saving, it re-reads the stripped file with
 annotation appearances excluded; if any page still has text it prints
@@ -284,21 +257,10 @@ The language decisions that matter:
 - **Register**: step 1 lookup. Parallel text wins; else that class's
   established usage in the target language. Do not calque.
 - **Length**: expansion depends on how *short* the string is, not just on
-  the pair — and a form is made of short labels. The W3C/IBM band for
-  translation out of English:
-
-  | Source length (characters) | Expect up to |
-  |---|---|
-  | 1–10 | 300% |
-  | 11–20 | 200% |
-  | 21–30 | 180% |
-  | 31–50 | 160% |
-  | 51–70 | 140% |
-  | over 70 | 130% |
-
-  So "City" may need three times its width while a paragraph needs a third
-  more; EN→JA usually shrinks instead. `qa_check.py` flags targets outside
-  the band. Retypeset **fails** if a segment scales below 0.7×. **Reword
+  the pair — and a form is made of short labels: "City" may need three
+  times its width while a paragraph needs a third more, and EN→JA usually
+  shrinks (the W3C/IBM band is in `references/translations-format.md`).
+  `qa_check.py` flags targets outside the band. Retypeset **fails** if a segment scales below 0.7×. **Reword
   first** — a shorter, equally correct phrase is almost always available,
   and it is the fix that keeps the page readable. `allow_scale` is the
   **last resort**, for a cell whose geometry genuinely cannot hold the
@@ -379,47 +341,25 @@ face at all.
 python3 scripts/retypeset.py stripped.pdf segments.json translations.json out.pdf
 ```
 
-Every character of every placed run is checked against the exact font
-object that will draw it. A character the font lacks **fails the build**:
-MuPDF substitutes its own fallback face mid-string, or draws a box, and
-reports nothing — the ink gate barely moves and the text layer still reads
-correctly. Pick a font that covers the target script
-(`references/fonts.md`); the run names the code points.
+The mechanics — glyph coverage, alignment, font roles, metadata, rotated
+lines — are in `references/retypeset.md`. The rules in one line each:
 
-**Alignment and weight.** `center` re-centers on the original midpoint;
-`right` re-anchors on the original right edge. Use `center` only where the
-source is centred in its own box (a column header, a title): a caption
-flush with a rule or a field is left-anchored, and centring a wider
-translation moves it off the thing it labels — past every gate. `fonts`
-takes four roles — `regular`, `bold`, `italic`, `bold_italic` — each
-falling back to the nearest one you named, so a Times Italic source no
-longer comes back upright. A single-line target may carry inline
-`<b>`/`<i>` for mixed weights within one line.
-
-**Document metadata is retargeted here too.** Set `"lang"` in
-translations.json to the target BCP-47 tag: retypeset writes it to `/Lang`
-and to `dc:language`, and without it the output still tells screen readers,
-hyphenation and search that it is in the source language. The `/Title` and
-every outline title are translated from the mapping like any other core.
-The orphaned `/StructTreeRoot` is removed and `/MarkInfo /Marked` set
-false, because those tags describe text that was stripped — **say in the
-delivery that the file is no longer tagged**.
-
-Rotated lines (side labels, margin stamps) keep their angle: the extractor
-records each line's direction and retypeset morphs the run about its own
-origin, so origin, bbox and direction match the source. The width budget
-runs along that direction. Dot leaders, `center` and the RTL mirror are
-horizontal-only ideas and are skipped on a rotated run; a rotated run whose
-target also needs shaping (Arabic, Indic, Thai…) is **refused**, because
-the Story engine places shaped text upright and drawing it flat on a
-rotated label ships confidently wrong text.
-
-Fails loudly if any segment lacks a translation — fix and re-run until it
-passes. That exit code is your coverage gate; missing text must never ship
-silently. It also **fails** (does not save) if any run scales below 0.7×
-versus the original size — a note is not a ship. Shorten the translation,
-or list that core (or merge first line) in `allow_scale` if the cell must
-stay tiny.
+- A character the chosen font lacks **fails the build** and names the
+  code points; MuPDF would otherwise substitute a fallback face silently.
+- `center` only where the source is centred in its own box; a caption
+  flush with a rule or a field is left-anchored. `right` re-anchors on
+  the original right edge. `fonts` takes four roles, each falling back to
+  the nearest one you named; a single-line target may carry `<b>`/`<i>`.
+- Set `"lang"` to the target BCP-47 tag (it becomes `/Lang` and
+  `dc:language`); `/Title` and outline titles are cores; the orphaned
+  structure tree is removed — **say in the delivery that the file is no
+  longer tagged**.
+- Rotated lines keep their angle; a rotated run whose target needs
+  shaping is **refused** rather than drawn flat.
+- It **fails** if any segment lacks a translation (your coverage gate) and
+  **fails without saving** if any run scales below 0.7× — shorten the
+  translation, or list that core in `allow_scale` if the cell must stay
+  tiny.
 
 ### 5b. QA the mapping (before you build)
 
@@ -455,62 +395,32 @@ python3 scripts/verify.py original.pdf out.pdf \
     --translations translations.json
 ```
 
-The leak scan follows the **source document's script**, detected from its
-text layer and printed (`leak scan: source script CJK; output script
-Latin`). When the output is in another script, surviving runs of the
-source script are the leaks: three or more consecutive words, or six or
-more characters of a spaceless script (CJK, Thai, Khmer…), FAIL; shorter
-leftovers are REVIEW. When both sides share a space-delimited script
-(EN→ES/FR/DE, RU→UK) the scan uses *this document's own* source words,
-harvested from the original automatically; `--source-words-from
-segments.json` is still accepted and preferred when you pass it. Expect a
-few false positives (proper nouns, words spelled the same in both
-languages) and allowlist them deliberately: a multi-word entry
-(`--allow "Riverside Elementary School"`) matches that run as a unit and
-nothing else, and the original's `/Title` quoted as a unit — the
-compliance notice names the form — is kept, never counted. When both sides share a
-spaceless family (ZH↔JA) the scan prints one REVIEW line and cannot gate;
-lean on `--translations` and the visual pass.
+Every gate — what it reads, what fails, and why — is in
+`references/gates.md`. The rules in one line each:
 
-Pass `--translations translations.json` so verify also fails if an authored
-non-passthrough **target** (length ≥ 2) never appears **verbatim** in the
-output text layer — a stripped file or a failed write. Missing targets are
-listed. This does not judge whether the wording is the right term.
+- **Leak scan** (always on): keyed to the *source* document's script.
+  Three or more consecutive source-script words, or six characters of a
+  spaceless script, FAIL; shorter leftovers are REVIEW. When both sides
+  share a space-delimited script the scan uses this document's own words
+  (`--source-words-from segments.json`). Allowlist false positives
+  deliberately: a multi-word `--allow` entry matches that run as a unit
+  and nothing else, and the original's `/Title` quoted as a unit — the
+  compliance notice names the form — is kept, never counted. ZH↔JA: one
+  REVIEW line, no gate; lean on `--translations` and the visual pass.
+- **`--translations`**: every authored non-passthrough target appears
+  **verbatim** in the output text layer (retypeset canonicalizes
+  `/ToUnicode`; NBSP, soft-hyphen and compatibility-ideograph drift
+  FAILs); no original pushbutton caption survives unless `--captions`
+  rewrote it or `skip` dropped it, and a rewritten caption fits its
+  widget; write/find/say identifiers from the original survive unless
+  listed in `allow_translate` (record why in NOTES; scripts do not read
+  NOTES); override parts keep the source marker and tail (`--segments`,
+  or `segments.json` beside the mapping). None of this judges whether
+  the wording is the right term.
+- **`/Opt` export parity** (always on): the export half of every dropdown
+  entry byte-identical to the original's, in order.
 
-The comparison is verbatim because retypeset **canonicalizes the text
-layer**. MuPDF builds an embedded font's `/ToUnicode` by reverse-mapping
-its cmap, so the space glyph comes back as NBSP, the hyphen as U+00AD or
-U+2010, and common kanji as CJK Compatibility Ideographs (立 as U+F9F7):
-the page looks perfect while the words in it cannot be searched, copied or
-matched. After saving, retypeset rewrites `/ToUnicode` for the glyphs it
-placed to the code points you authored, and the always-on **canonical text
-layer** gate FAILs any of those characters that are in neither the original
-nor your mapping.
-
-The same flag also checks **pushbutton chrome**. Captions live in `/MK /CA`
-and draw on top of the page; `get_text()` still sees them. Either rewrite
-them in place with `--captions` at strip time (field count stays exact), or
-put the caption in `skip` and leave the button as UI chrome. If the original
-caption is still in the output and you did neither, verify fails and lists
-it. Do not hide a button and draw a second widget. Captions must **fit the
-widget rect**: `--translations` FAILs if Helvetica `text_length` of the
-output `/CA` is wider than the button minus a 2 pt pad each side. Prefer
-short chrome (`Print` / `OK`) over a sentence in a tiny button.
-
-Choice-field **`/Opt` export parity** is checked always, like field parity:
-the export half of every dropdown entry must be byte-identical to the
-original's, in the same order. Translate the display half (step 2), never
-the export — the export is what the form submits.
-
-The same flag also checks **write/find/say identifiers**. Quoted strings and
-`Form` / `Schedule` / `Attachment` / `Exhibit` names from the original page
-must still appear in the output text layer. Missing ones FAIL and are
-listed. If you meant to translate a span, list it in `allow_translate` and
-record why in NOTES (scripts do not read NOTES). It also checks that every
-override's parts still carry the source marker and tail (`d.`, `$`); it
-needs `segments.json` beside `translations.json` or `--segments`, and
-SKIPs rather than fails without one. Omit `--translations`:
-field / fill / ink / leak / scan gates are unchanged.
+Omit `--translations`: the always-on gates run unchanged.
 
 All gates must pass. Then the step that actually creates the quality:
 **render every page of the output next to the original (~110 dpi) and look
@@ -576,11 +486,21 @@ optional model first pass are in `references/review.md`.
 
 - `references/failure-modes.md` — the fourteen silent failures and their fixes.
   Read during recon, before touching the file.
+- `references/gates.md` — every verify gate: what it reads, what fails, and
+  why. Read when a gate fails, or before promising what verify checks.
+- `references/widget-text.md` — captions, tooltips, dropdown labels and
+  field defaults: the channel, the export rule, values that are data, and
+  what a rendered dropdown shows. Read at step 2 on any fillable PDF.
 - `references/translations-format.md` — the translations.json contract
-  (translations, merges, overrides, center, skip, fonts). Read before
-  authoring translations.
+  (translations, merges, overrides, center, skip, fonts) and the expansion
+  band. Read before authoring translations.
 - `references/fonts.md` — per-script font sourcing (CJK, Arabic, Devanagari,
-  Thai, Latin/Cyrillic/Greek) and the glyf-flavor rule. Read at step 4.
+  Thai, Latin/Cyrillic/Greek), the glyf-flavor rule, and what shaping and
+  right-to-left do in this pipeline. Read at step 4, and at recon when the
+  target script is not Latin.
+- `references/retypeset.md` — what retypeset does with a run: glyph
+  coverage, `center`/`right`, font roles, metadata, rotated lines, the two
+  ways a build fails. Read when a build fails or a render looks wrong.
 - `references/review.md` — the reviewer checklist (a required deliverable),
   who the reviser should be, an optional MQM-typology judge prompt and the
   `review.json` schema. Read at step 8.

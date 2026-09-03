@@ -149,3 +149,24 @@ Authoring order that works well:
 6. After the first render pass, add `center` / `skip` entries (centre only
    what the source centres — never a caption flush with a rule) and shorten
    whatever failed the 0.7× scale gate (or add those cores to `allow_scale`).
+
+## The expansion band
+
+Expansion depends on how *short* the string is, not just on the language
+pair — and a form is made of short labels. The W3C/IBM band for
+translation out of English:
+
+| Source length (characters) | Expect up to |
+|---|---|
+| 1–10 | 300% |
+| 11–20 | 200% |
+| 21–30 | 180% |
+| 31–50 | 160% |
+| 51–70 | 140% |
+| over 70 | 130% |
+
+So "City" may need three times its width while a paragraph needs a third
+more; EN→JA usually shrinks instead. `qa_check.py` flags targets outside
+the band. Retypeset fails a segment scaled below 0.7×: reword first, and
+use `allow_scale` last — every core listed there ships as smaller type,
+so name them in the delivery.

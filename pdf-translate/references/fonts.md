@@ -1,5 +1,9 @@
 # Fonts by target script
 
+Contents: the glyf-flavor rule · CJK · Arabic and Hebrew · Devanagari and
+other Indic · Thai · Latin, Cyrillic, Greek · shaped and right-to-left
+scripts in this pipeline (at the end).
+
 The one rule that overrides everything: **feed MuPDF only TrueType-flavored
 (glyf) fonts.** Subsetted CFF/OTF renders ASCII and silently drops CJK and
 other complex-script glyphs (failure-modes.md #3). System-installed Noto CJK
@@ -97,3 +101,20 @@ and approximate weight. Expansion warning: EN→DE/FR/ES/RU typically grows
   points. It is the cheapest signal that you picked the wrong face: MuPDF
   itself substitutes a fallback mid-string, or draws a box, and says
   nothing.
+
+## Shaped and right-to-left scripts in this pipeline
+
+If the target script needs shaping (Arabic, every Indic script, Thai,
+Khmer, Myanmar), retypeset places those runs with the Story engine so
+letters join and conjuncts form, and writes `/ActualText` in logical
+order; `--translations` looks there as well as `get_text()`. Dot leaders
+and the `$` tail are refilled on those labels too. Hebrew is direction
+only. verify fails an output whose Arabic came out unshaped, and — since
+a broken Devanagari conjunct leaves no code-point tell — it also fails
+any shaping-script target that no `/ActualText` span carries, because
+that run was drawn glyph by glyph. **Layout is not mirrored unless**
+translations.json sets `"mirror": true` (flips text x and field/link
+rects; graphics stay). Halt unless you have checked the render, the
+logical text layer, *and* whether the skeleton (default) or the opt-in
+mirror is acceptable. Confidently wrong text direction is worse than a
+halt.

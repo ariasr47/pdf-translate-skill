@@ -91,13 +91,8 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
   <section>
     <h2>Open — product lane, groomed 2 Sep 2026</h2>
-    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Lane A is empty; the order is P3, canary run 2, P4.</p>
+    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Lane A is empty; next is canary run 2, then P4.</p>
     <ol class="items">
-      <li class="item" data-id="skilllength">
-        <input type="checkbox" id="c-skilllength"><div class="head"><span class="title"><label for="c-skilllength">P3: <code>SKILL.md</code> under 500 lines</label></span><span class="chip p1">P1</span><span class="chip neutral">M</span></div>
-        <p class="detail">550 body lines, ~4,600 words and ~7,300 tokens on invoke (measured by <code>claude plugin details</code>) against Anthropic's 500-line and the spec's ~5,000-token guidance. Claude Code re-attaches only the first 5,000 tokens of an invoked skill after compaction, so on a long job the tail — verify, field fonts, deliver — is what vanishes. Move detail into <code>references/</code> (gates, widget text, expansion table), one level deep; keep every rule; keep the frontmatter spec-clean. Canary run 2 is the proof it still steers.</p>
-        <p class="meta">not done: removing a rule · touching the description · Claude Code-only frontmatter</p>
-      </li>
       <li class="item" data-id="evalauto">
         <input type="checkbox" id="c-evalauto"><div class="head"><span class="title"><label for="c-evalauto">P4: eval automation from the canary</label></span><span class="chip p2">P2</span><span class="chip neutral">M</span></div>
         <p class="detail"><code>claude plugin eval</code> (present in 2.1.236) runs <code>evals/**/case.yaml</code> with a no-plugin baseline arm, an LLM judge, a JSON report and a threshold exit code. Three cases (the two eval fixtures and the canary fixture) with graders wrapping <code>dev/canary/score.py</code> for the objective half; the visual-pass axis stays human; one report committed under <code>dev/canary/runs/</code>.</p>
@@ -108,8 +103,13 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
   <section>
     <h2>Closed since the audit</h2>
-    <p>In the order they were done. Each landed with in-repo tests, and the full suite stayed green: 176 tests, no skips; 174 of them green on Linux and Windows under Python 3.10 and 3.13, the two from P6 green locally and awaiting CI.</p>
+    <p>In the order they were done. Each landed with in-repo tests, and the full suite stayed green: 176 tests, no skips, green on Linux and Windows under Python 3.10 and 3.13.</p>
     <ol class="items">
+      <li class="item" data-id="skilllength">
+        <input type="checkbox" id="c-skilllength" checked><div class="head"><span class="title"><label for="c-skilllength">P3: <code>SKILL.md</code> under 500 lines</label></span><span class="chip p1">P1</span><span class="done-mark">done</span></div>
+        <p class="detail">Body 573 → 493 lines, 4,833 → 4,016 words, ~7.6k → ~6.4k tokens on invoke, by moving five regions into <code>references/</code> — new <code>gates.md</code>, <code>widget-text.md</code> and <code>retypeset.md</code>, sections added to <code>compliance.md</code>, <code>fonts.md</code> and <code>translations-format.md</code> — with one-line rules left behind and every reference one level deep with a contents line. Frontmatter untouched but the version. The 5,000-token target would need deleting rules or moving the paragraphs the canary showed steer a model, so canary run 2 decides whether the remaining tail matters.</p>
+        <p class="meta">closed 2 Sep 2026, evening · <code>dev/goals/P3-skill-length.md</code></p>
+      </li>
       <li class="item" data-id="warningsscale">
         <input type="checkbox" id="c-warningsscale" checked><div class="head"><span class="title"><label for="c-warningsscale">P6: the extractor's warnings scale to a real document</label></span><span class="chip p1">P1</span><span class="done-mark">done</span></div>
         <p class="detail">The extractor prints a digest — a count per kind and what each kind asks of the author — then at most <code>--max-per-kind</code> lines per kind (default ten), with every warning still in segments.json. The 126-page IRS booklet went from 2,394 printed lines to 61. Step 3 of the skill is now a list of what each kind wants, write/find/say is a list to confirm rather than 1,093 halts, and a widget value that is data (the USCIS barcode payload) is identity-mapped by instruction. No kind silenced, nothing auto-accepted, the gates untouched.</p>
