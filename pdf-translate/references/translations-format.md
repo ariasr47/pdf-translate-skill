@@ -119,6 +119,12 @@ this file is where your judgment lives.
   // replace the WHOLE span: keep the list marker ("d.") and the tail after
   // the leaders ("$") in some part, or verify --translations fails naming
   // the dropped token (it reads segments.json beside this file).
+  // Because the parts replace the span, the core's own entry in
+  // "translations" may be null wherever an override covers every
+  // occurrence of it: the plain value would never be drawn, and writing
+  // one only to satisfy the coverage check gave qa_check a phantom string
+  // to grade. An occurrence on a page no override covers still needs its
+  // plain value, and retypeset names that page.
   "overrides": [
     {
       "page": 1,
@@ -139,7 +145,9 @@ Authoring order that works well:
    Retypeset still fails until you replace those nulls. It will not overwrite
    without `--force`. Do not identity-map as a shortcut; that ships source
    text. Open `to_translate.json`. JSON `null` is “not yet authored”
-   (retypeset refuses). `""` and whitespace-only values are not
+   (retypeset refuses — except on a core every occurrence of which an
+   override covers, where nothing would be drawn from it anyway).
+   `""` and whitespace-only values are not
    translations: `verify --translations` FAILs and names the core. Use
    `skip` to drop a span, not `""`.
 2. Translate every core (they're deduplicated — typically far fewer than the

@@ -6031,5 +6031,151 @@ class MergeBoxTests(unittest.TestCase):
             self.assertIn('box is null', buf.getvalue())
 
 
+
+def build_two_page_override_pdf(path):
+    """The same inner-gap row on both pages; only page 0 gets an override."""
+    doc = pymupdf.open()
+    for n in range(2):
+        page = doc.new_page(width=612, height=792)
+        page.insert_text((72, 100), OVERRIDE_LINE, fontsize=11)
+        page.insert_text((72, 140), f'Other text line {n + 1}.', fontsize=11)
+    doc.save(path)
+    doc.close()
+
+
+class OverridePlainValueTests(unittest.TestCase):
+    """Row 29: an override replaces its whole span with explicit parts, but
+    the coverage check still demanded a non-null translation for the core
+    and verify's placement gate then wanted that never-drawn value in the
+    layer. On FL-100 the author wrote phantom values to satisfy two checks
+    and qa_check flagged them (13 warnings) for length and added numbers."""
+
+    def _job(self, tmp, core_value, parts=PARTS_KEEP):
+        font = find_test_font()
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        build_override_pdf(src)
+        extract_segments.extract_segments(src, outdir=tmp)
+        strip_text.strip_text(src, stripped)
+        Path(tr).write_text(json.dumps({
+            'fonts': {'regular': str(font), 'bold': str(font)},
+            'translations': {OVERRIDE_CORE: core_value,
+                             OVERRIDE_OTHER: 'Otra linea.'},
+            'merges': [],
+            'overrides': [{'page': 0, 'contains': OVERRIDE_CORE,
+                           'parts': parts}],
+            'center': [], 'skip': [],
+        }, ensure_ascii=False), encoding='utf-8')
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(
+                stripped, os.path.join(tmp, 'segments.json'), tr, out)
+        return rc, src, out, tr, os.path.join(tmp, 'segments.json'), buf.getvalue()
+
+    def test_a_covered_core_needs_no_plain_value(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, src, out, tr, segs, log = self._job(tmp, None)
+            self.assertEqual(rc, 0, msg=log)
+            doc = pymupdf.open(out)
+            try:
+                layer = doc[0].get_text()
+            finally:
+                doc.close()
+            self.assertIn('d. Ayuda', verify.normalize_ws_nbsp(layer))
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                vrc = verify.verify(src, out, translations=tr,
+                                    source_words_from=segs)
+            vlog = buf.getvalue()
+            self.assertEqual(vrc, 0, msg=vlog)
+            self.assertIn('PASS authored translations present', vlog)
+            self.assertIn('PASS override parts keep markers and tails', vlog)
+
+    def test_the_gate_wants_the_parts_and_not_the_plain_value(self):
+        conf = {'translations': {OVERRIDE_CORE: None,
+                                 OVERRIDE_OTHER: 'Otra linea.'},
+                'overrides': [{'page': 0, 'contains': OVERRIDE_CORE,
+                               'parts': PARTS_KEEP}]}
+        targets = verify.collect_translation_targets(conf)
+        self.assertIn('d. Ayuda', targets)
+        self.assertIn('Otra linea.', targets)
+        self.assertNotIn('Ayuda', [t for t in targets if t == 'Ayuda'])
+
+    def test_an_uncovered_occurrence_still_fails_and_names_its_page(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_two_page_override_pdf(src)
+            extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            Path(tr).write_text(json.dumps({
+                'fonts': {'regular': str(font), 'bold': str(font)},
+                'translations': {OVERRIDE_CORE: None,
+                                 'Other text line 1.': 'Otra linea 1.',
+                                 'Other text line 2.': 'Otra linea 2.'},
+                'merges': [],
+                'overrides': [{'page': 0, 'contains': OVERRIDE_CORE,
+                               'parts': PARTS_KEEP}],
+                'center': [], 'skip': [],
+            }, ensure_ascii=False), encoding='utf-8')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(
+                    stripped, os.path.join(tmp, 'segments.json'), tr, out)
+            log = buf.getvalue()
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn('untranslated segments', log)
+            self.assertIn('p1', log)
+            self.assertNotIn('p0', log)
+            self.assertFalse(os.path.isfile(out))
+
+    def test_qa_check_does_not_flag_a_null_covered_core(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tr = os.path.join(tmp, 'translations.json')
+            Path(tr).write_text(json.dumps({
+                'fonts': {}, 'merges': [], 'center': [], 'skip': [],
+                'translations': {OVERRIDE_CORE: None,
+                                 OVERRIDE_OTHER: 'Otra linea.'},
+                'overrides': [{'page': 0, 'contains': OVERRIDE_CORE,
+                               'parts': PARTS_KEEP}],
+            }, ensure_ascii=False), encoding='utf-8')
+            findings = qa_check.qa_check(tr)
+            self.assertEqual([f for f in findings if f['core'] == OVERRIDE_CORE],
+                             [])
+
+    def test_a_plain_null_with_no_override_still_fails(self):
+        """The null is legal only where an override covers it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, src, out, tr, segs, log = self._job(tmp, 'Ayuda')
+            self.assertEqual(rc, 0, msg=log)
+        with tempfile.TemporaryDirectory() as tmp:
+            font = find_test_font()
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_override_pdf(src)
+            extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            Path(tr).write_text(json.dumps({
+                'fonts': {'regular': str(font), 'bold': str(font)},
+                'translations': {OVERRIDE_CORE: 'Ayuda',
+                                 OVERRIDE_OTHER: None},
+                'merges': [], 'overrides': [], 'center': [], 'skip': [],
+            }, ensure_ascii=False), encoding='utf-8')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(
+                    stripped, os.path.join(tmp, 'segments.json'), tr, out)
+            log = buf.getvalue()
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn(OVERRIDE_OTHER, log)
+
+
 if __name__ == '__main__':
     unittest.main()

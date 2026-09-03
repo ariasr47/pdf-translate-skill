@@ -685,12 +685,28 @@ def retypeset(stripped, segf, trf, out):
         for i in sorted(idxs, reverse=True):
             del page_segs[i]
 
+    over_by_page = {}
+    for o in overrides:
+        over_by_page.setdefault(o['page'], []).append(o)
+
+    def override_for(pno, text):
+        """The override that replaces this whole segment, if any."""
+        return next((o for o in over_by_page.get(pno, [])
+                     if o['contains'] in text), None)
+
     missing = []
     for pno, segs in by_page.items():
         for seg in segs:
-            if seg['text'].strip() in skip:
+            text = seg['text'].strip()
+            if text in skip:
                 continue
             if T.get(seg['core']) is None and not seg['passthrough']:
+                # An override replaces the segment's whole span with its
+                # own parts, so the plain value is never drawn. Demanding
+                # one anyway made the author write a phantom string that
+                # exists only to satisfy this check and verify's (row 29).
+                if override_for(pno, text):
+                    continue
                 missing.append((pno, seg['core']))
     if unauthored_merges:
         print(f'FAIL: {len(unauthored_merges)} merges with html null '
@@ -811,10 +827,6 @@ def retypeset(stripped, segf, trf, out):
             seen_glyph_miss.add(sig)
             glyph_misses.append((pno, label, ch, key))
 
-    over_by_page = {}
-    for o in overrides:
-        over_by_page.setdefault(o['page'], []).append(o)
-
     for pno, page in enumerate(doc):
         segs = by_page.get(pno, [])
         # One TextWriter per distinct source color. A single black writer is
@@ -862,8 +874,7 @@ def retypeset(stripped, segf, trf, out):
             ox, oy = seg['origin']
             dx, dy = seg_dir(seg)
             rot = is_rotated(dx, dy)
-            ov = next((o for o in over_by_page.get(pno, [])
-                       if o['contains'] in text), None)
+            ov = override_for(pno, text)
             if ov:
                 for part in ov['parts']:
                     f = role(part.get('bold'), part.get('italic'))

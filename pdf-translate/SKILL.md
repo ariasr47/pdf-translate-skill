@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "42"
+  version: "43"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -204,8 +204,9 @@ python3 scripts/pipeline.py from-cores --work .
 ```
 
 That writes `translations.json` with a **null** per core so retypeset still
-fails until you fill them in. It will not overwrite an existing file unless
-you pass `--force`. Format in `references/translations-format.md`.
+fails until you fill them in — except a core an `overrides` entry covers
+everywhere, whose plain value is never drawn. It will not overwrite an existing
+file unless you pass `--force`. Format in `references/translations-format.md`.
 The extractor prints a **digest** of its warnings — a count per kind and
 what each kind asks of you — then at most ten lines per kind; every
 warning is in `segments.json` (`--max-per-kind N` lists more). What each
