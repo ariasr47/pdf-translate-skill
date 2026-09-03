@@ -74,7 +74,7 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 <div class="page">
   <div class="eyebrow">Program tracker · after the canary · updated 3 Sep 2026</div>
   <h1>pdf-translate Checklist</h1>
-  <p class="lede">Every row of the repository's own queue, of the September audit's roadmap and of both canary runs is now closed, with tests. What remains is the product lane from the evening review (<code>REVIEW-2026-09-02.md</code>): the notice channel and eval automation. Ticks are saved in this browser only.</p>
+  <p class="lede">Every row of the repository's own queue, of the September audit's roadmap and of both canary runs is now closed, with tests. What remains is one row from the evening review (<code>REVIEW-2026-09-02.md</code>): eval automation. Ticks are saved in this browser only.</p>
 
   <div class="progress" role="status" aria-live="polite">
     <div class="bar"><span id="bar"></span></div>
@@ -89,13 +89,8 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
   <section>
     <h2>Open — product lane, groomed 2 Sep 2026</h2>
-    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Lane A is closed; what is left here is P7, then P4.</p>
+    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Lane A is closed and so is P7; what is left here is P4, which still needs its brief written.</p>
     <ol class="items">
-      <li class="item" data-id="noticechannel">
-        <input type="checkbox" id="c-noticechannel"><div class="head"><span class="title"><label for="c-noticechannel">P7: the pipeline can add the notice it requires</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
-        <p class="detail"><code>compliance.md</code> requires a target-language notice on a form the reader signs or files, and four of five canary runs on such a form wrote their own script to add one — Fable in runs 1 and 2, Sonnet, Opus — each re-deriving fonts, placement and the canonical-layer rewrite by hand. A <code>notices</code> list in translations.json, placed by retypeset through the same gates as every other run, with the box the author chose; the leak scan already keeps the quoted title (row 20).</p>
-        <p class="meta">measured by both canary runs · <code>dev/goals/P7-notice-channel.md</code></p>
-      </li>
       <li class="item" data-id="evalauto">
         <input type="checkbox" id="c-evalauto"><div class="head"><span class="title"><label for="c-evalauto">P4: eval automation from the canary</label></span><span class="chip p2">P2</span><span class="chip neutral">M</span></div>
         <p class="detail"><code>claude plugin eval</code> (present in 2.1.236) runs <code>evals/**/case.yaml</code> with a no-plugin baseline arm, an LLM judge, a JSON report and a threshold exit code. Three cases (the two eval fixtures and the canary fixture) with graders wrapping <code>dev/canary/score.py</code> for the objective half; the visual-pass axis stays human; one report committed under <code>dev/canary/runs/</code>.</p>
@@ -106,8 +101,13 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
   <section>
     <h2>Closed since the audit</h2>
-    <p>Most recent first. Each landed with in-repo tests and a measured before and after, and the full suite stayed green: <strong>205 tests, no skips</strong>, green on Linux and Windows under Python 3.10 and 3.13.</p>
+    <p>Most recent first. Each landed with in-repo tests and a measured before and after, and the full suite stayed green: <strong>212 tests, no skips</strong>, green on Linux and Windows under Python 3.10 and 3.13.</p>
     <ol class="items">
+      <li class="item" data-id="noticechannel">
+        <input type="checkbox" id="c-noticechannel" checked><div class="head"><span class="title"><label for="c-noticechannel">P7: the pipeline can add the notice it requires</label></span><span class="chip p1">P1</span><span class="done-mark">done</span></div>
+        <p class="detail"><code>notices</code> in <code>translations.json</code> — <code>{page, text, box, size?, bold_lead?}</code> — placed by retypeset into the box the author chose, with the job's own fonts, through everything a merge goes through: the glyph check on both roles, row 25's scale report, the <code>/ToUnicode</code> rewrite and the placement gate. A null text, a page outside the document and an empty or inverted box are refused by name before anything is drawn; no page is ever added; the leak scan is untouched and the quoted <code>/Title</code> is still a kept note. <code>compliance.md</code> §1 says how, and says to choose the box from a render because nothing computes it and no gate judges it.</p>
+        <p class="meta">closed 3 Sep 2026 · was four of five canary runs writing their own script · <code>dev/goals/P7-notice-channel.md</code></p>
+      </li>
       <li class="item" data-id="overrideplain">
         <input type="checkbox" id="c-overrideplain" checked><div class="head"><span class="title"><label for="c-overrideplain">Row 29: a core fully replaced by an override needs no plain translation</label></span><span class="chip p2">P2</span><span class="done-mark">done</span></div>
         <p class="detail">The coverage check now counts an override as coverage, so a core an <code>overrides</code> entry covers everywhere may be <code>null</code>. Measured on the inner-gap fixture: before, <code>FAIL: 1 untranslated segments: p0: Public aid</code>; after, exit 0 with <code>d. Ayuda</code> in the layer and verify green. An occurrence on an uncovered page still fails and names that page. verify and <code>qa_check</code> needed no change — both already skip a null — and both are now asserted rather than assumed.</p>

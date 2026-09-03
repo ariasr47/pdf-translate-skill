@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "43"
+  version: "44"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -130,8 +130,8 @@ facts:
 The class decides one more thing here: whether the output needs a
 target-language **"translation for information only"** notice. Court forms,
 government applications, anything the reader files, submits or signs for an
-authority, and medical consents do; brochures and manuals do not. Wording
-and placement: `references/compliance.md`.
+authority, and medical consents do; brochures and manuals do not. Wording,
+placement and the `notices` block that places it: `references/compliance.md`.
 
 **Lookup.** If you can search, you must. Search where a translator of this
 class would look: the issuer's catalog (form number or title), the regulator,
@@ -466,7 +466,8 @@ Deliver five things: the translated PDF, the original used, the
 side-by-side comparison HTML, the **completed reviewer checklist** from
 `references/review.md`, and — for court, government, medical-consent and
 anything the reader files or signs — the **target-language notice** on
-page 1 and the wording from `references/compliance.md`. The output is a
+page 1, written into `notices` with the wording from
+`references/compliance.md`. The output is a
 **working copy, not a certified translation**; say so in those words. If a
 certified translation is required, hand over the certification template
 for a qualified human to sign, and do not sign on anyone's behalf. Summarize every judgment call: the four

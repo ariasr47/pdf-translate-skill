@@ -125,6 +125,22 @@ this file is where your judgment lives.
   // one only to satisfy the coverage check gave qa_check a phantom string
   // to grade. An occurrence on a page no override covers still needs its
   // plain value, and retypeset names that page.
+  // The target-language compliance notice, when the document class needs
+  // one (references/compliance.md §1). The ONLY text here that is not the
+  // translation of an existing string. Placed by retypeset with the job's
+  // fonts into the box YOU chose from a render — nothing computes it and
+  // no gate judges it — through the same glyph check, canonical layer,
+  // scale report and placement gate as every other run. No page is added.
+  // "‖" splits a bold lead-in from the rest when "bold_lead" is true;
+  // "size" defaults to 8. Pages are 0-based. A null or empty text, a page
+  // outside the document and an empty or inverted box are refused by name
+  // before anything is drawn.
+  // "notices": [
+  //   {"page": 0, "text": "Traducción solo informativa.‖Esta es una
+  //    traducción no oficial de FL-100 …", "box": [40, 700, 560, 745],
+  //    "size": 7, "bold_lead": true}
+  // ],
+
   "overrides": [
     {
       "page": 1,

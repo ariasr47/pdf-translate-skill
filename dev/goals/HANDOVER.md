@@ -8,8 +8,8 @@ roadmap and the repo's own queue are closed, and so is every defect the
 two canary runs and the wild corpus produced — rows 18 to 29 in
 `dev/goals/PROGRAM.md`, each with a measurement in `dev/canary/runs/` or
 `dev/wild/ANALYSIS.md` and a closing note in its brief. What is left is
-lane B: **P7** (the notice channel) then **P4** (eval automation). When
-those are done, do not invent a row — run the canary again.
+one lane B row: **P4** (eval automation). P7, the notice channel, closed
+on 3 September. When P4 is done, do not invent a row — run the canary.
 
 **Evening of 2 September:** a deep review (`docs/REVIEW-2026-09-02.md`;
 queue in `PROGRAM.md` → *Backlog after the review*) added a second,
@@ -53,20 +53,21 @@ pikepdf 10) for everything above.
 
 **State of play, 3 September 2026, end of the lane-A sitting:**
 
-- **205 tests, no skips**, ~30 s locally, green on GitHub Actions across
+- **212 tests, no skips**, ~30 s locally, green on GitHub Actions across
   Linux and Windows, Python 3.10 and 3.13.
-- `SKILL.md` is at `metadata.version: "43"`; `plugin.json` at `43.0.0`.
-  The body is 498 lines and about 6.5k tokens on invoke; its references
+- `SKILL.md` is at `metadata.version: "44"`; `plugin.json` at `44.0.0`.
+  The body is 499 lines and about 6.5k tokens on invoke; its references
   are one level deep and each opens with a contents line.
 - Working tree clean apart from `dev/canary/last-score.json`, a scratch
   file `score.py` rewrites on every run. Nothing is half-finished.
-- Program rows 01–29 and the whole September audit roadmap are
-  **closed**. **Lane A is empty.** Lane B holds **P7** then **P4**.
+- Program rows 01–29, the whole September audit roadmap and lane B's P7
+  are **closed**. **Lane A is empty**; lane B holds only **P4**.
 - The canary has run twice. Run 1 opened 18, 19 and 20; the wild corpus
   21, 22 and 23; run 2 (Opus 5, Sonnet 5, Fable 5.1 and Haiku 4.5 on the
   fixture, Fable 5.1 on the real FL-100 —
   `dev/canary/runs/2026-09-03-summary.md`) opened 24–29 and gave P7 its
-  brief. All twelve are closed. **P7 is next**; do not invent a row.
+  brief. All twelve are closed, and so is P7. **P4 is next** — and it is
+  the last row; after it, run the canary rather than inventing one.
 
 ---
 
@@ -212,13 +213,12 @@ always deleted and reported; a certified source is flagged. The orphaned
 
 ## 5. What is not done
 
-### Two rows, both from product evidence
+### One row, from product evidence
 
-Lane A is empty. What is open is lane B, from the evening review
-(`docs/REVIEW-2026-09-02.md` §5): **P7**, the notice channel — four of
-five canary runs on a form that requires the notice wrote their own
-script to place it — then **P4**, eval automation, whose bar is in the
-table in `PROGRAM.md` and which has no brief file yet.
+Lane A is empty and P7 is closed. What is open is **P4**, eval
+automation, from the evening review (`docs/REVIEW-2026-09-02.md` §5):
+its bar is in the table in `PROGRAM.md` and it has no brief file yet —
+writing that brief is the first half of the sitting.
 
 The twelve closed rows below are kept for the record. Each came from a
 model or a real document walking into something:
@@ -235,14 +235,15 @@ model or a real document walking into something:
 | **26** | `goals/26-merge-box.md` | **Closed 3 Sep.** `merges[].box` replaces the union bbox as the re-flow rect, used exactly as given; malformed boxes refused by name. Measured: 0.7× FAIL without, 1.0× and three lines with. `propose-merges` writes `"box": null`; geometry still chooses nothing. | Fable 5.1, Sonnet 5, Opus 5 |
 | **29** | `goals/29-override-plain-value.md` | **Closed 3 Sep.** The coverage check counts an override as coverage, so a core it covers everywhere may be `null`; an uncovered occurrence still fails and names its page. verify and `qa_check` needed no change and are now asserted. | Fable 5.1, real FL-100 |
 
-All twelve measured rows are closed, and so are lane B's P2 (the
-repository is a plugin), P6 (the warning digest), P3 (`SKILL.md` under
-500 body lines), P1 (the wild corpus) and P5. Rows 24, 25, 27, 28, 26
-and 29 closed on 3 September, one commit and one `metadata.version` bump
-each, with a before-and-after measurement in every closing note. What is
-left, in order: **P7** (`goals/P7-notice-channel.md`), then **P4** (bar
-in `PROGRAM.md`'s table and in `docs/REVIEW-2026-09-02.md` §5, no brief
-file yet).
+All twelve measured rows are closed, and so is every lane B row but one:
+P2 (the repository is a plugin), P6 (the warning digest), P3 (`SKILL.md`
+under 500 body lines), P1 (the wild corpus), P5, and P7 (the notice
+channel — `notices` in `translations.json`, placed by retypeset through
+every gate a merge goes through). Rows 24, 25, 27, 28, 26, 29 and P7 all
+closed on 3 September, one commit and one `metadata.version` bump each,
+with a measurement in every closing note. What is left: **P4** (bar in
+`PROGRAM.md`'s table and in `docs/REVIEW-2026-09-02.md` §5, no brief file
+yet).
 
 One defect from that canary is already fixed: the placement gate could not
 pass a wrapped merge, which broke paragraph mode on the day it shipped
@@ -326,19 +327,20 @@ Tests, from pdf-translate/:
   python3 tools/fetch_test_fonts.py
   python3 -m unittest tests.test_pipeline tests.test_corpus_verdicts
 
-205 tests, no skips, green locally; confirm CI after pushing. Everything is
-committed. Program rows 01-29 and the whole audit roadmap are closed. Do
-not redo them. Lane A is empty; do not invent a row.
+212 tests, no skips, green locally; confirm CI after pushing. Everything is
+committed. Program rows 01-29, the audit roadmap and lane B's P7 are
+closed. Do not redo them. Lane A is empty; do not invent a row.
 
-Next sitting: copy dev/goals/P7-notice-channel.md into /goal and close
-that bar only. Do not start P4 in the same session. Do not mix in a
-canary run. No glossary. Not FL-150 as a fixture.
+Next sitting: P4, eval automation. Its bar is the P4 row of "Backlog
+after the review" in dev/goals/PROGRAM.md and REVIEW-2026-09-02.md §5;
+there is no brief file, so write dev/goals/P4-eval-automation.md first,
+then close it. Do not mix in a canary run. No glossary. Not FL-150 as a
+fixture. When P4 is green, the next thing is canary run 3, not a new row.
 
 When the bar is green: full unittest + corpus, bump metadata.version in
 SKILL.md, commit, stop.
 ```
 
-After P7, the queue in `PROGRAM.md` names P4 — and after that the canary,
-not a new row; swap it into the message above. If the user wants the
+P4 is the last queued row; after it comes canary run 3, not a new row. If the user wants the
 stale audit HTML or the installed-copy re-sync instead, say so and do only
 that — neither is a gate, and neither needs a fixture.

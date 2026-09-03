@@ -393,6 +393,12 @@ def collect_translation_targets(conf, exclude_cores=None):
             t = part.get('text')
             if t:
                 targets.append(t)
+    # A compliance notice is placed text like any other (P7): if the author
+    # wrote it and retypeset drew it, the gate wants it in the layer.
+    for notice in conf.get('notices') or []:
+        for part in str(notice.get('text') or '').split('‖'):
+            if part.strip():
+                targets.append(part.strip())
     return targets
 
 

@@ -29,6 +29,10 @@ document gets the same behavior:
 - four font roles (regular, bold, italic, bold-italic) chosen from the
   source span's flags; a single-line target may carry inline <b>/<i>
   (or <strong>/<em>) and is then placed through the Story engine
+- the compliance notice, if the job needs one, placed from "notices" into
+  the box the author chose — the only text here that is not the
+  translation of an existing string, and it goes through the same glyph
+  check, canonical layer, scale report and placement gate as every run
 - pass-through segments re-inserted verbatim in Helvetica
 - every non-passthrough segment lacking a translation is reported; the run
   FAILS (exit 1) if any exist — missing text must never ship silently
@@ -76,6 +80,10 @@ from pathlib import PurePath
 import pymupdf
 
 SCALE_MIN = 0.7
+# A notice the author did not size. Small enough for a footer line, big
+# enough to read; `notices[].size` overrides it.
+NOTICE_SIZE = 8.0
+NOTICE_LH = 1.25
 # Written beside the output on every successful build, so verify and a
 # delivery can read what shrank without re-running retypeset. Pages are
 # 0-based, the same as translations.json's merges[].page.
@@ -598,6 +606,7 @@ def retypeset(stripped, segf, trf, out):
     skip = set(conf.get('skip', []))
     allow_scale = set(conf.get('allow_scale') or [])
     overrides = conf.get('overrides', [])
+    notices = conf.get('notices') or []
     fonts = conf['fonts']
     overflow = []
     scaled = []
@@ -756,6 +765,35 @@ def retypeset(stripped, segf, trf, out):
         return helv
 
     doc = pymupdf.open(stripped)
+
+    bad_notices = []
+    for i, n in enumerate(notices):
+        text = n.get('text')
+        if text is None or not str(text).strip():
+            bad_notices.append((i, 'text is null or empty — a notice nobody '
+                                   'can read is not a notice'))
+            continue
+        pno = n.get('page')
+        if not isinstance(pno, int) or not 0 <= pno < doc.page_count:
+            bad_notices.append((i, f'page {pno!r} is not a page of this '
+                                   f'document (0-{doc.page_count - 1})'))
+            continue
+        try:
+            bx0, by0, bx1, by1 = (float(v) for v in n.get('box'))
+        except (TypeError, ValueError):
+            bad_notices.append((i, f'box is not four numbers '
+                                   f'[x0, y0, x1, y1]: {n.get("box")!r}'))
+            continue
+        if bx1 <= bx0 or by1 <= by0:
+            bad_notices.append((i, f'box is empty or inverted: '
+                                   f'{n.get("box")!r}'))
+    if bad_notices:
+        print(f'FAIL: {len(bad_notices)} notice(s) this file cannot place:')
+        for i, why in bad_notices[:30]:
+            print(f'  notices[{i}]: {why}')
+        doc.close()
+        return 1
+
     widg = {p.number: [w.rect for w in p.widgets()] for p in doc}
     arch = pymupdf.Archive('.')
     # MuPDF's CSS parser eats backslashes, so a Windows path in url() loses
@@ -1155,6 +1193,44 @@ def retypeset(stripped, segf, trf, out):
         if is_rtl_text(plain) or needs_shaping(plain):
             wrap_last_stream_actualtext(doc[pno], plain)
 
+    # The notice compliance.md requires is the one thing the author has to
+    # add that is not the translation of an existing string. Four of five
+    # canary runs wrote their own script for it, each re-deriving fonts,
+    # placement and the canonical-layer rewrite by hand (lane B, P7). It
+    # goes through everything a merge goes through; only the rect is the
+    # author's rather than the source's, because only the author can see
+    # what the page has room for.
+    for i, n in enumerate(notices):
+        pno = n['page']
+        parts = [p for p in str(n['text']).split('‖')]
+        size = float(n.get('size') or NOTICE_SIZE)
+        key = f'notices[{i}]'
+        plain = ' '.join(p.strip() for p in parts if p.strip())
+        check_glyphs(pno, font_r, plain, key, 'regular')
+        if n.get('bold_lead'):
+            check_glyphs(pno, font_b, parts[0], key, 'bold')
+            body = (f'<b>{htmlmod.escape(parts[0].strip())}</b> '
+                    + ' '.join(htmlmod.escape(p.strip())
+                               for p in parts[1:] if p.strip()))
+        else:
+            body = ' '.join(htmlmod.escape(p.strip())
+                            for p in parts if p.strip())
+        r = pymupdf.Rect(*(float(v) for v in n['box']))
+        if mirror:
+            pw = doc[pno].rect.width
+            r = pymupdf.Rect(pw - r.x1, r.y0, pw - r.x0, r.y1)
+        h = (f'<div style="font-size:{size:.1f}px; line-height:{NOTICE_LH}; '
+             f'color:#000000; text-align:left;">{body}</div>')
+        _, scale = doc[pno].insert_htmlbox(r, h, css=css, archive=arch,
+                                           scale_low=0)
+        consider_ratio(pno, key, scale)
+        if is_rtl_text(plain) or needs_shaping(plain):
+            wrap_last_stream_actualtext(doc[pno], plain)
+    if notices:
+        print(f'notices: placed {len(notices)} on '
+              f'{len({n["page"] for n in notices})} page(s); look at the '
+              f'render — no gate judges where a notice sits')
+
     if missing:
         print(f'FAIL: {len(missing)} untranslated segments:')
         for p, c in missing[:30]:
@@ -1234,6 +1310,7 @@ def retypeset(stripped, segf, trf, out):
     placed.extend(re.sub(r'<[^>]+>', '', m.get('html') or '') for m in merges)
     for o in overrides:
         placed.extend(part.get('text') or '' for part in o.get('parts') or [])
+    placed.extend(str(n.get('text') or '').replace('‖', ' ') for n in notices)
     for seg in segments:
         placed.extend(((seg.get('marker') or '')
                        + (' ' if seg.get('gap') is None else seg['gap']),

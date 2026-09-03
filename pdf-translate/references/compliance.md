@@ -54,6 +54,32 @@ the requester decide; do not shrink the form's own text to make room, and do
 not add a page unless the requester asks (a page count change breaks the
 "visually indistinguishable" promise and can break a filing).
 
+**How to put it there.** Write it into `notices` in `translations.json` —
+do not write a script:
+
+```json
+"notices": [
+  {"page": 0,
+   "text": "Traducción solo informativa.‖Esta es una traducción no oficial de FL-100 Petition—Marriage/Domestic Partnership. Debe presentar la versión oficial en inglés.",
+   "box": [40, 700, 560, 745],
+   "size": 7,
+   "bold_lead": true}
+]
+```
+
+retypeset places it with the job's own fonts, through the same glyph
+check, `/ToUnicode` rewrite, scale report and placement gate as every
+other run: a character your font cannot draw FAILs, and the notice has to
+be in the output text layer verbatim. `‖` splits a bold lead-in from the
+remainder, the same split a translation uses; `bold_lead` turns it on.
+`size` defaults to 8 pt.
+
+**Choose the box from a render, not from arithmetic.** Nothing computes
+it, and no gate judges where a notice sits or what it overlaps — that is
+the visual pass's job and yours. Page numbers are 0-based; a page outside
+the document, an empty or inverted box, and an empty text are all
+refused by name before anything is drawn. No page is ever added.
+
 **What the gates do with it.** The notice names the form in the source
 language, so verify's leak scan keeps a run that equals the original's
 `/Title` — quote the title as one unit, in the source language, with

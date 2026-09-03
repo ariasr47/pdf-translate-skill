@@ -6177,5 +6177,185 @@ class OverridePlainValueTests(unittest.TestCase):
             self.assertIn(OVERRIDE_OTHER, log)
 
 
+
+# compliance.md §1's wording, in the target language, quoting the source
+# title as one unit. The bold lead-in is the half before the weight split.
+NOTICE_LEAD = 'Traduccion solo informativa.'
+NOTICE_BODY = ('Esta es una traduccion no oficial de ' + NOTICE_TITLE +
+               '. Debe presentar la version oficial en ingles.')
+NOTICE_BOX = [40.0, 240.0, 360.0, 285.0]
+
+
+class NoticeChannelTests(unittest.TestCase):
+    """P7: the notice compliance.md requires is the one thing an author must
+    add that is not the translation of an existing string, and the pipeline
+    had no way to add it. Four of five canary runs on a form that needs one
+    wrote their own script, each re-deriving fonts, placement and the
+    canonical-layer rewrite by hand."""
+
+    def _build(self, tmp, notices, targets=None):
+        font = find_test_font()
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        build_titled_pdf(src)
+        extract_segments.extract_segments(src, outdir=tmp)
+        segs = os.path.join(tmp, 'segments.json')
+        strip_text.strip_text(src, stripped)
+        conf = {
+            'fonts': {'regular': str(font), 'bold': str(font)},
+            'translations': targets or dict(NOTICE_TARGETS),
+            'merges': [], 'overrides': [], 'center': [], 'skip': [],
+            'notices': notices,
+        }
+        Path(tr).write_text(json.dumps(conf, ensure_ascii=False),
+                            encoding='utf-8')
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(stripped, segs, tr, out)
+        return rc, src, out, tr, segs, buf.getvalue()
+
+    def _notice(self, **kw):
+        n = {'page': 0, 'text': NOTICE_LEAD + '‖' + NOTICE_BODY,
+             'box': list(NOTICE_BOX), 'size': 7, 'bold_lead': True}
+        n.update(kw)
+        return n
+
+    def test_the_notice_lands_and_passes_every_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, src, out, tr, segs, log = self._build(tmp, [self._notice()])
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('notices: placed 1', log)
+
+            doc = pymupdf.open(out)
+            try:
+                self.assertEqual(doc.page_count, 1, msg='no page was added')
+                layer = doc[0].get_text()
+                sizes = {round(sp['size'], 1)
+                         for b in doc[0].get_text('dict')['blocks']
+                         for line in b.get('lines', []) for sp in line['spans']}
+            finally:
+                doc.close()
+            # Verbatim, with the gate's own whitespace rule: the notice
+            # wraps inside its box exactly as a merged paragraph does.
+            self.assertIn(verify.normalize_ws(NOTICE_LEAD),
+                          verify.normalize_ws(layer))
+            self.assertIn(verify.normalize_ws(NOTICE_BODY),
+                          verify.normalize_ws(layer))
+            self.assertIn(7.0, sizes, msg=f'notice size not placed: {sizes}')
+
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                vrc = verify.verify(src, out, translations=tr,
+                                    source_words_from=segs,
+                                    allow=[NOTICE_ISSUER])
+            vlog = buf.getvalue()
+            self.assertEqual(vrc, 0, msg=vlog)
+            self.assertIn('PASS authored translations present', vlog)
+            self.assertIn('PASS canonical text layer', vlog)
+            # Row 20's keep, unchanged: the quoted title is a note.
+            note = [l for l in vlog.splitlines() if l.startswith('note:')]
+            self.assertEqual(len(note), 1, msg=vlog)
+            self.assertIn(NOTICE_TITLE, note[0])
+
+    def test_the_gate_wants_the_notice_in_the_layer(self):
+        conf = {'translations': {}, 'notices': [self._notice()]}
+        targets = verify.collect_translation_targets(conf)
+        self.assertIn(NOTICE_LEAD, targets)
+        self.assertIn(NOTICE_BODY, targets)
+
+    def test_a_source_language_sentence_beside_it_still_fails(self):
+        """The notice is not an amnesty: a forgotten English sentence on the
+        same page is running text exactly as before."""
+        leaked = dict(NOTICE_TARGETS)
+        leaked[NOTICE_SENTENCE] = NOTICE_SENTENCE
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, src, out, tr, segs, log = self._build(
+                tmp, [self._notice()], targets=leaked)
+            self.assertEqual(rc, 0, msg=log)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                vrc = verify.verify(src, out, translations=tr,
+                                    source_words_from=segs,
+                                    allow=[NOTICE_ISSUER])
+            vlog = buf.getvalue()
+            self.assertEqual(vrc, 1, msg=vlog)
+            self.assertIn('FAIL untranslated running text', vlog)
+            block = vlog.split('FAIL untranslated running text')[1]
+            self.assertIn('return this form', block)
+            self.assertNotIn(NOTICE_TITLE, block.split('\n\n')[0])
+
+    def test_a_glyph_the_font_cannot_draw_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, src, out, tr, segs, log = self._build(
+                tmp, [self._notice(text='Traduccion \u4e0d\u516c\u5f0f.')])
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn('cannot draw', log)
+            self.assertFalse(os.path.isfile(out))
+
+    def test_the_bold_lead_really_goes_through_the_bold_role(self):
+        """Only one Latin face ships with the tests, so the roles cannot be
+        told apart by font name. They can be told apart by the glyph check:
+        point `bold` at a face with no Latin and the lead fails on it —
+        and the same job with bold_lead off builds, because then only the
+        regular font is asked to draw anything."""
+        reg = str(find_test_font())
+        no_latin = str(Path(reg).parent / 'NotoSansDevanagari-Regular.ttf')
+        if not os.path.isfile(no_latin):
+            self.skipTest('fetch_test_fonts.py has not run')
+        for bold_lead, want_rc in ((True, 1), (False, 0)):
+            with tempfile.TemporaryDirectory() as tmp:
+                src = os.path.join(tmp, 'orig.pdf')
+                stripped = os.path.join(tmp, 'stripped.pdf')
+                out = os.path.join(tmp, 'out.pdf')
+                tr = os.path.join(tmp, 'translations.json')
+                build_titled_pdf(src)
+                extract_segments.extract_segments(src, outdir=tmp)
+                strip_text.strip_text(src, stripped)
+                Path(tr).write_text(json.dumps({
+                    'fonts': {'regular': reg, 'bold': no_latin},
+                    'translations': dict(NOTICE_TARGETS),
+                    'merges': [], 'overrides': [], 'center': [], 'skip': [],
+                    'notices': [self._notice(bold_lead=bold_lead)],
+                }, ensure_ascii=False), encoding='utf-8')
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    rc = retypeset.retypeset(
+                        stripped, os.path.join(tmp, 'segments.json'), tr, out)
+                log = buf.getvalue()
+                self.assertEqual(rc, want_rc, msg=f'bold_lead={bold_lead}: {log}')
+                if want_rc:
+                    self.assertIn('cannot draw', log)
+
+    def test_a_notice_this_file_cannot_place_is_refused(self):
+        cases = [
+            (self._notice(text=None), 'text is null'),
+            (self._notice(text='   '), 'text is null'),
+            (self._notice(page=4), 'not a page of this document'),
+            (self._notice(box=[40, 240, 360]), 'not four numbers'),
+            (self._notice(box=[360, 285, 40, 240]), 'empty or inverted'),
+        ]
+        for notice, expected in cases:
+            with tempfile.TemporaryDirectory() as tmp:
+                rc, src, out, tr, segs, log = self._build(tmp, [notice])
+                self.assertEqual(rc, 1, msg=f'{notice}: {log}')
+                self.assertIn('cannot place', log)
+                self.assertIn(expected, log)
+                self.assertFalse(os.path.isfile(out))
+
+    def test_no_notices_key_changes_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, src, out, tr, segs, log = self._build(tmp, [])
+            self.assertEqual(rc, 0, msg=log)
+            self.assertNotIn('notices:', log)
+            doc = pymupdf.open(out)
+            try:
+                self.assertEqual(doc.page_count, 1)
+                self.assertNotIn(NOTICE_LEAD, doc[0].get_text())
+            finally:
+                doc.close()
+
+
 if __name__ == '__main__':
     unittest.main()

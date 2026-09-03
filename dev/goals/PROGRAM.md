@@ -199,14 +199,15 @@ model's defect; never a gate.
 | P6 | Warnings at scale | **Closed 2 Sep evening.** extract prints a per-kind digest — counts and what each kind asks — then at most `--max-per-kind` lines per kind (the booklet: 2,394 lines → 61); the skill text says what each kind wants and write/find/say is a list to confirm; widget-text data values (USCIS `PDF417BarCode1`) are identity-mapped by instruction. Nothing leaves the JSON | — |
 | P3 | `SKILL.md` under 500 lines | **Closed 2 Sep evening.** Body 573 → 493 lines, ~7.6k → ~6.4k tokens on invoke, by moving five regions into `references/` (new `gates.md`, `widget-text.md`, `retypeset.md`; sections added to `compliance.md`, `fonts.md`, `translations-format.md`), one-line rules left behind, frontmatter untouched but the version. The 5,000-token target is not met without deleting rules — C2 decides whether the tail matters | — |
 | **P4** | Eval automation | Three `evals/**/case.yaml` cases with graders wrapping `dev/canary/score.py` plus an LLM grader for the identity and honest-delivery axes; `claude plugin eval . --runs 1 --json` produces a report; a `--threshold` documents the bar; one report committed under `dev/canary/runs/` | Running in CI on every push; naming a winner; scoring the visual pass by machine |
-| **P7** | Notice channel | `goals/P7-notice-channel.md`: four of five runs on a form that needs the notice wrote their own script (Fable in runs 1 and 2, Sonnet, Opus). A `notices` list in translations.json — text, page, the box the author chose — placed by retypeset with the job's fonts through the same glyph check, canonical layer and placement gate as every other run | Choosing the box by geometry; adding a page; a notice the reader cannot read |
+| P7 | Notice channel | **Closed 3 Sep.** `notices` in translations.json — `{page, text, box, size?, bold_lead?}` — placed by retypeset into the author's rect with the job's fonts, through the glyph check (both roles), the scale report, the canonical layer and the placement gate. Malformed notices refused by name before anything is drawn; no page added; the leak scan untouched and the quoted `/Title` still a kept note. `compliance.md` §1 says how. Was four of five canary runs writing their own script | — |
 | P5 | One source of truth | **Closed 2 Sep evening**: README count removed and CI badge added; audit HTML is a banner-marked snapshot; findings §15; tracker carries both lanes. Rule: `checklist.html` tracks, this file queues, `HANDOVER.md` cold-starts; nothing else states counts or open rows | — |
 
 **Order:** lane A is closed (24, 25, 27, 28, 26, 29 all on 3 September,
-in that order, one commit and one `metadata.version` bump each). What is
-left is **P7 → P4**. Every row above came from a measurement — canary
-run 2 or the wild corpus — never from invention; when P7 and P4 are
-closed, run the canary again rather than inventing a row.
+in that order, one commit and one `metadata.version` bump each), and so
+is P7. What is left is **P4**, and it needs its brief written first.
+Every row above came from a measurement — a canary run or the wild
+corpus — never from invention; when P4 is closed, run the canary again
+rather than inventing a row.
 
 **Hypotheses, after the wild corpus** (`dev/wild/ANALYSIS.md` §5): hybrid
 XFA — answered on page 1 of eight forms, the AcroForm layer renders
