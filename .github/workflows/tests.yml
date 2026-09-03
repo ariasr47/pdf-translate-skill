@@ -50,3 +50,36 @@ jobs:
 
       - name: Build the eval fixtures
         run: python evals/make_fixtures.py --outdir "${{ runner.temp }}/fixtures"
+
+  package:
+    name: plugin manifest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # The repository root is a Claude Code plugin and a one-entry
+      # marketplace (lane B row P2). Validation catches a misspelled field
+      # or a stale source path before anyone installs from it.
+      - name: Install the Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Validate the plugin and marketplace manifests
+        run: claude plugin validate . --strict
+
+      # plugin.json's version is metadata.version as N.0.0. Users only get
+      # an update when the plugin version changes, so bumping one without
+      # the other ships nothing.
+      - name: Plugin version matches metadata.version
+        run: |
+          python - <<'PY'
+          import json, re
+          plugin = json.load(open('.claude-plugin/plugin.json'))['version']
+          text = open('pdf-translate/SKILL.md', encoding='utf-8').read()
+          skill = re.search(r'^\s+version:\s*"(\d+)"', text, re.M).group(1)
+          assert plugin == f'{skill}.0.0', f'plugin.json {plugin} vs metadata.version {skill}'
+          print('plugin', plugin, '== metadata.version', skill)
+          PY

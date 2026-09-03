@@ -158,8 +158,11 @@ lane A's order. See **Backlog after the review** at the end of this file.
 `SKILL.md`'s `metadata.version` is a monotonic integer, bumped whenever the
 shipped scripts or the workflow change. It began as the last closed gate
 number and kept counting past 17 as the audit roadmap closed, so it is an
-ordering, not a row number. Bump it in the same commit as the change, and
-re-sync any installed copy.
+ordering, not a row number. Bump it in the same commit as the change.
+`.claude-plugin/plugin.json` carries the same number as `N.0.0`; bump both
+together — CI fails when they disagree — and an installed copy picks the
+new version up with `/plugin marketplace update` and `/plugin update`
+(users only receive an update when the plugin version changes).
 
 ## Backlog after the review — groomed 2 September 2026 (evening)
 
@@ -184,7 +187,7 @@ model's defect; never a gate.
 
 | # | Row | Closed bar (sketch) | Not done when |
 |---|---|---|---|
-| **P2** | Plugin packaging | `.claude-plugin/plugin.json` + `marketplace.json` at the repo root; `claude plugin validate . --strict` in CI; the skill loads from the plugin dir and installs via `/plugin marketplace add ariasr47/pdf-translate-skill`; plugin version mirrors `metadata.version`; the HANDOVER re-sync chore is deleted | Publishing publicly; renaming the skill dir; touching SKILL.md |
+| P2 | Plugin packaging | **Closed 2 Sep evening.** `.claude-plugin/plugin.json` (version `35.0.0`, `skills: ["./"]`) and a one-entry `marketplace.json` at the repo root; `claude plugin validate . --strict` exits 0 and `claude --plugin-dir . plugin details pdf-translate` lists the skill; a CI job validates both and fails if `plugin.json` and `metadata.version` disagree; README and HANDOVER carry the install; the re-sync chore is deleted. `SKILL.md` untouched. The install from GitHub is proven on the box that runs it | — |
 | P1 | Wild corpus, measured | **Closed 2 Sep evening.** 17 public PDFs (`dev/wild/SOURCES.md`), 449 pages, 8 of them hybrid XFA: 17/17 `translate`, zero crashes, zero timeouts, 126 pages in 37 s; everything left after strip is annotation text; page-1 renders keep every graphic. It found friction, not wrong verdicts: rows 21 and 22 and lane B row P6 (`dev/wild/ANALYSIS.md`). Re-run: `pdf-translate/.venv/bin/python dev/wild/probe.py` | — |
 | **P6** | Warnings at scale | `goals/P6-warnings-at-scale.md`: extract prints a per-kind digest before the list (6,191 warnings on the corpus, 1,093 write/find/say on one booklet); the skill text says what each kind wants of the author; widget-text data values (USCIS `PDF417BarCode1`) are identity-mapped by instruction | Silencing a kind; auto-accepting anything; guessing which values are data |
 | **P3** | `SKILL.md` under 500 lines | Body < 500 lines and ~5,000 tokens (today 550 lines, ~7,300 on invoke as measured by `claude plugin details`) by *moving* detail into `references/` (gates, widget text, expansion table), one level deep, each with a contents line; frontmatter stays spec-clean; suite green; C2 scores no lower than run 1 | Removing a rule; touching the description; Claude Code-only frontmatter |
@@ -192,7 +195,7 @@ model's defect; never a gate.
 | P7 | Notice channel (candidate, no brief yet) | The skill has no way to add the compliance notice it requires: Fable wrote its own script and re-canonicalised the text layer afterwards; row 20's fixture draws it by hand. A `--notice` input — text, page, a rect the author chose — placed with the job's fonts at retypeset time, canonical layer kept, gates unchanged. Write the brief when it is next | Choosing the rect by geometry; adding a page; a notice the reader cannot read |
 | P5 | One source of truth | **Closed 2 Sep evening**: README count removed and CI badge added; audit HTML is a banner-marked snapshot; findings §15; tracker carries both lanes. Rule: `checklist.html` tracks, this file queues, `HANDOVER.md` cold-starts; nothing else states counts or open rows | — |
 
-**Order:** P2 → P6 → P3 → C2 → P4. Lane A is empty: every measured
+**Order:** P6 → P3 → C2 → P4. Lane A is empty: every measured
 row is closed; the next lane A rows come from canary run 2 or the next
 wild-corpus probe, never from invention.
 

@@ -22,7 +22,8 @@ public PDFs, no crashes, no wrong verdicts, and it opened rows **21** and
 The PDFs are re-fetched from `dev/wild/SOURCES.md`, never committed.
 Rows 19 to 23 closed the same night (version 35, 174 tests); the corpus
 measurement made while closing 19 opened row 23, and closing 23 measured
-the drift it corrects on every file with one-space lists.
+the drift it corrects on every file with one-space lists. Lane B's P2
+closed the same night too: the repository is a Claude Code plugin.
 
 **Repo:** `<REPO>` — GitHub `ariasr47/pdf-translate-skill`, branch `main`
 **Skill dir:** `pdf-translate/` (the only directory you install)
@@ -211,28 +212,38 @@ into `/goal`:
 | **19** | `goals/19-list-marker-gap.md` | **Closed 2 Sep.** retypeset re-emitted `marker + ' '` where the source had two spaces, shifting every list body **3.06 pt left**. Segments now carry `gap`; every marker path re-emits it; an old segments.json gets one space. Row 23 holds the font-metric remainder. | Opus 5 |
 | **20** | `goals/20-notice-title-leak.md` | **Closed 2 Sep.** `compliance.md` told the author to name the source form title in the notice; the leak scan then FAILed that title. The original's `/Title` quoted as a unit is now a kept run (noted, not counted), `--allow` takes phrases, and a longer run is still a leak. | Fable 5.1 |
 
-All six measured rows are closed. Next is lane B (`PROGRAM.md`, *Backlog
-after the review*): P2 plugin packaging, P6 warnings at scale, P3
-`SKILL.md` under 500 lines, then canary run 2, then P4. P2, P3 and P4 have
-their closed bars in that table and in `docs/REVIEW-2026-09-02.md` §5 but
-no brief file yet; write `goals/P2-plugin-packaging.md` from the bar
-first, then close it.
+All six measured rows are closed, and so is lane B's P2 (the repository
+is a plugin). Next in lane B (`PROGRAM.md`, *Backlog after the review*):
+P6 warnings at scale (brief exists), P3 `SKILL.md` under 500 lines, then
+canary run 2, then P4. P3 and P4 have their closed bars in that table and
+in `docs/REVIEW-2026-09-02.md` §5 but no brief file yet; write the brief
+from the bar first, then close it.
 
 One defect from that canary is already fixed: the placement gate could not
 pass a wrapped merge, which broke paragraph mode on the day it shipped
 (`MergePlacementGateTests`).
 
-### Two things this machine could not do
+### Installing it (the re-sync chore is gone)
 
-- **The installed skill copy is stale** — `metadata.version` 16 against the
-  repo's 29, so anything invoking it gets the pre-audit pipeline. It lives
-  at `%APPDATA%\Claude\…\skills\pdf-translate` on a **Windows** box, not
-  the macOS machine this was built on. Copy the whole of `pdf-translate/`
-  minus `tests/fonts/*.ttf` and `evals/fixtures/`, and refresh the manifest
-  description.
-- **`docs/audit-2026-09-01.html` is stale** — 16 "Open" badges for findings
-  that are all fixed. `docs/RESEARCH-AND-FINDINGS.md` is current; the HTML
-  page a reader actually opens is not. ~20 minutes.
+The repository is a Claude Code plugin and a one-entry marketplace
+(`.claude-plugin/`, lane B row P2, closed 2 September):
+
+```
+/plugin marketplace add ariasr47/pdf-translate-skill
+/plugin install pdf-translate@pdf-translate-skill
+```
+
+Later versions: `/plugin marketplace update pdf-translate-skill`, then
+`/plugin update pdf-translate`. A private repository works wherever `git`
+has GitHub credentials. The manual copy on the Windows box
+(`%APPDATA%\Claude\…\skills\pdf-translate`, version 16) is replaced by
+that install; do not copy directories by hand again. `plugin.json`'s
+version is `metadata.version` as `N.0.0` and CI fails when they disagree.
+The install from GitHub itself has not been exercised from this machine —
+the first `/plugin install` on the Windows box is the proof.
+
+`docs/audit-2026-09-01.html` carries a snapshot banner and is not
+maintained; `docs/checklist.html` is the tracker.
 
 ### Out of scope forever, unless the user reverses it
 
@@ -272,7 +283,8 @@ construct ONE tiny PDF that shows the defect
 | `dev/canary/` | The fitness check for a model as mapping author |
 | `docs/checklist.html` | The tracker across the program and the audit roadmap |
 | `docs/RESEARCH-AND-FINDINGS.md` | The audit and every verified defect with status |
-| `.github/workflows/tests.yml` | Linux + Windows, Python 3.10 and 3.13 |
+| `.github/workflows/tests.yml` | Linux + Windows, Python 3.10 and 3.13; plus the plugin-manifest job |
+| `.claude-plugin/` | `plugin.json` and `marketplace.json`: the repository installs as a Claude Code plugin |
 
 `work/`, `runs/`, `fl150_original.pdf`, `tests/fonts/*.ttf` and the generated
 eval fixtures are gitignored.
@@ -293,17 +305,17 @@ Tests, from pdf-translate/:
 committed. Program rows 01-23 and the whole audit roadmap are closed. Do
 not redo them. Lane A is empty; do not invent a row.
 
-Next sitting: lane B row P2, plugin packaging. Its closed bar is in
-dev/goals/PROGRAM.md (Backlog after the review) and docs/REVIEW-2026-09-02.md
-section 5. Write dev/goals/P2-plugin-packaging.md from that bar, copy it
-into /goal, and close that bar only. Do not start P6 or P3 in the same
-session. Do not mix in a canary run. No glossary. Not FL-150 as a fixture.
+Next sitting: copy dev/goals/P6-warnings-at-scale.md into /goal and close
+that bar only. Do not start P3 in the same session. Do not mix in a canary
+run. No glossary. Not FL-150 as a fixture. It touches extract's output:
+re-run dev/wild/probe.py into a scratch directory before you commit.
 
 When the bar is green: full unittest + corpus, bump metadata.version in
 SKILL.md, commit, stop.
 ```
 
-After P2, the queue in `PROGRAM.md` (P6, P3, then canary run 2, then P4)
-names the next row; swap it into the message above. If the user wants the
+After P6, the queue in `PROGRAM.md` (P3, then canary run 2, then P4)
+names the next row; P3 and P4 have their bars in that table and in the
+review but no brief file yet — write it from the bar first. If the user wants the
 stale audit HTML or the installed-copy re-sync instead, say so and do only
 that — neither is a gate, and neither needs a fixture.

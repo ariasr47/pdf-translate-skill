@@ -12,7 +12,8 @@ SDK; any person or model authors the translation mapping.
 
 | Path | What |
 |---|---|
-| `pdf-translate/` | **The skill**, and the only directory you install: `SKILL.md`, eleven scripts, references, corpus, tests, evals. Start with `pdf-translate/SKILL.md`. |
+| `pdf-translate/` | **The skill**: `SKILL.md`, eleven scripts, references, corpus, tests, evals. Start with `pdf-translate/SKILL.md`. Installed as a plugin from the repository (below), or copied as a directory by any agent or person. |
+| `.claude-plugin/` | The plugin and marketplace manifests that make the repository installable with `/plugin marketplace add`. The skill needs nothing in them. |
 | `dev/goals/` | The improvement program: one gate per sitting, closed briefs, handover for a cold session. |
 | `dev/*.html`, `dev/*_SESSION_PROMPT.md` | Explainers and session prompts. Development material — deliberately outside the skill. |
 | `docs/RESEARCH-AND-FINDINGS.md` | The September 2026 audit, the research behind it, and every verified defect with status. |
@@ -22,6 +23,21 @@ SDK; any person or model authors the translation mapping.
 Job artifacts (`work/`, `runs/`, session exports, bakeoff outputs, the FL-150
 sample PDFs) are ignored on purpose; they are large and not the product. So
 are the fetched test fonts and the generated eval fixtures.
+
+## Install
+
+As a Claude Code plugin, straight from the repository (a private repository
+works wherever `git` has GitHub credentials):
+
+```
+/plugin marketplace add ariasr47/pdf-translate-skill
+/plugin install pdf-translate@pdf-translate-skill
+```
+
+Later versions: `/plugin marketplace update pdf-translate-skill`, then
+`/plugin update pdf-translate`. The plugin's version is `metadata.version`
+as `N.0.0`, and `/plugin list` shows which one is installed. CI validates
+both manifests and fails if the two versions disagree.
 
 ## Run the tests
 

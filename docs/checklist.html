@@ -91,13 +91,8 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
   <section>
     <h2>Open — product lane, groomed 2 Sep 2026</h2>
-    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Lane A is empty; the order is P2, P6, P3, canary run 2, P4.</p>
+    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Lane A is empty; the order is P6, P3, canary run 2, P4.</p>
     <ol class="items">
-      <li class="item" data-id="packaging">
-        <input type="checkbox" id="c-packaging"><div class="head"><span class="title"><label for="c-packaging">P2: package as a Claude Code plugin</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
-        <p class="detail"><code>.claude-plugin/plugin.json</code> and <code>marketplace.json</code> at the repo root; <code>claude plugin validate . --strict</code> in CI (already passes on a scratch root-as-plugin manifest, and <code>claude --plugin-dir</code> lists the skill from it); the skill loads from the plugin dir and installs with <code>/plugin marketplace add ariasr47/pdf-translate-skill</code>; plugin version mirrors <code>metadata.version</code>. Deletes the manual re-sync chore for good.</p>
-        <p class="meta">not done: public marketplace · renaming the skill dir · touching SKILL.md</p>
-      </li>
       <li class="item" data-id="warningsscale">
         <input type="checkbox" id="c-warningsscale"><div class="head"><span class="title"><label for="c-warningsscale">P6: the extractor's warnings scale to a real document</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
         <p class="detail">6,191 warnings across the seventeen corpus files, printed line by line; 1,093 write/find/say hits on one booklet that the skill says to halt-and-confirm one at a time. A per-kind digest before the list, skill text that says what each kind wants of the author, and one sentence that a widget value which is data (the USCIS barcode payload) is identity-mapped. No kind is silenced; nothing is auto-accepted.</p>
@@ -120,6 +115,11 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
     <h2>Closed since the audit</h2>
     <p>In the order they were done. Each landed with in-repo tests, and the full suite stayed green: 174 tests, no skips; 171 of them green on Linux and Windows under Python 3.10 and 3.13, the three from row 23 green locally and awaiting CI.</p>
     <ol class="items">
+      <li class="item" data-id="packaging">
+        <input type="checkbox" id="c-packaging" checked><div class="head"><span class="title"><label for="c-packaging">P2: the repository is a Claude Code plugin</label></span><span class="chip p1">P1</span><span class="done-mark">done</span></div>
+        <p class="detail"><code>.claude-plugin/plugin.json</code> (version <code>35.0.0</code>, mirroring <code>metadata.version</code>) and a one-entry <code>marketplace.json</code> at the repo root; <code>claude plugin validate . --strict</code> exits 0 and <code>claude --plugin-dir . plugin details pdf-translate</code> lists the skill; a CI job validates both manifests and fails when the two versions disagree; README and HANDOVER carry <code>/plugin marketplace add ariasr47/pdf-translate-skill</code>. The manual re-sync chore is deleted; <code>SKILL.md</code> untouched. The install from GitHub is proven on the box that runs it.</p>
+        <p class="meta">closed 2 Sep 2026, evening · <code>dev/goals/P2-plugin-packaging.md</code></p>
+      </li>
       <li class="item" data-id="markermetrics">
         <input type="checkbox" id="c-markermetrics" checked><div class="head"><span class="title"><label for="c-markermetrics">Row 23: a list body starts at the measured source x, whatever the marker font</label></span><span class="chip p1">P1</span><span class="done-mark">done</span></div>
         <p class="detail">Segments carry <code>body_dx</code>, the distance from the origin to the body's first glyph read from the source's own characters; retypeset starts the body there in every marker path, rotated included, and scales it with the run; a segments.json without the key keeps the row-19 placement. Times and Courier fixtures were 1.6 and 9.6 pt off before and 0.00 after. On the corpus every one of 952 marker lines is measured; the drift now corrected runs from 1.3 pt (Medicare) to 4.9 pt (FL-300), with the Helvetica-metric IRS forms at 0.00.</p>
