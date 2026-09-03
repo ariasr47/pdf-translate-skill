@@ -168,7 +168,14 @@ def strip_xobjects(res, pdf, page_index, report, seen, depth=1):
     xobjs = res.get('/XObject')
     if xobjs is None:
         return
-    for name, xo in dict(xobjs).items():
+    # Sorted by name: pikepdf's dictionary iteration runs through a
+    # hash-randomized structure, so the same file walks its XObjects in a
+    # different order in each process. Nothing about WHAT is stripped
+    # depends on that, but the report's order does — and so does which
+    # name is recorded when two of them point at one object, since `seen`
+    # skips whichever comes second. Sorting the finished report would fix
+    # only the first half, so the traversal is what gets pinned.
+    for name, xo in sorted(dict(xobjs).items()):
         key = _objgen(xo)
         if key is not None and key != (0, 0):
             if key in seen:

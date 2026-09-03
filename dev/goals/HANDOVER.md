@@ -53,9 +53,9 @@ pikepdf 10) for everything above.
 
 **State of play, 3 September 2026, end of the lane-A sitting:**
 
-- **212 tests, no skips**, ~30 s locally, green on GitHub Actions across
+- **214 tests, no skips**, ~30 s locally, green on GitHub Actions across
   Linux and Windows, Python 3.10 and 3.13.
-- `SKILL.md` is at `metadata.version: "44"`; `plugin.json` at `44.0.0`.
+- `SKILL.md` is at `metadata.version: "45"`; `plugin.json` at `45.0.0`.
   The body is 499 lines and about 6.5k tokens on invoke; its references
   are one level deep and each opens with a contents line.
 - Working tree clean apart from `dev/canary/last-score.json`, a scratch
@@ -343,6 +343,11 @@ Tests, from pdf-translate/:
 212 tests, no skips, green locally; confirm CI after pushing. Everything is
 committed. Program rows 01-29, the audit roadmap and lane B's P7 are
 closed. Do not redo them. Lane A is empty; do not invent a row.
+
+Note: strip's XObject traversal is sorted (3 September) because pikepdf's
+dictionary order is hash-randomized; `dev/wild/results.json` was
+regenerated from that deterministic run, so a re-run now really should
+differ only in timings. `dev/wild/ANALYSIS.md` section 10 has it.
 
 The queue is drained. P4 is the only row left and it is BLOCKED: `claude
 plugin eval` is in early access and is not enabled for this account, so

@@ -227,3 +227,38 @@ retypeset shipped until now — is 0.00 pt on the Helvetica-metric forms
 (W-9, W-4, SF-15, FDA 3500), +1.27 on Medicare & You, +2.22 on I-9,
 +2.42 on 1040-ES, +3.88 on the IRS booklet, +4.92 on FL-300 and −1.79 on
 the GDPR. Counts and verdicts unchanged; extraction 57.8 → 61.7 s.
+
+## 10. The corpus caught a reproducibility wart in strip's report
+
+Re-running the probe on 3 September (row 26 had touched the extractor)
+showed one difference against the committed `results.json`: the two
+page-17 `form_xobjects_stripped` entries of the IRS 1040 instructions,
+`/I2` and `/I3`, swapped. Same page, same block counts, same depth; every
+verdict, segment count and warning count on all seventeen files
+identical.
+
+The cause is not this corpus and not the extractor. `strip_xobjects()`
+walked `dict(res['/XObject']).items()`, and pikepdf's dictionary
+iteration runs through a hash-randomized structure:
+
+```bash
+for seed in 0 1 12345; do PYTHONHASHSEED=$seed pdf-translate/.venv/bin/python -c "
+import pikepdf; pdf=pikepdf.open('dev/wild/files/irs-i1040gi.pdf')
+print(list(dict(pdf.pages[17].obj['/Resources']['/XObject']).keys()))"; done
+```
+
+prints `['/I1','/I2','/I3']`, `['/I1','/I3','/I2']`, `['/I1','/I2','/I3']`.
+
+Two consequences, both diagnostic-only — the same set of objects is
+stripped either way and no output byte moves. The report's order floated,
+and where two names point at one object, `seen` skips whichever is
+reached second, so the recorded **name** floated too. On a constructed
+page with four names and an alias, five seeds produced five different
+orders and one of them reported the alias `/Xd` instead of `/Xa`.
+
+The traversal is now sorted by name, which pins both halves;
+`StripReportOrderTests` runs strip in subprocesses under four
+`PYTHONHASHSEED` values and asserts one identical report (it fails on
+every seed with the sort removed). The baseline in `results.json` and
+`RESULTS.md` was regenerated from the deterministic run — that is the
+only reason those files change in this commit, apart from timings.

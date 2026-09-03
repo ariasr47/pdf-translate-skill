@@ -6357,5 +6357,106 @@ class NoticeChannelTests(unittest.TestCase):
                 doc.close()
 
 
+
+def build_sibling_xobject_pdf(path):
+    """One page, four Form XObject names, two of them the same object.
+
+    /Xd is a second name for /Xa's object, so whichever the walk reaches
+    first is the one the strip report names — the half that sorting the
+    finished report would not fix.
+    """
+    pdf = pikepdf.new()
+    font = pdf.make_indirect(pikepdf.Dictionary(
+        Type=pikepdf.Name('/Font'), Subtype=pikepdf.Name('/Type1'),
+        BaseFont=pikepdf.Name('/Helvetica')))
+
+    def form(label, y):
+        st = pdf.make_stream(
+            f'BT /F1 12 Tf 10 {y} Td ({label}) Tj ET'.encode('ascii'))
+        st.Type = pikepdf.Name('/XObject')
+        st.Subtype = pikepdf.Name('/Form')
+        st.BBox = pikepdf.Array([0, 0, 200, 100])
+        st.Resources = pikepdf.Dictionary(Font=pikepdf.Dictionary(F1=font))
+        return st
+
+    a, b, c = form('alpha', 10), form('bravo', 30), form('charlie', 50)
+    page = pdf.add_blank_page(page_size=(300, 200))
+    page.obj.Resources = pikepdf.Dictionary(
+        XObject=pikepdf.Dictionary(Xa=a, Xb=b, Xc=c, Xd=a))
+    page.obj.Contents = pdf.make_stream(
+        b'q 1 0 0 1 20 20 cm /Xa Do Q\n'
+        b'q 1 0 0 1 20 60 cm /Xb Do Q\n'
+        b'q 1 0 0 1 20 100 cm /Xc Do Q\n'
+        b'q 1 0 0 1 20 140 cm /Xd Do Q\n')
+    pdf.save(path)
+    pdf.close()
+
+
+STRIP_REPORT_PROBE = """
+import io, json, os, sys, tempfile
+from contextlib import redirect_stdout
+sys.path.insert(0, sys.argv[1])
+import strip_text
+with tempfile.TemporaryDirectory() as tmp:
+    with redirect_stdout(io.StringIO()):
+        rep = strip_text.strip_text(sys.argv[2], os.path.join(tmp, 'out.pdf'))
+print(json.dumps([(e['page'], e['xobject'], e['blocks'], e['depth'])
+                  for e in rep['form_xobjects_stripped']]))
+"""
+
+
+class StripReportOrderTests(unittest.TestCase):
+    """strip walked a page's XObjects in pikepdf dictionary order, which runs
+    through a hash-randomized structure: the same file reported its stripped
+    Form XObjects in a different order in every process, and where two names
+    pointed at one object, `seen` skipped whichever came second so the
+    recorded NAME floated too. Nothing about what gets stripped depended on
+    it — this is a diagnostic that could not be compared between runs, which
+    is how it surfaced: a wild-corpus re-run showed two page-17 entries of
+    the IRS 1040 instructions swapped with every count identical.
+
+    Sorting the finished report would fix only the order, so the traversal
+    is what is pinned.
+    """
+
+    SEEDS = ('0', '1', '7', '999')
+
+    def _report_under(self, pdf_path, seed):
+        env = dict(os.environ, PYTHONHASHSEED=seed)
+        out = subprocess.run(
+            [sys.executable, '-c', STRIP_REPORT_PROBE, str(SCRIPTS), pdf_path],
+            capture_output=True, text=True, env=env, check=True)
+        return json.loads(out.stdout)
+
+    def test_the_report_is_the_same_in_every_process(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'xobjects.pdf')
+            build_sibling_xobject_pdf(src)
+            reports = [self._report_under(src, s) for s in self.SEEDS]
+            first = reports[0]
+            for seed, got in zip(self.SEEDS, reports):
+                self.assertEqual(
+                    got, first,
+                    msg=f'PYTHONHASHSEED={seed} reported a different walk')
+            # Sorted by name, and the alias never wins: /Xd is /Xa's object
+            # under a later name, so /Xa is always the one recorded.
+            self.assertEqual([e[1] for e in first], ['/Xa', '/Xb', '/Xc'])
+            self.assertEqual([e[2] for e in first], [1, 1, 1])
+            self.assertEqual({e[3] for e in first}, {1})
+
+    def test_the_fixture_really_has_an_aliased_object(self):
+        """Otherwise the name half of this test proves nothing."""
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'xobjects.pdf')
+            build_sibling_xobject_pdf(src)
+            pdf = pikepdf.open(src)
+            try:
+                xo = dict(pdf.pages[0].obj['/Resources']['/XObject'])
+                self.assertEqual(len(xo), 4)
+                self.assertEqual(xo['/Xa'].objgen, xo['/Xd'].objgen)
+            finally:
+                pdf.close()
+
+
 if __name__ == '__main__':
     unittest.main()
