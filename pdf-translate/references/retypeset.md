@@ -63,3 +63,13 @@ never ship silently. It also **fails** (does not save) if any run scales
 below 0.7× versus the original size — a note is not a ship. Shorten the
 translation, or list that core (or merge first line) in `allow_scale` if
 the cell must stay tiny.
+
+Between those two, a run that shipped below source size is **reported**.
+Every run the fit or the Story engine shrank — a line, a dot-leader label,
+a shaped run, a merge, an override part — is printed after the build as
+`scaled runs (N)` with its ratio and key, and written to
+`scale_report.json` beside the output: `[{page, key, ratio}]`, page 0-based
+as in the mapping. `verify --translations` reads that file back and prints
+a REVIEW line (a SKIP when the file is absent, for a build from before it
+existed). Nothing new fails; the point is that the author can name what
+shrank without re-running the build, which is what the delivery asks for.

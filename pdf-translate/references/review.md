@@ -47,7 +47,7 @@ FLUENCY AND REGISTER
 
 PRESENTATION (after looking at rendered pages, not before)
 [ ] Every page rendered next to the original and inspected
-[ ] No clipped, over-shrunk or overlapping text; allow_scale cores listed
+[ ] No clipped, over-shrunk or overlapping text; every run in scale_report.json listed
 [ ] Dot leaders, checkboxes, rules and columns unchanged
 [ ] Widget tooltips, dropdown labels and defaults are in the target language
 

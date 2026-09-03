@@ -341,6 +341,24 @@ def drifted_characters(out_text, authored_text):
     return sorted(counts.items())
 
 
+# retypeset writes this beside its output: every run it shipped below
+# source size, so the author can name them without re-running the build
+# (row 25). Absent means a build from before it existed, not a pass.
+SCALE_REPORT = 'scale_report.json'
+
+
+def scale_report_for(judged):
+    """The scale report beside `judged`, [] if empty, None if absent."""
+    path = os.path.join(os.path.dirname(os.path.abspath(judged)),
+                        SCALE_REPORT)
+    try:
+        with open(path, encoding='utf-8') as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, list) else None
+
+
 # Same narrow inline markup retypeset accepts in a single-line target.
 INLINE_TAGS = re.compile(r'</?(?:b|i|em|strong)\s*/?>', re.I)
 
@@ -1243,6 +1261,21 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
             print('REVIEW document metadata: translations.json has no "lang"; '
                   'the output still declares the source language to screen '
                   'readers and hyphenation')
+
+        report = scale_report_for(trans)
+        if report is None:
+            print(f'SKIP scaled runs: no {SCALE_REPORT} beside the output '
+                  f'(a build from before it was written)')
+        elif report:
+            print(f'REVIEW scaled runs ({len(report)}) — ship them or reword '
+                  f'them, and name them in the delivery:')
+            for r in report[:20]:
+                print(f'   p{r.get("page")} {float(r.get("ratio", 1)):.2f}x: '
+                      f'{str(r.get("key") or "")[:60]}')
+            if len(report) > 20:
+                print(f'   ... {len(report) - 20} more in {SCALE_REPORT}')
+        else:
+            print('PASS scaled runs: none, everything ships at source size')
 
         spans = collect_identifier_spans(o)
         missing_ids = missing_identifier_spans(

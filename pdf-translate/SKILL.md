@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "38"
+  version: "39"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -265,7 +265,8 @@ The language decisions that matter:
   and it is the fix that keeps the page readable. `allow_scale` is the
   **last resort**, for a cell whose geometry genuinely cannot hold the
   target at full size; every core you list there ships as smaller type,
-  so name them in the delivery summary.
+  so name them in the delivery summary — along with every other run
+  retypeset listed as scaled, `allow_scale` or not.
 - **Merges**: multi-line paragraphs must be translated as one unit and
   re-flowed. Declare each merge explicitly by its member lines — never
   auto-merge by geometry, it swallows sibling list items. On a manual or
@@ -360,6 +361,9 @@ lines — are in `references/retypeset.md`. The rules in one line each:
   **fails without saving** if any run scales below 0.7× — shorten the
   translation, or list that core in `allow_scale` if the cell must stay
   tiny.
+- Runs between 0.7× and 1.0× are **listed**, not failed: `scaled runs (N)`
+  and `scale_report.json` beside the output, which verify reads back.
+  Reword them, or name every one in the delivery.
 
 ### 5b. QA the mapping (before you build)
 
@@ -468,8 +472,8 @@ for a qualified human to sign, and do not sign on anyone's behalf. Summarize eve
 identity facts (class, issuer, parallel text or `none`/`not searched`,
 identifiers), structural changes (XFA removed, `/Perms` deleted, buttons
 replaced), whether the source was encrypted or certified and what the
-output has instead, compressed translations, `allow_scale` cores, locale
-adaptations — the user should learn your decisions from you, not discover
+output has instead, compressed translations, every run in
+`scale_report.json` (not only `allow_scale` cores), locale adaptations — the user should learn your decisions from you, not discover
 them later.
 
 **Name a second reader for official work.** For court, government, medical

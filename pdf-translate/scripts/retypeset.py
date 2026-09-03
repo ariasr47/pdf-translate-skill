@@ -66,6 +66,7 @@ Usage:
 import html as htmlmod
 import json
 import math
+import os
 import re
 import sys
 import time
@@ -75,6 +76,10 @@ from pathlib import PurePath
 import pymupdf
 
 SCALE_MIN = 0.7
+# Written beside the output on every successful build, so verify and a
+# delivery can read what shrank without re-running retypeset. Pages are
+# 0-based, the same as translations.json's merges[].page.
+SCALE_REPORT = 'scale_report.json'
 # Hebrew, Arabic, Syriac, Thaana, Arabic supplement/presentation forms.
 _RTL_RANGES = (
     (0x0590, 0x08FF),
@@ -595,6 +600,7 @@ def retypeset(stripped, segf, trf, out):
     overrides = conf.get('overrides', [])
     fonts = conf['fonts']
     overflow = []
+    scaled = []
     mirror = bool(conf.get('mirror'))
 
     def mirror_left(left, width, pw):
@@ -603,6 +609,11 @@ def retypeset(stripped, segf, trf, out):
         return pw - left - width
 
     def consider_ratio(pno, key, ratio, opted=False):
+        # Anything the fit or the engine shrank is reported, not only what
+        # it shrank past the floor: the author cannot name a scaled run in
+        # the delivery if nothing ever tells them (row 25).
+        if ratio < 1.0:
+            scaled.append({'page': pno, 'key': key or '', 'ratio': round(ratio, 4)})
         if ratio >= SCALE_MIN:
             return
         shown = (key or '')[:50]
@@ -1135,6 +1146,21 @@ def retypeset(stripped, segf, trf, out):
         print('metadata: removed the orphaned /StructTreeRoot and set '
               '/MarkInfo /Marked false — the tags described text that no '
               'longer exists. Tell the user the file is no longer tagged.')
+
+    if scaled:
+        print(f'scaled runs ({len(scaled)}) — reword them or name them in '
+              f'the delivery:')
+        for r in sorted(scaled, key=lambda r: (r['page'], r['ratio']))[:30]:
+            print(f'  p{r["page"]} {r["ratio"]:.2f}x: {r["key"][:60]}')
+        if len(scaled) > 30:
+            print(f'  … {len(scaled) - 30} more in {SCALE_REPORT}')
+    report = os.path.join(os.path.dirname(os.path.abspath(out)), SCALE_REPORT)
+    try:
+        with open(report, 'w', encoding='utf-8') as f:
+            json.dump(sorted(scaled, key=lambda r: (r['page'], r['key'])), f,
+                      ensure_ascii=False, indent=1)
+    except OSError as exc:
+        print(f'  (could not write {SCALE_REPORT}: {exc})')
 
     doc.ez_save(out)
     doc.close()

@@ -5543,5 +5543,143 @@ class StoryLigatureTests(unittest.TestCase):
         self.assertEqual(retypeset.ligature_gid_map('no-such.ttf', set('fi')), {})
 
 
+
+BAND_SOURCE = 'Applicant name and mailing address'
+BAND_TARGET = 'Nombre y direccion postal del solicitante'   # lands at 0.88x
+BAND_FITS = 'Nombre del solicitante'
+
+
+def build_band_pdf(path):
+    """A label with a field close on its right: a longer target must shrink,
+    but the ink ratio stays comparable so the other gates keep their say."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_text((72, 80), BAND_SOURCE, fontsize=12)
+    tf = pymupdf.Widget()
+    tf.field_name = 'X'
+    tf.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+    tf.rect = pymupdf.Rect(275, 68, 395, 88)
+    page.add_widget(tf)
+    doc.save(path)
+    doc.close()
+
+
+class ShrinkBandTests(unittest.TestCase):
+    """Row 25: a run between 0.7x and 1.0x was placed and mentioned nowhere.
+
+    On canary run 2 the same merged paragraph shipped at 0.81x and 0.91x
+    under two deliveries that both said nothing had shrunk — one of them
+    ticking "no over-shrunk text - allow_scale is EMPTY". The floor is
+    unchanged; what changes is that the author is told.
+    """
+
+    def _build(self, tmp, target):
+        font = find_test_font()
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        build_band_pdf(src)
+        extract_segments.extract_segments(src, outdir=tmp)
+        strip_text.strip_text(src, stripped)
+        write_mapping(tr, {BAND_SOURCE: target}, font)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(
+                stripped, os.path.join(tmp, 'segments.json'), tr, out)
+        log = buf.getvalue()
+        self.assertEqual(rc, 0, msg=log)
+        return src, out, tr, os.path.join(tmp, 'segments.json'), log
+
+    def _report(self, out):
+        path = os.path.join(os.path.dirname(out), retypeset.SCALE_REPORT)
+        self.assertTrue(os.path.isfile(path), msg='no scale report written')
+        with open(path, encoding='utf-8') as f:
+            return json.load(f)
+
+    def _verify_log(self, src, out, tr, segs):
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = verify.verify(src, out, translations=tr,
+                               source_words_from=segs)
+        return rc, buf.getvalue()
+
+    def test_a_run_in_the_band_is_printed_written_and_reviewed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, segs, log = self._build(tmp, BAND_TARGET)
+            self.assertIn('scaled runs (1)', log)
+            self.assertIn(BAND_SOURCE, log.split('scaled runs')[1])
+
+            report = self._report(out)
+            self.assertEqual(len(report), 1)
+            self.assertEqual(report[0]['page'], 0)
+            self.assertEqual(report[0]['key'], BAND_SOURCE)
+            self.assertGreater(report[0]['ratio'], retypeset.SCALE_MIN)
+            self.assertLess(report[0]['ratio'], 1.0)
+
+            rc, vlog = self._verify_log(src, out, tr, segs)
+            self.assertEqual(rc, 0, msg=vlog)      # a REVIEW, never a FAIL
+            self.assertIn('REVIEW scaled runs (1)', vlog)
+            self.assertIn(f'{report[0]["ratio"]:.2f}x', vlog)
+
+    def test_a_full_size_build_reports_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, segs, log = self._build(tmp, BAND_FITS)
+            self.assertNotIn('scaled runs', log)
+            self.assertEqual(self._report(out), [])
+            rc, vlog = self._verify_log(src, out, tr, segs)
+            self.assertEqual(rc, 0, msg=vlog)
+            self.assertIn('PASS scaled runs: none', vlog)
+
+    def test_an_older_build_still_verifies(self):
+        """No report beside the output is a SKIP with a note, not a pass and
+        not a failure: builds from before row 25 must still verify."""
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, segs, log = self._build(tmp, BAND_TARGET)
+            os.remove(os.path.join(tmp, retypeset.SCALE_REPORT))
+            rc, vlog = self._verify_log(src, out, tr, segs)
+            self.assertEqual(rc, 0, msg=vlog)
+            self.assertIn('SKIP scaled runs', vlog)
+            self.assertNotIn('PASS scaled runs', vlog)
+            self.assertIsNone(verify.scale_report_for(out))
+
+    def test_a_merge_in_the_band_is_reported_too(self):
+        """The canary's actual defect: the paragraph, not the label."""
+        font = find_test_font()
+        long_html = (LIG_HTML + ' Toda parte debe conservar una copia de '
+                     'este aviso para sus registros y presentarla cuando '
+                     'la secretaria lo solicite en la audiencia.')
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_paragraph_pdf(src, pages=1)
+            extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            Path(tr).write_text(json.dumps({
+                'fonts': {'regular': str(font), 'bold': str(font)},
+                'translations': {'Page 1 note here.': 'Nota de la pagina 1.'},
+                'merges': [{'page': 0, 'lines': PARA_LINES,
+                            'html': long_html, 'align': 'left'}],
+                'overrides': [], 'center': [], 'skip': [],
+            }, ensure_ascii=False), encoding='utf-8')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(
+                    stripped, os.path.join(tmp, 'segments.json'), tr, out)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            report = self._report(out)
+            keys = {r['key'] for r in report}
+            self.assertTrue(
+                any(PARA_LINES[0] in k for k in keys),
+                msg=f'the merge is not in the report: {report}')
+            self.assertIn('scaled runs', log)
+
+    def test_the_floor_is_where_it_was(self):
+        self.assertEqual(retypeset.SCALE_MIN, 0.7)
+
+
 if __name__ == '__main__':
     unittest.main()
