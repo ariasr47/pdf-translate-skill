@@ -650,6 +650,25 @@ def retypeset(stripped, segf, trf, out):
                          min(page_segs[i]['bbox'][1] for i in idxs),
                          max(page_segs[i]['bbox'][2] for i in idxs),
                          max(page_segs[i]['bbox'][3] for i in idxs))
+        # An author may hand the merge a rect of their own (row 26): a
+        # paragraph whose target needs one more line than the source could
+        # otherwise only shrink, or be declined and hard-wrapped at the
+        # source's breaks. Geometry must not choose this box — a box that
+        # grows into a rule or a field is worse than a shrink — but the
+        # author can see the page and choose.
+        boxed = m.get('box') is not None
+        if boxed:
+            try:
+                bx0, by0, bx1, by1 = (float(v) for v in m['box'])
+            except (TypeError, ValueError):
+                print(f"!! merge box p{m['page']} is not four numbers "
+                      f"[x0, y0, x1, y1]: {m['box']!r}")
+                return 1
+            if bx1 <= bx0 or by1 <= by0:
+                print(f"!! merge box p{m['page']} is empty or inverted: "
+                      f"{m['box']!r}")
+                return 1
+            r = pymupdf.Rect(bx0, by0, bx1, by1)
         size = max(page_segs[i]['size'] for i in idxs)
         # Derive leading from the ORIGINAL baselines rather than assuming a
         # ratio: a flyer set 11pt on 16pt leading re-flows visibly compressed
@@ -662,7 +681,7 @@ def retypeset(stripped, segf, trf, out):
         merge_key = (m.get('lines') or [m.get('html') or ''])[0]
         merge_opt = bool(m.get('allow_scale'))
         merge_jobs.append((m['page'], r, m['html'], m.get('align', 'left'),
-                           size, lh, color, merge_key, merge_opt))
+                           size, lh, color, merge_key, merge_opt, boxed))
         for i in sorted(idxs, reverse=True):
             del page_segs[i]
 
@@ -1101,7 +1120,8 @@ def retypeset(stripped, segf, trf, out):
                                  css, arch, italic=ital)
             consider_ratio(pno, key, scale)
 
-    for (pno, r, html, align, size, lh, color, merge_key, merge_opt) in merge_jobs:
+    for (pno, r, html, align, size, lh, color, merge_key, merge_opt,
+         boxed) in merge_jobs:
         plain_html = re.sub(r'<[^>]+>', '', html or '')
         check_glyphs(pno, font_r, plain_html, merge_key, 'regular')
         if re.search(r'<(b|strong)\b', html or '', re.I):
@@ -1110,7 +1130,11 @@ def retypeset(stripped, segf, trf, out):
         if mirror:
             r = pymupdf.Rect(pw - r.x1, r.y0, pw - r.x0, r.y1)
             align = {'left': 'right', 'right': 'left'}.get(align, align)
-        rect = pymupdf.Rect(r.x0, r.y0 - 0.5, r.x1 + 1.5, r.y1 + 1.5)
+        # A union bbox is a measurement of ink and runs tight, so it gets a
+        # little slop; an authored box is an instruction and is used as
+        # given.
+        rect = (r if boxed
+                else pymupdf.Rect(r.x0, r.y0 - 0.5, r.x1 + 1.5, r.y1 + 1.5))
         hexcol = f'#{color:06x}'
         h = (f'<div style="font-size:{size*0.98:.1f}px; line-height:{lh}; '
              f'color:{hexcol}; text-align:{align};">{html}</div>')

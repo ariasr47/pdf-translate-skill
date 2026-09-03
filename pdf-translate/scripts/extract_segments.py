@@ -211,7 +211,8 @@ def merge_candidate_warnings(segments):
                     'ids': [s['id'] for s in run],
                     'why': 'possible wrapped paragraph — declare a merge in '
                            'translations.json if these lines are one unit; '
-                           'do not auto-merge (sibling list items share x)',
+                           'do not auto-merge (sibling list items share x); '
+                           'a longer target may need a "box" you choose',
                     'lines': [s['text'].strip() for s in run],
                 })
         for s in segs:

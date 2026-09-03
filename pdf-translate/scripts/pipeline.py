@@ -201,13 +201,18 @@ def propose_merges(work, accept=False, min_lines=2):
             'lines': [s['text'].strip() for s in segs],
             'html': None,
             'align': 'left',
+            # Null means "re-flow into the union of these lines". A rect
+            # here is the author's decision and nothing else's: look at the
+            # page first (row 26).
+            'box': None,
             'why': w.get('why', ''),
         })
     out_path = os.path.join(work, 'merges_proposed.json')
     with open(out_path, 'w', encoding='utf-8') as f:
         json.dump({'merges': proposals}, f, ensure_ascii=False, indent=1)
     print(f'propose-merges: {len(proposals)} candidate(s) -> {out_path} '
-          f'(html is null — author each, or delete the entry)')
+          f'(html is null — author each, or delete the entry; box is null '
+          f'— set one only if you looked at the page)')
     if not accept:
         print('propose-merges: nothing changed. Re-run with --accept to fold '
               'these into translations.json.')

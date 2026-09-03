@@ -50,13 +50,25 @@ this file is where your judgment lives.
   // "merge-candidate"), each with html null.
   // A null html FAILs retypeset exactly like a null translation: an
   // accepted proposal is not a translated paragraph.
+  // "box": [x0, y0, x1, y1] in the ORIGINAL page's coordinates replaces
+  // the union of the member lines as the rect the paragraph re-flows
+  // into — for a paragraph whose target needs one more line than the
+  // source and has empty space below it. Absent or null: unchanged.
+  // Nothing computes a box for you: a rect that grows into a rule or a
+  // field is worse than a shrink, and only you can see the page. It is
+  // used exactly as given (a union bbox gets a little slop; your rect
+  // does not), it may overlap anything you decide it may, and the render
+  // is the check — no gate judges a box. Every other gate still counts:
+  // the 0.7× floor inside your rect, the placement gate, the canonical
+  // layer.
   "merges": [
     {
       "page": 0,
       "lines": ["I declare under penalty of perjury that the information ",
                  "on all pages is true and correct."],
       "html": "私は、記載した情報が真実かつ正確であることを宣言します。",
-      "align": "left"            // left | center | right
+      "align": "left",           // left | center | right
+      "box": null                // your rect, or null for the union bbox
     }
   ],
 

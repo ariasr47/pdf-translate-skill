@@ -5906,5 +5906,130 @@ class RightAnchorRoomTests(unittest.TestCase):
             self.assertIn('scaled below', log)
 
 
+
+BOX_LINES = ['The clerk will review every declaration filed before the hearing',
+             'and will mail one conformed copy back to each named party.']
+BOX_HTML = ('El secretario revisara toda declaracion presentada antes de la '
+            'fecha de la audiencia y enviara por correo una copia conformada '
+            'a cada parte nombrada en el encabezado de este procedimiento.')
+# One line taller than the union of the two source lines (~y 52-77).
+BOX_RECT = [40.0, 52.0, 380.0, 96.0]
+
+
+def build_two_line_paragraph_pdf(path, widget=None):
+    doc = pymupdf.open()
+    page = doc.new_page(width=420, height=300)
+    for i, line in enumerate(BOX_LINES):
+        page.insert_text((40, 60 + 14 * i), line, fontsize=9)
+    page.insert_text((40, 160), 'Page 1 note here.', fontsize=9)
+    if widget:
+        tf = pymupdf.Widget()
+        tf.field_name = 'X'
+        tf.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+        tf.rect = pymupdf.Rect(*widget)
+        page.add_widget(tf)
+    doc.save(path)
+    doc.close()
+
+
+class MergeBoxTests(unittest.TestCase):
+    """Row 26: a merge is re-flowed into the union of its member lines, so a
+    two-line paragraph whose target needs three had two outcomes on canary
+    run 2 — the engine shrinks it (0.81x, 0.91x), or the author declines the
+    merge and hard-codes the source's wrap points into the target. Nothing
+    let the author say "this paragraph may be one line taller"."""
+
+    def _run(self, tmp, box=None, widget=None):
+        font = find_test_font()
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        build_two_line_paragraph_pdf(src, widget)
+        extract_segments.extract_segments(src, outdir=tmp)
+        strip_text.strip_text(src, stripped)
+        merge = {'page': 0, 'lines': BOX_LINES, 'html': BOX_HTML,
+                 'align': 'left'}
+        if box is not None:
+            merge['box'] = box
+        Path(tr).write_text(json.dumps({
+            'fonts': {'regular': str(font), 'bold': str(font)},
+            'translations': {'Page 1 note here.': 'Nota de la pagina 1.'},
+            'merges': [merge], 'overrides': [], 'center': [], 'skip': [],
+        }, ensure_ascii=False), encoding='utf-8')
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(
+                stripped, os.path.join(tmp, 'segments.json'), tr, out)
+        return rc, out, tmp, buf.getvalue()
+
+    def _lines(self, out):
+        """(size, y0, y1) of every placed span, top to bottom."""
+        doc = pymupdf.open(out)
+        try:
+            got = [(round(sp['size'], 2), round(sp['bbox'][1], 1),
+                    round(sp['bbox'][3], 1))
+                   for b in doc[0].get_text('dict')['blocks']
+                   for line in b.get('lines', []) for sp in line['spans']]
+        finally:
+            doc.close()
+        return sorted(got, key=lambda t: t[1])
+
+    def test_without_a_box_the_paragraph_cannot_fit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, out, _, log = self._run(tmp)
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn('scaled below', log)
+            self.assertFalse(os.path.isfile(out))
+
+    def test_a_box_one_line_taller_places_at_full_size(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, out, work, log = self._run(tmp, box=BOX_RECT)
+            self.assertEqual(rc, 0, msg=log)
+            with open(os.path.join(work, retypeset.SCALE_REPORT),
+                      encoding='utf-8') as f:
+                self.assertEqual(json.load(f), [], msg='it should not shrink')
+            lines = [l for l in self._lines(out) if l[1] < 140]
+            self.assertEqual(len(lines), 3, msg=f'{lines}')
+            # The third line lands below the source's last line and inside
+            # the box the author drew.
+            self.assertGreater(lines[2][1], 77.0)
+            self.assertLess(lines[2][2], BOX_RECT[3])
+
+    def test_a_box_over_a_widget_still_places(self):
+        """The author chose the rect; the visual pass is the check, not a
+        gate. Geometry must not veto it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, out, _, log = self._run(tmp, box=BOX_RECT,
+                                        widget=(300, 78, 400, 96))
+            self.assertEqual(rc, 0, msg=log)
+            self.assertEqual(len([l for l in self._lines(out) if l[1] < 140]), 3)
+
+    def test_a_malformed_box_is_refused_not_guessed(self):
+        for bad in ([40, 52, 380], [40, 96, 380, 52], 'wide'):
+            with tempfile.TemporaryDirectory() as tmp:
+                rc, out, _, log = self._run(tmp, box=bad)
+                self.assertEqual(rc, 1, msg=f'{bad}: {log}')
+                self.assertIn('merge box', log)
+                self.assertFalse(os.path.isfile(out))
+
+    def test_proposals_carry_a_null_box(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_paragraph_pdf(src, pages=1)
+            extract_segments.extract_segments(src, outdir=tmp)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = pipeline.propose_merges(tmp)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            with open(os.path.join(tmp, 'merges_proposed.json'),
+                      encoding='utf-8') as f:
+                proposals = json.load(f)['merges']
+            self.assertTrue(proposals)
+            for m in proposals:
+                self.assertIsNone(m['box'])
+            self.assertIn('box is null', buf.getvalue())
+
+
 if __name__ == '__main__':
     unittest.main()
