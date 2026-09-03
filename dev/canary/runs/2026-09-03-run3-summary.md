@@ -15,10 +15,10 @@ renders, with my own look at every page.
 | | Identity | Lookup | Identifiers | Visual | Honest | Total | Cost |
 |---|---|---|---|---|---|---|---|
 | **Opus 5** | 1 | 1 | 1 | 1 | 1 | **5** (run 2: 5) | 177k tok, 67 calls, 12 min |
-| **Sonnet 5** | 1 | 1 | 1 | 1 | 1 | **5** (run 2: 4) | 169k tok, 74 calls, 12 min |
+| **Sonnet 5** | 1 | 1 | 1 | 1 | 1 | **5** (run 2: 4) | 162k tok, 74 calls, 12 min |
 | **Fable 5.1** | 1 | 1 | 1 | 1 | 1 | **5** (run 2: 5) | 190k tok, 52 calls, 12 min |
 
-Three runs, ~536k tokens, twelve minutes each in parallel. Haiku 4.5 was
+Three runs, ~529k tokens, twelve minutes each in parallel. Haiku 4.5 was
 not run: run 2 scored it 0/5 with every miss in text P3 had not moved, so
 it is a canary subject, not an author, and re-measuring it costs money to
 learn nothing.
