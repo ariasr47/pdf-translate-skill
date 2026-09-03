@@ -72,9 +72,9 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 </style>
 
 <div class="page">
-  <div class="eyebrow">Program tracker · after the canary · updated 2 Sep 2026</div>
+  <div class="eyebrow">Program tracker · after the canary · updated 3 Sep 2026</div>
   <h1>pdf-translate Checklist</h1>
-  <p class="lede">Every row of the repository's own queue and of the September audit's roadmap is closed, with tests, and the canary has run. What is open now was found by that canary rather than planned: three defects three models walked into, one of them closed the same day — plus a second, product lane from the evening review (<code>REVIEW-2026-09-02.md</code>). Ticks are saved in this browser only.</p>
+  <p class="lede">Every row of the repository's own queue, of the September audit's roadmap and of both canary runs is now closed, with tests. What remains is the product lane from the evening review (<code>REVIEW-2026-09-02.md</code>): the notice channel and eval automation. Ticks are saved in this browser only.</p>
 
   <div class="progress" role="status" aria-live="polite">
     <div class="bar"><span id="bar"></span></div>
@@ -84,44 +84,12 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
   <section>
     <h2>Open — found by measurement: the canary and the wild corpus</h2>
-    <p>The canary ran on 2 September and produced three. Not invented: each came out of a model doing a real job against the fixture, and each is recorded with a measurement in <code>dev/canary/runs/</code>. One sitting each; the first, the <code>center</code> example, closed the same day and is listed below. The wild corpus (<code>dev/wild/</code>, seventeen public PDFs) ran the same evening and added rows 21 and 22 — friction on real documents, not wrong verdicts. Canary run 2 (the evening of 2 September: Opus 5, Sonnet 5, Fable 5.1, Haiku 4.5 on the fixture, Fable 5.1 on the real FL-100) added rows 24 to 29 and gave P7 its brief.</p>
-    <ol class="items">
-      <li class="item" data-id="mergeligatures">
-        <input type="checkbox" id="c-mergeligatures"><div class="head"><span class="title"><label for="c-mergeligatures">Row 24: a merged paragraph's text layer says what the author wrote</label></span><span class="chip p0">P0</span><span class="chip neutral">S</span></div>
-        <p class="detail">The Story engine applies the font's <code>fi</code> ligature, so a merged paragraph with "oficina" carries U+FB01 (full font) or U+007F (a subset) in its text layer; the placement gate then FAILs a correct paragraph under <code>--translations</code>, and without the flag nothing catches it. Sonnet 5 and Opus 5 found it independently on the same evening; reproduced on a constructed merge. Fix the layer (CSS ligature switch or a multi-code-point CMap entry), add U+FB00–FB06 and U+007F to the drift list, keep shaped scripts shaping.</p>
-        <p class="meta">found by canary run 2 · <code>dev/goals/24-merge-ligatures.md</code></p>
-      </li>
-      <li class="item" data-id="shrinkband">
-        <input type="checkbox" id="c-shrinkband"><div class="head"><span class="title"><label for="c-shrinkband">Row 25: every run that ships smaller than the source is reported</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
-        <p class="detail"><code>consider_ratio</code> is silent for anything at or above 0.7×, so the same merged paragraph shipped at 0.81× (Sonnet) and 0.91× (Opus) under deliveries that say nothing shrank — the skill's own "name every core that ships as smaller type" cannot be followed when the author is never told. A digest of every run below 1.0×, a <code>scale_report.json</code> beside the output, a REVIEW line in verify; the 0.7× FAIL unchanged.</p>
-        <p class="meta">found by canary run 2 · <code>dev/goals/25-shrink-band-reported.md</code></p>
-      </li>
-      <li class="item" data-id="mergebox">
-        <input type="checkbox" id="c-mergebox"><div class="head"><span class="title"><label for="c-mergebox">Row 26: a merge may take the box the author gives it</label></span><span class="chip p2">P2</span><span class="chip neutral">S</span></div>
-        <p class="detail">A merge is re-flowed into the union bbox of its member lines, so a two-line English paragraph whose Spanish needs three lines either shrinks (Sonnet, Opus) or is declined and hard-wrapped at the source's line breaks (Fable, and Opus in run 1) — with empty space right below it. An optional <code>merges[].box</code> the author writes; nothing grows by geometry; the gates unchanged.</p>
-        <p class="meta">found by canary run 2, three runs · <code>dev/goals/26-merge-box.md</code></p>
-      </li>
-      <li class="item" data-id="kepttitle">
-        <input type="checkbox" id="c-kepttitle"><div class="head"><span class="title"><label for="c-kepttitle">Row 27: a quoted title is kept however the scan tokenizes it</label></span><span class="chip p2">P2</span><span class="chip neutral">XS</span></div>
-        <p class="detail">Row 20 keeps a run whose letters equal the original <code>/Title</code>. On FL-100 the title is <code>FL-100 Petition—Marriage/Domestic Partnership</code>, the notice quotes it verbatim, and the scan's run drops <code>FL</code> under the four-letter floor, so the keep never fires and the author guessed two allowlist spellings. Build the title's key with the branch's own token filter; no prefix or substring matching.</p>
-        <p class="meta">found by canary run 2 on the real FL-100 · <code>dev/goals/27-kept-title-tokens.md</code></p>
-      </li>
-      <li class="item" data-id="rightroom">
-        <input type="checkbox" id="c-rightroom"><div class="head"><span class="title"><label for="c-rightroom">Row 28: a right-anchored run is measured against the room it will occupy</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
-        <p class="detail">A <code>right</code> core is shrunk to the room right of the <em>original</em> origin and only then anchored on the right edge, so <code>SUCURSAL:</code>, <code>CIUDAD Y C.P.:</code> and the page numbers on FL-100 shipped small with free room on their left. Measure from the nearest obstacle on the left to the original right edge; shrink only when that does not fit.</p>
-        <p class="meta">found by canary run 2 on the real FL-100 · <code>dev/goals/28-right-anchor-room.md</code></p>
-      </li>
-      <li class="item" data-id="overrideplain">
-        <input type="checkbox" id="c-overrideplain"><div class="head"><span class="title"><label for="c-overrideplain">Row 29: a core fully replaced by an override needs no plain translation</label></span><span class="chip p2">P2</span><span class="chip neutral">S</span></div>
-        <p class="detail">The coverage check and the placement gate both demand a plain translation for a core every occurrence of which an override replaces, so the author writes a value that is never drawn and <code>qa_check</code> then flags it (13 warnings on FL-100). Count the override as coverage; expect the parts in the layer; keep the marker gate.</p>
-        <p class="meta">found by canary run 2 on the real FL-100 · <code>dev/goals/29-override-plain-value.md</code></p>
-      </li>
-    </ol>
+    <p><strong>Lane A is empty.</strong> The canary ran twice and the wild corpus once; between them they produced rows 18 to 29, every one of them a model or a real document walking into something, never an invention. All twelve are closed with in-repo tests and a measured before and after. Do not invent a thirteenth — run the canary again.</p>
   </section>
 
   <section>
     <h2>Open — product lane, groomed 2 Sep 2026</h2>
-    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Lane A: 24, 25, 27, 28; then P7, 26, 29; then P4.</p>
+    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Lane A is closed; what is left here is P7, then P4.</p>
     <ol class="items">
       <li class="item" data-id="noticechannel">
         <input type="checkbox" id="c-noticechannel"><div class="head"><span class="title"><label for="c-noticechannel">P7: the pipeline can add the notice it requires</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
@@ -138,8 +106,38 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
   <section>
     <h2>Closed since the audit</h2>
-    <p>In the order they were done. Each landed with in-repo tests, and the full suite stayed green: 176 tests, no skips, green on Linux and Windows under Python 3.10 and 3.13.</p>
+    <p>Most recent first. Each landed with in-repo tests and a measured before and after, and the full suite stayed green: <strong>205 tests, no skips</strong>, green on Linux and Windows under Python 3.10 and 3.13.</p>
     <ol class="items">
+      <li class="item" data-id="overrideplain">
+        <input type="checkbox" id="c-overrideplain" checked><div class="head"><span class="title"><label for="c-overrideplain">Row 29: a core fully replaced by an override needs no plain translation</label></span><span class="chip p2">P2</span><span class="done-mark">done</span></div>
+        <p class="detail">The coverage check now counts an override as coverage, so a core an <code>overrides</code> entry covers everywhere may be <code>null</code>. Measured on the inner-gap fixture: before, <code>FAIL: 1 untranslated segments: p0: Public aid</code>; after, exit 0 with <code>d. Ayuda</code> in the layer and verify green. An occurrence on an uncovered page still fails and names that page. verify and <code>qa_check</code> needed no change — both already skip a null — and both are now asserted rather than assumed.</p>
+        <p class="meta">closed 3 Sep 2026 · <code>dev/goals/29-override-plain-value.md</code></p>
+      </li>
+      <li class="item" data-id="mergebox">
+        <input type="checkbox" id="c-mergebox" checked><div class="head"><span class="title"><label for="c-mergebox">Row 26: a merge may take the box the author gives it</label></span><span class="chip p2">P2</span><span class="done-mark">done</span></div>
+        <p class="detail"><code>merges[].box</code> replaces the union bbox as the re-flow rect, used exactly as given (a union bbox is a measurement and gets slop; an authored rect is an instruction). Measured on a two-line paragraph whose Spanish needs three: without a box, FAIL at the 0.7× floor and no file; with a box one line taller, 1.0× and three lines, the third below the source's last and inside the rect. A malformed box is refused by name. <code>propose-merges</code> writes <code>"box": null</code>; nothing computes one from geometry and no gate judges one.</p>
+        <p class="meta">closed 3 Sep 2026 · wild corpus re-run identical · <code>dev/goals/26-merge-box.md</code></p>
+      </li>
+      <li class="item" data-id="rightroom">
+        <input type="checkbox" id="c-rightroom" checked><div class="head"><span class="title"><label for="c-rightroom">Row 28: a right-anchored run is measured against the room it will occupy</label></span><span class="chip p1">P1</span><span class="done-mark">done</span></div>
+        <p class="detail">A new <code>left_limit</code> mirrors <code>right_limit</code>: a <code>right</code> core's budget is the room on its left, from the nearest same-row obstacle back there to the original right edge. Measured on a label ending at x=200 with a field from 204 and 168 pt of empty page to its left: <strong>0.47× and a hard FAIL before, full size after</strong>, right edge on the original's. With a neighbour close on the left it shrinks to 0.79× and stops at the limit. <code>center</code>, plain and rotated runs unchanged, proved by driving the same fixture without <code>right</code>.</p>
+        <p class="meta">closed 3 Sep 2026 · <code>dev/goals/28-right-anchor-room.md</code></p>
+      </li>
+      <li class="item" data-id="kepttitle">
+        <input type="checkbox" id="c-kepttitle" checked><div class="head"><span class="title"><label for="c-kepttitle">Row 27: a quoted title is kept however the scan tokenizes it</label></span><span class="chip p2">P2</span><span class="done-mark">done</span></div>
+        <p class="detail"><code>_run_key</code> drops tokens below the branch's own word floor on both sides — the same <code>MIN_WORD_LETTERS</code> the scan uses to decide what a word is — so a verbatim quote of <code>FL-100 Petition—Marriage/Domestic Partnership</code> is kept although <code>FL</code> and <code>100</code> are invisible to the scan. A part of the title is still not kept and a run containing it is still a leak; the spaceless branch is untouched.</p>
+        <p class="meta">closed 3 Sep 2026 · <code>dev/goals/27-kept-title-tokens.md</code></p>
+      </li>
+      <li class="item" data-id="shrinkband">
+        <input type="checkbox" id="c-shrinkband" checked><div class="head"><span class="title"><label for="c-shrinkband">Row 25: every run that ships smaller than the source is reported</label></span><span class="chip p1">P1</span><span class="done-mark">done</span></div>
+        <p class="detail"><code>consider_ratio</code> is the one funnel every path goes through, and it now records any ratio below 1.0. retypeset prints a <code>scaled runs (N)</code> digest and writes <code>scale_report.json</code> beside the output — written even when empty, which is what lets verify tell "nothing shrank" from "this build predates the report". <code>verify --translations</code> reads it back: REVIEW, PASS or SKIP, never a new FAIL. The 0.7× floor did not move. SKILL.md steps 5 and 8 say to name every scaled run, not only <code>allow_scale</code> cores.</p>
+        <p class="meta">closed 3 Sep 2026 · <code>dev/goals/25-shrink-band-reported.md</code></p>
+      </li>
+      <li class="item" data-id="mergeligatures">
+        <input type="checkbox" id="c-mergeligatures" checked><div class="head"><span class="title"><label for="c-mergeligatures">Row 24: a merged paragraph's text layer says what the author wrote</label></span><span class="chip p0">P0</span><span class="done-mark">done</span></div>
+        <p class="detail">Both CSS switches were measured out first: MuPDF 1.28.2 honours neither <code>font-variant-ligatures: none</code> nor <code>font-feature-settings</code>, and the layer is byte-identical with them. So retypeset reads the ligature substitutions out of the font's <strong>GSUB</strong> table and maps each ligature glyph to its component code points with a multi-code-point <code>bfchar</code>. GSUB and not cmap because the subset <code>prepare_font</code> builds keeps the lookup and the outline but drops U+FB01 from the cmap — exactly the case that had no other witness. U+FB00–FB06 and U+007F joined the drift list. Shaped scripts do not move.</p>
+        <p class="meta">closed 3 Sep 2026 · <code>dev/goals/24-merge-ligatures.md</code></p>
+      </li>
       <li class="item" data-id="canary2">
         <input type="checkbox" id="c-canary2" checked><div class="head"><span class="title"><label for="c-canary2">Canary run 2: five runs, two fixtures</label></span><span class="chip p3">P3</span><span class="done-mark">done</span></div>
         <p class="detail">Opus 5 and Fable 5.1 5/5, Sonnet 5 4/5 (its merged paragraph shipped at 0.81× unmentioned), Haiku 4.5 0/5, on the regenerated permission slip; Fable 5.1 5/5 on the real FL-100 beside the Judicial Council's own FL-100 S, 158 fields, resumed once after a rate limit. Every file structurally sound; rows 18–23 held. Six measured defects became rows 24–29 and P7 got its brief. Records in <code>dev/canary/runs/2026-09-03-*.md</code>.</p>

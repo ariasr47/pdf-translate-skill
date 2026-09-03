@@ -3,13 +3,13 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-**There are exactly three rows, and they were not invented.** The audit
-roadmap and the repo's own queue are closed. The 2 September canary then
-produced three defects, each from a model doing a real job against the
-fixture: rows 18, 19 and 20 in `dev/goals/PROGRAM.md`, with measurements in
-`dev/canary/runs/`. One sitting each, cheapest first. **Row 18 is closed**
-(2 September, version 30); 19 and 20 remain. When they are done, do not
-invent a fourth — run the canary again.
+**Nothing in lane A is open, and nothing in it was invented.** The audit
+roadmap and the repo's own queue are closed, and so is every defect the
+two canary runs and the wild corpus produced — rows 18 to 29 in
+`dev/goals/PROGRAM.md`, each with a measurement in `dev/canary/runs/` or
+`dev/wild/ANALYSIS.md` and a closing note in its brief. What is left is
+lane B: **P7** (the notice channel) then **P4** (eval automation). When
+those are done, do not invent a row — run the canary again.
 
 **Evening of 2 September:** a deep review (`docs/REVIEW-2026-09-02.md`;
 queue in `PROGRAM.md` → *Backlog after the review*) added a second,
@@ -30,6 +30,11 @@ Canary run 2 followed the same night — Opus 5 and Fable 5.1 at 5/5,
 Sonnet 5 at 4/5, Haiku 4.5 at 0/5, and Fable 5.1 at 5/5 on the real
 FL-100 beside the Judicial Council's own Spanish — and opened rows 24–29.
 
+**3 September:** rows **24, 25, 27, 28, 26 and 29 all closed**, in that
+order, one sitting's worth of work each — reproduce, fix, lock, full
+suite, `metadata.version` bump, commit — and one commit apiece. **Lane A
+is now empty.** 205 tests, no skips; `metadata.version` 43.
+
 **Repo:** `<REPO>` — GitHub `ariasr47/pdf-translate-skill`, branch `main`
 **Skill dir:** `pdf-translate/` (the only directory you install)
 **Dev material:** `dev/` — this file, the goal briefs, the canary, explainers
@@ -46,21 +51,22 @@ On the macOS box, bare `python3` is Apple's 3.9 with none of the
 dependencies; use `pdf-translate/.venv/bin/python` (3.14, pymupdf 1.28,
 pikepdf 10) for everything above.
 
-**State of play, 2 September 2026, end of the row-18 sitting:**
+**State of play, 3 September 2026, end of the lane-A sitting:**
 
-- **176 tests, no skips**, 25–40 s locally, green on GitHub Actions
-  across Linux and Windows, Python 3.10 and 3.13 (the P6 push).
-- `SKILL.md` is at `metadata.version: "37"`; `plugin.json` at `37.0.0`.
-  The body is 493 lines and about 6.4k tokens on invoke (P3); its
-  references are one level deep and each opens with a contents line.
-- Working tree clean, everything committed. Nothing is half-finished.
-- Program rows 01–23 and the whole September audit roadmap are **closed**.
-  Lane A holds **24–29**, all from canary run 2.
+- **205 tests, no skips**, ~30 s locally, green on GitHub Actions across
+  Linux and Windows, Python 3.10 and 3.13.
+- `SKILL.md` is at `metadata.version: "43"`; `plugin.json` at `43.0.0`.
+  The body is 498 lines and about 6.5k tokens on invoke; its references
+  are one level deep and each opens with a contents line.
+- Working tree clean apart from `dev/canary/last-score.json`, a scratch
+  file `score.py` rewrites on every run. Nothing is half-finished.
+- Program rows 01–29 and the whole September audit roadmap are
+  **closed**. **Lane A is empty.** Lane B holds **P7** then **P4**.
 - The canary has run twice. Run 1 opened 18, 19 and 20; the wild corpus
-  21, 22 and 23; all six closed on 2 September. Run 2 (the evening of
-  2 September: Opus 5, Sonnet 5, Fable 5.1 and Haiku 4.5 on the fixture,
-  Fable 5.1 on the real FL-100) opened 24–29 and gave P7 its brief —
-  `dev/canary/runs/2026-09-03-summary.md`. Row 24 is next.
+  21, 22 and 23; run 2 (Opus 5, Sonnet 5, Fable 5.1 and Haiku 4.5 on the
+  fixture, Fable 5.1 on the real FL-100 —
+  `dev/canary/runs/2026-09-03-summary.md`) opened 24–29 and gave P7 its
+  brief. All twelve are closed. **P7 is next**; do not invent a row.
 
 ---
 
@@ -206,28 +212,37 @@ always deleted and reported; a certified source is flagged. The orphaned
 
 ## 5. What is not done
 
-### Three rows, and nobody invented them
+### Two rows, both from product evidence
 
-The 2 September canary put Opus 5, Fable 5.1 and Haiku 4.5 on the same
-two-page fixture with the same one-line prompt. Opus and Fable scored 5/5,
-Haiku 3/5. All three produced a structurally sound file — so the pipeline
-is not what separates models — and between them they walked into three
-defects. Each has a measurement in `dev/canary/runs/` and a brief to copy
-into `/goal`:
+Lane A is empty. What is open is lane B, from the evening review
+(`docs/REVIEW-2026-09-02.md` §5): **P7**, the notice channel — four of
+five canary runs on a form that requires the notice wrote their own
+script to place it — then **P4**, eval automation, whose bar is in the
+table in `PROGRAM.md` and which has no brief file yet.
+
+The twelve closed rows below are kept for the record. Each came from a
+model or a real document walking into something:
 
 | # | Brief | What | Found by |
 |---|---|---|---|
 | **18** | `goals/18-center-example.md` | **Closed 2 Sep.** `center` was documented for "signature captions", the one case where it is wrong: those are left-flush under a rule, and centring moved one 7.5 pt off its own rule, past every gate. Example corrected, SKILL.md step 5 says it, `test_center_moves_a_left_flush_caption_off_its_rule` locks the geometry; no warning built, by decision (closing note in the brief). | Haiku 4.5 |
 | **19** | `goals/19-list-marker-gap.md` | **Closed 2 Sep.** retypeset re-emitted `marker + ' '` where the source had two spaces, shifting every list body **3.06 pt left**. Segments now carry `gap`; every marker path re-emits it; an old segments.json gets one space. Row 23 holds the font-metric remainder. | Opus 5 |
 | **20** | `goals/20-notice-title-leak.md` | **Closed 2 Sep.** `compliance.md` told the author to name the source form title in the notice; the leak scan then FAILed that title. The original's `/Title` quoted as a unit is now a kept run (noted, not counted), `--allow` takes phrases, and a longer run is still a leak. | Fable 5.1 |
+| **24** | `goals/24-merge-ligatures.md` | **Closed 3 Sep.** The Story engine shapes Latin: `liga` put U+FB01 (or U+007F in a subset) where the author wrote "oficina". Both CSS switches were measured and MuPDF 1.28 honours neither, so retypeset reads the ligatures out of **GSUB** — cmap cannot see them in a subset — and maps each ligature glyph to its component code points with a multi-code-point `bfchar`. U+FB00–FB06 and U+007F joined the drift list. | Sonnet 5 and Opus 5, independently |
+| **25** | `goals/25-shrink-band-reported.md` | **Closed 3 Sep.** `consider_ratio` records every ratio below 1.0; retypeset prints a `scaled runs (N)` digest and writes `scale_report.json` beside the output (even when empty); `verify --translations` reads it back as REVIEW / PASS / SKIP, never a new FAIL. The 0.7× floor did not move. | Sonnet 5 (0.81×) and Opus 5 (0.91×) |
+| **27** | `goals/27-kept-title-tokens.md` | **Closed 3 Sep.** `_run_key` drops tokens below the branch's own word floor on both sides, so a verbatim quote of `FL-100 Petition—Marriage/Domestic Partnership` is kept although `FL` and `100` are invisible to the scan. A part of it, or a run containing it, still leaks. | Fable 5.1, real FL-100 |
+| **28** | `goals/28-right-anchor-room.md` | **Closed 3 Sep.** A `right` core's budget is now the room on its **left** (new `left_limit`, mirroring `right_limit`). Measured: **0.47× and a FAIL** before, **full size** after, right edge on the original's; with a neighbour close on the left it shrinks to 0.79× and stops at the limit. | Fable 5.1, real FL-100 |
+| **26** | `goals/26-merge-box.md` | **Closed 3 Sep.** `merges[].box` replaces the union bbox as the re-flow rect, used exactly as given; malformed boxes refused by name. Measured: 0.7× FAIL without, 1.0× and three lines with. `propose-merges` writes `"box": null`; geometry still chooses nothing. | Fable 5.1, Sonnet 5, Opus 5 |
+| **29** | `goals/29-override-plain-value.md` | **Closed 3 Sep.** The coverage check counts an override as coverage, so a core it covers everywhere may be `null`; an uncovered occurrence still fails and names its page. verify and `qa_check` needed no change and are now asserted. | Fable 5.1, real FL-100 |
 
-All six measured rows are closed, and so are lane B's P2 (the repository
-is a plugin), P6 (the warning digest) and P3 (`SKILL.md` at 493 body
-lines). Canary run 2 ran on the evening of 2 September — five runs, two
-fixtures, `dev/canary/runs/2026-09-03-summary.md` — and opened rows
-24–29, each with a brief; P7 has one too. Order (`PROGRAM.md`, *Backlog
-after the review*): 24, 25, 27, 28, P7, 26, 29, then P4 (bar in the
-table and in `docs/REVIEW-2026-09-02.md` §5, no brief file yet).
+All twelve measured rows are closed, and so are lane B's P2 (the
+repository is a plugin), P6 (the warning digest), P3 (`SKILL.md` under
+500 body lines), P1 (the wild corpus) and P5. Rows 24, 25, 27, 28, 26
+and 29 closed on 3 September, one commit and one `metadata.version` bump
+each, with a before-and-after measurement in every closing note. What is
+left, in order: **P7** (`goals/P7-notice-channel.md`), then **P4** (bar
+in `PROGRAM.md`'s table and in `docs/REVIEW-2026-09-02.md` §5, no brief
+file yet).
 
 One defect from that canary is already fixed: the placement gate could not
 pass a wrapped merge, which broke paragraph mode on the day it shipped
@@ -311,19 +326,19 @@ Tests, from pdf-translate/:
   python3 tools/fetch_test_fonts.py
   python3 -m unittest tests.test_pipeline tests.test_corpus_verdicts
 
-174 tests, no skips, green locally; confirm CI after pushing. Everything is
-committed. Program rows 01-23 and the whole audit roadmap are closed. Do
+205 tests, no skips, green locally; confirm CI after pushing. Everything is
+committed. Program rows 01-29 and the whole audit roadmap are closed. Do
 not redo them. Lane A is empty; do not invent a row.
 
-Next sitting: copy dev/goals/24-merge-ligatures.md into /goal and close
-that bar only. Do not start 25 in the same session. Do not mix in a
+Next sitting: copy dev/goals/P7-notice-channel.md into /goal and close
+that bar only. Do not start P4 in the same session. Do not mix in a
 canary run. No glossary. Not FL-150 as a fixture.
 
 When the bar is green: full unittest + corpus, bump metadata.version in
 SKILL.md, commit, stop.
 ```
 
-After 24, the queue in `PROGRAM.md` (25, 27, 28, P7, 26, 29, then P4)
-names the next brief; swap it into the message above. If the user wants the
+After P7, the queue in `PROGRAM.md` names P4 — and after that the canary,
+not a new row; swap it into the message above. If the user wants the
 stale audit HTML or the installed-copy re-sync instead, say so and do only
 that — neither is a gate, and neither needs a fixture.

@@ -202,9 +202,11 @@ model's defect; never a gate.
 | **P7** | Notice channel | `goals/P7-notice-channel.md`: four of five runs on a form that needs the notice wrote their own script (Fable in runs 1 and 2, Sonnet, Opus). A `notices` list in translations.json — text, page, the box the author chose — placed by retypeset with the job's fonts through the same glyph check, canonical layer and placement gate as every other run | Choosing the box by geometry; adding a page; a notice the reader cannot read |
 | P5 | One source of truth | **Closed 2 Sep evening**: README count removed and CI badge added; audit HTML is a banner-marked snapshot; findings §15; tracker carries both lanes. Rule: `checklist.html` tracks, this file queues, `HANDOVER.md` cold-starts; nothing else states counts or open rows | — |
 
-**Order:** 24 → 25 → 27 → 28 → P7 → 26 → 29 → P4. Every row above came
-from a measurement — canary run 2 or the wild corpus — never from
-invention; when they are closed, run the canary again.
+**Order:** lane A is closed (24, 25, 27, 28, 26, 29 all on 3 September,
+in that order, one commit and one `metadata.version` bump each). What is
+left is **P7 → P4**. Every row above came from a measurement — canary
+run 2 or the wild corpus — never from invention; when P7 and P4 are
+closed, run the canary again rather than inventing a row.
 
 **Hypotheses, after the wild corpus** (`dev/wild/ANALYSIS.md` §5): hybrid
 XFA — answered on page 1 of eight forms, the AcroForm layer renders
