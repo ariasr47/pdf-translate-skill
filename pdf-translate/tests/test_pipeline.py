@@ -2825,6 +2825,59 @@ class MergeCandidateKindTests(unittest.TestCase):
                     self.assertEqual(data['merges'][0]['lines'], lines)
 
 
+def build_many_warnings_pdf(path, n=14):
+    """n lines that each carry one quoted write/find/say payload.
+
+    "Question N" matches the quoted-string rule only; an "Attachment N"
+    payload would match the form-name rule as well and be reported twice.
+    """
+    doc = pymupdf.open()
+    page = doc.new_page(width=400, height=60 + 20 * n)
+    for i in range(n):
+        page.insert_text((72, 60 + 20 * i), f'Write "Question {i + 1}" at the top.',
+                         fontsize=11)
+    doc.save(path)
+    doc.close()
+
+
+class WarningDigestTests(unittest.TestCase):
+    """Lane B row P6: the extractor prints a per-kind digest — counts and what
+    each kind asks of the author — then at most --max-per-kind lines per
+    kind. On the wild corpus the one-line-per-warning printout ran to 2,394
+    lines for one booklet. Nothing leaves the JSON."""
+
+    def _run(self, tmp, extra=()):
+        src = os.path.join(tmp, 'orig.pdf')
+        build_many_warnings_pdf(src)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = extract_segments.main([src, '--outdir', tmp, *extra])
+        self.assertEqual(rc, 0, msg=buf.getvalue())
+        return buf.getvalue()
+
+    def test_digest_counts_then_capped_lines(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = self._run(tmp)
+            self.assertIn('WARNINGS: 14', out)
+            self.assertRegex(out, r'write-find-say\s+14\s')
+            self.assertIn('segments.json', out)
+            lines = [l for l in out.splitlines() if '[write-find-say]' in l]
+            self.assertEqual(len(lines), 10, msg=out)
+            self.assertIn('4 more write-find-say', out)
+            # The digest comes before the first per-line entry.
+            self.assertLess(out.index('WARNINGS: 14'), out.index('[write-find-say]'))
+            data = json.loads(Path(tmp, 'segments.json').read_text(encoding='utf-8'))
+            self.assertEqual(
+                sum(1 for w in data['warnings'] if w.get('kind') == 'write-find-say'), 14)
+
+    def test_max_per_kind_is_configurable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = self._run(tmp, ['--max-per-kind', '2'])
+            lines = [l for l in out.splitlines() if '[write-find-say]' in l]
+            self.assertEqual(len(lines), 2, msg=out)
+            self.assertIn('12 more write-find-say', out)
+
+
 class ParagraphAndSplitTests(unittest.TestCase):
     """Paragraph mode, page partitioning and the bilingual reading copy."""
 

@@ -16,7 +16,12 @@ Reads text with exact geometry and writes two files:
                     tooltips, choice /Opt display labels, text-field /V and
                     /DV defaults. Author the "target" of each, then pass the
                     file to strip_text.py --widget-text. Empty object when
-                    the PDF has none.
+                    the PDF has none. A value that is DATA — a 2D-barcode
+                    payload such as USCIS's PDF417BarCode1
+                    ("I-864|08/24/26|1"), an ID, a date stamp — gets its
+                    source string back as the target: identity-mapped,
+                    never translated (null refuses the build; a translation
+                    corrupts what the form submits).
 
 segments.json also carries a "document" block: the source /Lang, /Title and
 the outline (bookmark) titles. The title and the outline entries are added
@@ -82,7 +87,7 @@ retypeset over the whole document.
 
 Usage:
   python3 extract_segments.py ORIGINAL.pdf [--gap 12] [--outdir .]
-                                           [--pages 1-10]
+                                           [--pages 1-10] [--max-per-kind 10]
 """
 import json
 import os
@@ -717,12 +722,59 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None):
     }
 
 
+# What each warning kind asks of the author, printed once with a count.
+# The old printout was one line per warning: 2,394 lines on a 126-page
+# booklet, 1,093 of them write/find/say hits the skill said to confirm one
+# at a time, and the one that mattered scrolled past (dev/wild/ANALYSIS.md
+# section 4). Only inner-gap needs an entry each; the rest are decisions
+# about a list. Every warning stays in segments.json.
+WARNING_ASKS = [
+    ('inner-gap', 'one "overrides" entry each, with explicit x per part'),
+    ('narrow-column', 'one decision per stack: one merge, or one override with max_width'),
+    ('right-aligned', 'a label column tucked against a rule or field: list those cores in "right"'),
+    ('image-region', 'look at each; nothing here translates pixels — say what stays in the source language'),
+    ('merge-candidate', 'accept in bulk with pipeline.py propose-merges, then delete the sibling-list entries'),
+    ('write-find-say', 'confirm the list: each stays verbatim unless listed in allow_translate, and verify fails a dropped one'),
+    ('no-text-layer', 'a refusal: the page is a scan'),
+    ('invisible-text', 'a refusal: the words the reader sees are pixels'),
+]
+DEFAULT_MAX_PER_KIND = 10
+
+
+def print_warning_digest(warnings, max_per_kind=DEFAULT_MAX_PER_KIND):
+    """Per-kind counts and what each kind asks, then at most max_per_kind
+    lines per kind. Nothing is dropped from the JSON."""
+    by_kind = {}
+    for w in warnings:
+        by_kind.setdefault(w.get('kind') or 'other', []).append(w)
+    asks = dict(WARNING_ASKS)
+    order = [k for k, _ in WARNING_ASKS if k in by_kind]
+    order += sorted(k for k in by_kind if k not in asks)
+    print(f'WARNINGS: {len(warnings)} in {len(by_kind)} kind(s); every one is in '
+          f'segments.json under "warnings" (--max-per-kind N lists more here):')
+    width = max(len(k) for k in order)
+    for k in order:
+        print(f'  {k:{width}s} {len(by_kind[k]):5d}  {asks.get(k, "review")}')
+    for k in order:
+        items = by_kind[k]
+        print(f'{k}:')
+        for w in items[:max_per_kind]:
+            preview = (w.get('text') or (w.get('lines') or [''])[0]
+                       or w.get('why') or '')
+            pid = w.get('id', ','.join(str(i) for i in w.get('ids', [])))
+            print(f"  p{w['page']} seg {pid} [{k}]: {preview}")
+        if len(items) > max_per_kind:
+            print(f'  … {len(items) - max_per_kind} more {k} in segments.json')
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     src = argv[0]
     gap = float(argv[argv.index('--gap') + 1]) if '--gap' in argv else 12.0
     outdir = argv[argv.index('--outdir') + 1] if '--outdir' in argv else '.'
     pages = argv[argv.index('--pages') + 1] if '--pages' in argv else None
+    max_per_kind = (int(argv[argv.index('--max-per-kind') + 1])
+                    if '--max-per-kind' in argv else DEFAULT_MAX_PER_KIND)
     result = extract_segments(src, outdir=outdir, gap=gap, pages=pages)
     nseg = len(result['segments'])
     nuniq = len(result['cores'])
@@ -735,13 +787,7 @@ def main(argv=None):
               f'labels, defaults) -> widget_text.json; author each "target" '
               f'and pass it to strip_text.py --widget-text')
     if result['warnings']:
-        print('WARNINGS (need review):')
-        for w in result['warnings']:
-            kind = w.get('kind', '')
-            extra = f" [{kind}]" if kind else ''
-            preview = w.get('text') or (w.get('lines') or [''])[0]
-            pid = w.get('id', ','.join(str(i) for i in w.get('ids', [])))
-            print(f"  p{w['page']} seg {pid}{extra}: {preview}")
+        print_warning_digest(result['warnings'], max_per_kind)
     rc = 0
     if result.get('unextractable_pages'):
         pages = ', '.join(str(p) for p in result['unextractable_pages'])

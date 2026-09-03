@@ -23,7 +23,8 @@ The PDFs are re-fetched from `dev/wild/SOURCES.md`, never committed.
 Rows 19 to 23 closed the same night (version 35, 174 tests); the corpus
 measurement made while closing 19 opened row 23, and closing 23 measured
 the drift it corrects on every file with one-space lists. Lane B's P2
-closed the same night too: the repository is a Claude Code plugin.
+and P6 closed the same night too: the repository is a Claude Code plugin,
+and the extractor prints a digest instead of one line per warning.
 
 **Repo:** `<REPO>` — GitHub `ariasr47/pdf-translate-skill`, branch `main`
 **Skill dir:** `pdf-translate/` (the only directory you install)
@@ -43,10 +44,10 @@ pikepdf 10) for everything above.
 
 **State of play, 2 September 2026, end of the row-18 sitting:**
 
-- **174 tests, no skips**, 25–40 s locally. 171 of them are green on
-  GitHub Actions across Linux and Windows, Python 3.10 and 3.13; the three
-  from row 23 are green locally and await CI — push and check.
-- `SKILL.md` is at `metadata.version: "35"`.
+- **176 tests, no skips**, 25–40 s locally. 174 of them are green on
+  GitHub Actions across Linux and Windows, Python 3.10 and 3.13; the two
+  from P6 are green locally and await CI — push and check.
+- `SKILL.md` is at `metadata.version: "36"`; `plugin.json` at `36.0.0`.
 - Working tree clean, everything committed. Nothing is half-finished.
 - Program rows 01–23 and the whole September audit roadmap are **closed**.
   Lane A is empty.
@@ -212,11 +213,11 @@ into `/goal`:
 | **19** | `goals/19-list-marker-gap.md` | **Closed 2 Sep.** retypeset re-emitted `marker + ' '` where the source had two spaces, shifting every list body **3.06 pt left**. Segments now carry `gap`; every marker path re-emits it; an old segments.json gets one space. Row 23 holds the font-metric remainder. | Opus 5 |
 | **20** | `goals/20-notice-title-leak.md` | **Closed 2 Sep.** `compliance.md` told the author to name the source form title in the notice; the leak scan then FAILed that title. The original's `/Title` quoted as a unit is now a kept run (noted, not counted), `--allow` takes phrases, and a longer run is still a leak. | Fable 5.1 |
 
-All six measured rows are closed, and so is lane B's P2 (the repository
-is a plugin). Next in lane B (`PROGRAM.md`, *Backlog after the review*):
-P6 warnings at scale (brief exists), P3 `SKILL.md` under 500 lines, then
-canary run 2, then P4. P3 and P4 have their closed bars in that table and
-in `docs/REVIEW-2026-09-02.md` §5 but no brief file yet; write the brief
+All six measured rows are closed, and so are lane B's P2 (the repository
+is a plugin) and P6 (the warning digest). Next in lane B (`PROGRAM.md`,
+*Backlog after the review*): P3 `SKILL.md` under 500 lines, then canary
+run 2, then P4. P3 and P4 have their closed bars in that table and in
+`docs/REVIEW-2026-09-02.md` §5 but no brief file yet; write the brief
 from the bar first, then close it.
 
 One defect from that canary is already fixed: the placement gate could not
@@ -305,17 +306,20 @@ Tests, from pdf-translate/:
 committed. Program rows 01-23 and the whole audit roadmap are closed. Do
 not redo them. Lane A is empty; do not invent a row.
 
-Next sitting: copy dev/goals/P6-warnings-at-scale.md into /goal and close
-that bar only. Do not start P3 in the same session. Do not mix in a canary
-run. No glossary. Not FL-150 as a fixture. It touches extract's output:
-re-run dev/wild/probe.py into a scratch directory before you commit.
+Next sitting: lane B row P3, SKILL.md under 500 lines. Its closed bar is
+in dev/goals/PROGRAM.md (Backlog after the review) and
+docs/REVIEW-2026-09-02.md section 5. Write dev/goals/P3-skill-length.md
+from that bar, copy it into /goal, and close that bar only: move detail
+into references, delete no rule, keep the frontmatter spec-clean. Do not
+run the canary in the same session; canary run 2 comes right after P3.
+No glossary. Not FL-150 as a fixture.
 
 When the bar is green: full unittest + corpus, bump metadata.version in
 SKILL.md, commit, stop.
 ```
 
-After P6, the queue in `PROGRAM.md` (P3, then canary run 2, then P4)
-names the next row; P3 and P4 have their bars in that table and in the
-review but no brief file yet — write it from the bar first. If the user wants the
+After P3, the queue in `PROGRAM.md` (canary run 2, then P4) names the
+next row; P4 has its bar in that table and in the review but no brief
+file yet — write it from the bar first. If the user wants the
 stale audit HTML or the installed-copy re-sync instead, say so and do only
 that — neither is a gate, and neither needs a fixture.

@@ -109,6 +109,8 @@ def cmd_init(argv):
             print(f"  p{item['page']}: {item['text']}")
         return 1
     extract_args = [src, '--outdir', work]
+    if '--max-per-kind' in argv:
+        extract_args += ['--max-per-kind', argv[argv.index('--max-per-kind') + 1]]
     if '--pages' in argv:
         extract_args += ['--pages', argv[argv.index('--pages') + 1]]
     rc = extract_main(extract_args)

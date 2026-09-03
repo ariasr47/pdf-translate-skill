@@ -91,13 +91,8 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
   <section>
     <h2>Open — product lane, groomed 2 Sep 2026</h2>
-    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Lane A is empty; the order is P6, P3, canary run 2, P4.</p>
+    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Lane A is empty; the order is P3, canary run 2, P4.</p>
     <ol class="items">
-      <li class="item" data-id="warningsscale">
-        <input type="checkbox" id="c-warningsscale"><div class="head"><span class="title"><label for="c-warningsscale">P6: the extractor's warnings scale to a real document</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
-        <p class="detail">6,191 warnings across the seventeen corpus files, printed line by line; 1,093 write/find/say hits on one booklet that the skill says to halt-and-confirm one at a time. A per-kind digest before the list, skill text that says what each kind wants of the author, and one sentence that a widget value which is data (the USCIS barcode payload) is identity-mapped. No kind is silenced; nothing is auto-accepted.</p>
-        <p class="meta">from the wild corpus · <code>dev/goals/P6-warnings-at-scale.md</code></p>
-      </li>
       <li class="item" data-id="skilllength">
         <input type="checkbox" id="c-skilllength"><div class="head"><span class="title"><label for="c-skilllength">P3: <code>SKILL.md</code> under 500 lines</label></span><span class="chip p1">P1</span><span class="chip neutral">M</span></div>
         <p class="detail">550 body lines, ~4,600 words and ~7,300 tokens on invoke (measured by <code>claude plugin details</code>) against Anthropic's 500-line and the spec's ~5,000-token guidance. Claude Code re-attaches only the first 5,000 tokens of an invoked skill after compaction, so on a long job the tail — verify, field fonts, deliver — is what vanishes. Move detail into <code>references/</code> (gates, widget text, expansion table), one level deep; keep every rule; keep the frontmatter spec-clean. Canary run 2 is the proof it still steers.</p>
@@ -113,8 +108,13 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
   <section>
     <h2>Closed since the audit</h2>
-    <p>In the order they were done. Each landed with in-repo tests, and the full suite stayed green: 174 tests, no skips; 171 of them green on Linux and Windows under Python 3.10 and 3.13, the three from row 23 green locally and awaiting CI.</p>
+    <p>In the order they were done. Each landed with in-repo tests, and the full suite stayed green: 176 tests, no skips; 174 of them green on Linux and Windows under Python 3.10 and 3.13, the two from P6 green locally and awaiting CI.</p>
     <ol class="items">
+      <li class="item" data-id="warningsscale">
+        <input type="checkbox" id="c-warningsscale" checked><div class="head"><span class="title"><label for="c-warningsscale">P6: the extractor's warnings scale to a real document</label></span><span class="chip p1">P1</span><span class="done-mark">done</span></div>
+        <p class="detail">The extractor prints a digest — a count per kind and what each kind asks of the author — then at most <code>--max-per-kind</code> lines per kind (default ten), with every warning still in segments.json. The 126-page IRS booklet went from 2,394 printed lines to 61. Step 3 of the skill is now a list of what each kind wants, write/find/say is a list to confirm rather than 1,093 halts, and a widget value that is data (the USCIS barcode payload) is identity-mapped by instruction. No kind silenced, nothing auto-accepted, the gates untouched.</p>
+        <p class="meta">closed 2 Sep 2026, evening · <code>WarningDigestTests</code> · from the wild corpus</p>
+      </li>
       <li class="item" data-id="packaging">
         <input type="checkbox" id="c-packaging" checked><div class="head"><span class="title"><label for="c-packaging">P2: the repository is a Claude Code plugin</label></span><span class="chip p1">P1</span><span class="done-mark">done</span></div>
         <p class="detail"><code>.claude-plugin/plugin.json</code> (version <code>35.0.0</code>, mirroring <code>metadata.version</code>) and a one-entry <code>marketplace.json</code> at the repo root; <code>claude plugin validate . --strict</code> exits 0 and <code>claude --plugin-dir . plugin details pdf-translate</code> lists the skill; a CI job validates both manifests and fails when the two versions disagree; README and HANDOVER carry <code>/plugin marketplace add ariasr47/pdf-translate-skill</code>. The manual re-sync chore is deleted; <code>SKILL.md</code> untouched. The install from GitHub is proven on the box that runs it.</p>

@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "35"
+  version: "36"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -188,7 +188,11 @@ skip — author it or delete the key. **Export values stay:** an `/Opt`
 entry becomes `[export, display]` and only the display half is
 translated, so `/V` and everything the form submits keep working. A spec
 that asks to translate a choice field's `/V` is refused; verify's `/Opt`
-parity gate fails any output whose export values moved.
+parity gate fails any output whose export values moved. A `value` or
+`default` that is **data** — a 2D-barcode payload such as USCIS's
+`PDF417BarCode1` (`I-864|08/24/26|1`), an ID, a date stamp — gets its
+source string back as the target, never a translation: `null` refuses
+the build, and a translation corrupts what the form submits.
 
 On the visual pass, expect a rendered dropdown to still show the **export**
 value: MuPDF's appearance generator draws `/V` verbatim, while a conforming
@@ -229,20 +233,34 @@ python3 scripts/pipeline.py from-cores --work .
 That writes `translations.json` with a **null** per core so retypeset still
 fails until you fill them in. It will not overwrite an existing file unless
 you pass `--force`. Format in `references/translations-format.md`.
-The extractor also prints warnings: in-span gaps (need `overrides`),
-write/find/say candidates (quoted strings, `Form`/`Schedule` names, URLs —
-halt-and-confirm, not optional color), `image-region` items (banners, seals,
-stamps and screenshots big enough to carry words — nothing here translates
-pixels, so look at each one and tell the user what stays in the source
-language), `merge-candidate` groups — possible wrapped
-paragraphs (declare them explicitly; never auto-merge by geometry, it swallows
-sibling list items), `right-aligned` groups (segments sharing a right edge
-but not a left one, and sitting within one em of a rule, a field or the
-next segment — put those cores in `right` or a longer translation grows
-past the thing they sit against; running text is a merge, never a `right`
-entry), and `narrow-column` stacks — three or more cores
-sharing a column under 90 pt wide (pay-stub boxes, label stacks). Those
-are warn-only; nothing merges them for you.
+The extractor prints a **digest** of its warnings — a count per kind and
+what each kind asks of you — then at most ten lines per kind; every
+warning is in `segments.json` (`--max-per-kind N` lists more). What each
+kind wants:
+
+- `inner-gap` (a run of spaces inside one span, usually widgets between
+  phrases): one `overrides` entry each, with explicit x positions.
+- `narrow-column` (three or more cores in a column under 90 pt — pay-stub
+  boxes, label stacks): one decision per stack, one merge or one override
+  with `max_width`.
+- `right-aligned` (cores sharing a right edge but not a left one, tucked
+  within one em of a rule, a field or the next segment): list those cores
+  in `right`, or a longer translation grows past the thing they sit
+  against. Running text is a merge, never a `right` entry.
+- `image-region` (banners, seals, stamps, screenshots big enough to carry
+  words): look at each; nothing here translates pixels — tell the user
+  what stays in the source language.
+- `merge-candidate` (possible wrapped paragraphs): accept in bulk with
+  `propose-merges`, then delete the entries that were sibling list items.
+  Never auto-merge by geometry.
+- write/find/say (quoted strings, `Form`/`Schedule` names, URLs): confirm
+  the **list**, not each line. Every one stays verbatim unless you name
+  it in `allow_translate`, and `verify --translations` fails a dropped
+  one, so the decision is which few to translate — record those in NOTES.
+
+Nothing merges, realigns or translates itself. The digest is where the
+decisions are: 1,093 write/find/say hits on one booklet are a list to
+confirm, not 1,093 halts.
 
 **Long documents.** `--pages` takes 1-based inclusive ranges, so a manual
 can be extracted and authored a slice at a time. Combine the slices before

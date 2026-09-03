@@ -133,12 +133,18 @@ Authoring order that works well:
 2. Translate every core (they're deduplicated — typically far fewer than the
    segment count). Match the recon lookup in `SKILL.md` step 1; keep verbatim
    items verbatim by simply not translating differently (e.g.
-   `"Form W-2": "Form W-2"`). Extractor write/find/say warnings are
-   halt-and-confirm: a missing source token fails `--translations` unless
-   that span is listed in `allow_translate`.
+   `"Form W-2": "Form W-2"`). Extractor write/find/say warnings are a
+   list to confirm, not a halt each: every span stays verbatim, a missing
+   source token fails `--translations`, and `allow_translate` names the
+   few you decided to translate. In `widget_text.json`, a value that is
+   data (a barcode payload, an ID) gets its source string back as the
+   target.
 3. Scan `segments.json` for multi-line paragraphs (same block, consecutive
    y, sentence flows on) and declare merges for them.
-4. Add overrides for every extractor warning.
+4. Add one `overrides` entry per `inner-gap` warning. The other kinds
+   are decisions about a list: `merge-candidate` → `propose-merges`,
+   `right-aligned` → `right`, `narrow-column` → one merge or one
+   override, `image-region` → look.
 5. Run retypeset; it fails listing anything you missed — iterate to zero.
 6. After the first render pass, add `center` / `skip` entries (centre only
    what the source centres — never a caption flush with a rule) and shorten

@@ -83,3 +83,50 @@ Provider-neutral. Warnings propose, authors decide. No glossary.
 
 The digest on the fixture; the corpus probe re-run showing the new
 output; full unittest + corpus.
+
+---
+
+## 7. Closing note — 2 September 2026, closed
+
+**Reproduced first.** `extract_segments.main` on the IRS 1040 instructions
+printed 2,394 lines, one per warning, 1,093 of them write/find/say hits.
+On a constructed page of fourteen quoted payloads the two new tests
+failed before the change: no digest, no cap.
+
+**Done bar, item by item.**
+
+1. **A digest, then the list.** `main` prints `WARNINGS: N in K kind(s)`,
+   then one line per kind with its count and what it asks of the author
+   (`WARNING_ASKS`, in the order inner-gap, narrow-column, right-aligned,
+   image-region, merge-candidate, write/find/say, then the two refusals),
+   then at most `--max-per-kind` lines per kind (default 10) and
+   `… N more <kind> in segments.json`. `pipeline.py init` passes the flag
+   through. Nothing leaves the JSON. The booklet now prints **61 lines**;
+   the W-9 with `--max-per-kind 2` fits on one screen.
+2. **The skill text scales.** Step 3 is a list of what each kind wants;
+   write/find/say is "confirm the list, not each line" with the reason
+   (they stay verbatim, the gate fails a dropped one, `allow_translate`
+   names the few to translate). The authoring order in
+   `translations-format.md` says one override per `inner-gap` and a
+   decision per list for the rest.
+3. **Data values are identity-mapped.** Step 2's widget-text paragraph,
+   the extractor's `widget_text.json` docstring and the authoring order
+   all name the USCIS `PDF417BarCode1` payload and say the source string
+   goes back as the target.
+4. `WarningDigestTests`: the digest's counts come before the first
+   per-line entry, ten lines then "4 more" by default, two lines then
+   "12 more" with `--max-per-kind 2`, and all fourteen warnings stay in
+   `segments.json`. 176 tests, no skips, green locally; the wild corpus
+   re-run shows zero count or verdict differences (the function is
+   untouched; only its printout changed). `metadata.version` 35 → 36,
+   `plugin.json` 36.0.0.
+
+**Seen while building the fixture, not changed:** a span that is both a
+quoted string and a form name (`Write "Attachment 1" at the top.`)
+produces two write/find/say hits with the same text, printed as two
+identical lines. Harmless to the gate, noise to the reader; a candidate
+for a later small row, not this one.
+
+Not done, as the brief asked: no kind silenced or dropped, nothing
+auto-accepted, the write/find/say gate and the widget-text `null`
+refusal untouched, no heuristic about which values are data.
