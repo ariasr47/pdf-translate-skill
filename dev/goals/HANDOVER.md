@@ -61,17 +61,22 @@ pikepdf 10) for everything above.
 - Working tree clean apart from `dev/canary/last-score.json`, a scratch
   file `score.py` rewrites on every run. Nothing is half-finished.
 - Program rows 01–29, the whole September audit roadmap and lane B's P7
-  are **closed**. **Lane A is empty.** Lane B holds only **P4**, which is
-  **blocked**: its brief and its three cases exist, but `claude plugin
-  eval` is in early access and is not enabled for this account, so
-  nothing has ever parsed them.
-- The canary has run twice. Run 1 opened 18, 19 and 20; the wild corpus
+  are **closed**. **Canary run 3 opened rows 30 and 31**, both in code
+  that shipped the same day. Lane B's **P4 is blocked**: its brief and
+  its three cases exist, but `claude plugin eval` is in early access and
+  is not enabled for this account, so nothing has ever parsed them.
+- The canary has run three times. Run 1 opened 18, 19 and 20; the wild corpus
   21, 22 and 23; run 2 (Opus 5, Sonnet 5, Fable 5.1 and Haiku 4.5 on the
   fixture, Fable 5.1 on the real FL-100 —
   `dev/canary/runs/2026-09-03-summary.md`) opened 24–29 and gave P7 its
-  brief. All twelve are closed, and so is P7. **P4 is the last row and it
-  is blocked on an account grant, not on work.** With the queue drained,
-  the next thing that produces rows is canary run 3.
+  brief. All twelve are closed, and so is P7. **Canary run 3 ran on
+  3 September** — Opus 5, Sonnet 5 and Fable 5.1 on the permission slip,
+  all three 5/5, `dev/canary/runs/2026-09-03-run3-summary.md`. It
+  confirmed rows 24–29 and P7 held (three of three used `notices`, down
+  from four of five writing their own script; three of three used
+  `merges[].box`; nothing shipped below source size) and opened rows
+  **30** and **31**. P4 remains blocked on an account grant, not on
+  work.
 
 ---
 
@@ -217,9 +222,21 @@ always deleted and reported; a certified source is flagged. The orphaned
 
 ## 5. What is not done
 
-### One row, and it is blocked
+### Two rows from canary run 3, and one blocked
 
-Lane A is empty and P7 is closed. The only open row is **P4**, eval
+**Row 30** (`goals/30-font-charset-gaps.md`) — `prepare_font.py` raises
+`TypeError` on the `null` core row 29 made legal, and never reads
+`notices[].text`, so a notice-only character is missing from the subset.
+Reproduced directly; Opus 5 and Fable 5.1 hit it independently.
+
+**Row 31** (`goals/31-bold-role-is-real.md`) — a font role that falls
+back to the regular face is silent, so `bold_lead: true` with
+`fonts.bold` == `fonts.regular` draws a regular lead-in and nothing says
+so. Sonnet 5 shipped it; Fable caught the same thing by eye.
+
+Order: **30 → 31**, then P4 when its grant lands.
+
+Also open, and blocked: **P4**, eval
 automation (`goals/P4-eval-automation.md`, written 3 September). Three
 `case.yaml` cases and their graders are in `pdf-translate/evals/` and
 `claude plugin validate --strict` passes with them, but **`claude plugin
@@ -349,20 +366,22 @@ dictionary order is hash-randomized; `dev/wild/results.json` was
 regenerated from that deterministic run, so a re-run now really should
 differ only in timings. `dev/wild/ANALYSIS.md` section 10 has it.
 
-The queue is drained. P4 is the only row left and it is BLOCKED: `claude
-plugin eval` is in early access and is not enabled for this account, so
-the three cases written for it under pdf-translate/evals/ have never been
-parsed. Read dev/goals/P4-eval-automation.md section 7 before touching
-it; if the grant is not in place, do not rewrite the cases speculatively.
+Canary run 3 ran on 3 September (three models, all 5/5) and opened rows
+30 and 31; both are in code that shipped that same day and both are
+reproduced. P4 is BLOCKED, not queued: `claude plugin eval` is in early
+access and is not enabled for this account, so the three cases written
+for it under pdf-translate/evals/ have never been parsed. Read
+dev/goals/P4-eval-automation.md section 7 before touching it.
 
-Next sitting, therefore: canary run 3 (dev/canary/README.md), which is
-what produces the next rows. No glossary. Not FL-150 as a fixture.
+Next sitting: copy dev/goals/30-font-charset-gaps.md into /goal and close
+that bar only. Do not start 31 in the same session. Do not mix in a
+canary run. No glossary. Not FL-150 as a fixture.
 
 When the bar is green: full unittest + corpus, bump metadata.version in
 SKILL.md, commit, stop.
 ```
 
-P4 is the last queued row and it is blocked on an account grant; with the
-queue drained, canary run 3 is what comes next. If the user wants the
+After 30 comes 31, then P4 if its grant has landed; after those, the
+canary again rather than a new row. If the user wants the
 stale audit HTML or the installed-copy re-sync instead, say so and do only
 that — neither is a gate, and neither needs a fixture.

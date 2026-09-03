@@ -202,12 +202,21 @@ model's defect; never a gate.
 | P7 | Notice channel | **Closed 3 Sep.** `notices` in translations.json — `{page, text, box, size?, bold_lead?}` — placed by retypeset into the author's rect with the job's fonts, through the glyph check (both roles), the scale report, the canonical layer and the placement gate. Malformed notices refused by name before anything is drawn; no page added; the leak scan untouched and the quoted `/Title` still a kept note. `compliance.md` §1 says how. Was four of five canary runs writing their own script | — |
 | P5 | One source of truth | **Closed 2 Sep evening**: README count removed and CI badge added; audit HTML is a banner-marked snapshot; findings §15; tracker carries both lanes. Rule: `checklist.html` tracks, this file queues, `HANDOVER.md` cold-starts; nothing else states counts or open rows | — |
 
-**Order:** lane A is closed (24, 25, 27, 28, 26, 29 all on 3 September,
-in that order, one commit and one `metadata.version` bump each), and so
-is P7. **P4 is the last row and it is blocked**: its brief and its three
-cases exist, but `claude plugin eval` is in early access and is not
-enabled here, so nothing has run them. It needs the account grant, not
-another sitting's work.
+**Canary run 3 (3 September) re-opened lane A with two rows**, both in
+code that shipped the same day:
+
+| # | Brief | Trigger |
+|---|---|---|
+| **30** | `goals/30-font-charset-gaps.md` | `prepare_font.py` raises `TypeError` on the `null` core row 29 made legal, and never reads `notices[].text`, so a notice-only character is missing from the subset. Reproduced directly; hit by Opus 5 and Fable 5.1 independently |
+| **31** | `goals/31-bold-role-is-real.md` | A font role that falls back to the regular face is silent, so `bold_lead: true` with `fonts.bold` == `fonts.regular` draws a regular lead-in and nothing says so. Sonnet 5 shipped it; Fable 5.1 caught the same thing by eye |
+
+**Order:** **30 → 31**, then P4 when its grant lands. Rows 24, 25, 27,
+28, 26, 29 and P7 all closed on 3 September, one commit and one
+`metadata.version` bump each, and canary run 3 confirmed every one of
+them held. **P4 is blocked, not queued**: its brief and its three cases
+exist, but `claude plugin eval` is in early access and is not enabled
+here, so nothing has run them. It needs the account grant, not another
+sitting's work.
 Every row above came from a measurement — a canary run or the wild
 corpus — never from invention; when P4 is closed, run the canary again
 rather than inventing a row.

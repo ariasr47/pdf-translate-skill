@@ -72,9 +72,9 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 </style>
 
 <div class="page">
-  <div class="eyebrow">Program tracker · after the canary · updated 3 Sep 2026</div>
+  <div class="eyebrow">Program tracker · after canary run 3 · updated 3 Sep 2026</div>
   <h1>pdf-translate Checklist</h1>
-  <p class="lede">Every row of the repository's own queue, of the September audit's roadmap and of both canary runs is now closed, with tests. What remains is one row from the evening review (<code>REVIEW-2026-09-02.md</code>): eval automation, blocked on an early-access grant. With the queue drained, canary run 3 is what produces the next rows. Ticks are saved in this browser only.</p>
+  <p class="lede">Every row of the repository's own queue, of the September audit's roadmap and of the first two canary runs is closed, with tests. Canary run 3 then opened two more. What remains is one row from the evening review (<code>REVIEW-2026-09-02.md</code>): eval automation, blocked on an early-access grant. With the queue drained, canary run 3 is what produces the next rows. Ticks are saved in this browser only.</p>
 
   <div class="progress" role="status" aria-live="polite">
     <div class="bar"><span id="bar"></span></div>
@@ -84,7 +84,19 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
   <section>
     <h2>Open — found by measurement: the canary and the wild corpus</h2>
-    <p><strong>Lane A is empty.</strong> The canary ran twice and the wild corpus once; between them they produced rows 18 to 29, every one of them a model or a real document walking into something, never an invention. All twelve are closed with in-repo tests and a measured before and after. Do not invent a thirteenth — run the canary again.</p>
+    <p>Canary run 3 (3 September: Opus 5, Sonnet 5 and Fable 5.1 on the permission slip, all three 5/5) confirmed rows 24–29 and P7 held — three of three used <code>notices</code> where four of five had written their own script, three of three used <code>merges[].box</code>, and nothing shipped below source size — and opened these two. Both are in code that shipped the same day, and both are reproduced.</p>
+    <ol class="items">
+      <li class="item" data-id="fontcharset">
+        <input type="checkbox" id="c-fontcharset"><div class="head"><span class="title"><label for="c-fontcharset">Row 30: the font subset covers everything the job will draw</label></span><span class="chip p0">P0</span><span class="chip neutral">XS</span></div>
+        <p class="detail"><code>prepare_font.py</code> builds its charset from <code>translations</code>, <code>merges</code> and <code>overrides</code>. Row 29 made a core <code>null</code> where an override covers it — <code>chars.update(v)</code> then raises <code>TypeError: 'NoneType' object is not iterable</code>, so the font step crashes on a mapping the pipeline itself calls valid. P7 added <code>notices</code>, which the charset never reads, so a character used only in the notice is missing from the subset and retypeset's glyph check FAILs the build. Both reproduced directly; Opus 5 and Fable 5.1 hit them independently on the day they shipped.</p>
+        <p class="meta">found by canary run 3 · <code>dev/goals/30-font-charset-gaps.md</code></p>
+      </li>
+      <li class="item" data-id="boldrole">
+        <input type="checkbox" id="c-boldrole"><div class="head"><span class="title"><label for="c-boldrole">Row 31: a weight the author asked for is either drawn or reported</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
+        <p class="detail">A font role falls back to the nearest one the mapping named, which is right — and silent. Sonnet 5 set <code>bold_lead: true</code> on its notice with <code>fonts.bold</code> pointing at the same file as <code>fonts.regular</code>: the lead-in drew regular, nothing said so, and the delivery called the page pixel-faithful. Fable 5.1 hit the same thing and caught it by eye. One line after the build naming any role that resolved to the regular face — row 25's shape, one level down.</p>
+        <p class="meta">found by canary run 3 · <code>dev/goals/31-bold-role-is-real.md</code></p>
+      </li>
+    </ol>
   </section>
 
   <section>
