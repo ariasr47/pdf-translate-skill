@@ -1515,12 +1515,14 @@ class CanonicalTextLayerTests(unittest.TestCase):
         self.assertTrue(name)
         f = pymupdf.Font(fontfile=str(font))
         space, hyphen = f.has_glyph(0x20), f.has_glyph(0x2D)
-        self.assertEqual(gidmap.get(space), 0x20)
-        self.assertEqual(gidmap.get(hyphen), 0x2D)
+        # Values are the authored text, not a code point: a ligature glyph
+        # maps to more than one character (row 24).
+        self.assertEqual(gidmap.get(space), ' ')
+        self.assertEqual(gidmap.get(hyphen), '-')
         # Authoring the drifted character too must not raise the mapping.
         gidmap, _ = retypeset.authored_gid_map(str(font), ['\xa0 x\u00ad-'])
-        self.assertEqual(gidmap.get(space), 0x20)
-        self.assertEqual(gidmap.get(hyphen), 0x2D)
+        self.assertEqual(gidmap.get(space), ' ')
+        self.assertEqual(gidmap.get(hyphen), '-')
         self.assertEqual(retypeset.authored_gid_map('no-such.ttf', ['x']),
                          (None, ''))
 
@@ -1559,7 +1561,7 @@ class CanonicalTextLayerTests(unittest.TestCase):
 
             drifted = os.path.join(tmp, 'drifted.pdf')
             f = pymupdf.Font(fontfile=str(font))
-            gidmap = {f.has_glyph(0x20): 0xA0, f.has_glyph(0x2D): 0xAD}
+            gidmap = {f.has_glyph(0x20): '\xa0', f.has_glyph(0x2D): '\xad'}
             gidmap.pop(0, None)
             self.assertTrue(gidmap, msg='test font has no space or hyphen')
             block = retypeset._override_block(gidmap)
@@ -5366,6 +5368,179 @@ class ProviderAgnosticTests(unittest.TestCase):
             text = py.read_text(encoding='utf-8')
             for token in banned:
                 self.assertNotIn(token, text, msg=f'{py.name} mentions {token}')
+
+
+LIG_HTML = ('La oficina del secretario revisara toda declaracion presentada '
+            'antes de la fecha de la audiencia y enviara una copia con la '
+            'firma oficial a cada parte nombrada en el encabezado.')
+
+
+class StoryLigatureTests(unittest.TestCase):
+    """Row 24: the Story engine shapes Latin too.
+
+    HarfBuzz applies `liga`/`clig` by default and MuPDF 1.28 honours
+    neither `font-variant-ligatures: none` nor `font-feature-settings`
+    (both measured on the constructed paragraph below), so a merged
+    Spanish paragraph was drawn with the fi glyph and its text layer said
+    U+FB01 — or U+007F once the font was subsetted, where nothing caught
+    it at all. Two models hit this independently on canary run 2.
+    """
+
+    def _job(self, tmp, font, html=LIG_HTML):
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        build_paragraph_pdf(src, pages=1)
+        extract_segments.extract_segments(src, outdir=tmp)
+        strip_text.strip_text(src, stripped)
+        conf = {
+            'fonts': {'regular': str(font), 'bold': str(font)},
+            'translations': {'Page 1 note here.': 'Nota de la pagina 1.'},
+            'merges': [{'page': 0, 'lines': PARA_LINES, 'html': html,
+                        'align': 'left'}],
+            'overrides': [], 'center': [], 'skip': [],
+        }
+        Path(tr).write_text(json.dumps(conf, ensure_ascii=False),
+                            encoding='utf-8')
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(
+                stripped, os.path.join(tmp, 'segments.json'), tr, out)
+        self.assertEqual(rc, 0, msg=buf.getvalue())
+        doc = pymupdf.open(out)
+        try:
+            layer = doc[0].get_text()
+        finally:
+            doc.close()
+        return src, out, tr, os.path.join(tmp, 'segments.json'), layer
+
+    def test_a_merged_paragraph_says_what_the_author_wrote(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, segs, layer = self._job(tmp, font)
+            self.assertIn('oficina', layer)
+            self.assertIn('firma', layer)
+            self.assertEqual(
+                [c for c in layer if 0xFB00 <= ord(c) <= 0xFB06], [])
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr,
+                                   source_words_from=segs)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('PASS authored translations present', log)
+            self.assertIn('PASS canonical text layer', log)
+
+    def test_a_subset_font_says_it_too(self):
+        """The silent half: pyftsubset keeps the ligature and drops U+FB01
+        from the cmap, so the layer carried U+007F and only a run with
+        --translations would ever have noticed."""
+        with tempfile.TemporaryDirectory() as tmp:
+            subset = os.path.join(tmp, 'subset.ttf')
+            pre = os.path.join(tmp, 'pre.json')
+            Path(pre).write_text(json.dumps({
+                'fonts': {}, 'translations': {'x': LIG_HTML},
+                'merges': [], 'overrides': [], 'center': [], 'skip': [],
+            }, ensure_ascii=False), encoding='utf-8')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = prepare_font.main([str(find_test_font()), pre, subset])
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            # The premise: cmap cannot find this glyph, GSUB can.
+            self.assertFalse(pymupdf.Font(fontfile=subset).has_glyph(0xFB01))
+            self.assertIn('fi', retypeset.ligature_gid_map(
+                subset, set(LIG_HTML)).values())
+
+            src, out, tr, segs, layer = self._job(tmp, subset)
+            self.assertIn('oficina', layer)
+            self.assertNotIn('\x7f', layer)
+
+    def test_an_inline_markup_line_says_it_too(self):
+        """place_story_line is the Story engine as well."""
+        font = find_test_font()
+        marked = 'La <b>oficina</b> debe recibir la firma hoy.'
+        plain = 'La oficina debe recibir la firma hoy.'
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_plain_pdf(src)
+            extract_segments.extract_segments(src, outdir=tmp)
+            segs = os.path.join(tmp, 'segments.json')
+            strip_text.strip_text(src, stripped)
+            write_mapping(tr, {SOURCE_SENTENCE: marked}, font)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(stripped, segs, tr, out)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            doc = pymupdf.open(out)
+            try:
+                layer = doc[0].get_text()
+            finally:
+                doc.close()
+            self.assertIn(plain, verify.normalize_ws_nbsp(layer))
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr,
+                                   source_words_from=segs)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+
+    def test_the_gate_fails_a_ligature_that_is_still_in_the_layer(self):
+        """Build the defect back in and the gate must name it, with or
+        without --translations: the subset case had no other witness."""
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr, segs, layer = self._job(tmp, font)
+            f = pymupdf.Font(fontfile=str(font))
+            gidmap = {f.has_glyph(ord('f')): '\ufb01'}
+            gidmap.pop(0, None)
+            self.assertTrue(gidmap, msg='test font has no f')
+            block = retypeset._override_block(gidmap)
+            drifted = os.path.join(tmp, 'drifted.pdf')
+            pdf = pikepdf.open(out)
+            try:
+                patched = 0
+                for obj in pdf.objects:
+                    try:
+                        tu = obj.get('/ToUnicode')
+                    except Exception:
+                        continue
+                    if tu is None:
+                        continue
+                    data = bytes(tu.read_bytes())
+                    i = data.rfind(b'endcmap')
+                    if i < 0:
+                        continue
+                    obj.ToUnicode = pdf.make_stream(
+                        data[:i] + block + data[i:])
+                    patched += 1
+                self.assertTrue(patched, msg='no /ToUnicode to drift')
+                pdf.save(drifted)
+            finally:
+                pdf.close()
+            doc = pymupdf.open(drifted)
+            try:
+                self.assertIn('\ufb01', doc[0].get_text(),
+                              msg='the fixture did not actually drift')
+            finally:
+                doc.close()
+            for kwargs in ({'translations': tr, 'source_words_from': segs},
+                           {}):
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    rc = verify.verify(src, drifted, **kwargs)
+                log = buf.getvalue()
+                self.assertNotEqual(rc, 0, msg=log)
+                self.assertIn('FAIL text layer is not canonical', log)
+                self.assertIn('U+FB01', log)
+
+    def test_only_authored_ligatures_are_mapped(self):
+        font = str(find_test_font())
+        self.assertEqual(retypeset.ligature_gid_map(font, set('xyz')), {})
+        self.assertIn('fi', retypeset.ligature_gid_map(font, set('fi')).values())
+        self.assertEqual(retypeset.ligature_gid_map('no-such.ttf', set('fi')), {})
 
 
 if __name__ == '__main__':

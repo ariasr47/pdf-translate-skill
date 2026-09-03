@@ -71,3 +71,63 @@ scripts keep shaping.
 
 `get_text()` of the merged paragraph equals the authored html's plain
 text; the drift gate fails a hand-built ligature; full unittest + corpus.
+
+## 7. Closing note — 3 September 2026, closed
+
+**Reproduced first, and the CSS route was measured out.** A constructed
+merge of the wrapped-paragraph fixture with "oficina" and "firma" in it:
+retypeset exits 0, `get_text()` returns `oﬁcina … ﬁrma oﬁcial`, four
+U+FB01, and `verify --translations` FAILs a correct paragraph. Both CSS
+switches the brief names were tried first on MuPDF 1.28.2 —
+`font-variant-ligatures: none` and `font-feature-settings: "liga" 0,
+"clig" 0` — and **neither is honoured**: the layer is byte-identical with
+them, without them and in the plain case. So the fix is the CMap.
+
+**Done bar, item by item.**
+
+1. **The layer holds the authored code points.** `ligature_gid_map()`
+   reads the ligature substitutions out of the font's **GSUB** table and
+   maps each ligature glyph id to its component code points; the
+   `/ToUnicode` override block now emits a UTF-16BE destination string per
+   entry, which a `bfchar` allows and a `bfrange` cannot. `authored_gid_map`
+   folds those in after the per-character pass, so a ligature never
+   overwrites a real character's mapping. Values are now the authored text
+   rather than a code point — the two tests that asserted the int form say
+   `' '` and `'-'` instead.
+
+   **GSUB and not cmap, measured:** on the subset `prepare_font` builds
+   for this job, `pymupdf.Font(subset).has_glyph(0xFB01)` is `0` — the
+   subsetter keeps the `liga` lookup and the ligature outline but drops
+   the ligature's own code point from the cmap, because the authored text
+   never contained it. A cmap-based lookup finds nothing exactly in the
+   case that had no other witness. GSUB finds gid 118 → `fi`.
+
+   Only ligatures whose components are all in the authored characters are
+   mapped: on this job the whole block is `{ff, fi, fl, ffi, ffl}`.
+
+2. **The gate names the class.** `DRIFT_RANGES` gains `(0x007F, 0x007F)`
+   and `(0xFB00, 0xFB06)`. The drift gate is always on, so a build that
+   still ships a ligature FAILs with `U+FB01` printed, with or without
+   `--translations` — both branches asserted.
+
+3. **Tests** (`StoryLigatureTests`, 5): the merge with the full font —
+   layer verbatim, placement PASS, canonical PASS; the same merge with a
+   `prepare_font` subset, asserting first that the subset's cmap has no
+   U+FB01 so the test proves the GSUB path; an inline `<b>oficina</b>`
+   line through `place_story_line`; a hand-built layer carrying U+FB01
+   that the gate must FAIL in both branches; and the map itself — empty
+   for text with no ligature components, empty for a missing file.
+
+4. **Shaped scripts unchanged.** The Arabic, Indic and Thai fixtures all
+   pass untouched. Ligature substitution in those scripts is read the same
+   way, which maps a lam-alef to its two logical characters — the same
+   answer `/ActualText` already gives.
+
+5. 181 tests, no skips, green locally; corpus table unchanged.
+   `metadata.version` 37 → 38.
+
+Not done, as the brief asked: nothing is written to the font file on disk;
+shaping is not disabled for any script; the skill text is not the fix —
+`gates.md` and `failure-modes.md` gained a paragraph each describing what
+the gate now covers, which is documentation of a gate, not advice in place
+of one.

@@ -417,27 +417,96 @@ def _font_key(name):
         ' ', '').lower()
 
 
+def ligature_gid_map(fontfile, chars):
+    """{glyph id: 'fi'} for the ligatures this text could have produced.
+
+    The Story engine shapes Latin too: HarfBuzz applies `liga`/`clig` by
+    default, and MuPDF 1.28 honours neither `font-variant-ligatures: none`
+    nor `font-feature-settings` (measured, row 24), so "oficina" is drawn
+    with the fi glyph and the layer says U+FB01 — or U+007F once the font
+    is subsetted. The glyph is read from GSUB, not from cmap: pyftsubset
+    keeps the substitution and the outline but drops U+FB01 from the cmap
+    when the authored text never contained it, so cmap cannot find it.
+
+    Only ligatures whose components are all authored are mapped, which
+    keeps the override block to the handful a job can actually reach.
+    """
+    try:
+        from fontTools.ttLib import TTFont
+        font = TTFont(fontfile, lazy=True, fontNumber=0)
+    except Exception:
+        return {}
+    try:
+        return _ligatures(font, chars)
+    except Exception:
+        return {}
+    finally:
+        try:
+            font.close()
+        except Exception:
+            pass
+
+
+def _ligatures(font, chars):
+    if 'GSUB' not in font:
+        return {}
+    lookups = font['GSUB'].table.LookupList.Lookup or []
+    cmap = font.getBestCmap()
+    lowest = {}
+    for cp, name in cmap.items():
+        if name not in lowest or cp < lowest[name]:
+            lowest[name] = cp
+    want = set(chars)
+    out = {}
+    for lookup in lookups:
+        for sub in (getattr(lookup, 'SubTable', None) or []):
+            # An extension lookup (type 7) wraps the real one.
+            sub = getattr(sub, 'ExtSubTable', sub)
+            for first, ligs in (getattr(sub, 'ligatures', None) or {}).items():
+                for lig in ligs:
+                    cps = [lowest.get(n)
+                           for n in [first] + list(lig.Component)]
+                    if any(c is None for c in cps):
+                        continue
+                    text = ''.join(chr(c) for c in cps)
+                    if not set(text) <= want:
+                        continue
+                    try:
+                        out[font.getGlyphID(lig.LigGlyph)] = text
+                    except Exception:
+                        continue
+    return out
+
+
 def authored_gid_map(fontfile, texts):
-    """{glyph id: code point} for every character placed with this font.
+    """{glyph id: authored text} for every character placed with this font.
 
     Two authored characters can share one glyph (space and NBSP, hyphen
     and soft hyphen, 立 and its compatibility ideograph). The lower code
     point wins: in every drift pair the canonical character is the lower
     one, and picking it is what makes the layer canonical.
+
+    A ligature glyph is nobody's character, so it is not reached by the
+    loop below and keeps whatever the font said; those come from GSUB and
+    map to more than one code point, which is why the values are strings.
     """
     try:
         font = pymupdf.Font(fontfile=fontfile)
     except Exception:
         return None, ''
     out = {}
+    chars = set()
     for text in texts:
         for ch in text or '':
+            chars.add(ch)
             cp = ord(ch)
             gid = font.has_glyph(cp)
             if not gid:
                 continue
-            if gid not in out or cp < out[gid]:
-                out[gid] = cp
+            if gid not in out or cp < ord(out[gid]):
+                out[gid] = ch
+    for gid, text in ligature_gid_map(fontfile, chars).items():
+        out.setdefault(gid, text)
     return out, font.name
 
 
@@ -447,15 +516,16 @@ def _override_block(gidmap):
     for i in range(0, len(items), 100):
         chunk = items[i:i + 100]
         lines.append(f'{len(chunk)} beginbfchar')
-        for gid, cp in chunk:
-            lines.append(f'<{gid:04x}> <{cp:04x}>' if cp <= 0xFFFF
-                         else f'<{gid:04x}> <{_utf16be_hex(cp)}>')
+        for gid, text in chunk:
+            # A bfchar destination may be several UTF-16BE code units, so
+            # one entry can say "this glyph is f then i"; a bfrange cannot.
+            lines.append(f'<{gid:04x}> <{_utf16be_hex(text)}>')
         lines.append('endbfchar')
     return ('\n' + '\n'.join(lines) + '\n').encode('ascii')
 
 
-def _utf16be_hex(cp):
-    return chr(cp).encode('utf-16-be').hex()
+def _utf16be_hex(text):
+    return text.encode('utf-16-be').hex()
 
 
 def canonicalize_text_layer(path, fontfiles, texts):

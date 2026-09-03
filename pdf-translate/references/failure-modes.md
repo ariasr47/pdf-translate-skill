@@ -197,7 +197,10 @@ After saving, `retypeset.py` rewrites `/ToUnicode` for the glyphs it
 placed to the code points you authored (a CMap is executed in order, so an
 appended `bfchar` block overrides an earlier `bfrange`). Where two authored
 characters share a glyph the lower code point wins — in every drift pair
-the canonical character is the lower one. `verify.py` then FAILs any
+the canonical character is the lower one. A ligature glyph is nobody's
+character, so it is read from the font's GSUB table and mapped to its
+components: without that, the Story engine's `fi` puts U+FB01 (or U+007F
+in a subset) where you wrote "oficina". `verify.py` then FAILs any
 drift-prone character that is in neither the original nor the mapping, and
 the placement gate compares verbatim instead of folding.
 

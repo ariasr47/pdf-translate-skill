@@ -24,7 +24,7 @@ original.pdf out.pdf --fill-text "…" --source-words-from segments.json
 | leak scan | untranslated running text in the source script (below) |
 | unshaped Arabic | a page whose Arabic letters are all isolated presentation forms was drawn letter by letter |
 | `/Opt` export parity | the export half of a choice entry differs from the original's, in value or order |
-| canonical text layer | the output reports NBSP, soft hyphen, U+2010/U+2011 or a CJK compatibility ideograph that is in neither the original nor the mapping (`/ToUnicode` drift) |
+| canonical text layer | the output reports NBSP, soft hyphen, U+2010/U+2011, a CJK compatibility ideograph or a Latin ligature (U+FB00–FB06, U+007F) that is in neither the original nor the mapping (`/ToUnicode` drift) |
 
 ## The leak scan
 
@@ -65,6 +65,16 @@ cannot be searched, copied or matched. After saving, retypeset rewrites
 `/ToUnicode` for the glyphs it placed to the code points you authored, and
 the always-on gate FAILs any of those characters that are in neither the
 original nor your mapping.
+
+The Story engine shapes Latin too. HarfBuzz applies `liga`/`clig`, so a
+merged paragraph or an inline-markup line draws "oficina" with the fi
+glyph; MuPDF honours neither `font-variant-ligatures` nor
+`font-feature-settings`, so the substitution cannot be switched off from
+the CSS. retypeset reads the ligatures out of the font's GSUB table — the
+subset that `prepare_font` builds keeps the substitution but drops
+U+FB01 from the cmap, which is why cmap cannot find them — and maps each
+ligature glyph to its component code points, so the layer says "oficina".
+Nothing is done to the font file itself.
 
 **Pushbutton chrome and caption width.** Captions live in `/MK /CA` and
 draw on top of the page; `get_text()` still sees them. Either rewrite them

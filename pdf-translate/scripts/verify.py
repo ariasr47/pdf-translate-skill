@@ -314,6 +314,10 @@ def normalize_ws(text):
 DRIFT_RANGES = (
     (0x00A0, 0x00A0), (0x00AD, 0x00AD), (0x202F, 0x202F), (0x2007, 0x2007),
     (0x2010, 0x2011), (0xF900, 0xFAFF), (0x2F800, 0x2FA1F),
+    # Story-engine ligatures (row 24): U+FB01 when the font carries the
+    # ligature's code point, U+007F when a subset dropped it. Either one
+    # means "oficina" is not in the layer and nobody can search for it.
+    (0x007F, 0x007F), (0xFB00, 0xFB06),
 )
 
 
