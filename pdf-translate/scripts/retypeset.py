@@ -756,6 +756,29 @@ def retypeset(stripped, segf, trf, out):
                     lim = min(lim, wr.x0)
         return lim - 1.5
 
+    def left_limit(pno, seg, segs):
+        """How far back a RIGHT-anchored run may grow (row 28).
+
+        A `right` core keeps the source's right edge and grows leftward, so
+        its width budget is the room on its left — the nearest same-row
+        obstacle's right edge, or the page margin — not the room on its
+        right, which is where the field it labels usually sits.
+        """
+        y0, y1 = seg['bbox'][1], seg['bbox'][3]
+        lim = 32.0
+        for o in segs:
+            if o is seg:
+                continue
+            if o['bbox'][2] < seg['bbox'][0] + 1 and not (
+                    o['bbox'][3] < y0 + 1 or o['bbox'][1] > y1 - 1):
+                lim = max(lim, o['bbox'][2])
+        for wr in widg.get(pno, []):
+            if wr.x1 < seg['bbox'][2] - 1 and not (
+                    wr.y1 < y0 + 1 or wr.y0 > y1 - 1):
+                if wr.x1 < seg['bbox'][0] + 2:
+                    lim = max(lim, wr.x1)
+        return lim + 1.5
+
     missing = []
     rotated_shaped = []
     glyph_misses = []
@@ -1001,8 +1024,14 @@ def retypeset(stripped, segf, trf, out):
                     x += part_adv(i, t, f, fs2)
                 fill_leaders(x, cur_end)
                 continue
-            maxw = (direction_limit(page, seg, dx, dy) if rot
-                    else right_limit(pno, seg, segs) - ox)
+            if rot:
+                maxw = direction_limit(page, seg, dx, dy)
+            elif core in right:
+                # Measured against the room it will occupy, not the room to
+                # the right of an origin it is not going to keep (row 28).
+                maxw = seg['bbox'][2] - left_limit(pno, seg, segs)
+            else:
+                maxw = right_limit(pno, seg, segs) - ox
             fs2 = fs if wsum <= maxw or wsum == 0 else max(4.0, fs * maxw / wsum)
             if fs and fs2 < fs and not shaped:
                 consider_ratio(pno, core, fs2 / fs)

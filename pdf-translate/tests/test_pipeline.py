@@ -5795,5 +5795,116 @@ class KeptTitleTokenTests(unittest.TestCase):
             self.assertIn('FAIL untranslated running text', log)
 
 
+
+ANCHOR_LABEL = 'BRANCH:'
+ANCHOR_TARGET = 'SUCURSAL Y CIUDAD:'
+ANCHOR_EDGE = 200.0
+
+
+def build_right_anchor_pdf(path, neighbour_x=None):
+    """A right-anchored label with a field immediately on its right, and
+    optionally a neighbour close on its left."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=300)
+    helv = pymupdf.Font('helv')
+    w = helv.text_length(ANCHOR_LABEL, 11)
+    page.insert_text((ANCHOR_EDGE - w, 80), ANCHOR_LABEL, fontsize=11)
+    tf = pymupdf.Widget()
+    tf.field_name = 'X'
+    tf.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+    tf.rect = pymupdf.Rect(ANCHOR_EDGE + 4, 68, 400, 88)
+    page.add_widget(tf)
+    if neighbour_x is not None:
+        page.insert_text((neighbour_x, 80), 'ID', fontsize=11)
+    doc.save(path)
+    doc.close()
+
+
+class RightAnchorRoomTests(unittest.TestCase):
+    """Row 28: a `right` core keeps the source's right edge and grows
+    leftward, but its width budget was the room to the RIGHT of the
+    original origin — which on a form is the field the label names. On
+    FL-100 that shrank labels with free room on their left (`SUCURSAL:`,
+    `Pág. N de 3`) for no reason: measured here at 0.47x, a hard FAIL,
+    where the label in fact fits at full size."""
+
+    def _run(self, tmp, neighbour_x=None, extra=None):
+        font = find_test_font()
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        build_right_anchor_pdf(src, neighbour_x)
+        extract_segments.extract_segments(src, outdir=tmp)
+        strip_text.strip_text(src, stripped)
+        targets = {ANCHOR_LABEL: ANCHOR_TARGET}
+        targets.update(extra or {})
+        write_mapping(tr, targets, font, right=[ANCHOR_LABEL])
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(
+                stripped, os.path.join(tmp, 'segments.json'), tr, out)
+        self.assertEqual(rc, 0, msg=buf.getvalue())
+        return out, span_edges(out), buf.getvalue()
+
+    def _size_of(self, path, text):
+        doc = pymupdf.open(path)
+        try:
+            for b in doc[0].get_text('dict')['blocks']:
+                for line in b.get('lines', []):
+                    for sp in line['spans']:
+                        if verify.normalize_ws_nbsp(sp['text']) == text:
+                            return sp['size']
+        finally:
+            doc.close()
+        raise AssertionError(f'{text!r} not in {path}')
+
+    def test_room_on_the_left_means_no_shrink(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out, edges, log = self._run(tmp)
+            x0, x1 = edges[ANCHOR_TARGET]
+            self.assertAlmostEqual(x1, ANCHOR_EDGE, delta=1.0)
+            self.assertAlmostEqual(self._size_of(out, ANCHOR_TARGET), 11.0,
+                                   delta=0.01)
+            # A translation this much longer than the source would have been
+            # measured against the field on its right and shrunk to 0.47x.
+            self.assertNotIn('scaled runs', log)
+            self.assertGreater(x0, 32.0)
+
+    def test_a_neighbour_on_the_left_still_bounds_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out, edges, log = self._run(tmp, neighbour_x=100.0,
+                                        extra={'ID': 'ID'})
+            x0, x1 = edges[ANCHOR_TARGET]
+            self.assertAlmostEqual(x1, ANCHOR_EDGE, delta=1.0)
+            size = self._size_of(out, ANCHOR_TARGET)
+            self.assertLess(size, 11.0)
+            self.assertGreater(size / 11.0, retypeset.SCALE_MIN)
+            # It stops clear of the neighbour's right edge, not over it.
+            self.assertGreaterEqual(x0, edges['ID'][1])
+            self.assertIn('scaled runs', log)
+
+    def test_a_plain_label_is_measured_on_its_right_as_before(self):
+        """Not in `right`: the budget is still the room to the right, so the
+        same target against the same field shrinks exactly as it used to."""
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_right_anchor_pdf(src)
+            extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            write_mapping(tr, {ANCHOR_LABEL: ANCHOR_TARGET}, font)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(
+                    stripped, os.path.join(tmp, 'segments.json'), tr, out)
+            log = buf.getvalue()
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn('scaled below', log)
+
+
 if __name__ == '__main__':
     unittest.main()

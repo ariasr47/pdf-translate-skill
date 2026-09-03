@@ -36,3 +36,51 @@ it need not be, and the author must reword or accept small type.
 ## 4. Proof
 
 The three placements on the fixture; full unittest + corpus.
+
+## 5. Closing note — 3 September 2026, closed
+
+**Reproduced first, with a before and after on the same fixture.** A
+label `BRANCH:` whose right edge is 200.0, a text field from 204 to 400,
+and 168 pt of empty page to its left; target `SUCURSAL Y CIUDAD:`, the
+core listed in `right`. Driving the shipped stages with the pre-fix
+`retypeset.py` and the fixed one, same fixture, same mapping:
+
+| | Free room on the left | Neighbour ending at x=111 |
+|---|---|---|
+| before | **0.47× — FAIL, no file saved** | 0.47× — FAIL |
+| after | **11.0 pt, full size**, right edge 200.0, left edge 88.5 | 8.64 pt (0.79×), right edge 200.0, left edge 112.5 |
+
+The budget had been `right_limit − origin`: on a form that is the width of
+the field the label names, which is exactly the space a right-anchored run
+is not going to use.
+
+**Done bar, item by item.**
+
+1. A new `left_limit(pno, seg, segs)` mirrors `right_limit`: the nearest
+   same-row obstacle's right edge — a segment's, a widget's — or the 32 pt
+   page margin, plus the same 1.5 pt gap `right_limit` leaves. For a core
+   in `right` the budget is `bbox[2] − left_limit(...)`; it is placed
+   unscaled when it fits there and shrinks only when it does not. In the
+   bounded case above the run starts at 112.5 against a limit of 112.5 —
+   it stops exactly where it was told to.
+2. `center`, plain and rotated runs are untouched: rotated still uses
+   `direction_limit`, everything else still `right_limit − ox`. A test
+   drives the same fixture and the same target *without* `right` and
+   asserts the old 0.7× FAIL is still there.
+3. **Tests** (`RightAnchorRoomTests`, 3): free room on the left → full
+   size, right edge on the original's, nothing in the scaled digest;
+   neighbour close on the left → shrinks, still ends on the original edge,
+   starts at or after the neighbour's right edge, and *is* in the digest;
+   the same label not in `right` → unchanged FAIL.
+   `test_right_list_anchors_the_right_edge` (the existing `right` fixture)
+   is untouched and passes.
+4. `references/retypeset.md` says which side each alignment is measured
+   against. 195 tests, no skips, green locally; corpus table unchanged.
+   `metadata.version` 40 → 41.
+
+Not done, as the brief asked: nothing new proposes `right` (row 21 owns
+that), and the run is bounded by the obstacle on its left rather than
+allowed to overlap it. One honest limit, the same one `right_limit` has
+always had: the obstacle is measured on the **original's** geometry, so a
+neighbour whose own translation grows can still crowd the gap. That is the
+author's business and the visual pass's, not the budget's.

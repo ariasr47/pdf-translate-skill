@@ -20,7 +20,10 @@ correctly. Pick a font that covers the target script
 ## Alignment and weight
 
 `center` re-centers on the original midpoint; `right` re-anchors on the
-original right edge. Use `center` only where the source is centred in its
+original right edge, and is measured against the room on its **left** —
+from the nearest same-row obstacle back there to the original right edge —
+because that is where a longer translation goes. (A plain or `center` run
+is still measured to the right of its origin.) Use `center` only where the source is centred in its
 own box (a column header, a title): a caption flush with a rule or a field
 is left-anchored, and centring a wider translation moves it off the thing
 it labels — past every gate. `fonts` takes four roles — `regular`, `bold`,
