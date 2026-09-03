@@ -74,7 +74,7 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 <div class="page">
   <div class="eyebrow">Program tracker · after the canary · updated 3 Sep 2026</div>
   <h1>pdf-translate Checklist</h1>
-  <p class="lede">Every row of the repository's own queue, of the September audit's roadmap and of both canary runs is now closed, with tests. What remains is one row from the evening review (<code>REVIEW-2026-09-02.md</code>): eval automation. Ticks are saved in this browser only.</p>
+  <p class="lede">Every row of the repository's own queue, of the September audit's roadmap and of both canary runs is now closed, with tests. What remains is one row from the evening review (<code>REVIEW-2026-09-02.md</code>): eval automation, blocked on an early-access grant. With the queue drained, canary run 3 is what produces the next rows. Ticks are saved in this browser only.</p>
 
   <div class="progress" role="status" aria-live="polite">
     <div class="bar"><span id="bar"></span></div>
@@ -89,12 +89,12 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
   <section>
     <h2>Open — product lane, groomed 2 Sep 2026</h2>
-    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Lane A is closed and so is P7; what is left here is P4, which still needs its brief written.</p>
+    <p>From the evening review (<code>docs/REVIEW-2026-09-02.md</code> §5). Same discipline as the rows above — one sitting, a closed bar, non-goals, proof — but triggered by product evidence, never by inventing a gate. Lane A is closed and so is P7. P4 is all that is left, and it is blocked on an early-access grant for <code>claude plugin eval</code> — the brief and the cases are written; nothing has run them.</p>
     <ol class="items">
       <li class="item" data-id="evalauto">
         <input type="checkbox" id="c-evalauto"><div class="head"><span class="title"><label for="c-evalauto">P4: eval automation from the canary</label></span><span class="chip p2">P2</span><span class="chip neutral">M</span></div>
-        <p class="detail"><code>claude plugin eval</code> (present in 2.1.236) runs <code>evals/**/case.yaml</code> with a no-plugin baseline arm, an LLM judge, a JSON report and a threshold exit code. Three cases (the two eval fixtures and the canary fixture) with graders wrapping <code>dev/canary/score.py</code> for the objective half; the visual-pass axis stays human; one report committed under <code>dev/canary/runs/</code>.</p>
-        <p class="meta">not done: CI on every push (cost) · naming a winner · machine-scoring the visual pass</p>
+        <p class="detail"><strong>Blocked on an account grant, not on work.</strong> The brief exists (<code>dev/goals/P4-eval-automation.md</code>), and so do three cases under <code>pdf-translate/evals/</code> — the uncoached prompts from <code>evals.json</code>, four regex graders over the trace for the objective half, one leak check and two LLM graders for the identity record and honest delivery — with <code>claude plugin validate --strict</code> still passing and the always-on token cost unchanged. But <strong><code>claude plugin eval</code> is in early access and is not enabled for this account</strong>: every form of the command, <code>eval init --bare</code> included, exits with "<code>plugin eval</code> is currently in early access". Nothing has parsed the cases, no report exists, and the row cannot close here. Needs the grant, then one run and one committed report.</p>
+        <p class="meta">not done: CI on every push (cost) · naming a winner · machine-scoring the visual pass · <em>and the run itself, until the grant lands</em></p>
       </li>
     </ol>
   </section>

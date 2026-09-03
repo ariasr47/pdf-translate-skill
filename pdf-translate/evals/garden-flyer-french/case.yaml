@@ -1,0 +1,12 @@
+schema_version: "1.0"
+tags: [flyer, latin]
+runs: 1
+scaffold_script: |
+  python3 evals/make_fixtures.py --outdir "$PWD/fixtures"
+execution:
+  prompt: |
+    Here's a flyer for our garden workshop: fixtures/garden_flyer.pdf. We need
+    a French version that looks exactly like the original — same colors, same
+    layout, just French text.
+  max_turns: 150
+  timeout_seconds: 2400

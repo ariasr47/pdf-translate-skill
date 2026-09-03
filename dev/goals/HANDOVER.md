@@ -61,13 +61,17 @@ pikepdf 10) for everything above.
 - Working tree clean apart from `dev/canary/last-score.json`, a scratch
   file `score.py` rewrites on every run. Nothing is half-finished.
 - Program rows 01–29, the whole September audit roadmap and lane B's P7
-  are **closed**. **Lane A is empty**; lane B holds only **P4**.
+  are **closed**. **Lane A is empty.** Lane B holds only **P4**, which is
+  **blocked**: its brief and its three cases exist, but `claude plugin
+  eval` is in early access and is not enabled for this account, so
+  nothing has ever parsed them.
 - The canary has run twice. Run 1 opened 18, 19 and 20; the wild corpus
   21, 22 and 23; run 2 (Opus 5, Sonnet 5, Fable 5.1 and Haiku 4.5 on the
   fixture, Fable 5.1 on the real FL-100 —
   `dev/canary/runs/2026-09-03-summary.md`) opened 24–29 and gave P7 its
-  brief. All twelve are closed, and so is P7. **P4 is next** — and it is
-  the last row; after it, run the canary rather than inventing one.
+  brief. All twelve are closed, and so is P7. **P4 is the last row and it
+  is blocked on an account grant, not on work.** With the queue drained,
+  the next thing that produces rows is canary run 3.
 
 ---
 
@@ -213,12 +217,20 @@ always deleted and reported; a certified source is flagged. The orphaned
 
 ## 5. What is not done
 
-### One row, from product evidence
+### One row, and it is blocked
 
-Lane A is empty and P7 is closed. What is open is **P4**, eval
-automation, from the evening review (`docs/REVIEW-2026-09-02.md` §5):
-its bar is in the table in `PROGRAM.md` and it has no brief file yet —
-writing that brief is the first half of the sitting.
+Lane A is empty and P7 is closed. The only open row is **P4**, eval
+automation (`goals/P4-eval-automation.md`, written 3 September). Three
+`case.yaml` cases and their graders are in `pdf-translate/evals/` and
+`claude plugin validate --strict` passes with them, but **`claude plugin
+eval` is in early access and is not enabled for this account** — every
+form of the command, including `eval init --bare`, exits with "`plugin
+eval` is currently in early access". So the cases have never been
+parsed, no report exists, and the row cannot close here. It needs the
+grant, then one run; the brief's §7 says exactly what to do with it.
+
+With the queue drained, **canary run 3** is what produces the next rows.
+Do not invent one.
 
 The twelve closed rows below are kept for the record. Each came from a
 model or a real document walking into something:
@@ -235,7 +247,8 @@ model or a real document walking into something:
 | **26** | `goals/26-merge-box.md` | **Closed 3 Sep.** `merges[].box` replaces the union bbox as the re-flow rect, used exactly as given; malformed boxes refused by name. Measured: 0.7× FAIL without, 1.0× and three lines with. `propose-merges` writes `"box": null`; geometry still chooses nothing. | Fable 5.1, Sonnet 5, Opus 5 |
 | **29** | `goals/29-override-plain-value.md` | **Closed 3 Sep.** The coverage check counts an override as coverage, so a core it covers everywhere may be `null`; an uncovered occurrence still fails and names its page. verify and `qa_check` needed no change and are now asserted. | Fable 5.1, real FL-100 |
 
-All twelve measured rows are closed, and so is every lane B row but one:
+All twelve measured rows are closed, and so is every lane B row but the
+blocked one:
 P2 (the repository is a plugin), P6 (the warning digest), P3 (`SKILL.md`
 under 500 body lines), P1 (the wild corpus), P5, and P7 (the notice
 channel — `notices` in `translations.json`, placed by retypeset through
@@ -331,16 +344,20 @@ Tests, from pdf-translate/:
 committed. Program rows 01-29, the audit roadmap and lane B's P7 are
 closed. Do not redo them. Lane A is empty; do not invent a row.
 
-Next sitting: P4, eval automation. Its bar is the P4 row of "Backlog
-after the review" in dev/goals/PROGRAM.md and REVIEW-2026-09-02.md §5;
-there is no brief file, so write dev/goals/P4-eval-automation.md first,
-then close it. Do not mix in a canary run. No glossary. Not FL-150 as a
-fixture. When P4 is green, the next thing is canary run 3, not a new row.
+The queue is drained. P4 is the only row left and it is BLOCKED: `claude
+plugin eval` is in early access and is not enabled for this account, so
+the three cases written for it under pdf-translate/evals/ have never been
+parsed. Read dev/goals/P4-eval-automation.md section 7 before touching
+it; if the grant is not in place, do not rewrite the cases speculatively.
+
+Next sitting, therefore: canary run 3 (dev/canary/README.md), which is
+what produces the next rows. No glossary. Not FL-150 as a fixture.
 
 When the bar is green: full unittest + corpus, bump metadata.version in
 SKILL.md, commit, stop.
 ```
 
-P4 is the last queued row; after it comes canary run 3, not a new row. If the user wants the
+P4 is the last queued row and it is blocked on an account grant; with the
+queue drained, canary run 3 is what comes next. If the user wants the
 stale audit HTML or the installed-copy re-sync instead, say so and do only
 that — neither is a gate, and neither needs a fixture.

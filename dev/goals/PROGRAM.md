@@ -198,13 +198,16 @@ model's defect; never a gate.
 | P1 | Wild corpus, measured | **Closed 2 Sep evening.** 17 public PDFs (`dev/wild/SOURCES.md`), 449 pages, 8 of them hybrid XFA: 17/17 `translate`, zero crashes, zero timeouts, 126 pages in 37 s; everything left after strip is annotation text; page-1 renders keep every graphic. It found friction, not wrong verdicts: rows 21 and 22 and lane B row P6 (`dev/wild/ANALYSIS.md`). Re-run: `pdf-translate/.venv/bin/python dev/wild/probe.py` | — |
 | P6 | Warnings at scale | **Closed 2 Sep evening.** extract prints a per-kind digest — counts and what each kind asks — then at most `--max-per-kind` lines per kind (the booklet: 2,394 lines → 61); the skill text says what each kind wants and write/find/say is a list to confirm; widget-text data values (USCIS `PDF417BarCode1`) are identity-mapped by instruction. Nothing leaves the JSON | — |
 | P3 | `SKILL.md` under 500 lines | **Closed 2 Sep evening.** Body 573 → 493 lines, ~7.6k → ~6.4k tokens on invoke, by moving five regions into `references/` (new `gates.md`, `widget-text.md`, `retypeset.md`; sections added to `compliance.md`, `fonts.md`, `translations-format.md`), one-line rules left behind, frontmatter untouched but the version. The 5,000-token target is not met without deleting rules — C2 decides whether the tail matters | — |
-| **P4** | Eval automation | Three `evals/**/case.yaml` cases with graders wrapping `dev/canary/score.py` plus an LLM grader for the identity and honest-delivery axes; `claude plugin eval . --runs 1 --json` produces a report; a `--threshold` documents the bar; one report committed under `dev/canary/runs/` | Running in CI on every push; naming a winner; scoring the visual pass by machine |
+| **P4** | Eval automation | **Blocked 3 Sep, still open** (`goals/P4-eval-automation.md` — the brief now exists). Three cases and their graders are written under `pdf-translate/evals/` and `claude plugin validate --strict` still passes, but **`claude plugin eval` is in early access and is not enabled for this account**, so nothing has parsed them and no report exists. Needs the grant, then one run: `claude plugin eval . --runs 1 --threshold 0.8 --scaffold --json` | Running in CI on every push; naming a winner; scoring the visual pass by machine |
 | P7 | Notice channel | **Closed 3 Sep.** `notices` in translations.json — `{page, text, box, size?, bold_lead?}` — placed by retypeset into the author's rect with the job's fonts, through the glyph check (both roles), the scale report, the canonical layer and the placement gate. Malformed notices refused by name before anything is drawn; no page added; the leak scan untouched and the quoted `/Title` still a kept note. `compliance.md` §1 says how. Was four of five canary runs writing their own script | — |
 | P5 | One source of truth | **Closed 2 Sep evening**: README count removed and CI badge added; audit HTML is a banner-marked snapshot; findings §15; tracker carries both lanes. Rule: `checklist.html` tracks, this file queues, `HANDOVER.md` cold-starts; nothing else states counts or open rows | — |
 
 **Order:** lane A is closed (24, 25, 27, 28, 26, 29 all on 3 September,
 in that order, one commit and one `metadata.version` bump each), and so
-is P7. What is left is **P4**, and it needs its brief written first.
+is P7. **P4 is the last row and it is blocked**: its brief and its three
+cases exist, but `claude plugin eval` is in early access and is not
+enabled here, so nothing has run them. It needs the account grant, not
+another sitting's work.
 Every row above came from a measurement — a canary run or the wild
 corpus — never from invention; when P4 is closed, run the canary again
 rather than inventing a row.

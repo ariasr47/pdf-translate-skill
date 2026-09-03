@@ -1,0 +1,11 @@
+schema_version: "1.0"
+tags: [form, latin]
+runs: 1
+scaffold_script: |
+  python3 evals/make_fixtures.py --outdir "$PWD/fixtures"
+execution:
+  prompt: |
+    translate the pdf form at fixtures/permission_form.pdf into spanish for
+    me, keep everything working and looking the same please
+  max_turns: 150
+  timeout_seconds: 2400

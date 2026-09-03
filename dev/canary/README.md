@@ -70,6 +70,17 @@ against it, and reports every write/find/say span from the original as kept
 or lost. Run it before scoring, so the arguable half is the only part
 anyone has to argue about.
 
+The same five checks are also written as graders in
+`pdf-translate/evals/` (three cases for `claude plugin eval`), so the
+objective half can be run on demand against the plugin without spawning a
+canary by hand. That suite is the objective half **only**: the visual pass
+has no grader and never will, and the identity-record and honest-delivery
+axes go to an LLM judge there rather than to you. The canary is still the
+whole rubric, and it is what opens rows. Those cases have not been executed
+yet — `claude plugin eval` is in early access and is not enabled on this
+machine; `pdf-translate/evals/README.md` says exactly what that leaves
+unverified.
+
 ## Reporting
 
 Write `dev/canary/runs/<date>-<model>.md` with the five scores, the evidence
