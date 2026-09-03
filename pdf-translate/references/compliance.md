@@ -58,7 +58,10 @@ not add a page unless the requester asks (a page count change breaks the
 language, so verify's leak scan keeps a run that equals the original's
 `/Title` — quote the title as one unit, in the source language, with
 target-language words around it — and prints it as a note instead of a
-failure. Anything longer that merely contains the title is still a leak,
+failure. Both sides are compared on the words the scan can actually see,
+so a form number and a short prefix (`FL-100 Petition—Marriage/Domestic
+Partnership`) do not stop the keep from firing. Anything longer that
+merely contains the title is still a leak,
 and a page with a notice is not exempt. A source-language title that is
 not the file's `/Title`, or an issuer's multi-word name (`Riverside
 Elementary School`), is a decision you made, not something the scan can

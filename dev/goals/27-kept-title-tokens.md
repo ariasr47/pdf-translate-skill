@@ -36,3 +36,45 @@ fires. The author allowlisted two spellings by guesswork.
 
 The FL-100 title kept under a neutral `verify`; the row-20 fixtures
 unchanged; full unittest + corpus.
+
+## 5. Closing note — 3 September 2026, closed
+
+**Reproduced first, at the unit the row is about.** With the real title,
+`verify._run_key('FL-100 Petition—Marriage/Domestic Partnership')` is
+`fl petition marriage domestic partnership` while the run the scan builds
+keys as `petition marriage domestic partnership`, so `_kept` returned
+`False` and row 20's keep never fired. That is the whole defect: the scan
+cannot see `FL` (two letters, under the Latin floor) or `100` (not a
+word), but the title's key still carried them.
+
+**Done bar, item by item.**
+
+1. `_run_key` now drops tokens below the branch's own word floor —
+   `MIN_WORD_LETTERS.get(script, 2)`, the same number
+   `source_words_from_text` uses to decide what a word is. Both sides go
+   through it, so the filter is symmetric and the keep fires in every
+   branch. Non-letter tokens were already dropped.
+2. The row-20 tests stand untouched. A proper part of the title is not
+   kept (`Petition Marriage Domestic`, `Marriage Domestic Partnership`),
+   and a run that contains the title is still a leak — asserted at unit
+   level and end to end, where one extra source word beside the quote
+   brings the FAIL back.
+3. **Tests** (`KeptTitleTokenTests`, 6): the key equality and the keep,
+   with the issuer's em dash and with a hyphen; two proper parts; the
+   containing run; the spaceless branch unchanged (nothing dropped, still
+   whitespace-removed); and the end-to-end notice on a `/Title` of
+   `FL-100 Petition-Marriage/Domestic Partnership` — verify exits 0, the
+   run is printed as a kept note, and adding ` Form` to the quote fails it
+   again.
+
+   One thing the fixture cannot show, and the test says so: the hyphen
+   makes `Petition-Marriage` a single token, so a quote with one word
+   missing drops to two tokens and is *isolated* rather than running
+   text. The missing-word case is covered at unit level instead.
+4. `references/compliance.md` says the comparison is on the words the scan
+   can see. 192 tests, no skips, green locally; corpus table unchanged.
+   `metadata.version` 39 → 40.
+
+Not done, as the brief asked: no prefix or substring matching, the word
+floor did not move, and titles still come only from the original's
+`/Title`.

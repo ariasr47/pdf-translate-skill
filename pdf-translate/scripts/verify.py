@@ -782,11 +782,21 @@ def _run_key(text, script='Latin'):
     Spaceless scripts compare with whitespace removed. Quotes, commas and
     case around a quoted title must not matter; a missing or extra word
     must.
+
+    Tokens below the branch's own word floor are dropped from BOTH sides
+    (row 27). The scan cannot see them in a run — `FL` and `100` in
+    `FL-100 Petition—Marriage/Domestic Partnership` are two letters and a
+    number, so the run it builds is `Petition Marriage Domestic
+    Partnership` — and a title key that still carried them could never
+    equal it. A word the scan can see is still a word: a run missing one
+    of those is not the title.
     """
     text = normalize_ws_nbsp(text).lower()
     if script in SPACELESS_SCRIPTS:
         return re.sub(r'\s+', '', text)
-    return ' '.join(re.findall(r"[^\W\d_]+", text))
+    minlen = MIN_WORD_LETTERS.get(script, 2)
+    return ' '.join(w for w in re.findall(r"[^\W\d_]+", text)
+                    if len(w) >= minlen)
 
 
 def _kept(run, keep, kept, script='Latin'):

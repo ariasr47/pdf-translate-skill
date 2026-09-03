@@ -5681,5 +5681,119 @@ class ShrinkBandTests(unittest.TestCase):
         self.assertEqual(retypeset.SCALE_MIN, 0.7)
 
 
+
+# The real Judicial Council title, with its em dash flattened to a hyphen:
+# helv redraws U+2014 as something else, and the dash is not what this row
+# is about. `FL` (two letters) and `100` (not a word) are.
+FL_TITLE = 'FL-100 Petition-Marriage/Domestic Partnership'
+FL_TITLE_EM = 'FL-100 Petition\u2014Marriage/Domestic Partnership'
+# Short, and the title early: the fixture page is 400 pt wide and a 7 pt
+# notice line runs off it, so a long preamble would clip the quote itself.
+FL_LINE = 'Traduccion no oficial de ' + FL_TITLE + '. Solo informativa.'
+
+
+class KeptTitleTokenTests(unittest.TestCase):
+    """Row 27: row 20's keep compares a run against the original /Title, but
+    the scan cannot see every part of a real title. On FL-100 `FL` is under
+    the four-letter Latin floor and `100` is not a word, so the run the scan
+    builds is `Petition Marriage Domestic Partnership` and the title's key
+    never equalled it. Fable allowlisted two spellings by guesswork."""
+
+    def test_the_title_key_uses_the_branch_word_floor(self):
+        run = 'Petition Marriage Domestic Partnership'
+        self.assertEqual(verify._run_key(FL_TITLE), verify._run_key(run))
+        self.assertTrue(verify._kept(run, [FL_TITLE], []))
+        # The dash the issuer actually uses makes no difference either.
+        self.assertTrue(verify._kept(run, [FL_TITLE_EM], []))
+
+    def test_a_part_of_the_title_is_still_running_text(self):
+        for short in ('Petition Marriage Domestic',
+                      'Marriage Domestic Partnership'):
+            self.assertFalse(verify._kept(short, [FL_TITLE], []),
+                             msg=f'{short} is not the whole title')
+
+    def test_a_run_that_contains_the_title_is_still_a_leak(self):
+        self.assertFalse(verify._kept(
+            'the FL-100 Petition Marriage Domestic Partnership form',
+            [FL_TITLE], []))
+
+    def test_the_spaceless_branch_is_unchanged(self):
+        # CJK compares with whitespace removed and nothing dropped.
+        self.assertEqual(verify._run_key('\u5e73\u62102 \u5e74', script='CJK'),
+                         '\u5e73\u62102\u5e74')
+        self.assertTrue(verify._kept('\u7533\u8acb\u66f8', ['\u7533\u8acb\u66f8'],
+                                     [], script='CJK'))
+
+    def test_a_notice_quoting_a_numbered_title_is_kept_end_to_end(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            noticed = os.path.join(tmp, 'noticed.pdf')
+            build_titled_pdf(src, title=FL_TITLE)
+            extract_segments.extract_segments(src, outdir=tmp)
+            segs = os.path.join(tmp, 'segments.json')
+            strip_text.strip_text(src, stripped)
+            write_mapping(tr, {
+                FL_TITLE: 'FL-100 Peticion-Matrimonio/Pareja de hecho',
+                NOTICE_SENTENCE: 'Devuelva este formulario a la oficina.',
+                NOTICE_ISSUER: NOTICE_ISSUER,
+            }, font)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(stripped, segs, tr, out)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            add_notice(out, noticed, line=FL_LINE)
+
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, noticed, source_words_from=segs,
+                                   allow=[NOTICE_ISSUER])
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('PASS no untranslated running text', log)
+            note = [l for l in log.splitlines() if l.startswith('note:')]
+            self.assertEqual(len(note), 1, msg=log)
+            self.assertIn('Petition', note[0])
+
+    def test_a_longer_run_around_the_title_still_leaks(self):
+        """The keep is the title, not a prefix of it: one more source word
+        beside the quote and the run is running text again. (Dropping a
+        word cannot be tested here — the hyphen makes `Petition-Marriage`
+        one token, so a shortened quote falls under the three-word
+        threshold and is isolated rather than running text.)"""
+        font = find_test_font()
+        broken = FL_LINE.replace(FL_TITLE, FL_TITLE + ' Form')
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            noticed = os.path.join(tmp, 'noticed.pdf')
+            build_titled_pdf(src, title=FL_TITLE)
+            extract_segments.extract_segments(src, outdir=tmp)
+            segs = os.path.join(tmp, 'segments.json')
+            strip_text.strip_text(src, stripped)
+            write_mapping(tr, {
+                FL_TITLE: 'FL-100 Peticion-Matrimonio/Pareja de hecho',
+                NOTICE_SENTENCE: 'Devuelva este formulario a la oficina.',
+                NOTICE_ISSUER: NOTICE_ISSUER,
+            }, font)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(stripped, segs, tr, out)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            add_notice(out, noticed, line=broken)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, noticed, source_words_from=segs,
+                                   allow=[NOTICE_ISSUER])
+            log = buf.getvalue()
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn('FAIL untranslated running text', log)
+
+
 if __name__ == '__main__':
     unittest.main()
