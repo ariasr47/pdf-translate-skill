@@ -19,9 +19,9 @@ jobs:
       run:
         working-directory: pdf-translate
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
 
@@ -34,7 +34,7 @@ jobs:
       # fetched, never committed; a fetch failure must not turn into a
       # silent skip, so the check step is separate and fatal.
       - name: Cache test fonts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: pdf-translate/tests/fonts
           key: noto-fonts-v1
@@ -55,9 +55,9 @@ jobs:
     name: plugin manifest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
 

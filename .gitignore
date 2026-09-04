@@ -34,6 +34,9 @@ pdf-translate/evals/fixtures/
 # Test fonts are fetched (pdf-translate/tools/fetch_test_fonts.py), not committed
 pdf-translate/tests/fonts/*.ttf
 dev/canary/fixtures/
+# score.py rewrites this on every run and it holds absolute paths to files
+# that are themselves gitignored; the durable record is dev/canary/runs/.
+dev/canary/last-score.json
 
 # Wild-corpus PDFs are downloaded by dev/wild (public, recorded by URL and size), never committed
 dev/wild/files/
