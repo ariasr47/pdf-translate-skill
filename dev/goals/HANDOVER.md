@@ -293,8 +293,16 @@ has GitHub credentials. The manual copy on the Windows box
 (`%APPDATA%\Claude\…\skills\pdf-translate`, version 16) is replaced by
 that install; do not copy directories by hand again. `plugin.json`'s
 version is `metadata.version` as `N.0.0` and CI fails when they disagree.
-The install from GitHub itself has not been exercised from this machine —
-the first `/plugin install` on the Windows box is the proof.
+
+**The install from GitHub is proven** (3 September, this Mac):
+`claude plugin marketplace add ariasr47/pdf-translate-skill` clones over
+HTTPS and validates, `claude plugin install pdf-translate@pdf-translate-skill`
+exits 0, and `plugin list` shows **47.0.0, enabled, user scope**. The
+installed copy under
+`~/.claude/plugins/marketplaces/pdf-translate-skill/pdf-translate/` carries
+the whole skill — 11 scripts, 8 references, `SKILL.md` at `version: "47"`
+— not just the frontmatter. Later versions: `marketplace update
+pdf-translate-skill`, then `plugin update pdf-translate`.
 
 `docs/audit-2026-09-01.html` carries a snapshot banner and is not
 maintained; `docs/checklist.html` is the tracker.
