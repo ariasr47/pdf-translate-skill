@@ -71,3 +71,44 @@ accepts must not crash the step before it.
 
 Both reproductions passing; a notice with an accent and curly quotes
 building end to end; full unittest + corpus.
+
+## 7. Closing note — 3 September 2026, closed
+
+**Both halves already reproduced** by canary run 3 and confirmed directly
+before touching anything:
+
+```
+null core           -> RAISES TypeError 'NoneType' object is not iterable
+notice-only chars   -> rc 0 | missing from the subset: ['ó', '“', '”']
+```
+
+After the fix, the same script prints `null core -> rc 0` and
+`missing from the subset: []`.
+
+**Done bar, item by item.**
+
+1. A `null` value is skipped rather than iterated. It means "covered by an
+   override, never drawn as a plain value" (row 29), so there is nothing
+   to harvest from it and the rest of the charset is exactly what it would
+   have been with that core absent.
+2. `notices[].text` is harvested. `‖` is discarded once at the end, so the
+   notice's weight split is dropped the same way a translation's is.
+3. The whole walk is now **`job_charset(conf)`** — one function, taking
+   the mapping and returning the set, with a docstring that says it is the
+   one place to add the next block and names the two that were missed this
+   way. `prepare_font()` calls it and nothing else changed.
+4. **Tests** (`JobCharsetTests`, 5): the null core skipped at unit level
+   and through `prepare_font.main` (asserting the override's own parts are
+   in the subset); the notice harvested and `‖` not; the printable floor
+   on an empty mapping; and the end of the story — a job whose accents and
+   curly quotes appear **only** in the notice, subsetted and then built
+   through retypeset with the glyph check silent and the notice verbatim
+   in the layer. Re-introducing both halves in place fails four of the
+   five.
+5. `references/fonts.md` says what the charset covers and that
+   `job_charset` is where a new block goes. 219 tests, no skips, green
+   locally; corpus table unchanged. `metadata.version` 45 → 46.
+
+Not done, as the brief asked: nothing is added "just in case", the
+charset still reads only the mapping, and the glyph check is untouched —
+it is the thing that caught this, and it stays exactly as strict.

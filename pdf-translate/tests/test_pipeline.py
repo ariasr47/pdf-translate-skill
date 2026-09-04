@@ -11,6 +11,7 @@ import json
 import os
 import re
 import shutil
+import string
 import subprocess
 import sys
 import tempfile
@@ -6456,6 +6457,109 @@ class StripReportOrderTests(unittest.TestCase):
                 self.assertEqual(xo['/Xa'].objgen, xo['/Xd'].objgen)
             finally:
                 pdf.close()
+
+
+
+NOTICE_ACCENTS = 'Traducci\u00f3n \u201cno oficial\u201d.'
+
+
+class JobCharsetTests(unittest.TestCase):
+    """Row 30: the subset is built from the mapping, and two blocks that
+    shipped on 3 September were not in that walk. A `null` core — legal
+    wherever an override covers every occurrence (row 29) — raised
+    TypeError, and `notices` (P7) was never read, so a character used only
+    in the notice was missing from the subset and retypeset's glyph check
+    then FAILed a correct build. Opus 5 and Fable 5.1 hit them
+    independently on canary run 3."""
+
+    def test_a_null_core_is_skipped_not_iterated(self):
+        conf = {'translations': {'Public aid': None, 'Other': 'Otra'},
+                'overrides': [{'page': 0, 'contains': 'Public aid',
+                               'parts': [{'text': 'Ayuda', 'x': 72.0}]}]}
+        chars = prepare_font.job_charset(conf)
+        self.assertLessEqual(set('Otra'), chars)
+        self.assertLessEqual(set('Ayuda'), chars)
+
+    def test_notice_text_is_harvested_and_the_split_is_not(self):
+        conf = {'translations': {'Hi': 'Hola'},
+                'notices': [{'page': 0, 'text': 'Lead\u2016' + NOTICE_ACCENTS,
+                             'box': [40, 700, 560, 745]}]}
+        chars = prepare_font.job_charset(conf)
+        self.assertLessEqual(set(NOTICE_ACCENTS), chars)
+        self.assertNotIn('\u2016', chars)
+
+    def test_an_empty_mapping_still_gives_the_printable_floor(self):
+        chars = prepare_font.job_charset({})
+        self.assertLessEqual(set(string.printable) - {'\u2016'}, chars)
+
+    def test_a_null_core_no_longer_crashes_prepare_font(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tr = os.path.join(tmp, 'translations.json')
+            out = os.path.join(tmp, 'subset.ttf')
+            Path(tr).write_text(json.dumps({
+                'fonts': {}, 'translations': {'Public aid': None,
+                                              'Other': 'Otra linea.'},
+                'merges': [], 'center': [], 'skip': [],
+                'overrides': [{'page': 0, 'contains': 'Public aid',
+                               'parts': [{'text': 'Ayuda', 'x': 72.0}]}],
+            }, ensure_ascii=False), encoding='utf-8')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = prepare_font.main([str(find_test_font()), tr, out])
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            font = pymupdf.Font(fontfile=out)
+            for ch in 'AyudaOtralinea':
+                self.assertTrue(font.has_glyph(ord(ch)), msg=ch)
+
+    def test_a_notice_only_character_survives_into_a_build(self):
+        """The end of the story: subset the font for a job whose accents and
+        curly quotes appear ONLY in the notice, then build with it and let
+        the glyph check have its say."""
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            subset = os.path.join(tmp, 'subset.ttf')
+            build_titled_pdf(src)
+            extract_segments.extract_segments(src, outdir=tmp)
+            segs = os.path.join(tmp, 'segments.json')
+            strip_text.strip_text(src, stripped)
+            notice = {'page': 0, 'text': NOTICE_ACCENTS,
+                      'box': list(NOTICE_BOX), 'size': 7}
+            # Plain ASCII everywhere but the notice.
+            targets = {NOTICE_TITLE: 'Permiso de excursion',
+                       NOTICE_SENTENCE: 'Devuelva este formulario.',
+                       NOTICE_ISSUER: NOTICE_ISSUER}
+            conf = {'fonts': {}, 'translations': targets, 'merges': [],
+                    'overrides': [], 'center': [], 'skip': [],
+                    'notices': [notice]}
+            Path(tr).write_text(json.dumps(conf, ensure_ascii=False),
+                                encoding='utf-8')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = prepare_font.main([str(find_test_font()), tr, subset])
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            font = pymupdf.Font(fontfile=subset)
+            for ch in NOTICE_ACCENTS:
+                self.assertTrue(font.has_glyph(ord(ch)),
+                                msg=f'{ch!r} missing from the subset')
+
+            conf['fonts'] = {'regular': subset, 'bold': subset}
+            Path(tr).write_text(json.dumps(conf, ensure_ascii=False),
+                                encoding='utf-8')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(stripped, segs, tr, out)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertNotIn('cannot draw', log)
+            doc = pymupdf.open(out)
+            try:
+                self.assertIn(NOTICE_ACCENTS,
+                              verify.normalize_ws(doc[0].get_text()))
+            finally:
+                doc.close()
 
 
 if __name__ == '__main__':

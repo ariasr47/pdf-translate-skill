@@ -92,6 +92,13 @@ and approximate weight. Expansion warning: EN→DE/FR/ES/RU typically grows
   glyphs in a user's typed name is the worse trade.
 - Re-run prepare_font.py whenever translations change: a character added
   after subsetting renders as nothing.
+- The harvested charset is every block of `translations.json` that gets
+  drawn — targets, `merges[].html`, `overrides[].parts[].text` and
+  `notices[].text` — collected by `job_charset()`. A `null` core is
+  skipped, not iterated: it is covered by an override and never drawn.
+  When the format grows a block, that function is the one place to add
+  it, or the subset silently will not cover it and retypeset's glyph
+  check will fail a correct build.
 - `prepare_font.py` refuses a source font whose `OS/2.fsType` forbids
   embedding or subsetting. Noto, DejaVu and the other OFL families are
   always fine; a system font shipped with an operating system usually is

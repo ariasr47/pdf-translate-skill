@@ -87,6 +87,36 @@ def embedding_permission(path):
     return fs, None
 
 
+def job_charset(conf):
+    """Every character this mapping will draw, as a set.
+
+    ONE place: when translations.json grows a block that retypeset draws,
+    add it here too or the subset will not cover it. Two blocks were
+    missed exactly that way and canary run 3 found both (row 30) — a
+    `null` core, which is legal wherever an override covers every
+    occurrence, raised on `chars.update(None)`; and `notices`, whose text
+    is the one string in the file that is not the translation of an
+    existing span.
+    """
+    chars = set(string.printable)
+    for v in (conf.get('translations') or {}).values():
+        # None is "covered by an override, never drawn as a plain value"
+        # (row 29), not a string to iterate.
+        if v:
+            chars.update(str(v))
+    for m in conf.get('merges') or []:
+        chars.update(m.get('html') or '')
+    for o in conf.get('overrides') or []:
+        for part in o.get('parts') or []:
+            chars.update(part.get('text') or '')
+    for n in conf.get('notices') or []:
+        chars.update(str(n.get('text') or ''))
+    # A weight split, not a glyph.
+    chars.discard('‖')
+    chars.update('.…·—–「」（）『』、。・　％＄€£¥')
+    return chars
+
+
 def prepare_font(font_in, trf, font_out, instance=None, sample=None,
                  allow_restricted=False):
     """Subset (and optionally instance) a font; rasterization-assert the result.
@@ -112,16 +142,7 @@ def prepare_font(font_in, trf, font_out, instance=None, sample=None,
 
     with open(trf, encoding='utf-8') as f:
         conf = json.load(f)
-    chars = set(string.printable)
-    for v in conf['translations'].values():
-        chars.update(v)
-    for m in conf.get('merges', []):
-        chars.update(m.get('html') or '')
-    for o in conf.get('overrides', []):
-        for p in o['parts']:
-            chars.update(p['text'])
-    chars.discard('‖')
-    chars.update('.…·—–「」（）『』、。・　％＄€£¥')
+    chars = job_charset(conf)
 
     src = font_in
     if instance:

@@ -53,9 +53,9 @@ pikepdf 10) for everything above.
 
 **State of play, 3 September 2026, end of the lane-A sitting:**
 
-- **214 tests, no skips**, ~30 s locally, green on GitHub Actions across
+- **219 tests, no skips**, ~32 s locally, green on GitHub Actions across
   Linux and Windows, Python 3.10 and 3.13.
-- `SKILL.md` is at `metadata.version: "45"`; `plugin.json` at `45.0.0`.
+- `SKILL.md` is at `metadata.version: "46"`; `plugin.json` at `46.0.0`.
   The body is 499 lines and about 6.5k tokens on invoke; its references
   are one level deep and each opens with a contents line.
 - Working tree clean apart from `dev/canary/last-score.json`, a scratch
@@ -224,17 +224,17 @@ always deleted and reported; a certified source is flagged. The orphaned
 
 ### Two rows from canary run 3, and one blocked
 
-**Row 30** (`goals/30-font-charset-gaps.md`) — `prepare_font.py` raises
-`TypeError` on the `null` core row 29 made legal, and never reads
-`notices[].text`, so a notice-only character is missing from the subset.
-Reproduced directly; Opus 5 and Fable 5.1 hit it independently.
+**Row 30** — **closed 3 September.** The charset walk is now
+`job_charset(conf)`: a `null` core skipped rather than iterated,
+`notices[].text` harvested, and a docstring naming it as the one place
+the next block goes.
 
 **Row 31** (`goals/31-bold-role-is-real.md`) — a font role that falls
 back to the regular face is silent, so `bold_lead: true` with
 `fonts.bold` == `fonts.regular` draws a regular lead-in and nothing says
 so. Sonnet 5 shipped it; Fable caught the same thing by eye.
 
-Order: **30 → 31**, then P4 when its grant lands.
+Order: **31 next**, then P4 when its grant lands.
 
 Also open, and blocked: **P4**, eval
 automation (`goals/P4-eval-automation.md`, written 3 September). Three
@@ -373,15 +373,15 @@ access and is not enabled for this account, so the three cases written
 for it under pdf-translate/evals/ have never been parsed. Read
 dev/goals/P4-eval-automation.md section 7 before touching it.
 
-Next sitting: copy dev/goals/30-font-charset-gaps.md into /goal and close
-that bar only. Do not start 31 in the same session. Do not mix in a
+Next sitting: copy dev/goals/31-bold-role-is-real.md into /goal and close
+that bar only. Row 30 closed on 3 September. Do not mix in a
 canary run. No glossary. Not FL-150 as a fixture.
 
 When the bar is green: full unittest + corpus, bump metadata.version in
 SKILL.md, commit, stop.
 ```
 
-After 30 comes 31, then P4 if its grant has landed; after those, the
-canary again rather than a new row. If the user wants the
+After 31 comes P4, if its grant has landed; after that, the canary again
+rather than a new row. If the user wants the
 stale audit HTML or the installed-copy re-sync instead, say so and do only
 that — neither is a gate, and neither needs a fixture.
