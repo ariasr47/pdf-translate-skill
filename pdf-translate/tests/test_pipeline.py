@@ -6562,5 +6562,95 @@ class JobCharsetTests(unittest.TestCase):
                 doc.close()
 
 
+
+class FontRoleFallbackTests(unittest.TestCase):
+    """Row 31: `fonts` falls back to the nearest role the mapping named,
+    which is right and was silent. On canary run 3 Sonnet 5 set
+    `bold_lead: true` with `fonts.bold` pointing at the same file as
+    `fonts.regular`; the notice's lead drew regular, nothing said so, and
+    the delivery called the page pixel-faithful. Fable 5.1 hit the same
+    thing and caught it only by eye."""
+
+    def _build(self, tmp, fonts, targets=None, notices=None):
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        build_titled_pdf(src)
+        extract_segments.extract_segments(src, outdir=tmp)
+        strip_text.strip_text(src, stripped)
+        conf = {'fonts': fonts, 'translations': targets or dict(NOTICE_TARGETS),
+                'merges': [], 'overrides': [], 'center': [], 'skip': []}
+        if notices is not None:
+            conf['notices'] = notices
+        Path(tr).write_text(json.dumps(conf, ensure_ascii=False),
+                            encoding='utf-8')
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(
+                stripped, os.path.join(tmp, 'segments.json'), tr, out)
+        log = buf.getvalue()
+        self.assertEqual(rc, 0, msg=log)
+        return [l for l in log.splitlines() if l.startswith('font roles')]
+
+    def _notice(self):
+        return [{'page': 0, 'text': NOTICE_LEAD + '‖' + NOTICE_BODY,
+                 'box': list(NOTICE_BOX), 'size': 7, 'bold_lead': True}]
+
+    def test_a_bold_lead_on_the_regular_face_is_named(self):
+        reg = str(find_test_font())
+        with tempfile.TemporaryDirectory() as tmp:
+            lines = self._build(tmp, {'regular': reg, 'bold': reg},
+                                notices=self._notice())
+            self.assertEqual(len(lines), 1, msg=lines)
+            self.assertIn('"bold" resolved to the regular face', lines[0])
+            self.assertIn('notices[0]', lines[0])
+
+    def test_a_real_bold_face_says_nothing(self):
+        reg = str(find_test_font())
+        with tempfile.TemporaryDirectory() as tmp:
+            bold = os.path.join(tmp, 'bold.ttf')
+            shutil.copy(reg, bold)
+            lines = self._build(tmp, {'regular': reg, 'bold': bold},
+                                notices=self._notice())
+            self.assertEqual(lines, [])
+
+    def test_a_symlink_to_the_regular_face_is_still_the_regular_face(self):
+        """Resolved paths, nothing cleverer — but resolved."""
+        reg = str(find_test_font())
+        with tempfile.TemporaryDirectory() as tmp:
+            link = os.path.join(tmp, 'link.ttf')
+            os.symlink(reg, link)
+            lines = self._build(tmp, {'regular': reg, 'bold': link},
+                                notices=self._notice())
+            self.assertEqual(len(lines), 1, msg=lines)
+            self.assertIn('"bold"', lines[0])
+
+    def test_an_inline_bold_run_is_named_too(self):
+        """The Story engine picks its face from <b>, not from role()."""
+        reg = str(find_test_font())
+        targets = dict(NOTICE_TARGETS)
+        targets[NOTICE_SENTENCE] = 'Devuelva <b>este formulario</b> hoy.'
+        with tempfile.TemporaryDirectory() as tmp:
+            lines = self._build(tmp, {'regular': reg}, targets=targets)
+            self.assertEqual(len(lines), 1, msg=lines)
+            self.assertIn('"bold" resolved to the regular face', lines[0])
+            self.assertIn('Please return this form', lines[0])
+
+    def test_a_job_that_never_asks_for_bold_says_nothing(self):
+        reg = str(find_test_font())
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(self._build(tmp, {'regular': reg}), [])
+
+    def test_it_is_a_line_not_a_failure(self):
+        """A one-face job is legitimate and must still build."""
+        reg = str(find_test_font())
+        with tempfile.TemporaryDirectory() as tmp:
+            lines = self._build(tmp, {'regular': reg, 'bold': reg},
+                                notices=self._notice())
+            self.assertTrue(lines)
+            self.assertNotIn('FAIL', lines[0])
+
+
 if __name__ == '__main__':
     unittest.main()

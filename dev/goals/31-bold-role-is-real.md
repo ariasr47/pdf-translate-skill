@@ -72,3 +72,52 @@ what was decided for them. Provider-neutral; no font is ever fetched.
 
 The line on the fixture, its absence with a real bold face, and the
 render showing the two apart; full unittest + corpus.
+
+## 7. Closing note — 3 September 2026, closed
+
+**Reproduced first, with Sonnet's own mapping shape.** The run-3 fixture,
+a notice with `bold_lead: true`, and `fonts.bold` pointing at the same
+file as `fonts.regular`:
+
+| mapping | before | after |
+|---|---|---|
+| `bold` == `regular` | silent; the lead draws regular | `font roles: "bold" resolved to the regular face; 1 run(s) asked for it (notices[0])` |
+| `bold` its own file | silent | silent |
+| `bold` a symlink to `regular` | silent | reported |
+
+**Done bar, item by item.**
+
+1. **retypeset says it once**, after the build, beside the scaled-runs
+   digest: the role, that it resolved to the regular face, how many runs
+   asked, and their keys — deduplicated, capped at 100 characters with an
+   ellipsis. One line per role, not per run.
+2. **Only roles that were used.** `alias_roles` is computed once from the
+   resolved paths; `role_asks` fills only when something actually selects
+   that role. A job with no bold anywhere prints nothing even though
+   `fonts.bold` is absent and therefore an alias — asserted.
+3. **Not a failure.** A one-face job builds, exits 0 and gets the line —
+   asserted directly.
+4. **The skill says to check it.** `references/fonts.md` gained the rule
+   and the sentence about resolved paths; step 8's delivery bullet names
+   any role reported as the regular face beside `scale_report.json`.
+   SKILL.md body 499 lines, unchanged.
+5. **Tests** (`FontRoleFallbackTests`, 6): the notice case naming
+   `notices[0]`; a distinct bold file silent; a **symlink** to the regular
+   face reported, which is why `os.path.samefile` and not a string
+   compare; an inline `<b>` run named by its core — the Story engine
+   picks its face from the markup and not from `role()`, so that path is
+   covered separately; a job that never asks for bold silent; and the
+   line not being a failure.
+6. 225 tests, no skips, green locally; corpus table unchanged.
+   `metadata.version` 46 → 47.
+
+Both mechanisms are covered, which is the part worth saying out loud:
+`role()` records what it hands back (six call sites, each now passing its
+core), and `note_markup()` records what the Story engine will resolve from
+`<b>`/`<i>` in a merge, an inline line or a notice's `bold_lead`. A fix
+that only covered `role()` would have missed the exact case that opened
+this row.
+
+Not done, as the brief asked: nothing fails for a fallback, nothing is
+fetched, there is no line per run, and two different files are never
+guessed to be "really" the same weight — only resolved paths are compared.

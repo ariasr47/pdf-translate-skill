@@ -208,9 +208,9 @@ code that shipped the same day:
 | # | Brief | Trigger |
 |---|---|---|
 | 30 | `goals/30-font-charset-gaps.md` | **Closed 3 Sep.** The whole walk is now `job_charset(conf)`: a `null` core is skipped rather than iterated, `notices[].text` is harvested, `‖` dropped once at the end, and the docstring names it as the one place the next block goes. Was Opus 5 and Fable 5.1 independently |
-| **31** | `goals/31-bold-role-is-real.md` | A font role that falls back to the regular face is silent, so `bold_lead: true` with `fonts.bold` == `fonts.regular` draws a regular lead-in and nothing says so. Sonnet 5 shipped it; Fable 5.1 caught the same thing by eye |
+| 31 | `goals/31-bold-role-is-real.md` | **Closed 3 Sep.** retypeset names any role that resolved to the regular face, once, with what asked for it — covering both `role()` and the Story engine's `<b>`/`<i>`, since the case that opened the row went through the second. Resolved paths, so a symlink counts. Not a failure. Was Sonnet 5 shipping it and Fable 5.1 catching it by eye |
 
-**Order:** 30 closed 3 September; **31 next**, then P4 when its grant lands. Rows 24, 25, 27,
+**Order:** 30 and 31 both closed 3 September. **Only P4 is left, and it is blocked** on its early-access grant; when that lands, or before it does, the canary is what opens the next rows. Rows 24, 25, 27,
 28, 26, 29 and P7 all closed on 3 September, one commit and one
 `metadata.version` bump each, and canary run 3 confirmed every one of
 them held. **P4 is blocked, not queued**: its brief and its three cases

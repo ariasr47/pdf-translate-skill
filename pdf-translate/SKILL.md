@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "46"
+  version: "47"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -474,9 +474,9 @@ for a qualified human to sign, and do not sign on anyone's behalf. Summarize eve
 identity facts (class, issuer, parallel text or `none`/`not searched`,
 identifiers), structural changes (XFA removed, `/Perms` deleted, buttons
 replaced), whether the source was encrypted or certified and what the
-output has instead, compressed translations, every run in
-`scale_report.json` (not only `allow_scale` cores), locale adaptations — the user should learn your decisions from you, not discover
-them later.
+output has instead, compressed translations, everything in
+`scale_report.json`, any font role reported as the regular face, locale
+adaptations — the user should learn your decisions from you, not discover them later.
 
 **Name a second reader for official work.** For court, government, medical
 and legal filings, name a qualified human reviser in the delivery and say

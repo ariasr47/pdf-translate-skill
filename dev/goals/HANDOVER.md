@@ -53,9 +53,9 @@ pikepdf 10) for everything above.
 
 **State of play, 3 September 2026, end of the lane-A sitting:**
 
-- **219 tests, no skips**, ~32 s locally, green on GitHub Actions across
+- **225 tests, no skips**, ~32 s locally, green on GitHub Actions across
   Linux and Windows, Python 3.10 and 3.13.
-- `SKILL.md` is at `metadata.version: "46"`; `plugin.json` at `46.0.0`.
+- `SKILL.md` is at `metadata.version: "47"`; `plugin.json` at `47.0.0`.
   The body is 499 lines and about 6.5k tokens on invoke; its references
   are one level deep and each opens with a contents line.
 - Working tree clean apart from `dev/canary/last-score.json`, a scratch
@@ -222,21 +222,19 @@ always deleted and reported; a certified source is flagged. The orphaned
 
 ## 5. What is not done
 
-### Two rows from canary run 3, and one blocked
+### Both canary-run-3 rows closed; one blocked row left
 
 **Row 30** — **closed 3 September.** The charset walk is now
 `job_charset(conf)`: a `null` core skipped rather than iterated,
 `notices[].text` harvested, and a docstring naming it as the one place
 the next block goes.
 
-**Row 31** (`goals/31-bold-role-is-real.md`) — a font role that falls
-back to the regular face is silent, so `bold_lead: true` with
-`fonts.bold` == `fonts.regular` draws a regular lead-in and nothing says
-so. Sonnet 5 shipped it; Fable caught the same thing by eye.
+**Row 31** — **closed 3 September.** retypeset names any role that
+resolved to the regular face, once, with what asked for it; both
+mechanisms are covered (`role()` and the Story engine's `<b>`/`<i>`),
+since the case that opened the row went through the second.
 
-Order: **31 next**, then P4 when its grant lands.
-
-Also open, and blocked: **P4**, eval
+**Lane A is empty again.** The only thing still open, and blocked: **P4**, eval
 automation (`goals/P4-eval-automation.md`, written 3 September). Three
 `case.yaml` cases and their graders are in `pdf-translate/evals/` and
 `claude plugin validate --strict` passes with them, but **`claude plugin
@@ -367,21 +365,21 @@ regenerated from that deterministic run, so a re-run now really should
 differ only in timings. `dev/wild/ANALYSIS.md` section 10 has it.
 
 Canary run 3 ran on 3 September (three models, all 5/5) and opened rows
-30 and 31; both are in code that shipped that same day and both are
-reproduced. P4 is BLOCKED, not queued: `claude plugin eval` is in early
+30 and 31; both were closed the same evening. THE QUEUE IS EMPTY except
+P4, which is BLOCKED, not queued: `claude plugin eval` is in early
 access and is not enabled for this account, so the three cases written
 for it under pdf-translate/evals/ have never been parsed. Read
 dev/goals/P4-eval-automation.md section 7 before touching it.
 
-Next sitting: copy dev/goals/31-bold-role-is-real.md into /goal and close
-that bar only. Row 30 closed on 3 September. Do not mix in a
+Next sitting: canary run 4 (dev/canary/README.md), which is what opens
+rows — or P4 if its early-access grant has landed. Do not invent a row. Do not mix in a
 canary run. No glossary. Not FL-150 as a fixture.
 
 When the bar is green: full unittest + corpus, bump metadata.version in
 SKILL.md, commit, stop.
 ```
 
-After 31 comes P4, if its grant has landed; after that, the canary again
-rather than a new row. If the user wants the
+P4 is the only queued row and it is blocked; the canary is what comes
+next. If the user wants the
 stale audit HTML or the installed-copy re-sync instead, say so and do only
 that — neither is a gate, and neither needs a fixture.

@@ -92,6 +92,14 @@ and approximate weight. Expansion warning: EN→DE/FR/ES/RU typically grows
   glyphs in a user's typed name is the worse trade.
 - Re-run prepare_font.py whenever translations change: a character added
   after subsetting renders as nothing.
+- A role you do not name falls back to the nearest one you did, and
+  retypeset says so once per role that was actually used: `font roles:
+  "bold" resolved to the regular face; 1 run(s) asked for it
+  (notices[0])`. It is not a failure — a one-face job is legitimate — but
+  a `<b>`, an `italic` part or a notice's `bold_lead` then draws at the
+  regular weight, and the delivery must say so rather than call the page
+  faithful. Paths are compared resolved, so a symlink to the regular face
+  is the regular face.
 - The harvested charset is every block of `translations.json` that gets
   drawn — targets, `merges[].html`, `overrides[].parts[].text` and
   `notices[].text` — collected by `job_charset()`. A `null` core is

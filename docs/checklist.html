@@ -84,14 +84,7 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
 
   <section>
     <h2>Open — found by measurement: the canary and the wild corpus</h2>
-    <p>Canary run 3 (3 September: Opus 5, Sonnet 5 and Fable 5.1 on the permission slip, all three 5/5) confirmed rows 24–29 and P7 held — three of three used <code>notices</code> where four of five had written their own script, three of three used <code>merges[].box</code>, and nothing shipped below source size — and opened two rows, both in code that shipped the same day and both reproduced. Row 30 closed the same evening.</p>
-    <ol class="items">
-      <li class="item" data-id="boldrole">
-        <input type="checkbox" id="c-boldrole"><div class="head"><span class="title"><label for="c-boldrole">Row 31: a weight the author asked for is either drawn or reported</label></span><span class="chip p1">P1</span><span class="chip neutral">S</span></div>
-        <p class="detail">A font role falls back to the nearest one the mapping named, which is right — and silent. Sonnet 5 set <code>bold_lead: true</code> on its notice with <code>fonts.bold</code> pointing at the same file as <code>fonts.regular</code>: the lead-in drew regular, nothing said so, and the delivery called the page pixel-faithful. Fable 5.1 hit the same thing and caught it by eye. One line after the build naming any role that resolved to the regular face — row 25's shape, one level down.</p>
-        <p class="meta">found by canary run 3 · <code>dev/goals/31-bold-role-is-real.md</code></p>
-      </li>
-    </ol>
+    <p>Canary run 3 (3 September: Opus 5, Sonnet 5 and Fable 5.1 on the permission slip, all three 5/5) confirmed rows 24–29 and P7 held — three of three used <code>notices</code> where four of five had written their own script, three of three used <code>merges[].box</code>, and nothing shipped below source size — and opened two rows, both in code that shipped the same day and both reproduced. Both closed the same evening, so this list is empty again.</p>
   </section>
 
   <section>
@@ -110,6 +103,11 @@ footer{margin-top:40px;color:var(--muted);font-size:13.5px;max-width:70ch}
     <h2>Closed since the audit</h2>
     <p>Most recent first. Each landed with in-repo tests and a measured before and after, and the full suite stayed green: <strong>212 tests, no skips</strong>, green on Linux and Windows under Python 3.10 and 3.13.</p>
     <ol class="items">
+      <li class="item" data-id="boldrole">
+        <input type="checkbox" id="c-boldrole" checked><div class="head"><span class="title"><label for="c-boldrole">Row 31: a weight the author asked for is either drawn or reported</label></span><span class="chip p1">P1</span><span class="done-mark">done</span></div>
+        <p class="detail">retypeset now names any role that resolved to the regular face — once, with how many runs asked and their keys. Both mechanisms are covered: <code>role()</code> for TextWriter runs and override parts, and the Story engine's <code>&lt;b&gt;</code>/<code>&lt;i&gt;</code> for merges, inline lines and a notice's <code>bold_lead</code> — the case that opened the row went through the second, so a fix covering only the first would have missed it. Paths are compared resolved, so a symlink to the regular face counts as the regular face. Not a failure: a one-face job builds and gets the line.</p>
+        <p class="meta">closed 3 Sep 2026 · found by canary run 3, Sonnet 5 shipping it and Fable 5.1 catching it by eye · <code>dev/goals/31-bold-role-is-real.md</code></p>
+      </li>
       <li class="item" data-id="fontcharset">
         <input type="checkbox" id="c-fontcharset" checked><div class="head"><span class="title"><label for="c-fontcharset">Row 30: the font subset covers everything the job will draw</label></span><span class="chip p0">P0</span><span class="done-mark">done</span></div>
         <p class="detail">The charset walk is now one function, <code>job_charset(conf)</code>, whose docstring says it is the one place the next block of <code>translations.json</code> goes — because two were missed exactly that way. A <code>null</code> core is skipped rather than iterated (it is covered by an override and never drawn), and <code>notices[].text</code> is harvested with <code>‖</code> dropped like any other weight split. Measured: before, a null core raised <code>TypeError</code> and a notice-only <code>ó</code> and curly quotes were absent from the subset; after, both clean, and a job whose accents appear only in the notice builds through retypeset with the glyph check silent.</p>

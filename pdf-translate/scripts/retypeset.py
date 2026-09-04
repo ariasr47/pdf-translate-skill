@@ -746,7 +746,35 @@ def retypeset(stripped, segf, trf, out):
     heit = pymupdf.Font('heit')
     hebi = pymupdf.Font('hebi')
 
-    def role(bold, italic):
+    # Which non-regular roles are the regular face wearing another name.
+    # The fallback itself is right — a job with one face must still build —
+    # but it is silent, so an author can ask for bold, get regular, and
+    # report a faithful page (row 31, measured on canary run 3).
+    def _same_file(a, b):
+        try:
+            return os.path.samefile(a, b)
+        except OSError:
+            return os.path.abspath(a) == os.path.abspath(b)
+
+    alias_roles = {name for name, path in (('bold', f_bold),
+                                           ('italic', f_italic),
+                                           ('bold-italic', f_bold_italic))
+                   if _same_file(path, f_regular)}
+    role_asks = {}
+
+    def note_role(name, key):
+        if name in alias_roles:
+            role_asks.setdefault(name, []).append(str(key or '?')[:40])
+
+    def note_markup(html, key):
+        """The Story engine picks its face from <b>/<i>, not from role()."""
+        if re.search(r'<(b|strong)\b', html or '', re.I):
+            note_role('bold', key)
+        if re.search(r'<(i|em)\b', html or '', re.I):
+            note_role('italic', key)
+
+    def role(bold, italic, key=None):
+        note_role(_role_name(bold, italic), key)
         if bold and italic:
             return font_bi
         if bold:
@@ -915,7 +943,8 @@ def retypeset(stripped, segf, trf, out):
             ov = override_for(pno, text)
             if ov:
                 for part in ov['parts']:
-                    f = role(part.get('bold'), part.get('italic'))
+                    f = role(part.get('bold'), part.get('italic'),
+                             ov.get('contains') or t)
                     x = part.get('x', ox)
                     t = part['text']
                     check_glyphs(pno, f, t, ov.get('contains') or t,
@@ -1014,10 +1043,10 @@ def retypeset(stripped, segf, trf, out):
                 parts.append((mk, mk_font))
             if '‖' in jp:
                 bp, rp = jp.split('‖', 1)
-                parts.append((bp, role(True, seg.get('italic'))))
-                parts.append((rp, role(False, seg.get('italic'))))
+                parts.append((bp, role(True, seg.get('italic'), core)))
+                parts.append((rp, role(False, seg.get('italic'), core)))
             else:
-                parts.append((jp, role(seg['bold'], seg.get('italic'))))
+                parts.append((jp, role(seg['bold'], seg.get('italic'), core)))
             for t, f in parts:
                 check_glyphs(pno, f, t, core, _font_label(f, {
                     id(font_r): 'regular', id(font_b): 'bold',
@@ -1053,7 +1082,7 @@ def retypeset(stripped, segf, trf, out):
                 cur_end, label_max = leader_geometry()
                 body = jp.replace('‖', '')
                 cint = int(seg.get('color', 0))
-                body_font = role(seg['bold'], seg.get('italic'))
+                body_font = role(seg['bold'], seg.get('italic'), core)
                 bx = ox
                 if marker:
                     mfont = helv_role(seg['bold'], seg.get('italic'))
@@ -1142,7 +1171,7 @@ def retypeset(stripped, segf, trf, out):
             if rtl_body:
                 logical = jp.replace('‖', '')
                 rtl_jobs.append((x, oy, logical,
-                                 role(seg['bold'], seg.get('italic')), fs2,
+                                 role(seg['bold'], seg.get('italic'), core), fs2,
                                  int(seg.get('color', 0)), logical))
             else:
                 for i, (t, f) in enumerate(parts):
@@ -1161,6 +1190,7 @@ def retypeset(stripped, segf, trf, out):
             wrap_last_bt_actualtext(page, logical)
         for (ix, iy, body, ibold, iital, ifs, icint, iavail, ikey,
              iplain) in inline_jobs:
+            note_markup(body, ikey)
             scale = place_story_line(page, ix, iy, body, ibold, iital, ifs,
                                      icint, iavail, css, arch)
             consider_ratio(pno, ikey, scale)
@@ -1172,6 +1202,7 @@ def retypeset(stripped, segf, trf, out):
     for (pno, r, html, align, size, lh, color, merge_key, merge_opt,
          boxed) in merge_jobs:
         plain_html = re.sub(r'<[^>]+>', '', html or '')
+        note_markup(html, merge_key)
         check_glyphs(pno, font_r, plain_html, merge_key, 'regular')
         if re.search(r'<(b|strong)\b', html or '', re.I):
             check_glyphs(pno, font_b, plain_html, merge_key, 'bold')
@@ -1208,6 +1239,7 @@ def retypeset(stripped, segf, trf, out):
         plain = ' '.join(p.strip() for p in parts if p.strip())
         check_glyphs(pno, font_r, plain, key, 'regular')
         if n.get('bold_lead'):
+            note_role('bold', key)
             check_glyphs(pno, font_b, parts[0], key, 'bold')
             body = (f'<b>{htmlmod.escape(parts[0].strip())}</b> '
                     + ' '.join(htmlmod.escape(p.strip())
@@ -1286,6 +1318,16 @@ def retypeset(stripped, segf, trf, out):
         print('metadata: removed the orphaned /StructTreeRoot and set '
               '/MarkInfo /Marked false — the tags described text that no '
               'longer exists. Tell the user the file is no longer tagged.')
+
+    for name in ('bold', 'italic', 'bold-italic'):
+        asks = role_asks.get(name)
+        if not asks:
+            continue
+        shown = ', '.join(dict.fromkeys(asks))
+        print(f'font roles: "{name}" resolved to the regular face; '
+              f'{len(asks)} run(s) asked for it ({shown[:100]}'
+              f'{"…" if len(shown) > 100 else ""}). Name it in the delivery '
+              f'or give the role its own file.')
 
     if scaled:
         print(f'scaled runs ({len(scaled)}) — reword them or name them in '
