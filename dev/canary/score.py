@@ -81,6 +81,7 @@ def load_delivery(rundir):
 
 def candidate_output(rundir, original, output=None):
     """Use an explicit file, or require exactly one root-level candidate."""
+    rundir = str(Path(rundir).resolve())
     if output is not None:
         path = run_file(rundir, output, 'output')
         try:
@@ -137,6 +138,9 @@ def identifier_report(original, out):
 
 
 def score_run(original, rundir, output=None, allow=None, fill_text=None):
+    # Match run_file's canonical paths, including Windows 8.3 aliases, before
+    # calculating relative artifact names for the report.
+    rundir = str(Path(rundir).resolve())
     name = Path(rundir).name
     print(f'\n===== {name} =====')
     try:

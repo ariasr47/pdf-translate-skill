@@ -53,7 +53,7 @@ class ScoreTests(unittest.TestCase):
         os.utime(diagnostic, (2000000000, 2000000000))
         selected = score.candidate_output(str(self.run), str(self.original))
         self.assertIsNotNone(selected)
-        self.assertEqual(Path(selected), self.final)
+        self.assertEqual(Path(selected), self.final.resolve())
 
     def test_multiple_outputs_require_an_explicit_choice(self):
         make_pdf(self.run / 'draft.pdf', 'Draft of this form.')
@@ -70,12 +70,12 @@ class ScoreTests(unittest.TestCase):
                 f.write(b'\n' * (size - path.stat().st_size))
         selected = score.candidate_output(str(self.run), str(self.original))
         self.assertIsNotNone(selected)
-        self.assertEqual(Path(selected), self.final)
+        self.assertEqual(Path(selected), self.final.resolve())
 
     def test_translated_output_may_keep_the_original_filename(self):
         renamed = self.run / self.original.name
         self.final.rename(renamed)
-        self.assertEqual(Path(score.candidate_output(self.run, self.original)), renamed)
+        self.assertEqual(Path(score.candidate_output(self.run, self.original)), renamed.resolve())
         make_pdf(self.run / 'draft.pdf', 'Draft of this form.')
         with self.assertRaisesRegex(ValueError, 'ambiguous'):
             score.candidate_output(self.run, self.original)
