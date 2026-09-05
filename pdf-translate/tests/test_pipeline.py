@@ -3817,7 +3817,7 @@ class ScriptAwareLeakTests(unittest.TestCase):
 
 class HotLoopTests(unittest.TestCase):
     def test_rebuild_resolves_verify_arguments_from_the_callers_directory(self):
-        font = find_test_font()
+        font = os.path.abspath(find_test_font())
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
             work = os.path.join(tmp, 'job')
             os.mkdir(work)
@@ -3831,6 +3831,10 @@ class HotLoopTests(unittest.TestCase):
             here = os.getcwd()
             buf = io.StringIO()
             try:
+                # Windows CI keeps the checkout and TEMP on different drives.
+                # Make the isolated temp directory the caller so relative paths
+                # exist, while the mapping remains in its separate job folder.
+                os.chdir(tmp)
                 with redirect_stdout(buf):
                     rc = pipeline.main([
                         'rebuild', '--work', os.path.relpath(work),
@@ -3839,9 +3843,11 @@ class HotLoopTests(unittest.TestCase):
                         '--translations', os.path.relpath(tr),
                         '--segments', os.path.relpath(os.path.join(work, 'segments.json')),
                     ])
+                self.assertEqual(os.getcwd(), tmp)
             except FileNotFoundError as exc:
                 self.fail(f'caller-relative verification path was lost: {exc}')
-            self.assertEqual(os.getcwd(), here)
+            finally:
+                os.chdir(here)
             self.assertEqual(rc, 0, buf.getvalue())
             self.assertIn('PASS authored translations present', buf.getvalue())
 
