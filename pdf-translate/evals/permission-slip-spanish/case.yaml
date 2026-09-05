@@ -1,8 +1,10 @@
 schema_version: "1.0"
+name: permission-slip-spanish
 tags: [form, latin]
 runs: 1
-scaffold_script: |
-  python3 evals/make_fixtures.py --outdir "$PWD/fixtures"
+context:
+  scaffold_script: |
+    python3 evals/make_fixtures.py --outdir "$PWD/fixtures"
 execution:
   prompt: |
     translate the pdf form at fixtures/permission_form.pdf into spanish for

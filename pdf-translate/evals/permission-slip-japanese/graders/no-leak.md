@@ -1,7 +1,7 @@
 ---
 type: regex
 weight: 1
-focus: {source: trace}
+target: trace
 pattern: "FAIL untranslated running text"
 match: not_contains
 ---

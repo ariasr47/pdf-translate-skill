@@ -1,10 +1,12 @@
 # Uncoached, the way the requester wrote it. The eval measures the skill;
 # it must not teach the model the workflow (dev/goals/P4-eval-automation.md).
 schema_version: "1.0"
+name: permission-slip-japanese
 tags: [form, cjk]
 runs: 1
-scaffold_script: |
-  python3 evals/make_fixtures.py --outdir "$PWD/fixtures"
+context:
+  scaffold_script: |
+    python3 evals/make_fixtures.py --outdir "$PWD/fixtures"
 execution:
   prompt: |
     I have a school permission slip PDF at fixtures/permission_form.pdf that

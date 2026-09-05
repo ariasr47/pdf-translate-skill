@@ -145,3 +145,39 @@ account. Then: `claude plugin eval . --runs 1 --threshold 0.8 --scaffold
 --json report.json`, fix whatever the validator says, commit the report as
 `dev/canary/runs/eval-<date>.json`, and record the cost. Only then is P4
 closed.
+
+## 8. Schema corrected against the validator — 3 September 2026, still open
+
+The row is still blocked, but the artifacts are much less speculative than
+§7 left them.
+
+The 2.1.236 binary embeds the CLI's own Zod schema for `case.yaml` and
+`graders/*.md`, not just the error strings §7 was reconstructed from.
+Reading it found **three real errors** in the files written that morning:
+
+1. Every regex grader used `focus: {source: trace}`. The schema's key is
+   **`target`**, it takes a bare `trace` | `last_message` | `files` (or
+   `{source: file, path}`), and each grader object is **`.strict()`** —
+   so the unknown key would have been rejected outright rather than
+   ignored. `focus` is the `llm` grader's key, which is where the
+   confusion came from.
+2. `scaffold_script` was top-level; it belongs under `context`.
+3. Every `case.yaml` was missing `name`, which is required and non-empty.
+
+Also learned, and now in `evals/README.md`: a grader's `name` comes from
+its filename (so the files here are fine); the body fills `criteria` for
+`llm`/`baseline` and `pattern` for `regex` only when frontmatter has not;
+grader names must be unique within a case; `max_turns` ≤ 200,
+`timeout_seconds` ≤ 3600, `runs` ≤ 50.
+
+All three cases now check clean against those field lists. That is not a
+green run and the README says so — nothing has parsed them.
+
+**Enablement, answered.** The gate is a server-side flag scoped to an
+**organization**, not to a plan or an individual account. There is no
+documented public request path: `plugin eval` is absent from the plugins
+reference and from the beta/research-preview list. The self-test is
+`claude plugin eval` in an empty directory — "currently in early access"
+means not enabled, "No eval cases found" means it is. Confirmed here on
+2.1.236: still gated. The route is Anthropic support, asking for the org
+to be enabled.

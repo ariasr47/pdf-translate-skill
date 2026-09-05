@@ -1,8 +1,10 @@
 schema_version: "1.0"
+name: garden-flyer-french
 tags: [flyer, latin]
 runs: 1
-scaffold_script: |
-  python3 evals/make_fixtures.py --outdir "$PWD/fixtures"
+context:
+  scaffold_script: |
+    python3 evals/make_fixtures.py --outdir "$PWD/fixtures"
 execution:
   prompt: |
     Here's a flyer for our garden workshop: fixtures/garden_flyer.pdf. We need

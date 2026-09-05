@@ -1,7 +1,7 @@
 ---
 type: regex
 weight: 2
-focus: {source: trace}
+target: trace
 pattern: "PASS write/find/say identifiers"
 match: contains
 ---

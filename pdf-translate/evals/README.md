@@ -40,24 +40,66 @@ is why the canary still exists; this suite is its objective half on demand,
 not a replacement for it. Neither is it a leaderboard: no grader knows or
 rewards which model produced the run.
 
-## Status — not yet executed
+## Status — written against the validator, never executed
 
-**These case files have never been run.** `claude plugin eval` is in early
-access and is not enabled for this account (`claude plugin eval …` exits
-with "`plugin eval` is currently in early access", and so does
-`claude plugin eval init --bare`), so the schema below is what the shipped
-binary's own validation strings describe, not what a green run proved:
+**These case files have never been run.** `claude plugin eval` is early
+access and is not enabled for this account: every form of the command,
+`claude plugin eval init --bare` included, exits with "`plugin eval` is
+currently in early access". The self-test is to run `claude plugin eval`
+in an **empty directory** — "early access" means not enabled, "No eval
+cases found" means it is.
 
-- `case.yaml` requires `schema_version`; `execution.prompt` is required
-  unless a `prompt.md` supplies it; `context.history_file` needs a prompt.
-- Graders are `graders/*.md` with frontmatter `type:` from the six above,
-  plus `weight`; `regex` takes `pattern`, `match: contains | not_contains
-  | count:N` and `focus: {source: trace | last_message | files | file,
-  path: …}`; an `llm` grader's body is its criteria.
-- `--ablation with-without` adds a no-plugin baseline arm and is the
-  default whenever a plugin resolves; graders marked with-only are then a
-  plugin-fired indicator rather than part of the score.
+What changed on 3 September: the schema below is no longer reconstructed
+from error strings. It is read from the CLI's own Zod schema, which is
+embedded in the 2.1.236 binary, and the three cases here were checked
+against it field by field. That is much stronger than guessing, and it is
+still not a green run.
 
-The first person with access should run it, fix whatever the validator
-says, and record the result — `dev/goals/P4-eval-automation.md` is the
-open row and its bar wants one report committed under `dev/canary/runs/`.
+**Case file** — unknown top-level keys are rejected:
+
+| key | notes |
+|---|---|
+| `schema_version` | required; the binary's example is `"1.0"` and it carries a max it supports |
+| `name` | **required**, non-empty |
+| `description`, `tags`, `plugins` | optional |
+| `context` | `scaffold_script`, `history_file`, `add_dirs` — the scaffold lives **here**, not at the top level |
+| `execution` | `prompt` (or a `prompt.md` body), `max_turns` (≤200, default 10), `timeout_seconds` (≤3600, default 300), `model`, `allowed_tools`, `append_system_prompt`, `env` |
+| `runs` | ≤50, default 3 |
+| `graders` | at least one; names must be unique |
+
+**Graders** — one `.md` per grader, and **each grader object is
+`.strict()`**, so an unknown key is an error rather than ignored. The
+grader's `name` comes from the filename. The body fills `criteria` for
+`llm` and `baseline`, and `pattern` for `regex`, when the frontmatter has
+not set it.
+
+| type | keys |
+|---|---|
+| `regex` | `target` (not `focus`), `pattern`, `flags`, `match`, `weight`, `arm` |
+| `llm` | `criteria`, `focus`, `weight`, `arm` |
+| `baseline` | `baseline_file`, `criteria`, `weight`, `arm` |
+| `tool_used` | `tool`, `input_match`, `min`, `max`, `weight`, `arm` |
+| `tool_order` | `before`, `after`, `weight`, `arm` |
+| `file_exists` | `path`, `exists`, `weight`, `arm` |
+
+`target` and `focus` take `trace`, `last_message`, `files`, or
+`{source: file, path: …}` — a bare string, not `{source: trace}`.
+`match` is `contains`, `not_contains` or `count:N`. `arm` is `with-only`
+or `both`.
+
+Three things here were wrong before that reading and are now fixed: the
+regex graders used `focus: {source: trace}` where the schema wants
+`target: trace` and would have rejected the extra key outright;
+`scaffold_script` sat at the top level instead of under `context`; and
+every `case.yaml` was missing the required `name`.
+
+**Enablement.** The gate is a server-side flag scoped to an
+*organization*, not to a plan or an individual account, and there is no
+documented public way to request it — it is not in the plugins reference
+or on the beta/preview list. If your org has it, a current binary plus a
+fresh session picks it up. Otherwise the route is Anthropic support.
+
+Whoever gets it enabled: run
+`claude plugin eval . --runs 1 --threshold 0.8 --scaffold --json report.json`,
+fix whatever the real validator says, and commit the report —
+`dev/goals/P4-eval-automation.md` is the open row.
