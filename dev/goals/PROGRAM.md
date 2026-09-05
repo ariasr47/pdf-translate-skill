@@ -233,3 +233,23 @@ untouched, C2's job.
 checker, a winner model, FL-150 as gold, auto-merge or auto-realign,
 vertical CJK, tag rebuild (no library support), `paths:` auto-activation
 (Claude Code-only field — decide at P2).
+
+## After the 4 September review — lane B row P8
+
+`docs/REVIEW-2026-09-04.md` ran the whole pipeline — retypeset and verify
+included — over the wild corpus with a pseudo-localised mapping (no model,
+no translator: every core diacritic-marked and padded, identifiers kept
+verbatim) and measured the engine's own error at zero expansion. Its §5
+holds twenty-one candidate rows (32–52) with their evidence, and the
+hypotheses that are not rows. **Only P8 enters the queue now, by decision;
+the rest wait for it.**
+
+| # | Row | Closed bar (sketch) | Not done when |
+|---|---|---|---|
+| **P8** | Identity end to end over the wild corpus | `dev/wild/e2e.py` (dev-only, never shipped; the instrument in the review's appendix A) runs strip → extract → pseudo-localise at E = 1.0 → retypeset → verify → `field_fonts` over all seventeen files with a metric-compatible face (Arial here; Liberation Sans on CI) and writes `dev/wild/E2E.md` plus `e2e.json`: per file, scaled runs by band, overflow count, verify FAIL lines, times. P8 closes when that table exists for 17/17 and the loop says a sitting that touches strip, extract or retypeset re-runs it. The table's target — **zero FAIL and nothing below 0.9× on every file** — is the standing bar the rows it opens are measured against, not the bar for this sitting: today the booklet cannot build at identity (row 32) and the W-9 ships 27 shrunk runs with a metric-identical font (row 48) | Any expansion factor other than 1.0 as a gate; translating anything; committing PDFs or outputs; fixing what the table finds in the same sitting |
+
+Order: P8 first — it is the measurement every row in the review is proved
+against, and it needs no fix to ship. When it lands, its table opens rows
+the way the canary does, from a measurement, and the loop above gains one
+line: *if strip, extract or retypeset changed: `dev/wild/e2e.py`, compared
+with `dev/wild/e2e.json` — no file may gain a FAIL or a run below 0.9×.*
