@@ -65,6 +65,11 @@ python3 $SK/scripts/pipeline.py rebuild --work . original.pdf out.pdf \
 python3 $SK/scripts/pipeline.py render original.pdf out.pdf renders/
 ```
 
+Command-line paths resolve from the caller's directory; `rebuild` does not
+change it. Font paths inside `translations.json` resolve beside that file
+(absolute paths also work). Older caller-relative font paths still work
+when no mapping-relative file exists, with a compatibility note.
+
 From `$SK`:
 
 ```bash

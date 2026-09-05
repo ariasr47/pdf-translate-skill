@@ -607,7 +607,19 @@ def retypeset(stripped, segf, trf, out):
     allow_scale = set(conf.get('allow_scale') or [])
     overrides = conf.get('overrides', [])
     notices = conf.get('notices') or []
-    fonts = conf['fonts']
+    # Mapping-relative paths work for both the direct command and rebuild.
+    # Keep old caller-relative mappings usable, but make the fallback visible.
+    font_dir = os.path.dirname(os.path.abspath(trf))
+    fonts = {}
+    for role_name, path in conf['fonts'].items():
+        if path and not os.path.isabs(path):
+            local = os.path.join(font_dir, path)
+            if not os.path.isfile(local) and os.path.isfile(path):
+                print(f'NOTE font {role_name}: legacy caller-relative path {path}; '
+                      'prefer a path relative to translations.json')
+                local = os.path.abspath(path)
+            path = local
+        fonts[role_name] = path
     overflow = []
     scaled = []
     mirror = bool(conf.get('mirror'))
@@ -824,13 +836,17 @@ def retypeset(stripped, segf, trf, out):
 
     widg = {p.number: [w.rect for w in p.widgets()] for p in doc}
     arch = pymupdf.Archive('.')
-    # MuPDF's CSS parser eats backslashes, so a Windows path in url() loses
-    # its separators and the engine silently falls back to a font without
-    # the target script. Always hand it POSIX separators.
-    css_regular = PurePath(f_regular).as_posix()
-    css_bold = PurePath(f_bold).as_posix()
-    css_italic = PurePath(f_italic).as_posix()
-    css_bold_italic = PurePath(f_bold_italic).as_posix()
+    # CSS URLs need quoted, escaped paths: spaces otherwise cause silent
+    # font substitution, and Windows separators are interpreted as escapes.
+    def css_url(path):
+        escaped = re.sub(r'[\x00-\x1f\x7f"\\]',
+                         lambda m: f'\\{ord(m[0]):x} ', PurePath(path).as_posix())
+        return f'"{escaped}"'
+
+    css_regular = css_url(f_regular)
+    css_bold = css_url(f_bold)
+    css_italic = css_url(f_italic)
+    css_bold_italic = css_url(f_bold_italic)
     css = (f"@font-face {{font-family: tr; src: url({css_regular});}}"
            f"@font-face {{font-family: trb; src: url({css_bold});}}"
            f"@font-face {{font-family: tri; src: url({css_italic});}}"
