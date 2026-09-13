@@ -14,11 +14,14 @@ SDK; any person or model authors the translation mapping.
 |---|---|
 | `pdf-translate/` | **The skill**: `SKILL.md`, eleven scripts, references, corpus, tests, evals. Start with `pdf-translate/SKILL.md`. Installed as a plugin from the repository (below), or copied as a directory by any agent or person. |
 | `.claude-plugin/` | The plugin and marketplace manifests that make the repository installable with `/plugin marketplace add`. The skill needs nothing in them. |
-| `dev/goals/` | The improvement program: one gate per sitting, closed briefs, handover for a cold session. |
-| `dev/*.html`, `dev/*_SESSION_PROMPT.md` | Explainers and session prompts. Development material — deliberately outside the skill. |
+| `AGENTS.md`, `CLAUDE.md` | The cold-start for any agent or provider, and Claude Code's one-line import of it. Read first. |
+| `dev/STATUS.md`, `dev/DECISIONS.md` | What is open and what comes next (rewritten every sitting); the append-only ledger of decisions and locked behaviours. |
+| `dev/goals/` | The improvement program: `PROGRAM.md` (loop and queue) and one brief per row with its closing note. `HANDOVER.md` is superseded and kept as history. |
+| `dev/*.html`, `dev/*_SESSION_PROMPT.md` | Explainers, and the superseded 1–2 September bakeoff prompts. Development material — deliberately outside the skill. |
 | `docs/RESEARCH-AND-FINDINGS.md` | The September 2026 audit, the research behind it, and every verified defect with status. |
 | `docs/REVIEW-2026-09-02.md` | The 2 September deep review: verdict, fresh research, and the two-lane backlog. |
-| `docs/audit-2026-09-01.html`, `docs/checklist.html` | The audit page (a dated snapshot) and the living tracker (self-contained). |
+| `docs/REVIEW-2026-09-04.md` | The 4 September deep review: the pipeline run end to end over the wild corpus, twenty-two findings, candidate rows 32–52 and row P8. |
+| `docs/audit-2026-09-01.html`, `docs/checklist.html` | Two dated snapshots: the 1 September audit page and the tracker as of 4 September. |
 
 Job artifacts (`work/`, `runs/`, session exports, bakeoff outputs, the FL-150
 sample PDFs) are ignored on purpose; they are large and not the product. So
@@ -50,7 +53,7 @@ python -m unittest tests.test_pipeline tests.test_corpus_verdicts
 ```
 
 The suite — constructed PDFs driving the shipped scripts; the current count
-is in the CI log and in `dev/goals/HANDOVER.md` — runs in about 25 seconds
+is in the CI log — runs in about 25 seconds
 locally and 40 on CI, with **no skips** once the fonts are there.
 The Arabic, Hebrew and Devanagari tests need faces with real shaping
 tables: `tools/fetch_test_fonts.py` downloads four OFL Noto faces into

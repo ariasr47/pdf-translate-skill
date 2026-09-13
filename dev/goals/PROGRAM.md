@@ -27,6 +27,8 @@ construct or pick ONE adversarial case
     compared with dev/wild/results.json — 17/17 translate, zero count
     differences (row 19 shipped a TypeError that 161 single-span
     fixtures could not see; the corpus saw it in seconds)
+  → rewrite dev/STATUS.md (what is open, what is next); append to
+    dev/DECISIONS.md if the sitting made a decision (row P9)
   → STOP. Do not start the next row in the same session.
 ```
 
@@ -133,7 +135,8 @@ implementation in this skill (refusal is the product). The canary
 
 ## How to start a session
 
-New session: read `dev/goals/HANDOVER.md` first. Every row of the repo's
+New session: read `AGENTS.md`, then `dev/STATUS.md` (`HANDOVER.md` is
+superseded, row P9). Every row of the repo's
 queue and of the audit roadmap is closed. **The next three rows exist and
 were not invented** — the 2 September canary produced them, each from a
 model doing a real job, each with a measurement in `dev/canary/runs/`:
@@ -253,3 +256,17 @@ against, and it needs no fix to ship. When it lands, its table opens rows
 the way the canary does, from a measurement, and the loop above gains one
 line: *if strip, extract or retypeset changed: `dev/wild/e2e.py`, compared
 with `dev/wild/e2e.json` — no file may gain a FAIL or a run below 0.9×.*
+
+## After the 12 September consolidation — lane B row P9
+
+Measured on `b157172`: nothing loaded automatically for any provider;
+`HANDOVER.md` was one commit stale and told the next session to run
+canary 4 while this file said P8; the standing rules were restated across
+dozens of files. `dev/goals/P9-project-context.md` has the numbers. One
+sitting, no version bump.
+
+| # | Row | Closed bar (sketch) | Not done when |
+|---|---|---|---|
+| **P9** | Project context any provider can pick up | **Closed 12 Sep.** `AGENTS.md` at the root (with `CLAUDE.md` importing it) cold-starts; `dev/STATUS.md` alone states version, open and blocked rows and the next sitting, rewritten every sitting; `dev/DECISIONS.md` is the append-only ledger of decisions (D-01 to D-26) and the table of locked behaviours with the brief that locked each; `HANDOVER.md`, both session prompts and `checklist.html` banner-superseded and kept; README's layout table updated; the GPT 6 canary prompt committed. P5's file assignment is superseded by D-26 in the ledger. The *What is already locked* list above is frozen: new locks go to the ledger's table | A version bump; any edit under `pdf-translate/`; a per-provider context prompt; anything outside the repository; a test count anywhere but the CI log |
+
+Order unchanged: **P8 next**, then whatever its table opens.

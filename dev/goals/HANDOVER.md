@@ -1,5 +1,14 @@
 # Handover — pdf-translate (read this in a new session)
 
+> **Superseded, 12 September 2026 (lane B row P9).** The cold-start for
+> any provider is now `AGENTS.md` at the repository root; what is open and
+> what comes next is `dev/STATUS.md`; the standing rules with their reasons
+> and the locked behaviours are `dev/DECISIONS.md`. This file is kept as the
+> record of the state on 4 September as it was written: the chronology at
+> the top is the project's history for 2–4 September, and nothing below is
+> maintained. Its §8 first message predates the 4 September review and row
+> P8 and is wrong about what comes next; use the one in `dev/STATUS.md`.
+
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 

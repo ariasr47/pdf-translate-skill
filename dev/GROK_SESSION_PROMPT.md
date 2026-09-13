@@ -1,5 +1,13 @@
 # Intro prompt for the Grok CLI session
 
+> **Superseded, 12 September 2026.** The 1–2 September bakeoff prompt for
+> the Grok CLI on FL-150 English→Japanese, written against an earlier
+> skill (seven scripts and eight failure modes; eleven and fourteen ship
+> now). Kept as the record of how that bakeoff was run. A cold session of
+> any provider starts from `AGENTS.md`; a model-fitness run is
+> `dev/canary/README.md`, and `dev/canary/GPT6_PROMPT.md` is its
+> unattended form.
+
 Run this **once per model you want to test** (Grok 4.6, Grok 4.5), each in its
 own empty working directory. Start the session with that directory as cwd, then
 paste everything between the `---` lines as your first message.

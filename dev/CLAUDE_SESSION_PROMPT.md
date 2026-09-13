@@ -1,5 +1,13 @@
 # Claude session prompt (FL-150 EN→JA, updated skill)
 
+> **Superseded, 12 September 2026.** The 1–2 September bakeoff prompt for
+> FL-150 English→Japanese, written against an earlier skill (seven scripts
+> and eight failure modes; eleven and fourteen ship now) with Windows
+> paths. Kept as the record of how that bakeoff was run. A cold session of
+> any provider starts from `AGENTS.md`; a model-fitness run is
+> `dev/canary/README.md`, and `dev/canary/GPT6_PROMPT.md` is its
+> unattended form.
+
 Run **once per model** (Haiku, Sonnet, Opus high), each in its **own empty
 directory**. The repo already contains a finished Grok run and a complete
 `translations.json` — those are contamination. Do not point the model at them.
