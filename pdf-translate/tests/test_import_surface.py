@@ -35,6 +35,13 @@ CLI_SCRIPTS = (
     'strip_text.py',
     'verify.py',
 )
+# No-args prints __doc__ and returns 2. The rest IndexError on argv[0].
+USAGE_CLIS = ('pipeline.py', 'qa_check.py', 'bilingual.py')
+# A Windows console on cp1252: CJK in qa_check's help is the tell.
+LEGACY_ENV = {
+    'PYTHONUTF8': '0',
+    'PYTHONIOENCODING': 'cp1252',
+}
 
 
 def _tiny_pdf(path, text='Hello world.'):
@@ -176,25 +183,82 @@ class QAVerdictTests(unittest.TestCase):
             self.assertTrue(verdict.ok)
 
 
+def _run_cli(name, extra_env=None):
+    env = dict(os.environ)
+    if extra_env:
+        env.update(extra_env)
+    return subprocess.run(
+        [sys.executable, str(SCRIPTS / name)],
+        capture_output=True, text=True, encoding='utf-8', errors='replace',
+        env=env)
+
+
 class CliPathTests(unittest.TestCase):
     def test_documented_cli_scripts_still_exist(self):
         for name in CLI_SCRIPTS:
             self.assertTrue((SCRIPTS / name).is_file(), msg=name)
 
     def test_pipeline_no_args_still_prints_usage_and_exits_2(self):
-        r = subprocess.run(
-            [sys.executable, str(SCRIPTS / 'pipeline.py')],
-            capture_output=True, text=True, encoding='utf-8')
+        r = _run_cli('pipeline.py')
         self.assertEqual(r.returncode, 2)
         self.assertIn('rebuild', r.stdout)
         self.assertIn('from-cores', r.stdout)
 
     def test_qa_check_no_args_still_prints_usage_and_exits_2(self):
-        r = subprocess.run(
-            [sys.executable, str(SCRIPTS / 'qa_check.py')],
-            capture_output=True, text=True, encoding='utf-8')
+        r = _run_cli('qa_check.py')
         self.assertEqual(r.returncode, 2)
         self.assertIn('qa_check.py', r.stdout)
+
+    def test_usage_clis_print_help_on_a_legacy_windows_console(self):
+        """Help text must not die with UnicodeEncodeError on cp1252.
+
+        qa_check's docstring contains CJK. pipeline's is ASCII. bilingual's
+        has an em dash, which cp1252 can encode. All three must still exit 2.
+        """
+        for name in USAGE_CLIS:
+            with self.subTest(name=name):
+                r = _run_cli(name, LEGACY_ENV)
+                combined = r.stdout + r.stderr
+                self.assertNotIn('UnicodeEncodeError', combined, msg=combined)
+                self.assertEqual(r.returncode, 2, msg=combined)
+                self.assertTrue(r.stdout.strip(), msg=combined)
+
+    def test_qa_check_help_keeps_cjk_on_a_legacy_windows_console(self):
+        r = _run_cli('qa_check.py', LEGACY_ENV)
+        self.assertEqual(r.returncode, 2, msg=r.stdout + r.stderr)
+        self.assertIn('養子支援', r.stdout)
+
+    def test_missing_args_clis_do_not_die_on_encoding_under_cp1252(self):
+        crash = [n for n in CLI_SCRIPTS if n not in USAGE_CLIS]
+        for name in crash:
+            with self.subTest(name=name):
+                r = _run_cli(name, LEGACY_ENV)
+                combined = r.stdout + r.stderr
+                self.assertNotIn('UnicodeEncodeError', combined, msg=combined)
+                self.assertEqual(r.returncode, 1, msg=combined)
+                self.assertIn('Traceback', combined)
+
+    def test_importing_the_package_does_not_reconfigure_stdio(self):
+        code = (
+            'import sys\n'
+            'print(sys.stdout.encoding)\n'
+            'print(sys.stderr.encoding)\n'
+            'import pdf_translate\n'
+            'print(sys.stdout.encoding)\n'
+            'print(sys.stderr.encoding)\n'
+        )
+        env = dict(os.environ)
+        env.update(LEGACY_ENV)
+        r = subprocess.run(
+            [sys.executable, '-c', code],
+            capture_output=True, text=True, encoding='utf-8', errors='replace',
+            env=env, cwd=str(SKILL))
+        self.assertEqual(r.returncode, 0, msg=r.stdout + r.stderr)
+        lines = [ln.strip() for ln in r.stdout.splitlines() if ln.strip()]
+        self.assertEqual(len(lines), 4, msg=r.stdout)
+        self.assertEqual(lines[0], lines[2])
+        self.assertEqual(lines[1], lines[3])
+        self.assertEqual(lines[0].lower().replace('-', ''), 'cp1252')
 
 
 if __name__ == '__main__':

@@ -11,6 +11,11 @@ if _root not in sys.path:
     sys.path.insert(0, _root)
 
 if __name__ == '__main__':
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding='utf-8', errors='replace')
+        except (AttributeError, OSError, ValueError):
+            pass
     raise SystemExit(importlib.import_module('pdf_translate.qa_check').main())
 
 sys.modules[__name__] = importlib.import_module('pdf_translate.qa_check')
