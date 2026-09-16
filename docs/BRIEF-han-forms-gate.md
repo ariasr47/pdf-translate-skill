@@ -1,4 +1,4 @@
-# Brief: gate 20 `han-forms` — a Japanese target draws Han through Japanese forms (v53)
+# Brief: gate 20 `han-forms` — a Japanese target draws Han through Japanese forms (v54)
 
 Date: 2026-09-16. Measured on `feat/kinsoku-gate` (PR #6) with the fetched Noto Sans JP / SC
 variable faces, PyMuPDF 1.28.2, fontTools 4.64. Probe: `dev/probes/han_forms_probe.py`.
@@ -109,10 +109,11 @@ its own face PASSes), and looks at 600 dpi renders of 直 from both deliveries.
    instanced at 700, not at 400).
 2. Console parity: non-CJK jobs byte-identical to `main` (`dev/probes/verdict_parity_runner.py`).
 3. `FindingsInvariantTests` still holds (every FAIL/REVIEW carries a finding).
-4. Version 53 in four sources plus the lockstep literal; gates.md row and table row; SKILL.md
+4. Version 54 in four sources plus the lockstep literal; gates.md row and table row; SKILL.md
    bullet; DECISIONS row with the table above; evidence doc with the verifier's report.
 
-Effort: one to two days plus the Rule 1 verifier. Depends on PR #6 (the faces).
+Effort: one to two days plus the Rule 1 verifier. Depends on PR #6 (the faces); v54 because the
+stale-report fix (PR #7) took 53. Plan: `docs/plans/2026-09-16-han-forms-gate.md`.
 
 ## 5. Not doing, on purpose
 
