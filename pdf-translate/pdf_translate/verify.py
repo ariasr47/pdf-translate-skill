@@ -1191,16 +1191,18 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     extra = {k for k in set(jnames) - set(onames)
              if not (allow_extra_prefix and k.startswith(allow_extra_prefix))}
     print(f'fields: {len(onames)} original / {len(jnames)} translated')
+    parity = []
     for label, bad in [('missing', missing), ('type-mismatch', mismatch),
                        ('unexpected-extra', extra)]:
         if bad:
             print(f'FAIL field {label}:', sorted(bad)[:10])
             fail = 1
+            parity.extend(Finding(None, label, name) for name in sorted(bad))
     if not (missing or mismatch or extra):
         print('PASS field parity')
         record('field-parity', 'PASS')
     else:
-        record('field-parity', 'FAIL')
+        record('field-parity', 'FAIL', findings=parity)
 
     # Widget text is translated by rewriting the DISPLAY half of each /Opt
     # entry. The export half is what /V holds and what a viewer submits;
@@ -1214,7 +1216,9 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             print(f'   {name}: {oopt.get(name)} -> {jopt.get(name)}')
         fail = 1
         record('opt-export-parity', 'FAIL',
-               f'{len(drifted)} choice field(s) changed')
+               f'{len(drifted)} choice field(s) changed',
+               findings=[Finding(None, name, f'{oopt.get(name)} -> {jopt.get(name)}')
+                         for name in drifted])
     elif oopt:
         print(f'PASS /Opt export parity ({len(oopt)} choice field(s))')
         record('opt-export-parity', 'PASS',
@@ -1250,7 +1254,12 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             ok = got_t and got_cb
             print(('PASS' if ok else 'FAIL') + ' fill round-trip')
             fail |= (0 if ok else 1)
-            record('fill-roundtrip', 'PASS' if ok else 'FAIL')
+            broken = []
+            if not got_t:
+                broken.append(Finding(None, ttarget, 'text value did not survive save and reopen'))
+            if not got_cb:
+                broken.append(Finding(None, cbtarget, 'checkbox did not survive save and reopen'))
+            record('fill-roundtrip', 'PASS' if ok else 'FAIL', findings=broken)
         finally:
             try:
                 os.remove(fill_path)
@@ -1263,6 +1272,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     jc = pymupdf.open(trans)
     ink_status = None
     unextractable = False
+    scans = []
+    inks = []
     for i in range(min(len(o), len(jc))):
         if page_unextractable(o[i]):
             nimg = len(o[i].get_images())
@@ -1271,12 +1282,14 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
                   f'This looks scanned — scans are out of scope with or without an OCR layer; do not ship.')
             fail = 1
             unextractable = True
+            scans.append(Finding(i + 1, 'page', f'images={nimg}, ink={ink(o[i])} px'))
             continue
         do, dj = ink(o[i]), ink(jc[i])
         if do < INK_SKIP:
             print(f'SKIP page {i+1} ink ratio (original negligible ink: {do} px)')
             if ink_status is None:
                 ink_status = 'SKIP'
+            inks.append(Finding(i + 1, 'page', f'negligible ink: {do} px'))
             continue
         ratio = dj / max(do, 1)
         ok = min_ink <= ratio <= 3.0
@@ -1286,10 +1299,11 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             ink_status = 'FAIL'
         elif ink_status != 'FAIL':
             ink_status = 'PASS'
+        inks.append(Finding(i + 1, 'page', f'ink ratio {ratio:.2f}'))
     if unextractable:
-        record('extractable-text', 'FAIL')
+        record('extractable-text', 'FAIL', findings=scans)
     if ink_status:
-        record('ink-ratio', ink_status)
+        record('ink-ratio', ink_status, findings=inks)
 
     invisible = invisible_text_pages(orig)
     for pno, fraction in invisible:
@@ -1301,7 +1315,9 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         print('PASS text layer is visible')
         record('visible-text', 'PASS')
     else:
-        record('visible-text', 'FAIL')
+        record('visible-text', 'FAIL', findings=[
+            Finding(pno + 1, 'page', f'stripping the text changes {fraction:.1%} of its span area')
+            for pno, fraction in invisible])
 
     # Canonical text layer (audit H4/H5). Authored strings count as
     # deliberate; so does anything already in the original, whose own
@@ -1320,7 +1336,9 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         for ch, n in drift[:10]:
             print(f'   U+{ord(ch):04X} {unicodedata.name(ch, "?")} x{n}')
         fail = 1
-        record('canonical-text', 'FAIL', f'{len(drift)} character(s)')
+        record('canonical-text', 'FAIL', f'{len(drift)} character(s)', findings=[
+            Finding(None, f'U+{ord(ch):04X}', f'{unicodedata.name(ch, "?")} x{n}')
+            for ch, n in drift])
     else:
         print('PASS canonical text layer')
         record('canonical-text', 'PASS')
