@@ -75,8 +75,19 @@ Thai additionally has no spaces: line-breaking a merged paragraph needs
 dictionary-based segmentation the engine does not do. Dot leaders on a
 shaped-script label are not refilled (same as RTL). Still verify a
 rendered sample with a reader of the script before building the whole
-document. Fonts: Noto Sans Devanagari / Bengali / Tamil / Thai (glyf,
-with GSUB).
+document. Fonts: Noto Sans Devanagari / Bengali / Tamil / Khmer / Myanmar
+/ Thai (glyf, with GSUB).
+
+`prepare_font` probes the subset it writes for these scripts: the script's
+probe cluster (क्षत्रिय, ক্ষ, க்ஷ, ខ្មែរ, သင်္ဘော) is rendered off the subset
+glyph by glyph and through the Story engine and must lose glyphs (8 → 4
+for Devanagari). A face with no usable GSUB fails there, and `verify`
+re-probes the font program embedded in the output (gate 18), so a face
+that cannot form conjuncts cannot ship. Thai and Lao have no such tell —
+mark stacking never changes the count — so they are REVIEW there and the
+rendered sample is the check. A face for a script nobody has measured
+(Gujarati, Telugu, …) is REVIEW until a probe row is added to
+`shaping_probe.PROBES`.
 
 ## Latin, Cyrillic, Greek (including Vietnamese)
 
@@ -127,7 +138,10 @@ and the `$` tail are refilled on those labels too. Hebrew is direction
 only. verify fails an output whose Arabic came out unshaped, and — since
 a broken Devanagari conjunct leaves no code-point tell — it also fails
 any shaping-script target that no `/ActualText` span carries, because
-that run was drawn glyph by glyph. **Layout is not mirrored unless**
+that run was drawn glyph by glyph, and it probes every embedded face
+that draws a conjunct-forming script (gate 18), so a face with no usable
+GSUB fails even when the run went through the Story engine. **Layout is
+not mirrored unless**
 translations.json sets `"mirror": true` (flips text x and field/link
 rects; graphics stay). Halt unless you have checked the render, the
 logical text layer, *and* whether the skeleton (default) or the opt-in

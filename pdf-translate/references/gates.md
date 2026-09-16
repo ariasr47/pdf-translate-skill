@@ -23,6 +23,7 @@ original.pdf out.pdf --fill-text "…" --source-words-from segments.json
 | invisible text | stripping a page changes under 3% of its text-span pixels: an OCR layer over a scan, or text under an image — a refusal, not a fix |
 | leak scan | untranslated running text in the source script (below) |
 | unshaped Arabic | a page whose Arabic letters are all isolated presentation forms was drawn letter by letter |
+| conjunct shaping | an embedded face used on a page that draws Devanagari, Bengali, Tamil, Khmer or Myanmar does not lose glyphs when its probe cluster (क्षत्रिय, 8 → 4) is rendered through the Story engine: no usable GSUB, so every conjunct drawn with it is broken. A face without the probe glyphs is REVIEW (cannot attest; `prepare_font` adds them). Thai, Lao and Hebrew niqqud are REVIEW, never PASS |
 | `/Opt` export parity | the export half of a choice entry differs from the original's, in value or order |
 | canonical text layer | the output reports NBSP, soft hyphen, U+2010/U+2011, a CJK compatibility ideograph or a Latin ligature (U+FB00–FB06, U+007F) that is in neither the original nor the mapping (`/ToUnicode` drift) |
 
@@ -106,6 +107,26 @@ REVIEW line, not a failure.
 Indic, Thai, Lao, Khmer, Myanmar, Tibetan) must appear in an `/ActualText`
 span; retypeset marks every Story-engine run that way, so a shaped target
 without one was drawn glyph by glyph.
+
+**Conjunct shaping** (always on, gate 18). The shaped-marks gate proves
+who drew the run; this one proves the face can form conjuncts at all. A
+broken conjunct leaves no code-point tell (the shaper writes glyph ids),
+but the glyph *count* moves: a cluster string rendered glyph by glyph and
+again through the Story engine off the same face loses glyphs when the
+face's GSUB works (Devanagari क्षत्रिय 8 → 4, Bengali ক্ষ 3 → 1, Tamil
+க்ஷ 3 → 1, Khmer ខ្មែរ 5 → 4, Myanmar သင်္ဘော 7 → 5; Noto faces). verify
+extracts every embedded font program on a page that draws one of those
+scripts and runs that probe off it, once per (script, face); both arms
+must name the same face, because `insert_text` without `fontname=` falls
+back to Helvetica and looks exactly like an unshaped run. No loss is a
+FAIL — every conjunct drawn with that face is broken; do not ship. A
+face that lacks the probe glyphs is REVIEW (cannot attest): rebuild the
+subset with `prepare_font`, which adds them. Scripts with no count tell —
+Thai, Lao, Hebrew niqqud (marks stack; Thai sara am even adds a glyph) —
+are REVIEW, never PASS: a rendered sample checked by a reader is the
+check. Conjunct scripts with no measured probe (Gujarati, Telugu, …) are
+REVIEW until `shaping_probe.PROBES` gains a measured row. Arabic stays
+with the unshaped-Arabic gate; there, shaping *adds* glyphs.
 
 ## `/Opt` export parity
 

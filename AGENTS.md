@@ -53,7 +53,8 @@ never an intention.
 - Bad: "handles Devanagari correctly."
 - Good: "for probe string क्षत्रिय rendered through the Story engine, glyph
   count (4) is less than codepoint count (8) — verify by
-  `docs/reference/probes/probe-shaping-tell.py` in the pdf-translator repo."
+  `python -m unittest tests.test_shaping_probe` from `pdf-translate/`;
+  the table lives in `pdf_translate/shaping_probe.py`."
 
 ### Measured facts (shaping-tell), 2026-09-15 — do not re-derive, do not alter
 
@@ -72,8 +73,10 @@ only on probe strings known to contain a merging cluster (कमल shapes
 correctly but is indistinguishable from broken output — 1.00 either way). It
 is **backwards** for Arabic, where shaping *adds* glyphs (isolated
 presentation forms split, ratio > 1). It is **blind** to mark-stacking
-scripts — Thai, Lao, Khmer, Hebrew+niqqud — where marks stack onto a base
-glyph without changing the count. Those scripts have no cheap mechanical
+scripts — Thai, Lao, Hebrew+niqqud — where marks stack onto a base glyph
+without changing the count (Khmer was listed here on 15 September and
+removed the same day: its coeng cluster ខ្មែរ does lose a glyph, 5 → 4,
+so Khmer is probed; `docs/DECISIONS.md`). Those scripts have no cheap mechanical
 tell; they need reference rasters or human review. A breadth sweep must
 never report a mark-stacking script as "verified" on glyph count alone.
 
