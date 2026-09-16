@@ -1406,7 +1406,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         for pg, ph in running[:10]:
             print(f'   p{pg}: {ph}')
         fail = 1
-        record('leak-running', 'FAIL', f'{len(running)}')
+        record('leak-running', 'FAIL', f'{len(running)}',
+               findings=[Finding(pg, 'run', ph) for pg, ph in running])
     else:
         print('PASS no untranslated running text')
         record('leak-running', 'PASS')
@@ -1416,10 +1417,11 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         print(f'REVIEW isolated source-script tokens ({len(uniq)}) - expected for '
               f'form names, statutes and proper nouns; confirm each is deliberate:')
         print('   ' + ', '.join(uniq[:20]))
-        record('leak-isolated', 'REVIEW', f'{len(uniq)}')
+        record('leak-isolated', 'REVIEW', f'{len(uniq)}',
+               findings=[Finding(pg, 'token', w) for pg, w in sorted(set(isolated))])
     else:
-        print('REVIEW isolated source-script tokens: none')
-        record('leak-isolated', 'REVIEW', 'none')
+        print('PASS isolated source-script tokens: none')
+        record('leak-isolated', 'PASS', 'none')
 
     if translations:
         with open(translations, encoding='utf-8') as f:

@@ -217,3 +217,35 @@ class ScriptGateFindingsTests(unittest.TestCase):
             self.assertEqual(where, 'NotoSansDevanagari-Regular')
             self.assertIn('क्षत्रिय', text)
             self.assertIn('8 -> 8', text)
+
+
+class LeakGateFindingsTests(unittest.TestCase):
+    SOURCE = 'Alpha bravo charlie delta echo.'
+
+    def test_running_text_names_page_and_phrase(self):
+        from pdf_translate.verify import run_verify
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp, source=self.SOURCE, target=self.SOURCE)
+            v = run_verify(src, out, min_ink=0.1)
+            self.assertEqual(_gate(v, 'leak-running').status, 'FAIL')
+            page, where, text = _findings(v, 'leak-running')[0]
+            self.assertEqual((page, where), (1, 'run'))
+            self.assertIn('bravo', text.lower())
+
+    def test_isolated_token_is_named_and_none_is_pass(self):
+        from pdf_translate.verify import run_verify, verify
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp, source=self.SOURCE, target='Hola mundo alpha.')
+            v = run_verify(src, out, min_ink=0.1)
+            self.assertEqual(_gate(v, 'leak-isolated').status, 'REVIEW')
+            self.assertEqual(_findings(v, 'leak-isolated'), [(1, 'token', 'alpha')])
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp, source=self.SOURCE, target='Hola mundo.')
+            v = run_verify(src, out, min_ink=0.1)
+            self.assertEqual(_gate(v, 'leak-isolated').status, 'PASS')
+            self.assertEqual(_findings(v, 'leak-isolated'), [])
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                verify(src, out, min_ink=0.1)
+            self.assertIn('PASS isolated source-script tokens: none', buf.getvalue())
+            self.assertNotIn('REVIEW isolated source-script tokens', buf.getvalue())
