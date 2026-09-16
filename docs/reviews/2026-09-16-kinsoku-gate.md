@@ -312,8 +312,9 @@ vertical gap up to `STACK_GAP = 1.5` times the lower line's height, not by
 MuPDF's blocks, which split hand-split lines above about 1.6x leading and
 let them pass silently. Two shapes a form sets on purpose are exempt: a
 single-character line (ー for "none", a bracket after a field, a lone 「),
-and a character that begins two or more lines of a stack, each followed by
-more text (・ as a list marker). Documented misses: a lone 「 or 。 on its
+and a ・ or ･ bullet (`KINSOKU_LIST_MARKERS`) that begins two or more lines
+of a stack, each followed by more text — a repeated 。 is two breaks, not a
+list (the re-review fix below). Documented misses: a lone 「 or 。 on its
 own line in a hand-split paragraph (single character → exempt); lines set
 looser than about two and a half times the line height (three times the
 font size); vertical (character-stacked)
