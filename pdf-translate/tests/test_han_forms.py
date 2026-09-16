@@ -22,6 +22,7 @@ import pymupdf
 from pdf_translate import han_forms
 
 verify_mod = importlib.import_module('pdf_translate.verify')
+from pdf_translate.verify import GATE_NAMES, run_verify, verify
 
 FONTS = Path(__file__).resolve().parents[1] / 'tests' / 'fonts'
 JP_FACE = FONTS / 'NotoSansJP-VF.ttf'
@@ -40,6 +41,44 @@ def _face(path):
 
 def _font(path):
     return pymupdf.Font(fontfile=str(_face(path)))
+
+
+def build_delivery(tmp, face, target, lang, instance='wght=400', prepare_lang=None):
+    """A real delivery: orig -> extract -> strip -> prepare_font(face, instance)
+    -> retypeset. prepare_font sees a mapping with prepare_lang (None: no lang,
+    so its own han-forms check stays quiet); retypeset sees lang, which it
+    writes as /Lang. Returns (orig, out, translations, subset)."""
+    from tests.test_pipeline import (SOURCE_SENTENCE, build_plain_pdf, extract_segments,
+                                     prepare_font, retypeset, strip_text, write_mapping)
+    src, stripped, out = (os.path.join(tmp, n) for n in ('orig.pdf', 'stripped.pdf', 'out.pdf'))
+    tr, subset = os.path.join(tmp, 'translations.json'), os.path.join(tmp, 'subset.ttf')
+    build_plain_pdf(src)
+    extract_segments.extract_segments(src, outdir=tmp)
+    strip_text.strip_text(src, stripped)
+    write_mapping(tr, {SOURCE_SENTENCE: target}, Path(face), lang=prepare_lang)
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        rc = prepare_font.prepare_font(str(face), tr, subset, instance=instance)
+    assert rc == 0, buf.getvalue()
+    write_mapping(tr, {SOURCE_SENTENCE: target}, Path(subset), lang=lang)
+    with redirect_stdout(buf):
+        rc = retypeset.retypeset(stripped, os.path.join(tmp, 'segments.json'), tr, out)
+    assert rc == 0, buf.getvalue()
+    return src, out, tr, subset
+
+
+def _with_lang(job, lang, name):
+    """The same delivery judged under another mapping lang (or none)."""
+    src, out, tr, subset = job
+    tr2 = os.path.join(os.path.dirname(tr), name)
+    with open(tr, encoding='utf-8') as f:
+        data = json.load(f)
+    data.pop('lang', None)
+    if lang is not None:
+        data['lang'] = lang
+    with open(tr2, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=1)
+    return src, out, tr2, subset
 
 
 class MeasurementTests(unittest.TestCase):
@@ -199,6 +238,153 @@ class JudgeTests(unittest.TestCase):
         r = han_forms.judge_file(han_forms.reference_face('JP', 400, FONTS), 'JP', FONTS)
         self.assertEqual(r.status, 'PASS', r)
         self.assertTrue(r.face.startswith('NotoSansJP'), r.face)
+
+
+class VerifyGateTests(unittest.TestCase):
+    """Gate 20 on deliveries built through the pipeline. Five deliveries, once
+    per class; about a minute on first run (prepare_font instances the
+    variable face for each)."""
+
+    @classmethod
+    def setUpClass(cls):
+        _face(JP_FACE), _face(SC_FACE)
+        cls.tmp = tempfile.TemporaryDirectory()
+
+        def job(name, **kw):
+            d = os.path.join(cls.tmp.name, name)
+            os.mkdir(d)
+            return build_delivery(d, **kw)
+
+        cls.ja_jp = job('ja-jp', face=JP_FACE, target=TARGET, lang='ja')
+        cls.ja_sc = job('ja-sc', face=SC_FACE, target=TARGET, lang='ja')
+        cls.nolang = job('nolang', face=JP_FACE, target=TARGET, lang=None)
+        cls.plain = job('plain', face=JP_FACE, target=PLAIN, lang='ja')
+        cls.bold = job('bold', face=JP_FACE, target=TARGET, lang='ja', instance='wght=700')
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def console(self, job, **kw):
+        src, out, tr, _ = job
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = verify(src, out, translations=tr, min_ink=0.1, **kw)
+        return rc, buf.getvalue().splitlines()
+
+    def gate(self, job, **kw):
+        src, out, tr, _ = job
+        v = run_verify(src, out, translations=tr, min_ink=0.1, **kw)
+        found = [g for g in v.gates if g.name == 'han-forms']
+        return v.exit_code, (found[0] if found else None)
+
+    def test_the_gate_is_named_after_kinsoku(self):
+        self.assertEqual(GATE_NAMES[GATE_NAMES.index('kinsoku') + 1], 'han-forms')
+
+    def test_a_japanese_delivery_in_the_japanese_face_passes(self):
+        rc, lines = self.console(self.ja_jp)
+        self.assertEqual(rc, 0, lines)
+        line = [l for l in lines if l.startswith('PASS han-forms Japanese: ')]
+        self.assertEqual(len(line), 1, lines)
+        self.assertIn('draws Japanese forms', line[0])
+        self.assertIn('at wght 400) [page 1]', line[0])
+        rc, gate = self.gate(self.ja_jp)
+        self.assertEqual((rc, gate.status), (0, 'PASS'), gate)
+        self.assertEqual(len(gate.findings), 1, gate)
+        self.assertEqual(gate.findings[0].page, 1)
+        # MuPDF names the embedded face with spaces ('Noto Sans JP Regular'), as test_cjk found.
+        self.assertTrue(gate.findings[0].where.replace(' ', '').startswith('NotoSansJP'), gate.findings[0])
+        self.assertTrue(gate.findings[0].text.startswith('PASS han-forms Japanese: '), gate.findings[0])
+
+    def test_a_japanese_delivery_in_the_chinese_face_fails(self):
+        rc, lines = self.console(self.ja_sc)
+        self.assertEqual(rc, 1, lines)
+        line = [l for l in lines if l.startswith('FAIL han-forms Japanese: ')]
+        self.assertEqual(len(line), 1, lines)
+        self.assertIn('draws Simplified Chinese forms', line[0])
+        self.assertIn('[page 1] — a reader of the language sees the other region', line[0])
+        rc, gate = self.gate(self.ja_sc)
+        self.assertEqual((rc, gate.status), (1, 'FAIL'), gate)
+        self.assertTrue(gate.findings[0].where.replace(' ', '').startswith('NotoSansSC'), gate.findings[0])
+        self.assertTrue(gate.findings[0].text.startswith('FAIL han-forms Japanese: '), gate.findings[0])
+        self.assertNotIn('[page', gate.findings[0].text)
+
+    def test_the_mapping_lang_names_the_convention(self):
+        # The Japanese-face output judged as a Simplified Chinese job: the mapping's lang wins
+        # over /Lang. (The mapping's zh-Hans also disagrees with the output's /Lang ja, which the
+        # metadata gate FAILs on its own, so the exit code is asserted through the FAIL names.)
+        src, out, tr, _ = _with_lang(self.ja_jp, 'zh-Hans', 'zh.json')
+        v = run_verify(src, out, translations=tr, min_ink=0.1)
+        gate = [g for g in v.gates if g.name == 'han-forms'][0]
+        self.assertEqual((v.exit_code, gate.status), (1, 'FAIL'), gate)
+        self.assertIn('han-forms', [g.name for g in v.gates if g.status == 'FAIL'])
+        self.assertTrue(gate.findings[0].text.startswith('FAIL han-forms Simplified Chinese: '),
+                        gate.findings[0].text)
+
+    def test_without_translations_the_output_lang_is_used(self):
+        src, out, _, _ = self.ja_jp
+        v = run_verify(src, out, min_ink=0.1)
+        gate = [g for g in v.gates if g.name == 'han-forms'][0]
+        self.assertEqual(gate.status, 'PASS', gate)
+
+    def test_no_lang_anywhere_is_review(self):
+        rc, gate = self.gate(self.nolang)
+        self.assertEqual((rc, gate.status), (0, 'REVIEW'), gate)
+        self.assertEqual(gate.findings[0].where, 'lang')
+        self.assertIn('no "lang" names the convention', gate.findings[0].text)
+        _, lines = self.console(self.nolang)
+        self.assertTrue(any(l.startswith('REVIEW han-forms: no "lang" names the convention')
+                            and l.endswith('[page 1]') for l in lines), lines)
+
+    def test_a_non_cjk_lang_on_a_cjk_page_prints_nothing(self):
+        # The page's CJK is not the target's script (a leak, a notice): the leak gates own it.
+        rc, gate = self.gate(_with_lang(self.ja_jp, 'es', 'es.json'))
+        self.assertIsNone(gate)
+        _, lines = self.console(_with_lang(self.ja_jp, 'es', 'es.json'))
+        self.assertFalse([l for l in lines if 'han-forms' in l], lines)
+
+    def test_a_subset_without_the_probes_is_review_cannot_attest(self):
+        rc, gate = self.gate(self.plain)
+        self.assertEqual((rc, gate.status), (0, 'REVIEW'), gate)
+        self.assertEqual(gate.findings[0].where, 'JP')
+        self.assertIn('cannot attest: no embedded face carries the probes', gate.findings[0].text)
+        _, lines = self.console(self.plain)
+        self.assertTrue(any(l.startswith('REVIEW han-forms Japanese: cannot attest [page 1]: '
+                                         'no embedded face carries the probes "\u76f4\u9aa8\u6d77\u6771"')
+                            for l in lines), lines)
+
+    def test_a_bold_delivery_is_judged_at_its_own_weight(self):
+        rc, gate = self.gate(self.bold)
+        self.assertEqual((rc, gate.status), (0, 'PASS'), gate)
+        self.assertIn('at wght 700', gate.findings[0].text)
+
+    def test_missing_reference_faces_are_review(self):
+        with tempfile.TemporaryDirectory() as empty:
+            rc, gate = self.gate(self.ja_jp, reference_fonts=empty)
+        self.assertEqual((rc, gate.status), (0, 'REVIEW'), gate)
+        self.assertEqual(gate.findings[0].where, 'reference')
+        self.assertIn('reference faces not found in', gate.findings[0].text)
+
+    def test_traditional_chinese_has_no_reference_yet(self):
+        src, out, tr, _ = _with_lang(self.ja_jp, 'zh-Hant', 'hant.json')
+        v = run_verify(src, out, translations=tr, min_ink=0.1)
+        gate = [g for g in v.gates if g.name == 'han-forms'][0]
+        self.assertEqual(gate.status, 'REVIEW', gate)
+        self.assertEqual(gate.findings[0].where, 'reference')
+        self.assertIn('no reference face measured for Traditional Chinese', gate.findings[0].text)
+        # The mapping's zh-Hant disagrees with the output's /Lang ja, which the metadata gate
+        # FAILs on its own; han-forms must not be among the FAILs (a REVIEW never exits 1).
+        self.assertEqual([g.name for g in v.gates if g.status == 'FAIL'], ['metadata'], v.gates)
+
+    def test_the_cli_takes_reference_fonts(self):
+        src, out, tr, _ = self.ja_jp
+        with tempfile.TemporaryDirectory() as empty:
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify_mod.main([src, out, '--translations', tr, '--min-ink', '0.1',
+                                      '--reference-fonts', empty])
+        self.assertEqual(rc, 0, buf.getvalue())
+        self.assertIn('REVIEW han-forms Japanese: reference faces not found in', buf.getvalue())
 
 
 if __name__ == '__main__':
