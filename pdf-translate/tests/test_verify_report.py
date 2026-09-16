@@ -367,3 +367,81 @@ class TranslationGateFindingsTests(unittest.TestCase):
                 doc.close()
             v = run_verify(src, out, translations=tr, min_ink=0.1)
             self.assertEqual(_findings(v, 'caption-width'), [(None, NARROW_BTN, LONG_CAPTION)])
+
+
+class ReportAndPolicyTests(unittest.TestCase):
+    def _console(self, argv):
+        from pdf_translate.verify import main
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = main(argv)
+        lines = [ln for ln in buf.getvalue().splitlines() if not ln.startswith('elapsed ')]
+        return rc, lines
+
+    def test_report_flag_writes_the_verdict_and_leaves_the_console_alone(self):
+        from pdf_translate.verify import run_verify
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp, lang='es')
+            report = os.path.join(tmp, 'verify_report.json')
+            base = [src, out, '--translations', tr, '--min-ink', '0.1']
+            rc_plain, plain = self._console(base)
+            rc_rep, with_report = self._console(base + ['--report', report])
+            self.assertEqual((rc_plain, rc_rep), (1, 1))
+            self.assertEqual(plain, with_report)
+            data = json.loads(Path(report).read_text(encoding='utf-8'))
+            expected = run_verify(src, out, translations=tr, min_ink=0.1).to_dict()
+            self.assertEqual(data, expected)
+            self.assertEqual(data['schema'], 1)
+            self.assertEqual((data['original'], data['output']), (src, out))
+            names = [g['name'] for g in data['gates']]
+            self.assertIn('metadata', names)
+            meta = next(g for g in data['gates'] if g['name'] == 'metadata')
+            self.assertEqual(meta['findings'][0]['where'], 'lang')
+
+    def test_unwritable_report_path_keeps_the_exit_code(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp)
+            rc, lines = self._console([src, out, '--translations', tr, '--min-ink', '0.1',
+                                       '--report', os.path.join(tmp, 'no-such-dir', 'r.json')])
+            self.assertEqual(rc, 0)
+            self.assertTrue(any('could not write' in ln for ln in lines), lines)
+
+    def test_fail_on_review_turns_review_into_exit_1(self):
+        from pdf_translate.verify import run_verify
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp)   # no lang -> metadata-lang REVIEW, no FAIL
+            base = [src, out, '--translations', tr, '--min-ink', '0.1']
+            self.assertEqual(self._console(base)[0], 0)
+            rc, lines = self._console(base + ['--fail-on-review'])
+            self.assertEqual(rc, 1)
+            self.assertTrue(any(ln.startswith('FAIL: ') and 'REVIEW' in ln for ln in lines), lines)
+            self.assertEqual(run_verify(src, out, translations=tr, min_ink=0.1).exit_code, 0)
+            self.assertEqual(run_verify(src, out, translations=tr, min_ink=0.1,
+                                        fail_on_review=True).exit_code, 1)
+
+    def test_pipeline_rebuild_writes_the_report_into_the_work_dir(self):
+        from pdf_translate.extract_segments import extract_segments
+        from pdf_translate.pipeline import main as pipeline_main
+        from pdf_translate.strip_text import strip_text
+        latin = FONTS / 'NotoSans-Regular.ttf'
+        if not latin.is_file():
+            raise unittest.SkipTest('NotoSans-Regular.ttf not fetched (tools/fetch_test_fonts.py)')
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            _tiny_pdf(src, 'Hello world.')
+            font = str(latin)
+            Path(tr).write_text(json.dumps({
+                'fonts': {'regular': font, 'bold': font, 'italic': font, 'bold_italic': font},
+                'translations': {'Hello world.': 'Hola mundo.'}, 'lang': 'es',
+                'merges': [], 'overrides': [], 'center': [], 'skip': []}), encoding='utf-8')
+            with redirect_stdout(io.StringIO()):
+                strip_text(src, os.path.join(tmp, 'stripped.pdf'))
+                extract_segments(src, outdir=tmp)
+                rc = pipeline_main(['rebuild', '--work', tmp, src, out, '--min-ink', '0.1',
+                                    '--translations', tr])
+            self.assertEqual(rc, 0)
+            data = json.loads(Path(tmp, 'verify_report.json').read_text(encoding='utf-8'))
+            self.assertEqual(data['schema'], 1)
+            self.assertEqual(data['exit_code'], 0)

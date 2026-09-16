@@ -122,7 +122,8 @@ Usage:
       [--fill-text "value in target script"] [--allow WORD,"Multi Word Name",...] \
       [--min-ink 0.4] [--source-regex "[A-Za-z]{4,}"] \
       [--source-words-from segments.json] [--allow-extra-prefix tr_] \
-      [--translations translations.json] [--segments segments.json]
+      [--translations translations.json] [--segments segments.json] \
+      [--report verify_report.json] [--fail-on-review]
 """
 import io
 import json
@@ -1144,7 +1145,7 @@ def ink(page):
 
 def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
                     source_regex=None, source_words_from=None, allow_extra_prefix=None,
-                    translations=None, segments=None):
+                    translations=None, segments=None, fail_on_review=False):
     """Run structural gates. Returns (exit_code, gates). Prints as it goes."""
     # A multi-word --allow entry is a phrase: it matches a whole run and
     # nothing else (row 20). Single words behave as before. Until now a
@@ -1573,32 +1574,47 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     o.close()
     j.close()
     jc.close()
-    return (1 if fail else 0, gates)
+    rc = 1 if fail else 0
+    if fail_on_review and rc == 0:
+        reviews = sum(1 for g in gates if g.status == 'REVIEW')
+        if reviews:
+            print(f'FAIL: {reviews} REVIEW line(s) with --fail-on-review')
+            rc = 1
+    return rc, gates
 
 
 def run_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
                source_regex=None, source_words_from=None, allow_extra_prefix=None,
-               translations=None, segments=None):
+               translations=None, segments=None, fail_on_review=False):
     """Run structural gates. Returns a VerifyVerdict; does not print or exit."""
     with redirect_stdout(io.StringIO()):
         rc, gates = _execute_verify(
             orig, trans, fill_text=fill_text, allow=allow, min_ink=min_ink,
             source_regex=source_regex, source_words_from=source_words_from,
             allow_extra_prefix=allow_extra_prefix, translations=translations,
-            segments=segments)
+            segments=segments, fail_on_review=fail_on_review)
     return VerifyVerdict(exit_code=rc, gates=tuple(gates), original=orig, output=trans)
 
 
 def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
            source_regex=None, source_words_from=None, allow_extra_prefix=None,
-           translations=None, segments=None):
+           translations=None, segments=None, fail_on_review=False):
     """Run structural gates. Returns 0 on pass, 1 on any failure."""
     rc, _ = _execute_verify(
         orig, trans, fill_text=fill_text, allow=allow, min_ink=min_ink,
         source_regex=source_regex, source_words_from=source_words_from,
         allow_extra_prefix=allow_extra_prefix, translations=translations,
-        segments=segments)
+        segments=segments, fail_on_review=fail_on_review)
     return rc
+
+
+def write_report(verdict, path):
+    """verdict.to_dict() as JSON at path; a failure is printed, never raised."""
+    try:
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(verdict.to_dict(), f, ensure_ascii=False, indent=1)
+    except OSError as exc:
+        print(f'  (could not write {path}: {exc})')
 
 
 def main(argv=None):
@@ -1606,7 +1622,7 @@ def main(argv=None):
     orig, trans = argv[0], argv[1]
     allow = [w for w in (_arg(argv, '--allow', '') or '').split(',') if w]
     t0 = time.perf_counter()
-    rc = verify(
+    rc, gates = _execute_verify(
         orig, trans,
         fill_text=_arg(argv, '--fill-text', 'Test value 123'),
         allow=allow,
@@ -1616,7 +1632,12 @@ def main(argv=None):
         allow_extra_prefix=_arg(argv, '--allow-extra-prefix', None),
         translations=_arg(argv, '--translations', None),
         segments=_arg(argv, '--segments', None),
+        fail_on_review='--fail-on-review' in argv,
     )
+    report = _arg(argv, '--report', None)
+    if report:
+        write_report(VerifyVerdict(exit_code=rc, gates=tuple(gates),
+                                   original=orig, output=trans), report)
     print(f'elapsed {time.perf_counter()-t0:.2f}s')
     return rc
 

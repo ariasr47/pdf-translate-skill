@@ -340,6 +340,8 @@ def cmd_rebuild(argv):
         return rc
     # Retypeset resolves font paths beside the mapping. Leave the caller's
     # directory intact so all command-line verification paths keep meaning.
+    if '--report' not in extra:
+        extra = extra + ['--report', os.path.join(work, 'verify_report.json')]
     rc = verify_main([orig, out] + extra)
     print(f'elapsed {time.perf_counter()-t0:.2f}s')
     return rc
