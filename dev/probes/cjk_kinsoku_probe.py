@@ -48,7 +48,7 @@ FILL = '\u3042'  # あ: full-width, carries no prohibition of its own
 NO_START = {
     'cl-02 closing brackets': '\u300d\u300f\uff09\uff3d\uff5d\u3009\u300b\u3011\u3015\u3019\u3017\u2019\u201d\uff60',
     'cl-02 half-width closer': '\uff63',
-    'cl-03 hyphens': '\u2010\u30a0\u2013\uff5e',
+    'cl-03 hyphens': '\u2010\u301c\u30a0\u2013\uff5e',
     'cl-04 dividing punctuation': '\uff1f\uff01\u203c\u2047\u2048\u2049',
     'cl-05 middle dots': '\u30fb\uff1a\uff1b',
     'cl-06 full stops': '\u3002\uff0e',

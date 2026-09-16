@@ -176,6 +176,44 @@ SCRIPT_RANGES = {
 }
 # No word spaces: "three words" is approximated by six consecutive characters.
 SPACELESS_SCRIPTS = {'CJK', 'Thai', 'Lao', 'Khmer', 'Myanmar', 'Tibetan'}
+# JIS X 4051 / W3C JLREQ ("Requirements for Japanese Text Layout", Appendix A
+# character classes) line-breaking prohibitions, transcribed from those
+# public references and from nothing else. Chinese layout (GB/T 15834)
+# forbids the same punctuation at the same positions, so the gate judges
+# every CJK line, not only Japanese ones. The Story engine breaks by UAX #14
+# and never violates these (measured: dev/probes/cjk_kinsoku_probe.py); a
+# target split by hand across source lines can.
+#
+# Characters that may not BEGIN a line:
+KINSOKU_LINE_START = frozenset(
+    # cl-02 closing brackets 」』）］｝〉》】〕〙〗’”｠ and half-width ｣
+    '\u300d\u300f\uff09\uff3d\uff5d\u3009\u300b\u3011\u3015\u3019\u3017'
+    '\u2019\u201d\uff60\uff63'
+    # cl-03 hyphens ‐ 〜 ゠ – and the full-width tilde ～ Windows writes for 〜
+    '\u2010\u301c\u30a0\u2013\uff5e'
+    # cl-04 dividing punctuation ？！‼⁇⁈⁉
+    '\uff1f\uff01\u203c\u2047\u2048\u2049'
+    # cl-05 middle dots ・：；
+    '\u30fb\uff1a\uff1b'
+    # cl-06 full stops 。． and half-width ｡
+    '\u3002\uff0e\uff61'
+    # cl-07 commas 、， and half-width ､
+    '\u3001\uff0c\uff64'
+    # cl-09 iteration marks 々〻ゝゞヽヾ
+    '\u3005\u303b\u309d\u309e\u30fd\u30fe'
+    # cl-10 prolonged sound mark ー and half-width ｰ
+    '\u30fc\uff70'
+    # cl-11 small kana ぁぃぅぇぉっゃゅょゎゕゖ, ァィゥェォッャュョヮヵヶ, half-width ｧ..ｯ
+    '\u3041\u3043\u3045\u3047\u3049\u3063\u3083\u3085\u3087\u308e\u3095\u3096'
+    '\u30a1\u30a3\u30a5\u30a7\u30a9\u30c3\u30e3\u30e5\u30e7\u30ee\u30f5\u30f6'
+    '\uff67\uff68\uff69\uff6a\uff6b\uff6c\uff6d\uff6e\uff6f'
+)
+# ... and that may not END one: cl-01 opening brackets 「『（［｛〈《【〔〘〖‘“｟
+# and half-width ｢
+KINSOKU_LINE_END = frozenset(
+    '\u300c\u300e\uff08\uff3b\uff5b\u3008\u300a\u3010\u3014\u3018\u3016'
+    '\u2018\u201c\uff5f\uff62'
+)
 SPACELESS_RUN_CHARS = 6
 # Latin keeps today's 4-letter word floor; other scripts have short real words.
 MIN_WORD_LETTERS = {'Latin': 4}
@@ -1126,6 +1164,54 @@ def conjunct_shaping_report(doc):
     else:
         status = None
     return lines, status, findings
+
+
+def _has_cjk(text):
+    return any(script_of(ch) == 'CJK' for ch in text)
+
+
+def kinsoku_report(doc):
+    """(lines, status, findings) for gate 19: no drawn CJK line begins with a
+    character JIS X 4051 / JLREQ forbids at line start, or ends with one it
+    forbids at line end.
+
+    Judged on the lines MuPDF reads back from each page, block by block. A
+    line that begins with closing punctuation, a small kana or the prolonged
+    sound mark is a violation only when a line of the same block sits above
+    it — the break before it was a choice; a line that ends with an opening
+    bracket only when one sits below it. A block's lone line is a label or
+    one segment, not a break. Adjacency counts every line of the block; the
+    rule is applied to the CJK ones. status is FAIL if any line violates,
+    PASS if CJK lines were judged and none did, None when no page has one.
+    """
+    findings, judged = [], 0
+    for page in doc:
+        for block in page.get_text('dict').get('blocks', []):
+            texts = []
+            for ln in block.get('lines', []):
+                text = ''.join(sp.get('text', '') for sp in ln.get('spans', ())).strip()
+                if text:
+                    texts.append(text)
+            last = len(texts) - 1
+            for i, text in enumerate(texts):
+                if not _has_cjk(text):
+                    continue
+                judged += 1
+                if i < last and text[-1] in KINSOKU_LINE_END:
+                    findings.append(Finding(page.number + 1, 'line-end', text))
+                if i > 0 and text[0] in KINSOKU_LINE_START:
+                    findings.append(Finding(page.number + 1, 'line-start', text))
+    if not judged:
+        return [], None, []
+    if findings:
+        lines = [f'FAIL kinsoku: {len(findings)} CJK line(s) break a line-breaking rule '
+                 f'(JIS X 4051 / JLREQ): closing punctuation, a small kana or the prolonged '
+                 f'sound mark begins a line, or an opening bracket ends one. Declare the '
+                 f'paragraph as a merge instead of splitting the target by hand:']
+        for f in findings[:20]:
+            lines.append(f'   p{f.page} {f.where}: {f.text[:60]}')
+        return lines, 'FAIL', findings
+    return [f'PASS kinsoku: {judged} CJK line(s) break within the rules'], 'PASS', []
 
 
 def page_unextractable(page):
