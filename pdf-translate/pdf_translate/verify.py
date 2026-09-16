@@ -1392,7 +1392,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
               f'family; the scan cannot tell them apart. Rely on --translations and '
               f'the visual pass.')
         record('leak-scan', 'REVIEW',
-               f'source and output share the spaceless {src_script} family')
+               f'source and output share the spaceless {src_script} family',
+               findings=[Finding(None, 'script', src_script)])
     else:
         for i in range(len(jc)):
             r, iso = scan_leaks(jc[i].get_text(), allow, source_words=source_words,
@@ -1538,7 +1539,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             print('REVIEW document metadata: translations.json has no "lang"; '
                   'the output still declares the source language to screen '
                   'readers and hyphenation')
-            record('metadata-lang', 'REVIEW', 'translations.json has no "lang"')
+            record('metadata-lang', 'REVIEW', 'translations.json has no "lang"',
+                   findings=[Finding(None, 'lang', 'translations.json has no "lang"')])
 
         report = scale_report_for(trans)
         if report is None:
@@ -1606,8 +1608,16 @@ def run_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
             source_regex=source_regex, source_words_from=source_words_from,
             allow_extra_prefix=allow_extra_prefix, translations=translations,
             segments=segments, fail_on_review=fail_on_review)
-    return VerifyVerdict(exit_code=rc, gates=tuple(gates), original=orig, output=trans,
-                        fail_on_review=fail_on_review)
+    return _verdict(rc, gates, orig, trans, fail_on_review)
+
+
+def _verdict(rc, gates, orig, trans, fail_on_review):
+    """The verdict both entry points hand out: paths absolute, whatever the
+    caller passed, so a report written from the library reads like one
+    written by the CLI."""
+    return VerifyVerdict(exit_code=rc, gates=tuple(gates),
+                         original=os.path.abspath(orig), output=os.path.abspath(trans),
+                         fail_on_review=fail_on_review)
 
 
 def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
@@ -1651,9 +1661,7 @@ def main(argv=None):
     )
     report = _arg(argv, '--report', None)
     if report:
-        write_report(VerifyVerdict(exit_code=rc, gates=tuple(gates),
-                                   original=os.path.abspath(orig), output=os.path.abspath(trans),
-                                   fail_on_review='--fail-on-review' in argv), report)
+        write_report(_verdict(rc, gates, orig, trans, '--fail-on-review' in argv), report)
     print(f'elapsed {time.perf_counter()-t0:.2f}s')
     return rc
 

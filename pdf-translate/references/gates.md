@@ -176,12 +176,14 @@ adds the probe glyphs gate 18 needs (`conjunct-shaping` "cannot attest").
 | extractable-text, ink-ratio, visible-text, arabic-letterforms | `page` | the detail (`PASS ink ratio 1.05`, `images=1, ink=200 px`, …) |
 | canonical-text | `U+XXXX` | the character name and count |
 | conjunct-shaping | the face's PostScript name, or the script when it could not be judged | the probe line, or the reason |
+| leak-scan | `script` | the spaceless family source and output share (`CJK`) |
 | leak-running | `run` | the phrase |
 | leak-isolated | `token` | the token |
 | empty-targets, placement, shaped-actualtext | `target` | the target string |
 | button-captions, caption-width | the field name | the caption |
 | override-markers | the override's `contains` | the missing marker or tail |
 | metadata | `lang` / `title` / `outline` / `struct-tree` | the detail |
+| metadata-lang | `lang` | `translations.json has no "lang"` |
 | scaled-runs | the ratio, `0.85x` | the run's key |
 | identifiers | `identifier` | the span |
 

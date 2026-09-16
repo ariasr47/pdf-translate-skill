@@ -33,6 +33,21 @@ def _findings(verdict, name):
     return [(f.page, f.where, f.text) for f in _gate(verdict, name).findings]
 
 
+def _spaceless_job(tmp):
+    """Source and output both Japanese, drawn with PyMuPDF's built-in CJK face:
+    the leak scan cannot tell the sides apart and prints one REVIEW line."""
+    src = os.path.join(tmp, 'orig.pdf')
+    out = os.path.join(tmp, 'out.pdf')
+    for path, text in ((src, '申立人の氏名を記入してください。'), (out, '申請者の名前を書いてください。')):
+        doc = pymupdf.open()
+        try:
+            doc.new_page().insert_text((72, 72), text, fontname='japan')
+            doc.save(path)
+        finally:
+            doc.close()
+    return src, out
+
+
 def _arabic_glyph_by_glyph(path):
     """An output page whose Arabic was drawn by TextWriter: no shaping, no /ActualText.
     Raises SkipTest when the Naskh face is not fetched."""
@@ -74,9 +89,21 @@ class FindingShapeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             src, out, tr = _job(tmp)
             v = run_verify(src, out, translations=tr, min_ink=0.1)
-            self.assertEqual((v.original, v.output), (src, out))
+            self.assertEqual((v.original, v.output), (os.path.abspath(src), os.path.abspath(out)))
             self.assertTrue(all(isinstance(g.findings, tuple) for g in v.gates))
             self.assertEqual(v.to_dict()['gates'][0]['name'], 'field-parity')
+
+    def test_run_verify_records_absolute_paths_like_the_cli(self):
+        """A library caller passing relative paths gets the same report the CLI writes."""
+        from pdf_translate.verify import run_verify
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp)
+            if os.path.splitdrive(src)[0].lower() != os.path.splitdrive(os.getcwd())[0].lower():
+                raise unittest.SkipTest('temp dir on another drive; no relative path exists')
+            rel_src, rel_out = os.path.relpath(src), os.path.relpath(out)
+            self.assertFalse(os.path.isabs(rel_src))
+            v = run_verify(rel_src, rel_out, translations=tr, min_ink=0.1)
+            self.assertEqual((v.original, v.output), (os.path.abspath(src), os.path.abspath(out)))
 
 
 class FormAndPageGateFindingsTests(unittest.TestCase):
@@ -276,6 +303,15 @@ class LeakGateFindingsTests(unittest.TestCase):
             self.assertIn('PASS isolated source-script tokens: none', buf.getvalue())
             self.assertNotIn('REVIEW isolated source-script tokens', buf.getvalue())
 
+    def test_shared_spaceless_family_names_the_script(self):
+        """zh -> ja: the scan cannot tell the sides apart; the REVIEW names the family."""
+        from pdf_translate.verify import run_verify
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out = _spaceless_job(tmp)
+            v = run_verify(src, out, min_ink=0.1)
+            self.assertEqual(_gate(v, 'leak-scan').status, 'REVIEW')
+            self.assertEqual(_findings(v, 'leak-scan'), [(None, 'script', 'CJK')])
+
 
 class TranslationGateFindingsTests(unittest.TestCase):
     def test_empty_target_and_missing_placement_name_the_target(self):
@@ -405,6 +441,75 @@ class TranslationGateFindingsTests(unittest.TestCase):
             self.assertEqual(_gate(v, 'scaled-runs').status, 'REVIEW')
             self.assertEqual(_findings(v, 'scaled-runs'),
                              [(None, 'n/ax', 'Hello world.'), (None, '0.90x', '')])
+
+    def test_missing_lang_review_names_lang(self):
+        from pdf_translate.verify import run_verify
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp)   # no lang in the mapping
+            v = run_verify(src, out, translations=tr, min_ink=0.1)
+            self.assertEqual(_gate(v, 'metadata-lang').status, 'REVIEW')
+            self.assertEqual(_findings(v, 'metadata-lang'),
+                             [(None, 'lang', 'translations.json has no "lang"')])
+
+
+class FindingsInvariantTests(unittest.TestCase):
+    """Every gate that is FAIL or REVIEW carries at least one finding.
+
+    The report exists so that a consumer can explain a non-PASS status from
+    data alone. A location-less FAIL or REVIEW defeats that, whichever gate
+    grows it next; this test runs the invariant over every kind of job the
+    suite builds."""
+
+    def _jobs(self, tmp):
+        source = 'Alpha bravo charlie delta echo.'
+        segments = [{'page': 0, 'text': 'd. Hello world.        .... $', 'marker': 'd.',
+                     'core': 'Hello world.', 'dots': '....', 'tail': '$'}]
+        drop = [{'page': 0, 'contains': 'Hello world.',
+                 'parts': [{'text': 'Hola mundo.', 'x': 72.0}]}]
+        jobs = []
+        for name, kw in (('trivial', {}), ('meta-fail', {'lang': 'es'}),
+                         ('scaled', {'scale_report': [{'page': 0, 'ratio': 0.85, 'key': 'Hello world.'}]}),
+                         ('override', {'overrides': drop, 'segments': segments}),
+                         ('leak', {'source': source, 'target': source})):
+            d = os.path.join(tmp, name)
+            os.makedirs(d)
+            src, out, tr = _job(d, **kw)
+            jobs.append((name, src, out, tr))
+        d = os.path.join(tmp, 'spaceless')
+        os.makedirs(d)
+        src, out = _spaceless_job(d)
+        jobs.append(('spaceless', src, out, None))
+        for pdf in ('image_only.pdf', 'ocr_layer.pdf'):
+            jobs.append((pdf, str(CORPUS / pdf), str(CORPUS / pdf), None))
+        try:
+            d = os.path.join(tmp, 'arabic')
+            os.makedirs(d)
+            src = os.path.join(d, 'orig.pdf')
+            bad = os.path.join(d, 'bad.pdf')
+            tr = os.path.join(d, 'translations.json')
+            _tiny_pdf(src, 'Peace be upon you and mercy')
+            Path(tr).write_text(json.dumps({'translations': {'Peace be upon you and mercy': AR_PHRASE},
+                                            'skip': []}, ensure_ascii=False), encoding='utf-8')
+            _arabic_glyph_by_glyph(bad)
+            jobs.append(('arabic', src, bad, tr))
+        except unittest.SkipTest:
+            pass
+        return jobs
+
+    def test_every_fail_or_review_gate_has_a_finding(self):
+        from pdf_translate.verify import run_verify
+        with tempfile.TemporaryDirectory() as tmp:
+            seen = set()
+            for name, src, out, tr in self._jobs(tmp):
+                v = run_verify(src, out, translations=tr, min_ink=0.05)
+                for g in v.gates:
+                    if g.status in ('FAIL', 'REVIEW'):
+                        seen.add(g.name)
+                        self.assertTrue(g.findings, msg=f'{name}: {g.name} is {g.status} with no finding')
+            # The jobs above must exercise a broad set, or the invariant proves little.
+            for expected in ('metadata', 'metadata-lang', 'scaled-runs', 'override-markers',
+                             'leak-running', 'leak-scan', 'extractable-text', 'visible-text'):
+                self.assertIn(expected, seen)
 
 
 class ReportAndPolicyTests(unittest.TestCase):

@@ -320,6 +320,32 @@ SKILL.md, pyproject, __version__)" step (Python 3.10-compatible,
 stdlib `json`/`re` only, no `tomllib`) checks the same four in CI. Both
 now read 51 / 51.0.0 / 51.0.0 / 51.
 
+## Follow-up from the product side's review of PR #5 (16 September)
+
+The `pdf-translator` session reviewed the PR and found two REVIEW gates that
+recorded no finding — `leak-scan` (source and output share a spaceless
+family, the zh → ja case the product is working on) and `metadata-lang` —
+and that `run_verify` recorded paths as given while the CLI recorded them
+absolute. All three fixed, tests first:
+
+| change | test (watched to fail, then pass) |
+|---|---|
+| `leak-scan` → `Finding(None, 'script', src_script)` | `LeakGateFindingsTests.test_shared_spaceless_family_names_the_script`: two Japanese pages drawn with PyMuPDF's built-in CJK face; `[(None, 'script', 'CJK')]` |
+| `metadata-lang` → `Finding(None, 'lang', 'translations.json has no "lang"')` | `TranslationGateFindingsTests.test_missing_lang_review_names_lang` |
+| `run_verify` and `main` build the verdict through one helper that takes `os.path.abspath` | `FindingShapeTests.test_run_verify_records_absolute_paths_like_the_cli`: relative paths in, absolute paths out |
+| the invariant the review asked for: every FAIL or REVIEW gate carries at least one finding | `FindingsInvariantTests.test_every_fail_or_review_gate_has_a_finding`: nine jobs (trivial, missing lang, scaled run, dropped override marker, running leak, shared spaceless family, the two corpus scans, glyph-by-glyph Arabic); it failed first on `trivial: metadata-lang is REVIEW with no finding` |
+
+The `where`/`text` table in `references/gates.md` now covers all 22 names
+in `GATE_NAMES`. No printed line changed: every edit is a `findings=`
+argument or the verdict helper. Suite after the follow-up:
+
+```
+Ran 295 tests in 46.015s
+OK
+Ran 11 tests in 0.588s        (canary)
+OK
+```
+
 ## Not independently verified, on purpose
 
 This task is version bump, CI wiring and documentation only — no
