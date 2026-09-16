@@ -56,6 +56,43 @@ FONTS = {
         'main/fonts/NotoSansDevanagari/hinted/ttf/'
         'NotoSansDevanagari-Regular.ttf',
     ),
+    # Added 2026-09-15. _SHAPING_RANGES in retypeset.py already ROUTES these
+    # scripts through the Story engine, but no face for any of them existed
+    # here, so every one of their shaping tests SKIPPED -- the same silent
+    # gap this fetcher was written to close for Arabic and Devanagari.
+    # Both URLs verified 200 on 2026-09-15; the per-script notofonts repos
+    # (notofonts/thai etc.) exist but carry no fonts/ tree, so the fallback
+    # is the unhinted build in the same repo rather than an invented path.
+    'NotoSansThai-Regular.ttf': (
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/'
+        'main/fonts/NotoSansThai/hinted/ttf/NotoSansThai-Regular.ttf',
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/'
+        'main/fonts/NotoSansThai/unhinted/ttf/NotoSansThai-Regular.ttf',
+    ),
+    'NotoSansKhmer-Regular.ttf': (
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/'
+        'main/fonts/NotoSansKhmer/hinted/ttf/NotoSansKhmer-Regular.ttf',
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/'
+        'main/fonts/NotoSansKhmer/unhinted/ttf/NotoSansKhmer-Regular.ttf',
+    ),
+    'NotoSansTamil-Regular.ttf': (
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/'
+        'main/fonts/NotoSansTamil/hinted/ttf/NotoSansTamil-Regular.ttf',
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/'
+        'main/fonts/NotoSansTamil/unhinted/ttf/NotoSansTamil-Regular.ttf',
+    ),
+    'NotoSansBengali-Regular.ttf': (
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/'
+        'main/fonts/NotoSansBengali/hinted/ttf/NotoSansBengali-Regular.ttf',
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/'
+        'main/fonts/NotoSansBengali/unhinted/ttf/NotoSansBengali-Regular.ttf',
+    ),
+    'NotoSansMyanmar-Regular.ttf': (
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/'
+        'main/fonts/NotoSansMyanmar/hinted/ttf/NotoSansMyanmar-Regular.ttf',
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/'
+        'main/fonts/NotoSansMyanmar/unhinted/ttf/NotoSansMyanmar-Regular.ttf',
+    ),
 }
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_DEST = os.path.join(os.path.dirname(HERE), 'tests', 'fonts')
