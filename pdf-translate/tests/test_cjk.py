@@ -243,5 +243,89 @@ class KinsokuVerifyTests(unittest.TestCase):
             self.assertNotIn('kinsoku', [g.name for g in v.gates])
 
 
+def _face(path):
+    if not path.is_file():
+        raise unittest.SkipTest(f'{path.name} not fetched (tools/fetch_test_fonts.py)')
+    return str(path)
+
+
+def _drawing_fonts(page):
+    """Base names of the fonts that drew text on the page, spaces removed.
+
+    MuPDF names the embedded face 'Noto Sans JP Thin', and a page's resource
+    dictionary can list faces nothing draws with (strip_text leaves the
+    original Helvetica behind), so the spans are asked, not get_fonts()."""
+    names = set()
+    for block in page.get_text('dict').get('blocks', []):
+        for line in block.get('lines', []):
+            for span in line.get('spans', []):
+                if span.get('text', '').strip():
+                    names.add(span.get('font', '').replace(' ', ''))
+    return names
+
+
+class NotoSansJpTests(unittest.TestCase):
+    """The fetched Japanese face, through the Story engine."""
+
+    def test_a_noto_sans_jp_paragraph_breaks_within_the_rules(self):
+        jp = _face(JP_FACE)
+        doc = pymupdf.open()
+        page = story_page(doc, PARA, fontfile=jp)
+        fonts = _drawing_fonts(page)
+        self.assertTrue(fonts and all('NotoSansJP' in n for n in fonts), fonts)
+        lines, status, findings = kinsoku_report(doc)
+        self.assertEqual((status, findings), ('PASS', []))
+        self.assertGreater(int(lines[0].split()[2]), 3, lines)
+
+
+class CjkFaceTests(unittest.TestCase):
+    """2d: a character the selected face cannot draw is refused, never drawn
+    from another face. The precondition is asserted so a font update cannot
+    make the test pass for the wrong reason."""
+
+    def setUp(self):
+        self.jp = _face(JP_FACE)
+        self.sc = _face(SC_FACE)
+
+    def test_the_japanese_face_lacks_east_and_the_chinese_face_has_it(self):
+        jp = pymupdf.Font(fontfile=self.jp)
+        sc = pymupdf.Font(fontfile=self.sc)
+        self.assertFalse(jp.has_glyph(0x4E1C), 'Noto Sans JP now carries 东: 2d needs a new separator')
+        self.assertTrue(sc.has_glyph(0x4E1C))
+        for cp in (0x76F4, 0x9AA8, 0x6D77, 0x6771):   # 直 骨 海 東
+            self.assertTrue(jp.has_glyph(cp) and sc.has_glyph(cp), f'U+{cp:04X}')
+
+    def test_a_character_the_japanese_face_lacks_is_refused_not_borrowed(self):
+        from tests.test_pipeline import (SOURCE_SENTENCE, build_plain_pdf, extract_segments,
+                                         retypeset, strip_text, write_mapping)
+        self.assertFalse(pymupdf.Font(fontfile=self.jp).has_glyph(0x4E1C))
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_plain_pdf(src)
+            extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            write_mapping(tr, {SOURCE_SENTENCE: '\u6771\u4eac \u4e1c'}, Path(self.jp))
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(stripped, os.path.join(tmp, 'segments.json'), tr, out)
+            log = buf.getvalue()
+            self.assertNotEqual(rc, 0, msg=log)
+            self.assertIn('the chosen font cannot draw', log)
+            self.assertIn('U+4E1C', log)
+            self.assertFalse(os.path.exists(out), msg=log)
+            # Control: the same job without 东 is drawn, and only by the JP face.
+            write_mapping(tr, {SOURCE_SENTENCE: '\u6771\u4eac'}, Path(self.jp))
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(stripped, os.path.join(tmp, 'segments.json'), tr, out)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            with pymupdf.open(out) as done:
+                names = set().union(*(_drawing_fonts(p) for p in done))
+            self.assertTrue(names and all('NotoSansJP' in n for n in names), names)
+
+
 if __name__ == '__main__':
     unittest.main()
