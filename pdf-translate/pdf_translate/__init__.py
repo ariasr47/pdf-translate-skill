@@ -25,9 +25,9 @@ from .qa_check import QAVerdict, qa_check, run_qa
 from .shaping_probe import ProbeResult, probe_font
 
 __all__ = (
+    'Finding',
     'GATE_NAMES',
     'GateResult',
-    'Finding',
     'ProbeResult',
     'QAVerdict',
     'VerifyVerdict',

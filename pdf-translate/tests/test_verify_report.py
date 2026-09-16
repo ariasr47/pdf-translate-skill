@@ -141,7 +141,33 @@ class FormAndPageGateFindingsTests(unittest.TestCase):
             v = run_verify(src, out, translations=tr, min_ink=0.1)
             (page, where, text), = _findings(v, 'ink-ratio')
             self.assertEqual((page, where), (1, 'page'))
-            self.assertTrue(text.startswith('ink ratio '), text)
+            self.assertRegex(text, r'^(PASS|FAIL) ink ratio \d+\.\d\d$')
+
+    def test_ink_ratio_names_the_failing_page(self):
+        from pdf_translate.verify import run_verify
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            doc = pymupdf.open()
+            try:
+                for text in ('Hello world.', 'Second page text.'):
+                    doc.new_page().insert_text((72, 72), text)
+                doc.save(src)
+            finally:
+                doc.close()
+            doc = pymupdf.open()
+            try:
+                doc.new_page().insert_text((72, 72), 'Hola mundo.')
+                doc.new_page()   # page 2: nothing drawn
+                doc.save(out)
+            finally:
+                doc.close()
+            v = run_verify(src, out, min_ink=0.1)
+            self.assertEqual(_gate(v, 'ink-ratio').status, 'FAIL')
+            findings = _findings(v, 'ink-ratio')
+            self.assertEqual([f[0] for f in findings], [1, 2])
+            self.assertRegex(findings[0][2], r'^PASS ink ratio ')
+            self.assertEqual(findings[1][2], 'FAIL ink ratio 0.00')
 
     def test_scan_page_is_named(self):
         from pdf_translate.verify import run_verify
@@ -368,6 +394,18 @@ class TranslationGateFindingsTests(unittest.TestCase):
             v = run_verify(src, out, translations=tr, min_ink=0.1)
             self.assertEqual(_findings(v, 'caption-width'), [(None, NARROW_BTN, LONG_CAPTION)])
 
+    def test_scaled_runs_tolerates_a_malformed_sidecar_entry(self):
+        from pdf_translate.verify import run_verify
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp, scale_report=[
+                {'page': None, 'ratio': 'n/a', 'key': 'Hello world.'},
+                {'ratio': 0.9},
+            ])
+            v = run_verify(src, out, translations=tr, min_ink=0.1)
+            self.assertEqual(_gate(v, 'scaled-runs').status, 'REVIEW')
+            self.assertEqual(_findings(v, 'scaled-runs'),
+                             [(None, 'n/ax', 'Hello world.'), (None, '0.90x', '')])
+
 
 class ReportAndPolicyTests(unittest.TestCase):
     def _console(self, argv):
@@ -389,10 +427,13 @@ class ReportAndPolicyTests(unittest.TestCase):
             self.assertEqual((rc_plain, rc_rep), (1, 1))
             self.assertEqual(plain, with_report)
             data = json.loads(Path(report).read_text(encoding='utf-8'))
-            expected = run_verify(src, out, translations=tr, min_ink=0.1).to_dict()
-            self.assertEqual(data, expected)
+            expected = run_verify(os.path.abspath(src), os.path.abspath(out),
+                                  translations=tr, min_ink=0.1).to_dict()
+            self.assertEqual(data['original'], os.path.abspath(src))
+            self.assertEqual(data['output'], os.path.abspath(out))
+            self.assertEqual(data['gates'], expected['gates'])
             self.assertEqual(data['schema'], 1)
-            self.assertEqual((data['original'], data['output']), (src, out))
+            self.assertIs(data['fail_on_review'], False)
             names = [g['name'] for g in data['gates']]
             self.assertIn('metadata', names)
             meta = next(g for g in data['gates'] if g['name'] == 'metadata')
@@ -418,6 +459,12 @@ class ReportAndPolicyTests(unittest.TestCase):
             self.assertEqual(run_verify(src, out, translations=tr, min_ink=0.1).exit_code, 0)
             self.assertEqual(run_verify(src, out, translations=tr, min_ink=0.1,
                                         fail_on_review=True).exit_code, 1)
+            report = os.path.join(tmp, 'r.json')
+            self._console(base + ['--fail-on-review', '--report', report])
+            data = json.loads(Path(report).read_text(encoding='utf-8'))
+            self.assertIs(data['fail_on_review'], True)
+            self.assertEqual(data['exit_code'], 1)
+            self.assertEqual([g['name'] for g in data['gates'] if g['status'] == 'FAIL'], [])
 
     def test_pipeline_rebuild_writes_the_report_into_the_work_dir(self):
         from pdf_translate.extract_segments import extract_segments

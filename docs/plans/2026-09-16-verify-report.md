@@ -205,7 +205,7 @@ In `_execute_verify`, change `record`:
 
 In `run_verify`, return `VerifyVerdict(exit_code=rc, gates=tuple(gates), original=orig, output=trans)`.
 
-In `__init__.py`: add `__version__ = '50'` as the first statement after the docstring, change the verify import line to `from .verify import GATE_NAMES, Finding, GateResult, VerifyVerdict, run_verify, verify`, and add `'Finding',` to `__all__` (alphabetical, after `'GateResult'`).
+In `__init__.py`: add `__version__ = '50'` as the first statement after the docstring, change the verify import line to `from .verify import GATE_NAMES, Finding, GateResult, VerifyVerdict, run_verify, verify`, and add `'Finding',` to `__all__` in ASCII order, before `'GATE_NAMES'`.
 
 - [ ] **Step 4: Run, watch it pass; run the two neighbours**
 
@@ -230,7 +230,7 @@ git commit -m "feat(pdf-translate): Finding, GateResult.findings and to_dict() o
 
 **Interfaces:**
 - Consumes: `record(name, status, message, findings)`, `Finding` from Task 1.
-- Produces findings: `field-parity` → `Finding(None, label, name)` per bad field (`label` ∈ missing / type-mismatch / unexpected-extra); `opt-export-parity` → `Finding(None, field, f'{old} -> {new}')`; `fill-roundtrip` FAIL → `Finding(None, field, 'text value did not survive save and reopen')` and/or `Finding(None, field, 'checkbox did not survive save and reopen')`; `extractable-text` → `Finding(page, 'page', f'images={n}, ink={ink} px')`; `ink-ratio` → one finding per page: `Finding(page, 'page', f'ink ratio {ratio:.2f}')` or `Finding(page, 'page', f'negligible ink: {do} px')` for SKIP pages; `visible-text` → `Finding(page, 'page', f'stripping the text changes {fraction:.1%} of its span area')`; `canonical-text` → `Finding(None, f'U+{ord(ch):04X}', f'{unicodedata.name(ch, "?")} x{n}')` per drifted character, all of them.
+- Produces findings: `field-parity` → `Finding(None, label, name)` per bad field (`label` ∈ missing / type-mismatch / unexpected-extra); `opt-export-parity` → `Finding(None, field, f'{old} -> {new}')`; `fill-roundtrip` FAIL → `Finding(None, field, 'text value did not survive save and reopen')` and/or `Finding(None, field, 'checkbox did not survive save and reopen')`; `extractable-text` → `Finding(page, 'page', f'images={n}, ink={ink} px')`; `ink-ratio` → one finding per page: `Finding(page, 'page', f'{"PASS" if ok else "FAIL"} ink ratio {ratio:.2f}')` or `Finding(page, 'page', f'negligible ink: {do} px')` for SKIP pages; `visible-text` → `Finding(page, 'page', f'stripping the text changes {fraction:.1%} of its span area')`; `canonical-text` → `Finding(None, f'U+{ord(ch):04X}', f'{unicodedata.name(ch, "?")} x{n}')` per drifted character, all of them.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -386,7 +386,7 @@ after the extractable `print`, and
 ```
 after the SKIP print, and
 ```python
-        inks.append(Finding(i + 1, 'page', f'ink ratio {ratio:.2f}'))
+        inks.append(Finding(i + 1, 'page', f'{"PASS" if ok else "FAIL"} ink ratio {ratio:.2f}'))
 ```
 after the PASS/FAIL ratio print; then `record('extractable-text', 'FAIL', findings=scans)` and `record('ink-ratio', ink_status, findings=inks)`.
 
@@ -640,7 +640,7 @@ git commit -m "feat(pdf-translate): findings for the leak gates; no isolated tok
 - Test: `pdf-translate/tests/test_verify_report.py`
 
 **Interfaces:**
-- Produces: `empty-targets` → `Finding(None, 'target', t)`; `placement` → `Finding(None, 'target', t)`; `shaped-actualtext` → `Finding(None, 'target', t)`; `button-captions` → `Finding(None, name, cap)`; `caption-width` → `Finding(None, name, cap)`; `override-markers` → `Finding(None, contains, token)`; `metadata` → `Finding(None, what, detail)`; `scaled-runs` REVIEW → `Finding(int(r['page']) + 1, f'{float(r.get("ratio", 1)):.2f}x', str(r.get('key') or ''))` (the report file is 0-based; findings are 1-based); `identifiers` → `Finding(None, 'identifier', t)`. All lists complete, no `[:N]`.
+- Produces: `empty-targets` → `Finding(None, 'target', t)`; `placement` → `Finding(None, 'target', t)`; `shaped-actualtext` → `Finding(None, 'target', t)`; `button-captions` → `Finding(None, name, cap)`; `caption-width` → `Finding(None, name, cap)`; `override-markers` → `Finding(None, contains, token)`; `metadata` → `Finding(None, what, detail)`; `scaled-runs` REVIEW → tolerant of a malformed sidecar entry: `p = r.get('page')`, `Finding(p + 1 if isinstance(p, int) else None, ratio, str(r.get('key') or ''))` where `ratio` is `f'{float(r.get("ratio", 1)):.2f}x'` when that parses else `f'{r.get("ratio")}x'` (the report file is 0-based; findings are 1-based); `identifiers` → `Finding(None, 'identifier', t)`. All lists complete, no `[:N]`.
 
 - [ ] **Step 1: Write the failing tests**
 

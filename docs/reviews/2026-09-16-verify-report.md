@@ -159,9 +159,9 @@ language, so `document metadata` FAILs and nothing else does. Console,
 then the JSON `--report` wrote for the same run:
 
 ```
-$ PYTHONUTF8=1 …/python.exe scripts/verify.py <dir>/meta-fail/orig.pdf <dir>/meta-fail/out.pdf \
-    --translations <dir>/meta-fail/translations.json --min-ink 0.1 \
-    --report <dir>/meta-fail/verify_report.json
+$ PYTHONUTF8=1 …/python.exe scripts/verify.py <dir>/f1fx/meta-fail/orig.pdf <dir>/f1fx/meta-fail/out.pdf \
+    --translations <dir>/f1fx/meta-fail/translations.json --min-ink 0.1 \
+    --report <dir>/f1fx/meta-fail/verify_report.json
 leak scan: source script Latin; output script Latin
 leak scan: same script on both sides; using 2 document words from the original
 fields: 0 original / 0 translated

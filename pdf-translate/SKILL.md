@@ -409,7 +409,9 @@ python3 scripts/verify.py original.pdf out.pdf \
 ```
 
 `--report` writes every gate and its findings as JSON; the pipeline's
-`rebuild` writes it into the work dir.
+`rebuild` writes it into the work dir. `--fail-on-review` turns a run with
+REVIEW lines and no FAIL into exit 1, for pipelines with nobody to read the
+REVIEW; both flags are off by default.
 
 Every gate — what it reads, what fails, and why — is in
 `references/gates.md`. The rules in one line each:

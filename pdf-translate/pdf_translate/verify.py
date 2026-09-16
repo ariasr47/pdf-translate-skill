@@ -185,7 +185,7 @@ MIN_WORD_LETTERS = {'Latin': 4}
 class Finding:
     """Where a gate outcome points: a 1-based page or None, the thing it
     names (field, font, script, token, …) and the run or detail, untruncated."""
-    page: object
+    page: int | None
     where: str
     text: str
 
@@ -227,6 +227,7 @@ class VerifyVerdict:
     gates: tuple
     original: str = ''
     output: str = ''
+    fail_on_review: bool = False
 
     @property
     def ok(self):
@@ -237,6 +238,7 @@ class VerifyVerdict:
         return {'schema': 1, 'version': __version__,
                 'original': self.original, 'output': self.output,
                 'exit_code': self.exit_code,
+                'fail_on_review': self.fail_on_review,
                 'gates': [g.to_dict() for g in self.gates]}
 
 
@@ -1283,12 +1285,13 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     for i in range(min(len(o), len(jc))):
         if page_unextractable(o[i]):
             nimg = len(o[i].get_images())
+            page_ink = ink(o[i])
             print(f'FAIL page {i+1} no extractable text with visible content '
-                  f'(images={nimg}, ink={ink(o[i])}). '
+                  f'(images={nimg}, ink={page_ink}). '
                   f'This looks scanned — scans are out of scope with or without an OCR layer; do not ship.')
             fail = 1
             unextractable = True
-            scans.append(Finding(i + 1, 'page', f'images={nimg}, ink={ink(o[i])} px'))
+            scans.append(Finding(i + 1, 'page', f'images={nimg}, ink={page_ink} px'))
             continue
         do, dj = ink(o[i]), ink(jc[i])
         if do < INK_SKIP:
@@ -1305,7 +1308,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             ink_status = 'FAIL'
         elif ink_status != 'FAIL':
             ink_status = 'PASS'
-        inks.append(Finding(i + 1, 'page', f'ink ratio {ratio:.2f}'))
+        inks.append(Finding(i + 1, 'page', f'{"PASS" if ok else "FAIL"} ink ratio {ratio:.2f}'))
     if unextractable:
         record('extractable-text', 'FAIL', findings=scans)
     if ink_status:
@@ -1545,14 +1548,24 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         elif report:
             print(f'REVIEW scaled runs ({len(report)}) — ship them or reword '
                   f'them, and name them in the delivery:')
-            for r in report[:20]:
-                print(f'   p{r.get("page")} {float(r.get("ratio", 1)):.2f}x: '
+            # Computed once, tolerantly, so a malformed sidecar entry (a
+            # non-numeric ratio, a missing/non-integer page) cannot crash
+            # either the console line below or the finding it mirrors.
+            scaled = []
+            for r in report:
+                p = r.get('page')
+                try:
+                    ratio = f'{float(r.get("ratio", 1)):.2f}x'
+                except (TypeError, ValueError):
+                    ratio = f'{r.get("ratio")}x'
+                scaled.append(Finding(p + 1 if isinstance(p, int) else None, ratio,
+                                      str(r.get('key') or '')))
+            for r, finding in zip(report[:20], scaled[:20]):
+                print(f'   p{r.get("page")} {finding.where}: '
                       f'{str(r.get("key") or "")[:60]}')
             if len(report) > 20:
                 print(f'   ... {len(report) - 20} more in {SCALE_REPORT}')
-            record('scaled-runs', 'REVIEW', f'{len(report)}', findings=[
-                Finding((int(r.get('page', 0)) + 1), f'{float(r.get("ratio", 1)):.2f}x',
-                        str(r.get('key') or '')) for r in report])
+            record('scaled-runs', 'REVIEW', f'{len(report)}', findings=scaled)
         else:
             print('PASS scaled runs: none, everything ships at source size')
             record('scaled-runs', 'PASS')
@@ -1593,7 +1606,8 @@ def run_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
             source_regex=source_regex, source_words_from=source_words_from,
             allow_extra_prefix=allow_extra_prefix, translations=translations,
             segments=segments, fail_on_review=fail_on_review)
-    return VerifyVerdict(exit_code=rc, gates=tuple(gates), original=orig, output=trans)
+    return VerifyVerdict(exit_code=rc, gates=tuple(gates), original=orig, output=trans,
+                        fail_on_review=fail_on_review)
 
 
 def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
@@ -1610,9 +1624,10 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
 
 def write_report(verdict, path):
     """verdict.to_dict() as JSON at path; a failure is printed, never raised."""
+    text = json.dumps(verdict.to_dict(), ensure_ascii=False, indent=1)
     try:
         with open(path, 'w', encoding='utf-8') as f:
-            json.dump(verdict.to_dict(), f, ensure_ascii=False, indent=1)
+            f.write(text)
     except OSError as exc:
         print(f'  (could not write {path}: {exc})')
 
@@ -1637,7 +1652,8 @@ def main(argv=None):
     report = _arg(argv, '--report', None)
     if report:
         write_report(VerifyVerdict(exit_code=rc, gates=tuple(gates),
-                                   original=orig, output=trans), report)
+                                   original=os.path.abspath(orig), output=os.path.abspath(trans),
+                                   fail_on_review='--fail-on-review' in argv), report)
     print(f'elapsed {time.perf_counter()-t0:.2f}s')
     return rc
 
