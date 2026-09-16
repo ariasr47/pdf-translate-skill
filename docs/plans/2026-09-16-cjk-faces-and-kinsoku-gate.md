@@ -317,6 +317,24 @@ class KinsokuReportTests(unittest.TestCase):
                          [('line-start', '\u3002\u6c0f\u540d\u3068\u4f4f\u6240')])
         self.assertEqual(lines[0].split(':')[0], 'FAIL kinsoku')
 
+    def test_a_line_of_only_punctuation_is_judged_like_any_other(self):
+        # A hand split can leave a bracket or a full stop alone on a line. It
+        # carries no letter, so it is judged by its block, not by itself.
+        doc = pymupdf.open()
+        split_lines_page(doc, ['ある文章です', '「', '続く文章'])
+        split_lines_page(doc, ['ある文章', '。', '続く'])
+        lines, status, findings = kinsoku_report(doc)
+        self.assertEqual(status, 'FAIL')
+        self.assertEqual([(f.page, f.where, f.text) for f in findings],
+                         [(1, 'line-end', '「'), (2, 'line-start', '。')])
+
+    def test_a_block_without_any_cjk_letter_is_never_judged(self):
+        # Latin lines ending in a curly opening quote are not Japanese
+        # typography's business, whatever face drew them.
+        doc = pymupdf.open()
+        split_lines_page(doc, ['He said “', 'hello.”'])
+        self.assertEqual(kinsoku_report(doc), ([], None, []))
+
     def test_the_gate_consults_the_sets(self):
         # Remove the two members the fixture breaks and the fixture passes:
         # the gate judges by the sets, not by a hard-coded character.
@@ -397,14 +415,18 @@ def kinsoku_report(doc):
     character JIS X 4051 / JLREQ forbids at line start, or ends with one it
     forbids at line end.
 
-    Judged on the lines MuPDF reads back from each page, block by block. A
-    line that begins with closing punctuation, a small kana or the prolonged
-    sound mark is a violation only when a line of the same block sits above
-    it — the break before it was a choice; a line that ends with an opening
-    bracket only when one sits below it. A block's lone line is a label or
-    one segment, not a break. Adjacency counts every line of the block; the
-    rule is applied to the CJK ones. status is FAIL if any line violates,
-    PASS if CJK lines were judged and none did, None when no page has one.
+    Judged on the lines MuPDF reads back from each page, block by block, in
+    every block that carries a CJK letter on some line. A line that begins
+    with closing punctuation, a small kana or the prolonged sound mark is a
+    violation only when a line of the same block sits above it — the break
+    before it was a choice; a line that ends with an opening bracket only
+    when one sits below it. A block's lone line is a label or one segment,
+    not a break. Every line of a CJK block is judged, including one made
+    only of punctuation — a bracket or full stop left alone by a hand split
+    is the very artefact the gate exists to catch; a block with no CJK
+    letter (Latin text with a curly quote) is not Japanese typography's
+    business. status is FAIL if any line violates, PASS if lines were
+    judged and none did, None when no page has a CJK block.
     """
     findings, judged = [], 0
     for page in doc:
@@ -414,10 +436,10 @@ def kinsoku_report(doc):
                 text = ''.join(sp.get('text', '') for sp in ln.get('spans', ())).strip()
                 if text:
                     texts.append(text)
+            if not any(_has_cjk(t) for t in texts):
+                continue
             last = len(texts) - 1
             for i, text in enumerate(texts):
-                if not _has_cjk(text):
-                    continue
                 judged += 1
                 if i < last and text[-1] in KINSOKU_LINE_END:
                     findings.append(Finding(page.number + 1, 'line-end', text))
@@ -442,7 +464,7 @@ Note the order inside one line: `line-end` is appended before `line-start`, so a
 
 `PYTHONUTF8=1 C:/Dev/pdf-translate-skill/pdf-translate.venv/Scripts/python.exe -m unittest tests.test_cjk -v`
 
-Expected: `Ran 11 tests … OK`. If `test_a_lone_label_is_not_a_break` fails because MuPDF put the two labels in one block, draw the second at `y=300` instead of `y=100` (they are meant to be far apart) — that is a fixture fix, not a code fix. If `test_hand_split_lines_fail…` finds the three lines in separate blocks, report it: the block rule is the design and was measured to hold at 14 pt leading.
+Expected: `Ran 13 tests … OK`. If `test_a_lone_label_is_not_a_break` fails because MuPDF put the two labels in one block, draw the second at `y=300` instead of `y=100` (they are meant to be far apart) — that is a fixture fix, not a code fix. If `test_hand_split_lines_fail…` finds the three lines in separate blocks, report it: the block rule is the design and was measured to hold at 14 pt leading.
 
 - [ ] **Step 7: Commit**
 
@@ -578,7 +600,7 @@ add
 
 `PYTHONUTF8=1 C:/Dev/pdf-translate-skill/pdf-translate.venv/Scripts/python.exe -m unittest tests.test_cjk -v`
 
-Expected: `Ran 16 tests … OK`.
+Expected: `Ran 18 tests … OK`.
 
 - [ ] **Step 5: Console parity against `main` on the nine non-CJK jobs**
 
@@ -601,7 +623,7 @@ Expected: the two `# package:` lines name different directories (the archive's a
 
 From `pdf-translate/`: `PYTHONUTF8=1 C:/Dev/pdf-translate-skill/pdf-translate.venv/Scripts/python.exe -m unittest tests.test_pipeline tests.test_corpus_verdicts tests.test_import_surface tests.test_shaping_probe tests.test_verify_report tests.test_cjk 2>&1 | tail -5`
 
-Expected: `OK` (possibly `OK (skipped=N)`); the run count is 295 + 16 = 311 minus nothing. `tests.test_import_surface.VerdictCompletenessTests` counts printed gate lines against recorded entries on a Japanese job: the new line records exactly one entry, so it stays green. If it goes red, the record site prints and records differently — fix the code, not the test.
+Expected: `OK` (possibly `OK (skipped=N)`); the run count is 295 + 18 = 313. `tests.test_import_surface.VerdictCompletenessTests` counts printed gate lines against recorded entries on a Japanese job: the new line records exactly one entry, so it stays green. If it goes red, the record site prints and records differently — fix the code, not the test.
 
 - [ ] **Step 7: Commit**
 
@@ -759,7 +781,7 @@ In the **Narrow columns** bullet, after `the target's word order rarely breaks w
 Always on table: after the `| conjunct shaping | … |` row add
 
 ```markdown
-| kinsoku | a drawn CJK line begins with a character JIS X 4051 / JLREQ forbids at line start (closing brackets, hyphens, dividing punctuation, middle dots, full stops, commas, iteration marks, the prolonged sound mark, small kana; half-width forms included) or ends with an opening bracket. Judged block by block on the lines MuPDF reads back; a block's first line is never a line-start violation and its last never a line-end one. The Story engine never does this to a merge; a target split by hand across source lines can |
+| kinsoku | a drawn line of a CJK block begins with a character JIS X 4051 / JLREQ forbids at line start (closing brackets, hyphens, dividing punctuation, middle dots, full stops, commas, iteration marks, the prolonged sound mark, small kana; half-width forms included) or ends with an opening bracket. Judged block by block on the lines MuPDF reads back, every line of a block that carries a CJK letter, a lone bracket included; a block's first line is never a line-start violation and its last never a line-end one. The Story engine never does this to a merge; a target split by hand across source lines can |
 ```
 
 In the "As a library" paragraph change `arabic-letterforms, conjunct-shaping, leak-scan,` to `arabic-letterforms, conjunct-shaping, kinsoku, leak-scan,`.
