@@ -24,7 +24,6 @@ caller provides: tests/fonts/ in a checkout, a directory of its own in a
 service (verify --reference-fonts DIR, run_verify(reference_fonts=DIR)).
 """
 import os
-import re
 import tempfile
 import unicodedata
 from dataclasses import dataclass

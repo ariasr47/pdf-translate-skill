@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Gate 20, han-forms: measurement layer. 直 骨 海 (HAN_PROBES) are one code
-point each but a Japanese face and a Simplified Chinese face draw them
-differently; 東 (HAN_CONTROL) is drawn the same in both. These tests
-reproduce the table in docs/BRIEF-han-forms-gate.md §2 within 0.02 and pin
-han_forms.is_cjk to pdf_translate.verify.script_of. Spec:
-docs/BRIEF-han-forms-gate.md."""
+"""Gate 20, han-forms: the face that drew a CJK page uses the forms its
+language expects. The measured table in docs/BRIEF-han-forms-gate.md §2 is
+reproduced first, so the thresholds rest on numbers this suite checks; then
+the judge on font programs, the verify gate on deliveries built through the
+pipeline, and prepare_font's probe glyphs and early refusal."""
 import importlib
+import io
+import json
+import os
+import shutil
 import tempfile
 import time
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 import pymupdf
 
@@ -21,12 +26,20 @@ verify_mod = importlib.import_module('pdf_translate.verify')
 FONTS = Path(__file__).resolve().parents[1] / 'tests' / 'fonts'
 JP_FACE = FONTS / 'NotoSansJP-VF.ttf'
 SC_FACE = FONTS / 'NotoSansSC-VF.ttf'
+LATIN_FACE = FONTS / 'NotoSans-Regular.ttf'
+
+TARGET = '\u76f4\u9aa8\u6d77\u6771\u4eac'          # 直骨海東京 — carries the probes
+PLAIN = '\u7533\u8acb\u66f8\u3092\u63d0\u51fa'     # 申請書を提出 — no probe character
+
+
+def _face(path):
+    if not path.is_file():
+        raise unittest.SkipTest(f'{path.name} not fetched (tools/fetch_test_fonts.py)')
+    return path
 
 
 def _font(path):
-    if not path.is_file():
-        raise unittest.SkipTest(f'{path.name} not fetched (tools/fetch_test_fonts.py)')
-    return pymupdf.Font(fontfile=str(path))
+    return pymupdf.Font(fontfile=str(_face(path)))
 
 
 class MeasurementTests(unittest.TestCase):
