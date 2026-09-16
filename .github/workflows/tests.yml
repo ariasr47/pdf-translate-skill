@@ -37,7 +37,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: pdf-translate/tests/fonts
-          key: noto-fonts-v2
+          key: noto-fonts-v3
 
       - name: Fetch test fonts
         run: python tools/fetch_test_fonts.py
