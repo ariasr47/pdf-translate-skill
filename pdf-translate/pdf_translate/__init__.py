@@ -20,8 +20,10 @@ from .compare import compare
 from .bilingual import interleave
 from .verify import VerifyVerdict, run_verify, verify
 from .qa_check import QAVerdict, qa_check, run_qa
+from .shaping_probe import ProbeResult, probe_font
 
 __all__ = (
+    'ProbeResult',
     'QAVerdict',
     'VerifyVerdict',
     'WidgetTextError',
@@ -30,6 +32,7 @@ __all__ = (
     'field_fonts',
     'interleave',
     'prepare_font',
+    'probe_font',
     'qa_check',
     'render_pages',
     'retypeset',
