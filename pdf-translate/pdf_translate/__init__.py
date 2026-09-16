@@ -10,6 +10,8 @@ unchanged. A consumer imports from here:
     from pdf_translate import run_verify, run_qa
 """
 
+__version__ = '51'
+
 from .strip_text import WidgetTextError, strip_text
 from .extract_segments import extract_segments
 from .retypeset import retypeset
@@ -18,11 +20,12 @@ from .field_fonts import field_fonts
 from .render_pages import render_pages
 from .compare import compare
 from .bilingual import interleave
-from .verify import GATE_NAMES, GateResult, VerifyVerdict, run_verify, verify
+from .verify import GATE_NAMES, Finding, GateResult, VerifyVerdict, run_verify, verify
 from .qa_check import QAVerdict, qa_check, run_qa
 from .shaping_probe import ProbeResult, probe_font
 
 __all__ = (
+    'Finding',
     'GATE_NAMES',
     'GateResult',
     'ProbeResult',

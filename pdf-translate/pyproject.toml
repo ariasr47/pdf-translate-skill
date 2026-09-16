@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pdf-translate"
-version = "50.0.0"
+version = "51.0.0"
 description = "Layout-faithful PDF translation with working form fields"
 readme = "README.md"
 license = {text = "MIT"}

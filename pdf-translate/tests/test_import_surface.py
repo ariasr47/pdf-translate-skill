@@ -215,7 +215,7 @@ class VerdictCompletenessTests(unittest.TestCase):
             gates = _gates(verdict)
             self.assertEqual(verdict.exit_code, 0, gates)
             # The six this job prints that F1 found missing.
-            self.assertEqual(gates.get('leak-isolated'), 'REVIEW', gates)
+            self.assertEqual(gates.get('leak-isolated'), 'PASS', gates)
             self.assertEqual(gates.get('caption-width'), 'PASS', gates)
             self.assertEqual(gates.get('override-markers'), 'SKIP', gates)
             self.assertEqual(gates.get('metadata'), 'PASS', gates)

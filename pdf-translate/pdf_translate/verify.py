@@ -122,7 +122,8 @@ Usage:
       [--fill-text "value in target script"] [--allow WORD,"Multi Word Name",...] \
       [--min-ink 0.4] [--source-regex "[A-Za-z]{4,}"] \
       [--source-words-from segments.json] [--allow-extra-prefix tr_] \
-      [--translations translations.json] [--segments segments.json]
+      [--translations translations.json] [--segments segments.json] \
+      [--report verify_report.json] [--fail-on-review]
 """
 import io
 import json
@@ -181,11 +182,28 @@ MIN_WORD_LETTERS = {'Latin': 4}
 
 
 @dataclass(frozen=True)
+class Finding:
+    """Where a gate outcome points: a 1-based page or None, the thing it
+    names (field, font, script, token, …) and the run or detail, untruncated."""
+    page: int | None
+    where: str
+    text: str
+
+    def to_dict(self):
+        return {'page': self.page, 'where': self.where, 'text': self.text}
+
+
+@dataclass(frozen=True)
 class GateResult:
     """One named gate: status is PASS, FAIL, SKIP, or REVIEW."""
     name: str
     status: str
     message: str = ''
+    findings: tuple = ()
+
+    def to_dict(self):
+        return {'name': self.name, 'status': self.status, 'message': self.message,
+                'findings': [f.to_dict() for f in self.findings]}
 
 
 # Every name a GateResult can carry, in the order the gates run. A gate
@@ -207,10 +225,21 @@ class VerifyVerdict:
     """Structured result of the structural gates. Does not print or exit."""
     exit_code: int
     gates: tuple
+    original: str = ''
+    output: str = ''
+    fail_on_review: bool = False
 
     @property
     def ok(self):
         return self.exit_code == 0
+
+    def to_dict(self):
+        from . import __version__
+        return {'schema': 1, 'version': __version__,
+                'original': self.original, 'output': self.output,
+                'exit_code': self.exit_code,
+                'fail_on_review': self.fail_on_review,
+                'gates': [g.to_dict() for g in self.gates]}
 
 
 def script_of(ch):
@@ -1007,7 +1036,7 @@ def unshaped_arabic_pages(doc):
 
 
 def conjunct_shaping_report(doc):
-    """(lines, status) for gate 18: probe every embedded face that draws a
+    """(lines, status, findings) for gate 18: probe every embedded face that draws a
     conjunct-forming script in the output.
 
     The text layer cannot show a broken conjunct (the shaper writes glyph
@@ -1063,7 +1092,7 @@ def conjunct_shaping_report(doc):
     def pages_of(nums):
         return 'page ' + ', '.join(str(n) for n in sorted(set(nums)))
 
-    lines, statuses = [], []
+    lines, statuses, findings = [], [], []
     for (script, xref), (result, pages) in sorted(judged.items()):
         if result is None or result.status == 'SKIP' or not pages:
             continue
@@ -1072,6 +1101,8 @@ def conjunct_shaping_report(doc):
             line += ' — every conjunct drawn with this face is broken; do not ship'
         lines.append(line)
         statuses.append(result.status)
+        face = result.expected_font or fonts[xref][0]
+        findings.extend(Finding(p, face, result.line()) for p in sorted(set(pages)))
     for script, pages in sorted(unattested.items()):
         probe = shaping_probe.PROBE_FOR[script]
         lines.append(f'REVIEW conjunct shaping {script}: cannot attest [{pages_of(pages)}]: '
@@ -1079,10 +1110,13 @@ def conjunct_shaping_report(doc):
                      f'with prepare_font.py, which adds the probe glyphs, or check a render '
                      f'with a reader of the script')
         statuses.append('REVIEW')
+        findings.extend(Finding(p, script, f'cannot attest: no embedded face carries the probe "{probe.text}"')
+                        for p in sorted(set(pages)))
     for script, pages in sorted(reviews.items()):
-        lines.append(f'REVIEW conjunct shaping {script}: '
-                     f'{shaping_probe.review_reason(script)} [{pages_of(pages)}]')
+        reason = shaping_probe.review_reason(script)
+        lines.append(f'REVIEW conjunct shaping {script}: {reason} [{pages_of(pages)}]')
         statuses.append('REVIEW')
+        findings.extend(Finding(p, script, reason) for p in sorted(set(pages)))
     if 'FAIL' in statuses:
         status = 'FAIL'
     elif 'REVIEW' in statuses:
@@ -1091,7 +1125,7 @@ def conjunct_shaping_report(doc):
         status = 'PASS'
     else:
         status = None
-    return lines, status
+    return lines, status, findings
 
 
 def page_unextractable(page):
@@ -1113,7 +1147,7 @@ def ink(page):
 
 def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
                     source_regex=None, source_words_from=None, allow_extra_prefix=None,
-                    translations=None, segments=None):
+                    translations=None, segments=None, fail_on_review=False):
     """Run structural gates. Returns (exit_code, gates). Prints as it goes."""
     # A multi-word --allow entry is a phrase: it matches a whole run and
     # nothing else (row 20). Single words behave as before. Until now a
@@ -1133,8 +1167,9 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     fail = 0
     gates = []
 
-    def record(name, status, message=''):
-        gates.append(GateResult(name=name, status=status, message=message))
+    def record(name, status, message='', findings=()):
+        gates.append(GateResult(name=name, status=status, message=message,
+                                findings=tuple(findings)))
 
     # Gate 4 is keyed to the source document's script, not to Latin.
     o_text = '\n'.join(p.get_text() or '' for p in o)
@@ -1164,16 +1199,18 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     extra = {k for k in set(jnames) - set(onames)
              if not (allow_extra_prefix and k.startswith(allow_extra_prefix))}
     print(f'fields: {len(onames)} original / {len(jnames)} translated')
+    parity = []
     for label, bad in [('missing', missing), ('type-mismatch', mismatch),
                        ('unexpected-extra', extra)]:
         if bad:
             print(f'FAIL field {label}:', sorted(bad)[:10])
             fail = 1
+            parity.extend(Finding(None, label, name) for name in sorted(bad))
     if not (missing or mismatch or extra):
         print('PASS field parity')
         record('field-parity', 'PASS')
     else:
-        record('field-parity', 'FAIL')
+        record('field-parity', 'FAIL', findings=parity)
 
     # Widget text is translated by rewriting the DISPLAY half of each /Opt
     # entry. The export half is what /V holds and what a viewer submits;
@@ -1187,7 +1224,9 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             print(f'   {name}: {oopt.get(name)} -> {jopt.get(name)}')
         fail = 1
         record('opt-export-parity', 'FAIL',
-               f'{len(drifted)} choice field(s) changed')
+               f'{len(drifted)} choice field(s) changed',
+               findings=[Finding(None, name, f'{oopt.get(name)} -> {jopt.get(name)}')
+                         for name in drifted])
     elif oopt:
         print(f'PASS /Opt export parity ({len(oopt)} choice field(s))')
         record('opt-export-parity', 'PASS',
@@ -1223,7 +1262,12 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             ok = got_t and got_cb
             print(('PASS' if ok else 'FAIL') + ' fill round-trip')
             fail |= (0 if ok else 1)
-            record('fill-roundtrip', 'PASS' if ok else 'FAIL')
+            broken = []
+            if not got_t:
+                broken.append(Finding(None, ttarget, 'text value did not survive save and reopen'))
+            if not got_cb:
+                broken.append(Finding(None, cbtarget, 'checkbox did not survive save and reopen'))
+            record('fill-roundtrip', 'PASS' if ok else 'FAIL', findings=broken)
         finally:
             try:
                 os.remove(fill_path)
@@ -1236,20 +1280,25 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     jc = pymupdf.open(trans)
     ink_status = None
     unextractable = False
+    scans = []
+    inks = []
     for i in range(min(len(o), len(jc))):
         if page_unextractable(o[i]):
             nimg = len(o[i].get_images())
+            page_ink = ink(o[i])
             print(f'FAIL page {i+1} no extractable text with visible content '
-                  f'(images={nimg}, ink={ink(o[i])}). '
+                  f'(images={nimg}, ink={page_ink}). '
                   f'This looks scanned — scans are out of scope with or without an OCR layer; do not ship.')
             fail = 1
             unextractable = True
+            scans.append(Finding(i + 1, 'page', f'images={nimg}, ink={page_ink} px'))
             continue
         do, dj = ink(o[i]), ink(jc[i])
         if do < INK_SKIP:
             print(f'SKIP page {i+1} ink ratio (original negligible ink: {do} px)')
             if ink_status is None:
                 ink_status = 'SKIP'
+            inks.append(Finding(i + 1, 'page', f'negligible ink: {do} px'))
             continue
         ratio = dj / max(do, 1)
         ok = min_ink <= ratio <= 3.0
@@ -1259,10 +1308,11 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             ink_status = 'FAIL'
         elif ink_status != 'FAIL':
             ink_status = 'PASS'
+        inks.append(Finding(i + 1, 'page', f'{"PASS" if ok else "FAIL"} ink ratio {ratio:.2f}'))
     if unextractable:
-        record('extractable-text', 'FAIL')
+        record('extractable-text', 'FAIL', findings=scans)
     if ink_status:
-        record('ink-ratio', ink_status)
+        record('ink-ratio', ink_status, findings=inks)
 
     invisible = invisible_text_pages(orig)
     for pno, fraction in invisible:
@@ -1274,7 +1324,9 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         print('PASS text layer is visible')
         record('visible-text', 'PASS')
     else:
-        record('visible-text', 'FAIL')
+        record('visible-text', 'FAIL', findings=[
+            Finding(pno + 1, 'page', f'stripping the text changes {fraction:.1%} of its span area')
+            for pno, fraction in invisible])
 
     # Canonical text layer (audit H4/H5). Authored strings count as
     # deliberate; so does anything already in the original, whose own
@@ -1293,7 +1345,9 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         for ch, n in drift[:10]:
             print(f'   U+{ord(ch):04X} {unicodedata.name(ch, "?")} x{n}')
         fail = 1
-        record('canonical-text', 'FAIL', f'{len(drift)} character(s)')
+        record('canonical-text', 'FAIL', f'{len(drift)} character(s)', findings=[
+            Finding(None, f'U+{ord(ch):04X}', f'{unicodedata.name(ch, "?")} x{n}')
+            for ch, n in drift])
     else:
         print('PASS canonical text layer')
         record('canonical-text', 'PASS')
@@ -1304,18 +1358,20 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
               f'form and none connected. The run bypassed the Story engine; do not ship.')
         fail = 1
     if unshaped:
-        record('arabic-letterforms', 'FAIL', f'{len(unshaped)} page(s)')
+        record('arabic-letterforms', 'FAIL', f'{len(unshaped)} page(s)', findings=[
+            Finding(pno + 1, 'page', f'{n} joining letters in isolated form, none connected')
+            for pno, n in unshaped])
     elif saw_arabic:
         print('PASS Arabic letterforms joined')
         record('arabic-letterforms', 'PASS')
 
-    shaping_lines, shaping_status = conjunct_shaping_report(jc)
+    shaping_lines, shaping_status, shaping_findings = conjunct_shaping_report(jc)
     for line in shaping_lines:
         print(line)
     if shaping_status == 'FAIL':
         fail = 1
     if shaping_status:
-        record('conjunct-shaping', shaping_status)
+        record('conjunct-shaping', shaping_status, findings=shaping_findings)
 
     # Two buckets, because "a Latin word survived" and "a sentence went
     # untranslated" are completely different findings and must not score alike.
@@ -1336,7 +1392,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
               f'family; the scan cannot tell them apart. Rely on --translations and '
               f'the visual pass.')
         record('leak-scan', 'REVIEW',
-               f'source and output share the spaceless {src_script} family')
+               f'source and output share the spaceless {src_script} family',
+               findings=[Finding(None, 'script', src_script)])
     else:
         for i in range(len(jc)):
             r, iso = scan_leaks(jc[i].get_text(), allow, source_words=source_words,
@@ -1354,7 +1411,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         for pg, ph in running[:10]:
             print(f'   p{pg}: {ph}')
         fail = 1
-        record('leak-running', 'FAIL', f'{len(running)}')
+        record('leak-running', 'FAIL', f'{len(running)}',
+               findings=[Finding(pg, 'run', ph) for pg, ph in running])
     else:
         print('PASS no untranslated running text')
         record('leak-running', 'PASS')
@@ -1364,10 +1422,11 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         print(f'REVIEW isolated source-script tokens ({len(uniq)}) - expected for '
               f'form names, statutes and proper nouns; confirm each is deliberate:')
         print('   ' + ', '.join(uniq[:20]))
-        record('leak-isolated', 'REVIEW', f'{len(uniq)}')
+        record('leak-isolated', 'REVIEW', f'{len(uniq)}',
+               findings=[Finding(pg, 'token', w) for pg, w in sorted(set(isolated))])
     else:
-        print('REVIEW isolated source-script tokens: none')
-        record('leak-isolated', 'REVIEW', 'none')
+        print('PASS isolated source-script tokens: none')
+        record('leak-isolated', 'PASS', 'none')
 
     if translations:
         with open(translations, encoding='utf-8') as f:
@@ -1381,7 +1440,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             for t in blanks[:30]:
                 print(f'   {t.replace(chr(10), " ")[:80]}')
             fail = 1
-            record('empty-targets', 'FAIL', f'{len(blanks)}')
+            record('empty-targets', 'FAIL', f'{len(blanks)}',
+                   findings=[Finding(None, 'target', t) for t in blanks])
         else:
             print('PASS no empty translation targets')
             record('empty-targets', 'PASS')
@@ -1394,7 +1454,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             for t in missing[:30]:
                 print(f'   {t.replace(chr(10), " ")[:80]}')
             fail = 1
-            record('placement', 'FAIL', f'{len(missing)}')
+            record('placement', 'FAIL', f'{len(missing)}',
+                   findings=[Finding(None, 'target', t) for t in missing])
         else:
             print('PASS authored translations present')
             record('placement', 'PASS')
@@ -1409,7 +1470,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             for t in unmarked[:20]:
                 print(f'   {t.replace(chr(10), " ")[:80]}')
             fail = 1
-            record('shaped-actualtext', 'FAIL', f'{len(unmarked)}')
+            record('shaped-actualtext', 'FAIL', f'{len(unmarked)}',
+                   findings=[Finding(None, 'target', t) for t in unmarked])
         elif any(needs_shaping(t) for t in targets):
             print('PASS shaped-script targets carry /ActualText')
             record('shaped-actualtext', 'PASS')
@@ -1425,7 +1487,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             for name, cap in leftover[:20]:
                 print(f'   {cap} ({name})')
             fail = 1
-            record('button-captions', 'FAIL', f'{len(leftover)}')
+            record('button-captions', 'FAIL', f'{len(leftover)}',
+                   findings=[Finding(None, name, cap) for name, cap in leftover])
         else:
             print('PASS button captions')
             record('button-captions', 'PASS')
@@ -1436,7 +1499,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             for name, cap in clipped[:20]:
                 print(f'   {cap} ({name})')
             fail = 1
-            record('caption-width', 'FAIL', f'{len(clipped)}')
+            record('caption-width', 'FAIL', f'{len(clipped)}',
+                   findings=[Finding(None, name, cap) for name, cap in clipped])
         else:
             print('PASS caption width')
             record('caption-width', 'PASS')
@@ -1454,7 +1518,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
                 for contains, token in misses[:20]:
                     print(f'   "{contains}" is missing "{token}"')
                 fail = 1
-                record('override-markers', 'FAIL', f'{len(misses)}')
+                record('override-markers', 'FAIL', f'{len(misses)}',
+                       findings=[Finding(None, contains, token) for contains, token in misses])
             elif conf.get('overrides'):
                 print('PASS override parts keep markers and tails')
                 record('override-markers', 'PASS')
@@ -1465,7 +1530,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             for what, detail in meta_misses[:10]:
                 print(f'   [{what}] {detail}')
             fail = 1
-            record('metadata', 'FAIL', ', '.join(what for what, _ in meta_misses))
+            record('metadata', 'FAIL', ', '.join(what for what, _ in meta_misses),
+                   findings=[Finding(None, what, detail) for what, detail in meta_misses])
         else:
             print('PASS document metadata')
             record('metadata', 'PASS')
@@ -1473,7 +1539,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             print('REVIEW document metadata: translations.json has no "lang"; '
                   'the output still declares the source language to screen '
                   'readers and hyphenation')
-            record('metadata-lang', 'REVIEW', 'translations.json has no "lang"')
+            record('metadata-lang', 'REVIEW', 'translations.json has no "lang"',
+                   findings=[Finding(None, 'lang', 'translations.json has no "lang"')])
 
         report = scale_report_for(trans)
         if report is None:
@@ -1483,12 +1550,24 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         elif report:
             print(f'REVIEW scaled runs ({len(report)}) — ship them or reword '
                   f'them, and name them in the delivery:')
-            for r in report[:20]:
-                print(f'   p{r.get("page")} {float(r.get("ratio", 1)):.2f}x: '
+            # Computed once, tolerantly, so a malformed sidecar entry (a
+            # non-numeric ratio, a missing/non-integer page) cannot crash
+            # either the console line below or the finding it mirrors.
+            scaled = []
+            for r in report:
+                p = r.get('page')
+                try:
+                    ratio = f'{float(r.get("ratio", 1)):.2f}x'
+                except (TypeError, ValueError):
+                    ratio = f'{r.get("ratio")}x'
+                scaled.append(Finding(p + 1 if isinstance(p, int) else None, ratio,
+                                      str(r.get('key') or '')))
+            for r, finding in zip(report[:20], scaled[:20]):
+                print(f'   p{r.get("page")} {finding.where}: '
                       f'{str(r.get("key") or "")[:60]}')
             if len(report) > 20:
                 print(f'   ... {len(report) - 20} more in {SCALE_REPORT}')
-            record('scaled-runs', 'REVIEW', f'{len(report)}')
+            record('scaled-runs', 'REVIEW', f'{len(report)}', findings=scaled)
         else:
             print('PASS scaled runs: none, everything ships at source size')
             record('scaled-runs', 'PASS')
@@ -1501,7 +1580,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             for t in missing_ids[:30]:
                 print(f'   {t.replace(chr(10), " ")[:80]}')
             fail = 1
-            record('identifiers', 'FAIL', f'{len(missing_ids)}')
+            record('identifiers', 'FAIL', f'{len(missing_ids)}',
+                   findings=[Finding(None, 'identifier', t) for t in missing_ids])
         else:
             print('PASS write/find/say identifiers')
             record('identifiers', 'PASS')
@@ -1509,32 +1589,57 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     o.close()
     j.close()
     jc.close()
-    return (1 if fail else 0, gates)
+    rc = 1 if fail else 0
+    if fail_on_review and rc == 0:
+        reviews = sum(1 for g in gates if g.status == 'REVIEW')
+        if reviews:
+            print(f'FAIL: {reviews} REVIEW line(s) with --fail-on-review')
+            rc = 1
+    return rc, gates
 
 
 def run_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
                source_regex=None, source_words_from=None, allow_extra_prefix=None,
-               translations=None, segments=None):
+               translations=None, segments=None, fail_on_review=False):
     """Run structural gates. Returns a VerifyVerdict; does not print or exit."""
     with redirect_stdout(io.StringIO()):
         rc, gates = _execute_verify(
             orig, trans, fill_text=fill_text, allow=allow, min_ink=min_ink,
             source_regex=source_regex, source_words_from=source_words_from,
             allow_extra_prefix=allow_extra_prefix, translations=translations,
-            segments=segments)
-    return VerifyVerdict(exit_code=rc, gates=tuple(gates))
+            segments=segments, fail_on_review=fail_on_review)
+    return _verdict(rc, gates, orig, trans, fail_on_review)
+
+
+def _verdict(rc, gates, orig, trans, fail_on_review):
+    """The verdict both entry points hand out: paths absolute, whatever the
+    caller passed, so a report written from the library reads like one
+    written by the CLI."""
+    return VerifyVerdict(exit_code=rc, gates=tuple(gates),
+                         original=os.path.abspath(orig), output=os.path.abspath(trans),
+                         fail_on_review=fail_on_review)
 
 
 def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
            source_regex=None, source_words_from=None, allow_extra_prefix=None,
-           translations=None, segments=None):
+           translations=None, segments=None, fail_on_review=False):
     """Run structural gates. Returns 0 on pass, 1 on any failure."""
     rc, _ = _execute_verify(
         orig, trans, fill_text=fill_text, allow=allow, min_ink=min_ink,
         source_regex=source_regex, source_words_from=source_words_from,
         allow_extra_prefix=allow_extra_prefix, translations=translations,
-        segments=segments)
+        segments=segments, fail_on_review=fail_on_review)
     return rc
+
+
+def write_report(verdict, path):
+    """verdict.to_dict() as JSON at path; a failure is printed, never raised."""
+    text = json.dumps(verdict.to_dict(), ensure_ascii=False, indent=1)
+    try:
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(text)
+    except OSError as exc:
+        print(f'  (could not write {path}: {exc})')
 
 
 def main(argv=None):
@@ -1542,7 +1647,7 @@ def main(argv=None):
     orig, trans = argv[0], argv[1]
     allow = [w for w in (_arg(argv, '--allow', '') or '').split(',') if w]
     t0 = time.perf_counter()
-    rc = verify(
+    rc, gates = _execute_verify(
         orig, trans,
         fill_text=_arg(argv, '--fill-text', 'Test value 123'),
         allow=allow,
@@ -1552,7 +1657,11 @@ def main(argv=None):
         allow_extra_prefix=_arg(argv, '--allow-extra-prefix', None),
         translations=_arg(argv, '--translations', None),
         segments=_arg(argv, '--segments', None),
+        fail_on_review='--fail-on-review' in argv,
     )
+    report = _arg(argv, '--report', None)
+    if report:
+        write_report(_verdict(rc, gates, orig, trans, '--fail-on-review' in argv), report)
     print(f'elapsed {time.perf_counter()-t0:.2f}s')
     return rc
 

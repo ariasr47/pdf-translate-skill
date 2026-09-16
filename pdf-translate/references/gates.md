@@ -150,7 +150,44 @@ leak-isolated, empty-targets, placement, shaped-actualtext,
 button-captions, caption-width, override-markers, metadata,
 metadata-lang, scaled-runs, identifiers. A gate that prints nothing for a
 job — no fields, no Arabic, no `--translations` — records nothing, so an
-`exit_code` of 1 always has at least one FAIL entry to explain it.
+`exit_code` of 1 always has at least one FAIL entry to explain it — unless
+`fail_on_review` is true in the report, which is the other way a run exits 1.
+
+Each `GateResult` carries `findings`, a tuple of `Finding(page, where,
+text)`: the page (1-based, or `None` for document-level gates), the thing
+the finding names (a field, a font's PostScript name, a script, `lang`, a
+`U+XXXX` code point, a `0.85x` scale) and the run, caption, token or
+detail, untruncated — the console prints the first ten to thirty, the
+verdict keeps them all. `verify.py … --report PATH` writes
+`verdict.to_dict()` as JSON (`schema` 1, the skill `version`, both paths,
+`exit_code`, `gates`); `pipeline.py rebuild` writes it to
+`<work>/verify_report.json`. `--fail-on-review` (CLI) or
+`fail_on_review=True` (library) turns a run with REVIEW lines and no FAIL
+into exit 1, for pipelines with nobody to read the REVIEW. Both are off by
+default. A consumer removes two REVIEWs on its own: always pass `lang` in
+the mapping (`metadata-lang`), and build faces with `prepare_font`, which
+adds the probe glyphs gate 18 needs (`conjunct-shaping` "cannot attest").
+
+| gate | `where` | `text` |
+|---|---|---|
+| field-parity | `missing` / `type-mismatch` / `unexpected-extra` | the field name |
+| opt-export-parity | the field name | `old -> new` |
+| fill-roundtrip | the field name | what did not survive save and reopen |
+| extractable-text, ink-ratio, visible-text, arabic-letterforms | `page` | the detail (`PASS ink ratio 1.05`, `images=1, ink=200 px`, …) |
+| canonical-text | `U+XXXX` | the character name and count |
+| conjunct-shaping | the face's PostScript name, or the script when it could not be judged | the probe line, or the reason |
+| leak-scan | `script` | the spaceless family source and output share (`CJK`) |
+| leak-running | `run` | the phrase |
+| leak-isolated | `token` | the token |
+| empty-targets, placement, shaped-actualtext | `target` | the target string |
+| button-captions, caption-width | the field name | the caption |
+| override-markers | the override's `contains` | the missing marker or tail |
+| metadata | `lang` / `title` / `outline` / `struct-tree` | the detail |
+| metadata-lang | `lang` | `translations.json has no "lang"` |
+| scaled-runs | the ratio, `0.85x` | the run's key |
+| identifiers | `identifier` | the span |
+
+`page` is 1-based where the gate knows the page and `None` otherwise.
 
 ## Flags
 
@@ -158,4 +195,5 @@ job — no fields, no Arabic, no `--translations` — records nothing, so an
 `--allow WORD,"Multi Word Name"` (leak-scan allowlist; a phrase matches a
 whole run), `--source-words-from segments.json`, `--translations
 translations.json`, `--segments segments.json`, `--allow-extra-prefix`,
-`--min-ink`. Omit `--translations`: the always-on gates run unchanged.
+`--min-ink`, `--report verify_report.json`, `--fail-on-review`. Omit
+`--translations`: the always-on gates run unchanged.

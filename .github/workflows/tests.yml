@@ -46,7 +46,7 @@ jobs:
         run: python tools/fetch_test_fonts.py --check
 
       - name: Run the suite
-        run: python -m unittest tests.test_pipeline tests.test_corpus_verdicts tests.test_import_surface tests.test_shaping_probe -v
+        run: python -m unittest tests.test_pipeline tests.test_corpus_verdicts tests.test_import_surface tests.test_shaping_probe tests.test_verify_report -v
 
       - name: Test canary output selection and scoring
         run: python -m unittest discover -s ../dev/canary -p test_score.py -v
@@ -76,13 +76,17 @@ jobs:
       # plugin.json's version is metadata.version as N.0.0. Users only get
       # an update when the plugin version changes, so bumping one without
       # the other ships nothing.
-      - name: Plugin version matches metadata.version
+      - name: Version sources agree (plugin, SKILL.md, pyproject, __version__)
         run: |
           python - <<'PY'
           import json, re
           plugin = json.load(open('.claude-plugin/plugin.json'))['version']
           text = open('pdf-translate/SKILL.md', encoding='utf-8').read()
           skill = re.search(r'^\s+version:\s*"(\d+)"', text, re.M).group(1)
+          pyproject = re.search(r'^version\s*=\s*"([\d.]+)"', open('pdf-translate/pyproject.toml', encoding='utf-8').read(), re.M).group(1)
+          init = re.search(r"^__version__\s*=\s*'(\d+)'", open('pdf-translate/pdf_translate/__init__.py', encoding='utf-8').read(), re.M).group(1)
           assert plugin == f'{skill}.0.0', f'plugin.json {plugin} vs metadata.version {skill}'
-          print('plugin', plugin, '== metadata.version', skill)
+          assert pyproject == plugin, f'pyproject {pyproject} vs plugin.json {plugin}'
+          assert init == skill, f'__version__ {init} vs metadata.version {skill}'
+          print('plugin', plugin, '== metadata.version', skill, '== pyproject', pyproject, '== __version__', init)
           PY

@@ -32,6 +32,7 @@ for name, out, min_ink in JOBS:
     print(f'=== {name}/{out} exit={rc}')
     print(buf.getvalue().rstrip())
     v = run_verify(src, str(d / out), translations=tr, min_ink=min_ink)
-    print(f'--- verdict exit={v.exit_code} gates={len(v.gates)}', file=sys.stderr)
+    print(f'--- verdict exit={v.exit_code} gates={len(v.gates)} '
+          f'findings={sum(len(getattr(g, "findings", ())) for g in v.gates)}', file=sys.stderr)
     for g in v.gates:
         print(f'    {g.name}: {g.status}' + (f' ({g.message})' if g.message else ''), file=sys.stderr)
