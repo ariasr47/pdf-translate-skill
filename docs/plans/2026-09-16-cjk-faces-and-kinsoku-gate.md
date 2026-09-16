@@ -654,6 +654,21 @@ def _face(path):
     return str(path)
 
 
+def _drawing_fonts(page):
+    """Base names of the fonts that drew text on the page, spaces removed.
+
+    MuPDF names the embedded face 'Noto Sans JP Thin', and a page's resource
+    dictionary can list faces nothing draws with (strip_text leaves the
+    original Helvetica behind), so the spans are asked, not get_fonts()."""
+    names = set()
+    for block in page.get_text('dict').get('blocks', []):
+        for line in block.get('lines', []):
+            for span in line.get('spans', []):
+                if span.get('text', '').strip():
+                    names.add(span.get('font', '').replace(' ', ''))
+    return names
+
+
 class NotoSansJpTests(unittest.TestCase):
     """The fetched Japanese face, through the Story engine."""
 
@@ -661,8 +676,8 @@ class NotoSansJpTests(unittest.TestCase):
         jp = _face(JP_FACE)
         doc = pymupdf.open()
         page = story_page(doc, PARA, fontfile=jp)
-        self.assertTrue(any('NotoSansJP' in f[3] for f in page.get_fonts()),
-                        page.get_fonts())
+        fonts = _drawing_fonts(page)
+        self.assertTrue(fonts and all('NotoSansJP' in n for n in fonts), fonts)
         lines, status, findings = kinsoku_report(doc)
         self.assertEqual((status, findings), ('PASS', []))
         self.assertGreater(int(lines[0].split()[2]), 3, lines)
@@ -713,7 +728,7 @@ class CjkFaceTests(unittest.TestCase):
                 rc = retypeset.retypeset(stripped, os.path.join(tmp, 'segments.json'), tr, out)
             self.assertEqual(rc, 0, msg=buf.getvalue())
             with pymupdf.open(out) as done:
-                names = [f[3] for page in done for f in page.get_fonts()]
+                names = set().union(*(_drawing_fonts(p) for p in done))
             self.assertTrue(names and all('NotoSansJP' in n for n in names), names)
 ```
 
@@ -721,7 +736,7 @@ class CjkFaceTests(unittest.TestCase):
 
 `PYTHONUTF8=1 C:/Dev/pdf-translate-skill/pdf-translate.venv/Scripts/python.exe -m unittest tests.test_cjk.NotoSansJpTests tests.test_cjk.CjkFaceTests -v`
 
-Expected: `Ran 3 tests … OK`. These pin behaviour that exists (the refusal) and a precondition (the cmap), so they pass on first run by design; the red for the refusal lives in `test_pipeline.test_cjk_target_in_a_latin_font_fails_and_saves_nothing` already. If the control's font names include anything other than `NotoSansJP` (a Helvetica for a marker, say), print `names` and report it rather than loosening the assertion — it would mean the JP face did not draw the whole line.
+Expected: `Ran 3 tests … OK`. These pin behaviour that exists (the refusal) and a precondition (the cmap), so they pass on first run by design; the red for the refusal lives in `test_pipeline.test_cjk_target_in_a_latin_font_fails_and_saves_nothing` already. If a font that drew a span is anything other than `NotoSansJP` (a Helvetica for a marker, say), print `names` and report it rather than loosening the assertion — it would mean the JP face did not draw the whole line. (Fonts merely listed in the page's resources do not count: `strip_text` leaves the original Helvetica there unused, measured 2026-09-16.)
 
 To see the precondition guard bite, temporarily swap `self.jp` for `self.sc` in the first assertion and watch `assertFalse` fail with the message; then restore it.
 
