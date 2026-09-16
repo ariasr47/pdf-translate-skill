@@ -181,11 +181,28 @@ MIN_WORD_LETTERS = {'Latin': 4}
 
 
 @dataclass(frozen=True)
+class Finding:
+    """Where a gate outcome points: a 1-based page or None, the thing it
+    names (field, font, script, token, …) and the run or detail, untruncated."""
+    page: object
+    where: str
+    text: str
+
+    def to_dict(self):
+        return {'page': self.page, 'where': self.where, 'text': self.text}
+
+
+@dataclass(frozen=True)
 class GateResult:
     """One named gate: status is PASS, FAIL, SKIP, or REVIEW."""
     name: str
     status: str
     message: str = ''
+    findings: tuple = ()
+
+    def to_dict(self):
+        return {'name': self.name, 'status': self.status, 'message': self.message,
+                'findings': [f.to_dict() for f in self.findings]}
 
 
 # Every name a GateResult can carry, in the order the gates run. A gate
@@ -207,10 +224,19 @@ class VerifyVerdict:
     """Structured result of the structural gates. Does not print or exit."""
     exit_code: int
     gates: tuple
+    original: str = ''
+    output: str = ''
 
     @property
     def ok(self):
         return self.exit_code == 0
+
+    def to_dict(self):
+        from . import __version__
+        return {'schema': 1, 'version': __version__,
+                'original': self.original, 'output': self.output,
+                'exit_code': self.exit_code,
+                'gates': [g.to_dict() for g in self.gates]}
 
 
 def script_of(ch):
@@ -1133,8 +1159,9 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     fail = 0
     gates = []
 
-    def record(name, status, message=''):
-        gates.append(GateResult(name=name, status=status, message=message))
+    def record(name, status, message='', findings=()):
+        gates.append(GateResult(name=name, status=status, message=message,
+                                findings=tuple(findings)))
 
     # Gate 4 is keyed to the source document's script, not to Latin.
     o_text = '\n'.join(p.get_text() or '' for p in o)
@@ -1522,7 +1549,7 @@ def run_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
             source_regex=source_regex, source_words_from=source_words_from,
             allow_extra_prefix=allow_extra_prefix, translations=translations,
             segments=segments)
-    return VerifyVerdict(exit_code=rc, gates=tuple(gates))
+    return VerifyVerdict(exit_code=rc, gates=tuple(gates), original=orig, output=trans)
 
 
 def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
