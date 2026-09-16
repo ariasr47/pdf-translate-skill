@@ -228,6 +228,10 @@ KINSOKU_LINE_END = frozenset(
     '\u300c\u300e\uff08\uff3b\uff5b\u3008\u300a\u3010\u3014\u3018\u3016'
     '\u2018\u201c\uff5f\uff62\u2985'
 )
+# The bullets a document sets on purpose at the start of two or more lines
+# of a list. Only these can be a marker; a full stop that begins two lines
+# of a stack is two hand-split breaks, not a list.
+KINSOKU_LIST_MARKERS = frozenset('\u30fb\uff65')   # ・ ･
 SPACELESS_RUN_CHARS = 6
 # Latin keeps today's 4-letter word floor; other scripts have short real words.
 MIN_WORD_LETTERS = {'Latin': 4}
@@ -1199,10 +1203,11 @@ def _page_lines(page):
 
 # A line sits under another when the two overlap horizontally by at least
 # half the narrower width and the gap between their boxes is at most
-# STACK_GAP times the lower line's height — about three times the line
-# height of leading (measured: hand-split lines at 1.4x, 1.6x, 2.4x and 3.0x
-# stay stacked, 4.0x does not). MuPDF's own blocks split at about 1.6x,
-# which ordinary body copy exceeds, so they are not trusted for this.
+# STACK_GAP times the lower line's height — leading of about two and a
+# half line heights (three times the font size) (measured: hand-split
+# lines at 1.4x, 1.6x, 2.4x and 3.0x stay stacked, 4.0x does not). MuPDF's
+# own blocks split at about 1.6x, which ordinary body copy exceeds, so
+# they are not trusted for this.
 STACK_GAP = 1.5
 
 
@@ -1237,9 +1242,10 @@ def kinsoku_report(doc):
     that ends with an opening bracket when a line sits below it. Two shapes
     a form sets on purpose are values, not breaks, and are exempt: a line
     that is a single character (ー for "none", a bracket after a field, a
-    lone 「), and a character that begins two or more lines of the stack,
-    each followed by more text (・ as a list marker). The Story engine
-    breaks by UAX #14 and never violates these (dev/probes/cjk_kinsoku_probe.py);
+    lone 「), and a list bullet (KINSOKU_LIST_MARKERS: ・ ･) that begins
+    two or more lines of the stack, each followed by more text. The Story
+    engine breaks by UAX #14 and never violates these
+    (dev/probes/cjk_kinsoku_probe.py);
     a target split by hand across source lines can — and so can a form label
     that merely looks like one, which is why this is REVIEW. Horizontal text
     only: vertical setting puts every glyph on its own line. status is
@@ -1253,7 +1259,7 @@ def kinsoku_report(doc):
             if not any(_has_cjk(t) for t in texts):
                 continue
             firsts = [t[0] for t in texts if len(t) > 1]
-            markers = {c for c in firsts if firsts.count(c) >= 2}
+            markers = {c for c in firsts if c in KINSOKU_LIST_MARKERS and firsts.count(c) >= 2}
             last = len(texts) - 1
             for i, text in enumerate(texts):
                 judged += 1

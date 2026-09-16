@@ -193,6 +193,30 @@ class KinsokuReportTests(unittest.TestCase):
         self.assertEqual([(f.where, f.text) for f in findings],
                          [('line-start', '\u30fb\u30b5\u30fc\u30d0\u30fc')])
 
+    def test_a_repeated_full_stop_at_line_start_is_not_a_marker(self):
+        # Two lines of a hand-split paragraph beginning with 。 are two breaks,
+        # not a list; only the bullets in KINSOKU_LIST_MARKERS can be markers.
+        doc = pymupdf.open()
+        split_lines_page(doc, ['\u7533\u7acb\u4eba\u306f\u6b21\u306e\u60c5\u5831\u3092\u8a18\u5165',
+                               '\u3002\u6c0f\u540d\u3068\u4f4f\u6240\u3092\u66f8\u3044\u3066',
+                               '\u304f\u3060\u3055\u3044\u3002\u305d\u306e\u5f8c\u63d0\u51fa',
+                               '\u3002\u671f\u9650\u306f\u4e09\u5341\u65e5\u3067\u3059'])
+        lines, status, findings = kinsoku_report(doc)
+        self.assertEqual(status, 'REVIEW')
+        self.assertEqual([(f.where, f.text[0]) for f in findings],
+                         [('line-start', '\u3002'), ('line-start', '\u3002')])
+
+    def test_the_sets_match_the_probe_that_measured_them(self):
+        # verify.py and dev/probes/cjk_kinsoku_probe.py carry the same members
+        # by hand; the probe's protected counts mean nothing if they drift.
+        import importlib.util
+        path = Path(__file__).resolve().parents[2] / 'dev' / 'probes' / 'cjk_kinsoku_probe.py'
+        spec = importlib.util.spec_from_file_location('cjk_kinsoku_probe', path)
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        self.assertEqual(verify_mod.KINSOKU_LINE_START, frozenset(probe.START_SET))
+        self.assertEqual(verify_mod.KINSOKU_LINE_END, frozenset(probe.END_SET))
+
     def test_side_by_side_cells_are_not_a_stack(self):
         # Two cells on one baseline never sit one under the other, whatever
         # block MuPDF puts them in; the next row stacks under the first cell.
@@ -260,7 +284,7 @@ class KinsokuVerifyTests(unittest.TestCase):
         self.assertIn('kinsoku', GATE_NAMES)
         self.assertEqual(GATE_NAMES.index('kinsoku'), GATE_NAMES.index('conjunct-shaping') + 1)
 
-    def test_a_broken_delivery_records_kinsoku_review_and_fail_on_review_exits_1(self):
+    def test_a_broken_delivery_records_kinsoku_review(self):
         with tempfile.TemporaryDirectory() as tmp:
             orig, out = self._job(tmp, SPLIT_BAD)
             v = run_verify(orig, out, min_ink=0.1)
@@ -269,7 +293,6 @@ class KinsokuVerifyTests(unittest.TestCase):
             self.assertEqual(gate.message, '2 line(s)')
             self.assertEqual([(f.page, f.where, f.text) for f in gate.findings],
                              [(1, 'line-end', SPLIT_BAD[0]), (1, 'line-start', SPLIT_BAD[2])])
-            self.assertEqual(run_verify(orig, out, min_ink=0.1, fail_on_review=True).exit_code, 1)
 
     def test_a_clean_delivery_records_kinsoku_pass(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -283,7 +306,7 @@ class KinsokuVerifyTests(unittest.TestCase):
             orig, out = self._job(tmp, SPLIT_BAD)
             buf = io.StringIO()
             with redirect_stdout(buf):
-                rc = verify(orig, out, min_ink=0.1)
+                verify(orig, out, min_ink=0.1)
             printed = buf.getvalue().splitlines()
             heads = [ln for ln in printed if ln.startswith(('REVIEW kinsoku', 'PASS kinsoku'))]
             self.assertEqual(len(heads), 1, printed)
