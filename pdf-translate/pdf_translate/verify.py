@@ -1175,14 +1175,18 @@ def kinsoku_report(doc):
     character JIS X 4051 / JLREQ forbids at line start, or ends with one it
     forbids at line end.
 
-    Judged on the lines MuPDF reads back from each page, block by block. A
-    line that begins with closing punctuation, a small kana or the prolonged
-    sound mark is a violation only when a line of the same block sits above
-    it — the break before it was a choice; a line that ends with an opening
-    bracket only when one sits below it. A block's lone line is a label or
-    one segment, not a break. Adjacency counts every line of the block; the
-    rule is applied to the CJK ones. status is FAIL if any line violates,
-    PASS if CJK lines were judged and none did, None when no page has one.
+    Judged on the lines MuPDF reads back from each page, block by block, in
+    every block that carries a CJK letter on some line. A line that begins
+    with closing punctuation, a small kana or the prolonged sound mark is a
+    violation only when a line of the same block sits above it — the break
+    before it was a choice; a line that ends with an opening bracket only
+    when one sits below it. A block's lone line is a label or one segment,
+    not a break. Every line of a CJK block is judged, including one made
+    only of punctuation — a bracket or full stop left alone by a hand split
+    is the very artefact the gate exists to catch; a block with no CJK
+    letter (Latin text with a curly quote) is not Japanese typography's
+    business. status is FAIL if any line violates, PASS if lines were
+    judged and none did, None when no page has a CJK block.
     """
     findings, judged = [], 0
     for page in doc:
@@ -1192,10 +1196,10 @@ def kinsoku_report(doc):
                 text = ''.join(sp.get('text', '') for sp in ln.get('spans', ())).strip()
                 if text:
                     texts.append(text)
+            if not any(_has_cjk(t) for t in texts):
+                continue
             last = len(texts) - 1
             for i, text in enumerate(texts):
-                if not _has_cjk(text):
-                    continue
                 judged += 1
                 if i < last and text[-1] in KINSOKU_LINE_END:
                     findings.append(Finding(page.number + 1, 'line-end', text))

@@ -148,6 +148,24 @@ class KinsokuReportTests(unittest.TestCase):
                          [('line-start', '。氏名と住所')])
         self.assertEqual(lines[0].split(':')[0], 'FAIL kinsoku')
 
+    def test_a_line_of_only_punctuation_is_judged_like_any_other(self):
+        # A hand split can leave a bracket or a full stop alone on a line. It
+        # carries no letter, so it is judged by its block, not by itself.
+        doc = pymupdf.open()
+        split_lines_page(doc, ['\u3042\u308b\u6587\u7ae0\u3067\u3059', '\u300c', '\u7d9a\u304f\u6587\u7ae0'])
+        split_lines_page(doc, ['\u3042\u308b\u6587\u7ae0', '\u3002', '\u7d9a\u304f'])
+        lines, status, findings = kinsoku_report(doc)
+        self.assertEqual(status, 'FAIL')
+        self.assertEqual([(f.page, f.where, f.text) for f in findings],
+                         [(1, 'line-end', '\u300c'), (2, 'line-start', '\u3002')])
+
+    def test_a_block_without_any_cjk_letter_is_never_judged(self):
+        # Latin lines ending in a curly opening quote are not Japanese
+        # typography's business, whatever face drew them.
+        doc = pymupdf.open()
+        split_lines_page(doc, ['He said \u201c', 'hello.\u201d'])
+        self.assertEqual(kinsoku_report(doc), ([], None, []))
+
     def test_the_gate_consults_the_sets(self):
         # Remove the two members the fixture breaks and the fixture passes:
         # the gate judges by the sets, not by a hard-coded character.
