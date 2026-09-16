@@ -206,3 +206,112 @@ def weight_of(program):
             return int(font['OS/2'].usWeightClass)
     except Exception:
         return None
+
+
+@dataclass(frozen=True)
+class HanResult:
+    """One face judged against one convention. status is PASS, FAIL, REVIEW
+    or SKIP; SKIP means the face carries too few of the probes to be judged
+    (a Latin face on a CJK page), and the report turns a page with nothing
+    but SKIPs into "cannot attest"."""
+    status: str
+    face: str
+    convention: str      # 'JP' / 'SC' / 'TC' / 'KR', or '' when no lang named one
+    weight: int | None
+    ratios: tuple        # ((char, own, other), …) for the probes judged
+    reason: str
+
+    def line(self):
+        """One report line in verify's PASS/FAIL/REVIEW style."""
+        want = CONVENTIONS[self.convention][0] if self.convention in CONVENTIONS else ''
+        head = f'{self.status} han-forms{" " + want if want else ""}'
+        if self.status in ('PASS', 'FAIL'):
+            other = CONVENTIONS[OTHER[self.convention]][0]
+            cells = ', '.join(f'{ch} {own:.3f}/{oth:.3f}' for ch, own, oth in self.ratios)
+            drawn = want if self.status == 'PASS' else other
+            return (f'{head}: {self.face} draws {drawn} forms '
+                    f'({cells} vs {want}/{other} at wght {self.weight})')
+        return f'{head}: {self.reason}'
+
+
+def reference_status(convention, reference_dir=None):
+    """(True, '') when the convention can be judged with the faces in the
+    directory; else (False, reason) — the document-level REVIEW reasons."""
+    if convention not in CONVENTIONS:
+        return False, ('no "lang" names the convention; pass lang in translations.json '
+                       '(ja, zh-Hans, …) so the delivered faces can be judged')
+    name, filename = CONVENTIONS[convention]
+    if filename is None:
+        return False, (f'no reference face measured for {name}; the gate judges Japanese '
+                       f'and Simplified Chinese')
+    ref_dir = _dir(reference_dir)
+    missing = [CONVENTIONS[c][1] for c in (convention, OTHER[convention])
+               if not (ref_dir / CONVENTIONS[c][1]).is_file()]
+    if missing:
+        return False, (f'reference faces not found in {ref_dir} ({", ".join(missing)}); '
+                       f'fetch them (tools/fetch_test_fonts.py) or pass --reference-fonts DIR')
+    return True, ''
+
+
+def judge_program(program, convention, reference_dir=None, face=''):
+    """Judge a font program (bytes) against the convention's reference and the
+    other convention's, both instanced at the program's own weight."""
+    ref_dir = _dir(reference_dir)
+    face = face or ''
+    ok, reason = reference_status(convention, ref_dir)
+    if not ok:
+        return HanResult('REVIEW', face, convention if convention in CONVENTIONS else '',
+                         None, (), reason)
+    try:
+        font = pymupdf.Font(fontbuffer=program)
+    except Exception as exc:
+        return HanResult('REVIEW', face, convention, None, (),
+                         f'could not load the embedded font {face}: {exc}')
+    face = face or font.name
+    present = [ch for ch in HAN_PROBES if font.has_glyph(ord(ch))]
+    if len(present) < MIN_SEPARATING or not font.has_glyph(ord(HAN_CONTROL)):
+        return HanResult('SKIP', face, convention, None, (),
+                         f'{face} does not carry the probes "{HAN_CHARS}"')
+    weight = weight_of(program)
+    if weight is None:
+        return HanResult('REVIEW', face, convention, None, (),
+                         f'cannot read the weight (OS/2) of {face}; not a TrueType or '
+                         f'OpenType program')
+    own_ref = reference_face(convention, weight, ref_dir)
+    other_ref = reference_face(OTHER[convention], weight, ref_dir)
+    if own_ref is None or other_ref is None:
+        return HanResult('REVIEW', face, convention, weight, (),
+                         f'the reference faces cannot be instanced at wght {weight} for {face}')
+    own_font = pymupdf.Font(fontfile=str(own_ref))
+    other_font = pymupdf.Font(fontfile=str(other_ref))
+
+    def pair(ch):
+        mine = render(font, ch)
+        return diff_ratio(mine, render(own_font, ch)), diff_ratio(mine, render(other_font, ch))
+
+    c_own, c_other = pair(HAN_CONTROL)
+    if c_own > OWN_MAX or c_other > OWN_MAX:
+        return HanResult('REVIEW', face, convention, weight, ((HAN_CONTROL, c_own, c_other),),
+                         f'no reference of this family: {face} differs from both Noto references '
+                         f'on {HAN_CONTROL} ({c_own:.3f}/{c_other:.3f}), which is drawn the same '
+                         f'in both conventions; check a render with a reader of the language')
+    ratios = tuple((ch, *pair(ch)) for ch in present)
+    own_wins = sum(own <= OWN_MAX and other >= OTHER_MIN for _, own, other in ratios)
+    other_wins = sum(other <= OWN_MAX and own >= OTHER_MIN for _, own, other in ratios)
+    if own_wins >= MIN_SEPARATING and not other_wins:
+        return HanResult('PASS', face, convention, weight, ratios, '')
+    if other_wins >= MIN_SEPARATING and not own_wins:
+        return HanResult('FAIL', face, convention, weight, ratios, '')
+    cells = ', '.join(f'{ch} {own:.3f}/{other:.3f}' for ch, own, other in ratios)
+    return HanResult('REVIEW', face, convention, weight, ratios,
+                     f'inconclusive for {face} ({cells} vs own/other at wght {weight}); '
+                     f'check a render with a reader of the language')
+
+
+def judge_file(fontfile, convention, reference_dir=None):
+    """judge_program for a font file (prepare_font's subset)."""
+    from .shaping_probe import font_psname
+    with open(fontfile, 'rb') as f:
+        program = f.read()
+    return judge_program(program, convention, reference_dir,
+                         face=font_psname(fontfile) or os.path.basename(str(fontfile)))

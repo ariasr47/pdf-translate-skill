@@ -117,5 +117,89 @@ class MeasurementTests(unittest.TestCase):
         self.assertEqual(han_forms.diff_ratio(ink, half), 0.5)
 
 
+def _subset(src, text, out):
+    """A subset of src carrying only text (fontTools), for a program that lacks probes."""
+    from fontTools import subset
+    options = subset.Options()
+    font = subset.load_font(str(src), options)
+    subsetter = subset.Subsetter(options)
+    subsetter.populate(text=text)
+    subsetter.subset(font)
+    subset.save_font(font, str(out), options)
+
+
+class JudgeTests(unittest.TestCase):
+    """judge_program on the references themselves, a Latin face, a probe-less
+    subset and another family. Status and line shape."""
+
+    @classmethod
+    def setUpClass(cls):
+        _face(JP_FACE), _face(SC_FACE)
+        cls.jp400 = han_forms.reference_face('JP', 400, FONTS).read_bytes()
+        cls.sc400 = han_forms.reference_face('SC', 400, FONTS).read_bytes()
+
+    def test_the_japanese_reference_draws_japanese_forms(self):
+        r = han_forms.judge_program(self.jp400, 'JP', FONTS, face='NotoSansJP-Regular')
+        self.assertEqual(r.status, 'PASS', r)
+        self.assertEqual(r.weight, 400)
+        self.assertEqual([ch for ch, _, _ in r.ratios], list(han_forms.HAN_PROBES))
+        self.assertTrue(all(own <= 0.02 and other >= 0.10 for _, own, other in r.ratios), r.ratios)
+        self.assertTrue(r.line().startswith(
+            'PASS han-forms Japanese: NotoSansJP-Regular draws Japanese forms (\u76f4 0.000/'), r.line())
+        self.assertTrue(r.line().endswith(' vs Japanese/Simplified Chinese at wght 400)'), r.line())
+
+    def test_the_japanese_reference_fails_a_simplified_chinese_job(self):
+        r = han_forms.judge_program(self.jp400, 'SC', FONTS, face='NotoSansJP-Regular')
+        self.assertEqual(r.status, 'FAIL', r)
+        self.assertTrue(r.line().startswith(
+            'FAIL han-forms Simplified Chinese: NotoSansJP-Regular draws Japanese forms ('), r.line())
+        self.assertTrue(r.line().endswith(' vs Simplified Chinese/Japanese at wght 400)'), r.line())
+
+    def test_the_chinese_reference_both_ways(self):
+        self.assertEqual(han_forms.judge_program(self.sc400, 'SC', FONTS).status, 'PASS')
+        self.assertEqual(han_forms.judge_program(self.sc400, 'JP', FONTS).status, 'FAIL')
+
+    def test_a_latin_face_is_skipped(self):
+        r = han_forms.judge_program(_face(LATIN_FACE).read_bytes(), 'JP', FONTS, face='NotoSans-Regular')
+        self.assertEqual(r.status, 'SKIP', r)
+        self.assertIn('NotoSans-Regular does not carry the probes', r.reason)
+
+    def test_fewer_than_two_probes_is_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, 'thin.ttf')
+            _subset(han_forms.reference_face('JP', 400, FONTS), '\u76f4\u6771', out)   # 直 東 only
+            r = han_forms.judge_file(out, 'JP', FONTS)
+        self.assertEqual(r.status, 'SKIP', r)
+
+    def test_another_family_is_review_not_the_nearer_reference(self):
+        # MuPDF's bundled CJK face (Droid Sans Fallback) carries the probes but is not Noto:
+        # 東, identical in JP and SC, differs from both references.
+        r = han_forms.judge_program(pymupdf.Font('cjk').buffer, 'JP', FONTS, face='DroidSansFallback')
+        self.assertEqual(r.status, 'REVIEW', r)
+        self.assertIn('no reference of this family', r.reason)
+        self.assertEqual(r.line(), f'REVIEW han-forms Japanese: {r.reason}')
+
+    def test_document_level_reasons(self):
+        r = han_forms.judge_program(self.jp400, None, FONTS)
+        self.assertEqual(r.status, 'REVIEW', r)
+        self.assertIn('no "lang" names the convention', r.reason)
+        self.assertEqual(r.line(), f'REVIEW han-forms: {r.reason}')
+        r = han_forms.judge_program(self.jp400, 'TC', FONTS)
+        self.assertEqual(r.status, 'REVIEW', r)
+        self.assertIn('no reference face measured for Traditional Chinese', r.reason)
+        with tempfile.TemporaryDirectory() as tmp:
+            r = han_forms.judge_program(self.jp400, 'JP', tmp)
+        self.assertEqual(r.status, 'REVIEW', r)
+        self.assertIn('reference faces not found in', r.reason)
+        self.assertIn('NotoSansJP-VF.ttf, NotoSansSC-VF.ttf', r.reason)
+        self.assertEqual(han_forms.reference_status('JP', FONTS), (True, ''))
+        self.assertFalse(han_forms.reference_status('KR', FONTS)[0])
+
+    def test_judge_file_names_the_face_from_its_program(self):
+        r = han_forms.judge_file(han_forms.reference_face('JP', 400, FONTS), 'JP', FONTS)
+        self.assertEqual(r.status, 'PASS', r)
+        self.assertTrue(r.face.startswith('NotoSansJP'), r.face)
+
+
 if __name__ == '__main__':
     unittest.main()
