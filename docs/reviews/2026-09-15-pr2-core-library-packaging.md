@@ -99,6 +99,12 @@ or document `gates` as "the structural subset" until it is complete. The
 CLI and `verify()`'s int return are unaffected, so this is a library-surface
 issue, not a regression.
 
+*Resolved the same day on `fix/verify-verdict-records-every-gate`: every
+printed outcome now records under a name from `verify.GATE_NAMES`;
+`tests.test_import_surface.VerdictCompletenessTests` counts printed gate
+lines against recorded entries; `docs/DECISIONS.md` has the row; version
+49 → 50.*
+
 **F2 — low, API wart: submodule names are shadowed by function re-exports.**
 `__init__.py` does `from .verify import verify` (and the same for
 `retypeset`, `strip_text`, `qa_check`, `prepare_font`, `field_fonts`,

@@ -188,6 +188,20 @@ class GateResult:
     message: str = ''
 
 
+# Every name a GateResult can carry, in the order the gates run. A gate
+# that prints nothing for a job (no fields, no Arabic, no --translations)
+# records nothing either: the verdict mirrors the console, line for line.
+GATE_NAMES = (
+    'field-parity', 'opt-export-parity', 'fill-roundtrip',
+    'extractable-text', 'ink-ratio', 'visible-text', 'canonical-text',
+    'arabic-letterforms', 'conjunct-shaping',
+    'leak-scan', 'leak-running', 'leak-isolated',
+    'empty-targets', 'placement', 'shaped-actualtext',
+    'button-captions', 'caption-width', 'override-markers',
+    'metadata', 'metadata-lang', 'scaled-runs', 'identifiers',
+)
+
+
 @dataclass(frozen=True)
 class VerifyVerdict:
     """Structured result of the structural gates. Does not print or exit."""
@@ -1289,8 +1303,11 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         print(f'FAIL page {pno+1} Arabic drawn unshaped: {n} joining letters in isolated '
               f'form and none connected. The run bypassed the Story engine; do not ship.')
         fail = 1
-    if saw_arabic and not unshaped:
+    if unshaped:
+        record('arabic-letterforms', 'FAIL', f'{len(unshaped)} page(s)')
+    elif saw_arabic:
         print('PASS Arabic letterforms joined')
+        record('arabic-letterforms', 'PASS')
 
     shaping_lines, shaping_status = conjunct_shaping_report(jc)
     for line in shaping_lines:
@@ -1318,6 +1335,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         print(f'REVIEW leak scan: source and output share the spaceless {src_script} '
               f'family; the scan cannot tell them apart. Rely on --translations and '
               f'the visual pass.')
+        record('leak-scan', 'REVIEW',
+               f'source and output share the spaceless {src_script} family')
     else:
         for i in range(len(jc)):
             r, iso = scan_leaks(jc[i].get_text(), allow, source_words=source_words,
@@ -1345,8 +1364,10 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         print(f'REVIEW isolated source-script tokens ({len(uniq)}) - expected for '
               f'form names, statutes and proper nouns; confirm each is deliberate:')
         print('   ' + ', '.join(uniq[:20]))
+        record('leak-isolated', 'REVIEW', f'{len(uniq)}')
     else:
         print('REVIEW isolated source-script tokens: none')
+        record('leak-isolated', 'REVIEW', 'none')
 
     if translations:
         with open(translations, encoding='utf-8') as f:
@@ -1388,8 +1409,10 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             for t in unmarked[:20]:
                 print(f'   {t.replace(chr(10), " ")[:80]}')
             fail = 1
+            record('shaped-actualtext', 'FAIL', f'{len(unmarked)}')
         elif any(needs_shaping(t) for t in targets):
             print('PASS shaped-script targets carry /ActualText')
+            record('shaped-actualtext', 'PASS')
 
         leftover = leftover_button_captions(
             pushbutton_captions(o),
@@ -1413,14 +1436,17 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             for name, cap in clipped[:20]:
                 print(f'   {cap} ({name})')
             fail = 1
+            record('caption-width', 'FAIL', f'{len(clipped)}')
         else:
             print('PASS caption width')
+            record('caption-width', 'PASS')
 
         segs = (segfile.get('segments')
                 if isinstance(segfile, dict) else segfile)
         if segs is None:
             print('SKIP override marker gate (no segments.json beside the mapping; '
                   'pass --segments)')
+            record('override-markers', 'SKIP', 'no segments.json')
         else:
             misses = override_marker_misses(conf, segs)
             if misses:
@@ -1428,8 +1454,10 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
                 for contains, token in misses[:20]:
                     print(f'   "{contains}" is missing "{token}"')
                 fail = 1
+                record('override-markers', 'FAIL', f'{len(misses)}')
             elif conf.get('overrides'):
                 print('PASS override parts keep markers and tails')
+                record('override-markers', 'PASS')
 
         meta_misses = document_metadata_misses(o, jc, conf)
         if meta_misses:
@@ -1437,17 +1465,21 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             for what, detail in meta_misses[:10]:
                 print(f'   [{what}] {detail}')
             fail = 1
+            record('metadata', 'FAIL', ', '.join(what for what, _ in meta_misses))
         else:
             print('PASS document metadata')
+            record('metadata', 'PASS')
         if not (conf.get('lang') or '').strip():
             print('REVIEW document metadata: translations.json has no "lang"; '
                   'the output still declares the source language to screen '
                   'readers and hyphenation')
+            record('metadata-lang', 'REVIEW', 'translations.json has no "lang"')
 
         report = scale_report_for(trans)
         if report is None:
             print(f'SKIP scaled runs: no {SCALE_REPORT} beside the output '
                   f'(a build from before it was written)')
+            record('scaled-runs', 'SKIP', f'no {SCALE_REPORT}')
         elif report:
             print(f'REVIEW scaled runs ({len(report)}) — ship them or reword '
                   f'them, and name them in the delivery:')
@@ -1456,8 +1488,10 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
                       f'{str(r.get("key") or "")[:60]}')
             if len(report) > 20:
                 print(f'   ... {len(report) - 20} more in {SCALE_REPORT}')
+            record('scaled-runs', 'REVIEW', f'{len(report)}')
         else:
             print('PASS scaled runs: none, everything ships at source size')
+            record('scaled-runs', 'PASS')
 
         spans = collect_identifier_spans(o)
         missing_ids = missing_identifier_spans(

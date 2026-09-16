@@ -143,6 +143,228 @@ class VerifyVerdictTests(unittest.TestCase):
             self.assertTrue(any(g.status == 'FAIL' for g in verdict.gates))
 
 
+RTL_FONT = SKILL / 'tests' / 'fonts' / 'NotoNaskhArabic-Regular.ttf'
+AR_PHRASE = 'السلام عليكم ورحمة الله'
+GATE_STATUSES = ('PASS', 'FAIL', 'REVIEW', 'SKIP')
+
+
+def _job(tmp, source='Hello world.', target='Hola mundo.', lang=None,
+         declare=None, overrides=None, segments=None, scale_report=None):
+    """A one-line job on disk: original, output, mapping, and optionally the
+    segments.json beside the mapping and the scale report beside the output
+    that the --translations gates read."""
+    src = os.path.join(tmp, 'orig.pdf')
+    out = os.path.join(tmp, 'out.pdf')
+    tr = os.path.join(tmp, 'translations.json')
+    _tiny_pdf(src, source)
+    doc = pymupdf.open()
+    try:
+        page = doc.new_page()
+        page.insert_text((72, 72), target)
+        if declare:
+            doc.set_language(declare)
+        doc.save(out)
+    finally:
+        doc.close()
+    conf = {'translations': {source: target}, 'skip': []}
+    if lang:
+        conf['lang'] = lang
+    if overrides:
+        conf['overrides'] = overrides
+    Path(tr).write_text(json.dumps(conf, ensure_ascii=False), encoding='utf-8')
+    if segments is not None:
+        Path(tmp, 'segments.json').write_text(
+            json.dumps({'segments': segments}, ensure_ascii=False), encoding='utf-8')
+    if scale_report is not None:
+        Path(tmp, 'scale_report.json').write_text(
+            json.dumps(scale_report), encoding='utf-8')
+    return src, out, tr
+
+
+def _printed_gate_lines(src, out, **kw):
+    """Every PASS/FAIL/REVIEW/SKIP line the CLI prints for this job."""
+    from pdf_translate.verify import verify
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        verify(src, out, **kw)
+    return [ln for ln in buf.getvalue().splitlines()
+            if ln.split(' ', 1)[0] in GATE_STATUSES]
+
+
+def _gates(verdict):
+    names = [g.name for g in verdict.gates]
+    assert len(names) == len(set(names)), f'a gate recorded twice: {names}'
+    return {g.name: g.status for g in verdict.gates}
+
+
+class VerdictCompletenessTests(unittest.TestCase):
+    """PR #2 review F1: every outcome the CLI prints is in the verdict.
+
+    A consumer explains ``exit_code == 1`` by reading ``verdict.gates``.
+    That only works if every gate that can print FAIL also records it, and
+    every REVIEW and SKIP a human would see on the console is there too.
+    """
+
+    def test_trivial_job_records_every_printed_outcome(self):
+        from pdf_translate.verify import run_verify
+
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp)
+            printed = _printed_gate_lines(src, out, translations=tr, min_ink=0.1)
+            verdict = run_verify(src, out, translations=tr, min_ink=0.1)
+            gates = _gates(verdict)
+            self.assertEqual(verdict.exit_code, 0, gates)
+            # The six this job prints that F1 found missing.
+            self.assertEqual(gates.get('leak-isolated'), 'REVIEW', gates)
+            self.assertEqual(gates.get('caption-width'), 'PASS', gates)
+            self.assertEqual(gates.get('override-markers'), 'SKIP', gates)
+            self.assertEqual(gates.get('metadata'), 'PASS', gates)
+            self.assertEqual(gates.get('metadata-lang'), 'REVIEW', gates)
+            self.assertEqual(gates.get('scaled-runs'), 'SKIP', gates)
+            # And nothing prints without recording: one line, one entry.
+            self.assertEqual(
+                len(printed), len(verdict.gates),
+                msg=f'{len(printed)} printed gate lines vs {len(verdict.gates)} '
+                    f'recorded:\n' + '\n'.join(printed) + f'\n{gates}')
+
+    def test_every_recorded_name_is_a_declared_gate(self):
+        from pdf_translate.verify import GATE_NAMES, run_verify
+
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp, lang='es', declare='es', scale_report=[])
+            verdict = run_verify(src, out, translations=tr, min_ink=0.1)
+            names = {g.name for g in verdict.gates}
+            self.assertTrue(names <= set(GATE_NAMES), names - set(GATE_NAMES))
+            for name in ('arabic-letterforms', 'shaped-actualtext',
+                         'conjunct-shaping', 'leak-scan'):
+                self.assertIn(name, GATE_NAMES)
+
+    def test_metadata_gate_is_recorded(self):
+        from pdf_translate.verify import run_verify
+
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp, lang='es')
+            verdict = run_verify(src, out, translations=tr, min_ink=0.1)
+            gates = _gates(verdict)
+            self.assertEqual(gates.get('metadata'), 'FAIL', gates)
+            self.assertNotIn('metadata-lang', gates)
+            self.assertEqual(verdict.exit_code, 1)
+            self.assertIn('FAIL', gates.values())
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp, lang='es', declare='es')
+            gates = _gates(run_verify(src, out, translations=tr, min_ink=0.1))
+            self.assertEqual(gates.get('metadata'), 'PASS', gates)
+            self.assertNotIn('metadata-lang', gates)
+
+    def test_scaled_runs_gate_is_recorded(self):
+        from pdf_translate.verify import run_verify
+
+        cases = (
+            (None, 'SKIP'),
+            ([], 'PASS'),
+            ([{'page': 0, 'ratio': 0.85, 'key': 'Hello world.'}], 'REVIEW'),
+        )
+        for report, status in cases:
+            with self.subTest(report=report):
+                with tempfile.TemporaryDirectory() as tmp:
+                    src, out, tr = _job(tmp, scale_report=report)
+                    verdict = run_verify(src, out, translations=tr, min_ink=0.1)
+                    gates = _gates(verdict)
+                    self.assertEqual(gates.get('scaled-runs'), status, gates)
+                    self.assertEqual(verdict.exit_code, 0, gates)
+
+    def test_override_marker_gate_is_recorded(self):
+        from pdf_translate.verify import run_verify
+
+        segments = [{'page': 0, 'text': 'd. Hello world.        .... $',
+                     'marker': 'd.', 'core': 'Hello world.',
+                     'dots': '....', 'tail': '$'}]
+        keep = [{'page': 0, 'contains': 'Hello world.',
+                 'parts': [{'text': 'd. Hola mundo.', 'x': 72.0},
+                           {'text': '.... $', 'x': 180.0}]}]
+        drop = [{'page': 0, 'contains': 'Hello world.',
+                 'parts': [{'text': 'Hola mundo.', 'x': 72.0}]}]
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp, overrides=keep, segments=segments)
+            gates = _gates(run_verify(src, out, translations=tr, min_ink=0.1))
+            self.assertEqual(gates.get('override-markers'), 'PASS', gates)
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp, overrides=drop, segments=segments)
+            verdict = run_verify(src, out, translations=tr, min_ink=0.1)
+            gates = _gates(verdict)
+            self.assertEqual(gates.get('override-markers'), 'FAIL', gates)
+            self.assertEqual(verdict.exit_code, 1)
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp, overrides=keep)   # no segments.json
+            gates = _gates(run_verify(src, out, translations=tr, min_ink=0.1))
+            self.assertEqual(gates.get('override-markers'), 'SKIP', gates)
+
+    def test_arabic_and_actualtext_gates_are_recorded(self):
+        """Gate 12 (letterforms) and gate 17 (/ActualText) both FAIL a run
+        drawn glyph by glyph and both PASS the library's own retypeset
+        output; a Latin job records neither, exactly as the CLI prints
+        neither."""
+        from pdf_translate.extract_segments import extract_segments
+        from pdf_translate.retypeset import retypeset
+        from pdf_translate.strip_text import strip_text
+        from pdf_translate.verify import run_verify
+
+        if not RTL_FONT.is_file():
+            raise unittest.SkipTest(f'{RTL_FONT.name} not fetched (tools/fetch_test_fonts.py)')
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            bad = os.path.join(tmp, 'glyph-by-glyph.pdf')
+            good = os.path.join(tmp, 'retypeset.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            source = 'Peace be upon you and mercy'
+            _tiny_pdf(src, source)
+            font = str(RTL_FONT)
+            Path(tr).write_text(json.dumps({
+                'fonts': {'regular': font, 'bold': font,
+                          'italic': font, 'bold_italic': font},
+                'translations': {source: AR_PHRASE},
+                'merges': [], 'overrides': [], 'center': [], 'skip': [],
+            }, ensure_ascii=False), encoding='utf-8')
+            # Glyph by glyph: the logical string is in the text layer, but
+            # nothing shaped it and nothing marks it.
+            doc = pymupdf.open()
+            try:
+                page = doc.new_page(width=612, height=792)
+                tw = pymupdf.TextWriter(page.rect)
+                tw.append((72, 80), AR_PHRASE, font=pymupdf.Font(fontfile=font),
+                          fontsize=12, right_to_left=True)
+                tw.write_text(page)
+                doc.save(bad)
+            finally:
+                doc.close()
+            # The library's own path: strip, segment, retypeset through the
+            # Story engine, which marks each shaped run with /ActualText.
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            with redirect_stdout(io.StringIO()):
+                strip_text(src, stripped)
+                extract_segments(src, outdir=tmp)
+                rc = retypeset(stripped, os.path.join(tmp, 'segments.json'), tr, good)
+            self.assertEqual(rc, 0)
+
+            verdict = run_verify(src, bad, translations=tr, min_ink=0.05)
+            gates = _gates(verdict)
+            self.assertEqual(gates.get('arabic-letterforms'), 'FAIL', gates)
+            self.assertEqual(gates.get('shaped-actualtext'), 'FAIL', gates)
+            self.assertEqual(verdict.exit_code, 1)
+
+            verdict = run_verify(src, good, translations=tr, min_ink=0.05)
+            gates = _gates(verdict)
+            self.assertEqual(gates.get('arabic-letterforms'), 'PASS', gates)
+            self.assertEqual(gates.get('shaped-actualtext'), 'PASS', gates)
+            self.assertEqual(verdict.exit_code, 0, gates)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp)
+            gates = _gates(run_verify(src, out, translations=tr, min_ink=0.1))
+            self.assertNotIn('arabic-letterforms', gates)
+            self.assertNotIn('shaped-actualtext', gates)
+
+
 class QAVerdictTests(unittest.TestCase):
     def test_run_qa_returns_a_verdict_and_does_not_print(self):
         from pdf_translate.qa_check import QAVerdict, qa_check, run_qa
