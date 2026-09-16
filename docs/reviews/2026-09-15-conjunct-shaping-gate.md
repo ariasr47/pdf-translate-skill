@@ -53,7 +53,8 @@ Two findings that changed the brief's picture:
 - **Myanmar has a probe.** The earlier test word had no stack. သင်္ဘော does,
   and reads 7 → 5.
 
-Three design experiments (`scratch/design_experiments.py`, not committed):
+Three design experiments (`dev/probes/shaping_design_experiments.py`; the
+table above is `dev/probes/measure_shaping_tell.py`):
 
 | question | measured |
 |---|---|
@@ -157,6 +158,35 @@ That is the difference the gate turns into an exit code.
 - It attests the face, not every cluster in the document. A face that
   passes its probe yet mis-draws some other cluster would slip through;
   the visual pass remains mandatory.
+
+## Independent verification (Rule 1)
+
+Run the same day by a different model (Claude Sonnet 5), which could
+write only its report: `2026-09-15-conjunct-shaping-gate-verification.md`.
+**Verdict: REPRODUCED.** Its own probe script matched all ten rows it was
+asked to measure; the red and green CLI runs matched verbatim, exit codes
+included; it rendered both outputs itself and described the same
+difference (halant + separated consonant + trailing i-matra vs. formed
+conjuncts, leading i-matra, ra-vattu); the Latin canary job stayed
+silent; the suite ran 260 + 11 OK.
+
+What it could not verify: the test-first history (not re-runnable) and
+the three design-experiment numbers, whose script was uncommitted. The
+two measurement scripts are now in `dev/probes/` so both are re-runnable.
+
+What it found that I had not: gate 18 judges every embedded face on the
+page that covers the probe, not only the face that drew the run, so an
+embedded-but-unused broken face FAILs the page (constructed test; the
+reverse also FAILs, so no false PASS). Accepted as conservative; ruling
+in `docs/DECISIONS.md`, sentence added to `references/gates.md`. Its
+other points, for the follow-up list: scripts absent from
+`SCRIPT_RANGES` (Javanese, Balinese, …) get no signal at all — and
+retypeset's `_SHAPING_RANGES` does not route them either, which is the
+older gap; Syriac and N'Ko join like Arabic but gate 12 reads only
+Arabic presentation forms; the face-name check is a guard against
+renderer fallback, not a content hash — the bytes probed are the
+embedded program itself, so a name collision cannot make a broken face
+pass.
 
 ## Commits on the branch
 

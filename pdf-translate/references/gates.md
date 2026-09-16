@@ -116,7 +116,9 @@ again through the Story engine off the same face loses glyphs when the
 face's GSUB works (Devanagari क्षत्रिय 8 → 4, Bengali ক্ষ 3 → 1, Tamil
 க்ஷ 3 → 1, Khmer ខ្មែរ 5 → 4, Myanmar သင်္ဘော 7 → 5; Noto faces). verify
 extracts every embedded font program on a page that draws one of those
-scripts and runs that probe off it, once per (script, face); both arms
+scripts and runs that probe off it, once per (script, face) — every
+face on the page that covers the probe, not only the one that drew the
+run, so an embedded-but-unused broken face also fails; both arms
 must name the same face, because `insert_text` without `fontname=` falls
 back to Helvetica and looks exactly like an unshaped run. No loss is a
 FAIL — every conjunct drawn with that face is broken; do not ship. A
