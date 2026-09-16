@@ -249,3 +249,121 @@ class LeakGateFindingsTests(unittest.TestCase):
                 verify(src, out, min_ink=0.1)
             self.assertIn('PASS isolated source-script tokens: none', buf.getvalue())
             self.assertNotIn('REVIEW isolated source-script tokens', buf.getvalue())
+
+
+class TranslationGateFindingsTests(unittest.TestCase):
+    def test_empty_target_and_missing_placement_name_the_target(self):
+        from pdf_translate.verify import run_verify
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            _tiny_pdf(src, 'Hello world.')
+            _tiny_pdf(out, 'Adios.')
+            Path(tr).write_text(json.dumps({'translations': {'Hello world.': 'Hola mundo.', 'Other': '   '},
+                                            'skip': []}), encoding='utf-8')
+            v = run_verify(src, out, translations=tr, min_ink=0.1)
+            self.assertEqual(_findings(v, 'empty-targets'), [(None, 'target', 'Other')])
+            self.assertEqual(_findings(v, 'placement'), [(None, 'target', 'Hola mundo.')])
+
+    def test_findings_are_not_truncated_like_the_console(self):
+        from pdf_translate.verify import run_verify, verify
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            _tiny_pdf(src, 'Hello world.')
+            _tiny_pdf(out, 'Adios.')
+            targets = {f'Source line {i:02d}': f'Target line {i:02d}' for i in range(35)}
+            Path(tr).write_text(json.dumps({'translations': targets, 'skip': []}), encoding='utf-8')
+            v = run_verify(src, out, translations=tr, min_ink=0.1)
+            self.assertEqual(len(_findings(v, 'placement')), 35)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                verify(src, out, translations=tr, min_ink=0.1)
+            printed = [ln for ln in buf.getvalue().splitlines() if ln.startswith('   Target line ')]
+            self.assertEqual(len(printed), 30)   # the console's [:30] limit, unchanged
+
+    def test_glyph_by_glyph_target_is_named(self):
+        from pdf_translate.verify import run_verify
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            bad = os.path.join(tmp, 'bad.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            _tiny_pdf(src, 'Peace be upon you and mercy')
+            Path(tr).write_text(json.dumps({'translations': {'Peace be upon you and mercy': AR_PHRASE},
+                                            'skip': []}, ensure_ascii=False), encoding='utf-8')
+            _arabic_glyph_by_glyph(bad)
+            v = run_verify(src, bad, translations=tr, min_ink=0.05)
+            self.assertEqual(_findings(v, 'shaped-actualtext'), [(None, 'target', AR_PHRASE)])
+
+    def test_vanished_identifier_is_named(self):
+        from pdf_translate.verify import run_verify
+        from tests.test_pipeline import QUOTE_LINE, SCHED_LINE, VANISH_IDENT_TR, build_identifier_pdf
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_identifier_pdf(src)
+            doc = pymupdf.open()
+            try:
+                page = doc.new_page(width=612, height=792)
+                page.insert_text((72, 80), VANISH_IDENT_TR[QUOTE_LINE], fontsize=12)
+                page.insert_text((72, 110), VANISH_IDENT_TR[SCHED_LINE], fontsize=12)
+                doc.save(out)
+            finally:
+                doc.close()
+            Path(tr).write_text(json.dumps({'translations': VANISH_IDENT_TR, 'skip': []},
+                                           ensure_ascii=False), encoding='utf-8')
+            v = run_verify(src, out, translations=tr, min_ink=0.1)
+            self.assertEqual(_gate(v, 'identifiers').status, 'FAIL')
+            names = [text for _, where, text in _findings(v, 'identifiers') if where == 'identifier']
+            self.assertIn('Attachment A', names)
+
+    def test_metadata_scaled_runs_and_override_markers_are_named(self):
+        from pdf_translate.verify import run_verify
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp, lang='es',
+                                scale_report=[{'page': 0, 'ratio': 0.85, 'key': 'Hello world.'}])
+            v = run_verify(src, out, translations=tr, min_ink=0.1)
+            (page, where, text), = _findings(v, 'metadata')
+            self.assertEqual((page, where), (None, 'lang'))
+            self.assertIn('"es"', text)
+            self.assertEqual(_findings(v, 'scaled-runs'), [(1, '0.85x', 'Hello world.')])
+        segments = [{'page': 0, 'text': 'd. Hello world.        .... $', 'marker': 'd.',
+                     'core': 'Hello world.', 'dots': '....', 'tail': '$'}]
+        drop = [{'page': 0, 'contains': 'Hello world.',
+                 'parts': [{'text': 'Hola mundo.', 'x': 72.0}]}]
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp, overrides=drop, segments=segments)
+            v = run_verify(src, out, translations=tr, min_ink=0.1)
+            self.assertEqual(_findings(v, 'override-markers'),
+                             [(None, 'Hello world.', 'd.'), (None, 'Hello world.', '$')])
+
+    def test_button_caption_gates_name_field_and_caption(self):
+        from pdf_translate.verify import run_verify
+        from tests.test_pipeline import (LONG_CAPTION, NARROW_BTN, SHORT_CAPTION, SOURCE_SENTENCE,
+                                         TARGET_SENTENCE, build_narrow_button_pdf)
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_narrow_button_pdf(src)
+            shutil.copy(src, out)   # caption still SHORT_CAPTION in the output
+            Path(tr).write_text(json.dumps({'translations': {SOURCE_SENTENCE: TARGET_SENTENCE,
+                                                             SHORT_CAPTION: 'Aceptar'}, 'skip': []}),
+                                encoding='utf-8')
+            v = run_verify(src, out, translations=tr, min_ink=0.1)
+            self.assertEqual(_findings(v, 'button-captions'), [(None, NARROW_BTN, SHORT_CAPTION)])
+            self.assertEqual(_gate(v, 'caption-width').status, 'PASS')
+            doc = pymupdf.open(src)
+            try:
+                for w in doc[0].widgets():
+                    if w.field_name == NARROW_BTN:
+                        w.button_caption = LONG_CAPTION
+                        w.update()
+                doc.save(out)
+            finally:
+                doc.close()
+            v = run_verify(src, out, translations=tr, min_ink=0.1)
+            self.assertEqual(_findings(v, 'caption-width'), [(None, NARROW_BTN, LONG_CAPTION)])

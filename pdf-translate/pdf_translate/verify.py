@@ -1435,7 +1435,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             for t in blanks[:30]:
                 print(f'   {t.replace(chr(10), " ")[:80]}')
             fail = 1
-            record('empty-targets', 'FAIL', f'{len(blanks)}')
+            record('empty-targets', 'FAIL', f'{len(blanks)}',
+                   findings=[Finding(None, 'target', t) for t in blanks])
         else:
             print('PASS no empty translation targets')
             record('empty-targets', 'PASS')
@@ -1448,7 +1449,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             for t in missing[:30]:
                 print(f'   {t.replace(chr(10), " ")[:80]}')
             fail = 1
-            record('placement', 'FAIL', f'{len(missing)}')
+            record('placement', 'FAIL', f'{len(missing)}',
+                   findings=[Finding(None, 'target', t) for t in missing])
         else:
             print('PASS authored translations present')
             record('placement', 'PASS')
@@ -1463,7 +1465,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             for t in unmarked[:20]:
                 print(f'   {t.replace(chr(10), " ")[:80]}')
             fail = 1
-            record('shaped-actualtext', 'FAIL', f'{len(unmarked)}')
+            record('shaped-actualtext', 'FAIL', f'{len(unmarked)}',
+                   findings=[Finding(None, 'target', t) for t in unmarked])
         elif any(needs_shaping(t) for t in targets):
             print('PASS shaped-script targets carry /ActualText')
             record('shaped-actualtext', 'PASS')
@@ -1479,7 +1482,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             for name, cap in leftover[:20]:
                 print(f'   {cap} ({name})')
             fail = 1
-            record('button-captions', 'FAIL', f'{len(leftover)}')
+            record('button-captions', 'FAIL', f'{len(leftover)}',
+                   findings=[Finding(None, name, cap) for name, cap in leftover])
         else:
             print('PASS button captions')
             record('button-captions', 'PASS')
@@ -1490,7 +1494,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             for name, cap in clipped[:20]:
                 print(f'   {cap} ({name})')
             fail = 1
-            record('caption-width', 'FAIL', f'{len(clipped)}')
+            record('caption-width', 'FAIL', f'{len(clipped)}',
+                   findings=[Finding(None, name, cap) for name, cap in clipped])
         else:
             print('PASS caption width')
             record('caption-width', 'PASS')
@@ -1508,7 +1513,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
                 for contains, token in misses[:20]:
                     print(f'   "{contains}" is missing "{token}"')
                 fail = 1
-                record('override-markers', 'FAIL', f'{len(misses)}')
+                record('override-markers', 'FAIL', f'{len(misses)}',
+                       findings=[Finding(None, contains, token) for contains, token in misses])
             elif conf.get('overrides'):
                 print('PASS override parts keep markers and tails')
                 record('override-markers', 'PASS')
@@ -1519,7 +1525,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             for what, detail in meta_misses[:10]:
                 print(f'   [{what}] {detail}')
             fail = 1
-            record('metadata', 'FAIL', ', '.join(what for what, _ in meta_misses))
+            record('metadata', 'FAIL', ', '.join(what for what, _ in meta_misses),
+                   findings=[Finding(None, what, detail) for what, detail in meta_misses])
         else:
             print('PASS document metadata')
             record('metadata', 'PASS')
@@ -1542,7 +1549,9 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
                       f'{str(r.get("key") or "")[:60]}')
             if len(report) > 20:
                 print(f'   ... {len(report) - 20} more in {SCALE_REPORT}')
-            record('scaled-runs', 'REVIEW', f'{len(report)}')
+            record('scaled-runs', 'REVIEW', f'{len(report)}', findings=[
+                Finding((int(r.get('page', 0)) + 1), f'{float(r.get("ratio", 1)):.2f}x',
+                        str(r.get('key') or '')) for r in report])
         else:
             print('PASS scaled runs: none, everything ships at source size')
             record('scaled-runs', 'PASS')
@@ -1555,7 +1564,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             for t in missing_ids[:30]:
                 print(f'   {t.replace(chr(10), " ")[:80]}')
             fail = 1
-            record('identifiers', 'FAIL', f'{len(missing_ids)}')
+            record('identifiers', 'FAIL', f'{len(missing_ids)}',
+                   findings=[Finding(None, 'identifier', t) for t in missing_ids])
         else:
             print('PASS write/find/say identifiers')
             record('identifiers', 'PASS')
