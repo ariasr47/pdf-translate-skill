@@ -137,6 +137,21 @@ must be byte-identical to the original's, in the same order. Translate the
 display half (`references/widget-text.md`), never the export — the export
 is what the form submits.
 
+## As a library
+
+`pdf_translate.verify.run_verify(...)` takes the same arguments as the
+CLI, prints nothing, and returns a `VerifyVerdict`: `exit_code` and
+`gates`, one `GateResult(name, status, message)` per PASS/FAIL/REVIEW/SKIP
+line the CLI would print, same status, same order. Names are the closed
+list `verify.GATE_NAMES`: field-parity, opt-export-parity, fill-roundtrip,
+extractable-text, ink-ratio, visible-text, canonical-text,
+arabic-letterforms, conjunct-shaping, leak-scan, leak-running,
+leak-isolated, empty-targets, placement, shaped-actualtext,
+button-captions, caption-width, override-markers, metadata,
+metadata-lang, scaled-runs, identifiers. A gate that prints nothing for a
+job — no fields, no Arabic, no `--translations` — records nothing, so an
+`exit_code` of 1 always has at least one FAIL entry to explain it.
+
 ## Flags
 
 `--fill-text` (a value in the target script for the round-trip),
