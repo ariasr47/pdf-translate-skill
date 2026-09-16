@@ -315,5 +315,53 @@ single-character line (ー for "none", a bracket after a field, a lone 「),
 and a character that begins two or more lines of a stack, each followed by
 more text (・ as a list marker). Documented misses: a lone 「 or 。 on its
 own line in a hand-split paragraph (single character → exempt); lines set
-looser than about three times the line height; vertical (character-stacked)
+looser than about two and a half times the line height (three times the
+font size); vertical (character-stacked)
 text; and the prefix/postfix abbreviation classes (JLREQ cl-12, cl-13).
+
+### Re-review fix
+
+**The defect.** The list-marker exemption was drawn from the whole
+line-start set: any character that began two or more lines of a stack
+became a "marker" and its line-start check was skipped — including a
+full stop, which a hand-split paragraph repeats at every break. Measured:
+
+```
+['申立人は次の情報を記入', '。氏名と住所を書いて', 'ください。その後提出', '。期限は三十日です']
+→ PASS, 0 findings
+```
+
+Two lines begin with 。 after a line above them; both should be
+line-start findings, and the gate went silent instead.
+
+**The fix.** `markers` is now drawn only from `KINSOKU_LIST_MARKERS`
+(`・` and half-width `･`) — the bullets a document sets on purpose at the
+start of a list — intersected with the existing "begins two or more
+lines" test. A repeated full stop, or any other punctuation that is not
+in `KINSOKU_LIST_MARKERS`, can no longer become a marker.
+
+**The two new tests.** `test_a_repeated_full_stop_at_line_start_is_not_a_marker`
+draws the fixture above and asserts `REVIEW` with two `line-start`
+findings, each `。`. `test_the_sets_match_the_probe_that_measured_them`
+loads `dev/probes/cjk_kinsoku_probe.py` by file path and asserts
+`KINSOKU_LINE_START`/`KINSOKU_LINE_END` in `verify.py` equal
+`START_SET`/`END_SET` in the probe, so the two copies cannot drift apart
+unnoticed.
+
+Watched the new test fail first: `AssertionError: 'PASS' != 'REVIEW'`.
+After the fix, `python -m unittest tests.test_cjk -v`:
+
+```
+Ran 27 tests in 1.358s
+
+OK
+```
+
+Six-module suite (`tests.test_pipeline tests.test_corpus_verdicts
+tests.test_import_surface tests.test_shaping_probe tests.test_verify_report
+tests.test_cjk`), captured and grepped for `^Ran |^OK|^FAILED`:
+
+```
+Ran 322 tests in 79.194s
+OK
+```

@@ -450,7 +450,7 @@ Every gate — what it reads, what fails, and why — is in
   Story engine never breaks a merge that way; a target split by hand
   across source lines can, and is REVIEWed with the line named — a form
   label can look the same, so it is not a FAIL. Single-character lines
-  and repeated list markers are exempt.
+  and ・ bullets that begin two or more lines are exempt.
 
 Omit `--translations`: the always-on gates run unchanged.
 
