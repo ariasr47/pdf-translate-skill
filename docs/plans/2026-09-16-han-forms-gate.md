@@ -803,7 +803,8 @@ class VerifyGateTests(unittest.TestCase):
         self.assertEqual((rc, gate.status), (0, 'PASS'), gate)
         self.assertEqual(len(gate.findings), 1, gate)
         self.assertEqual(gate.findings[0].page, 1)
-        self.assertTrue(gate.findings[0].where.startswith('NotoSansJP'), gate.findings[0])
+        # MuPDF names the embedded face with spaces ('Noto Sans JP Regular'), as test_cjk found.
+        self.assertTrue(gate.findings[0].where.replace(' ', '').startswith('NotoSansJP'), gate.findings[0])
         self.assertTrue(gate.findings[0].text.startswith('PASS han-forms Japanese: '), gate.findings[0])
 
     def test_a_japanese_delivery_in_the_chinese_face_fails(self):
@@ -815,14 +816,19 @@ class VerifyGateTests(unittest.TestCase):
         self.assertIn('[page 1] — a reader of the language sees the other region', line[0])
         rc, gate = self.gate(self.ja_sc)
         self.assertEqual((rc, gate.status), (1, 'FAIL'), gate)
-        self.assertTrue(gate.findings[0].where.startswith('NotoSansSC'), gate.findings[0])
+        self.assertTrue(gate.findings[0].where.replace(' ', '').startswith('NotoSansSC'), gate.findings[0])
         self.assertTrue(gate.findings[0].text.startswith('FAIL han-forms Japanese: '), gate.findings[0])
         self.assertNotIn('[page', gate.findings[0].text)
 
     def test_the_mapping_lang_names_the_convention(self):
-        # The Japanese-face output judged as a Simplified Chinese job: the mapping's lang wins over /Lang.
-        rc, gate = self.gate(_with_lang(self.ja_jp, 'zh-Hans', 'zh.json'))
-        self.assertEqual((rc, gate.status), (1, 'FAIL'), gate)
+        # The Japanese-face output judged as a Simplified Chinese job: the mapping's lang wins
+        # over /Lang. (The mapping's zh-Hans also disagrees with the output's /Lang ja, which the
+        # metadata gate FAILs on its own, so the exit code is asserted through the FAIL names.)
+        src, out, tr, _ = _with_lang(self.ja_jp, 'zh-Hans', 'zh.json')
+        v = run_verify(src, out, translations=tr, min_ink=0.1)
+        gate = [g for g in v.gates if g.name == 'han-forms'][0]
+        self.assertEqual((v.exit_code, gate.status), (1, 'FAIL'), gate)
+        self.assertIn('han-forms', [g.name for g in v.gates if g.status == 'FAIL'])
         self.assertTrue(gate.findings[0].text.startswith('FAIL han-forms Simplified Chinese: '),
                         gate.findings[0].text)
 
@@ -871,10 +877,15 @@ class VerifyGateTests(unittest.TestCase):
         self.assertIn('reference faces not found in', gate.findings[0].text)
 
     def test_traditional_chinese_has_no_reference_yet(self):
-        rc, gate = self.gate(_with_lang(self.ja_jp, 'zh-Hant', 'hant.json'))
-        self.assertEqual((rc, gate.status), (0, 'REVIEW'), gate)
+        src, out, tr, _ = _with_lang(self.ja_jp, 'zh-Hant', 'hant.json')
+        v = run_verify(src, out, translations=tr, min_ink=0.1)
+        gate = [g for g in v.gates if g.name == 'han-forms'][0]
+        self.assertEqual(gate.status, 'REVIEW', gate)
         self.assertEqual(gate.findings[0].where, 'reference')
         self.assertIn('no reference face measured for Traditional Chinese', gate.findings[0].text)
+        # The mapping's zh-Hant disagrees with the output's /Lang ja, which the metadata gate
+        # FAILs on its own; han-forms must not be among the FAILs (a REVIEW never exits 1).
+        self.assertEqual([g.name for g in v.gates if g.status == 'FAIL'], ['metadata'], v.gates)
 
     def test_the_cli_takes_reference_fonts(self):
         src, out, tr, _ = self.ja_jp
