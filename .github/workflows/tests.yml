@@ -46,7 +46,7 @@ jobs:
         run: python tools/fetch_test_fonts.py --check
 
       - name: Run the suite
-        run: python -m unittest tests.test_pipeline tests.test_corpus_verdicts tests.test_import_surface tests.test_shaping_probe tests.test_verify_report -v
+        run: python -m unittest tests.test_pipeline tests.test_corpus_verdicts tests.test_import_surface tests.test_shaping_probe tests.test_verify_report tests.test_cjk -v
 
       - name: Test canary output selection and scoring
         run: python -m unittest discover -s ../dev/canary -p test_score.py -v

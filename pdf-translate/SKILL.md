@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "51"
+  version: "52"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -291,6 +291,8 @@ The language decisions that matter:
   `max_width` per part so the target wraps inside the column. Translating
   each line-break on its own is how a pay-stub box turns to crumbs — the
   target's word order rarely breaks where the source's did.
+  In Japanese or Chinese a hand split also breaks kinsoku — a line may
+  not begin with 。、」 or ー — and `verify` fails it (gate 19).
 - **Leave verbatim — apply the write/find/say test.** Before translating any
   name or quoted string, ask: *will the reader have to write this, hand it to
   someone, or search for it?* If yes, it stays in the source language,
@@ -442,6 +444,11 @@ Every gate — what it reads, what fails, and why — is in
   font program inside the output; a face whose probe cluster does not
   lose glyphs FAILs, one without the probe glyphs is REVIEW (cannot
   attest), and Thai, Lao and Hebrew niqqud are REVIEW, never PASS.
+- **Kinsoku** (always on): no drawn CJK line begins with closing
+  punctuation, a small kana or the prolonged sound mark, or ends with an
+  opening bracket (JIS X 4051 / JLREQ; half-width forms included). The
+  Story engine never breaks a merge that way; a target split by hand
+  across source lines can, and FAILs with the line named.
 
 Omit `--translations`: the always-on gates run unchanged.
 
