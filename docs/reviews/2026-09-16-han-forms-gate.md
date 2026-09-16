@@ -171,3 +171,15 @@ OK
 ```
 
 Suite, seven modules: `Ran 357 tests in 251.755s` ... `OK`.
+
+## Docs and version
+
+`SKILL.md` gate bullet; `references/gates.md` row, name list, consumer paragraph, `where`/`text`
+row, flag; `references/fonts.md` on matching builds; `README.md` twenty gates; `docs/DECISIONS.md`
+row with the measured table; version 53 → 54 in SKILL.md, plugin.json, pyproject.toml,
+`__version__` and the lockstep literal; `tests.test_han_forms` on the CI suite line.
+
+## Rule 1 verification
+
+Appended by the independent verifier's pass, on another model, after the whole-branch review —
+not by the implementer of any task. Until that section is here, this gate is not verified.

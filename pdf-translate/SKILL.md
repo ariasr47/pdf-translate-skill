@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "53"
+  version: "54"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -451,6 +451,17 @@ Every gate — what it reads, what fails, and why — is in
   across source lines can, and is REVIEWed with the line named — a form
   label can look the same, so it is not a FAIL. Single-character lines
   and ・ bullets that begin two or more lines are exempt.
+- **Han forms** (always on): on a page that draws Japanese or Chinese text,
+  every embedded face is rendered off its own font program and compared with
+  the Noto reference of the language's convention (`lang` ja → Japanese;
+  zh, zh-Hans → Simplified Chinese) and with the other's, at the face's
+  weight: a face that draws the other region's forms of 直 骨 海 FAILs. No
+  `lang`, a face without the probe glyphs (build faces with `prepare_font`,
+  which adds them), a family that is not Noto, zh-Hant or ko (no reference
+  measured yet), or no reference faces (`--reference-fonts DIR`; default
+  `tests/fonts/`) is REVIEW, never a guess. `prepare_font` makes the same
+  check at build time when `lang` and the references are present, and
+  refuses a face of the wrong convention.
 
 Omit `--translations`: the always-on gates run unchanged.
 

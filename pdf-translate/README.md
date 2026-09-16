@@ -104,7 +104,7 @@ scripts/
   prepare_font.py               subset + instance a font, assert it rasterizes, refuse restricted licences,
                                 probe conjunct shaping (Devanagari, Bengali, Tamil, Khmer, Myanmar)
   retypeset.py                  place translations; rotation; shrink-to-fit; colors; merges; canonical text layer
-  verify.py                     nineteen structural gates
+  verify.py                     twenty structural gates
   qa_check.py                   linguistic QA on the mapping (numbers, dates, consistency, expansion)
   field_fonts.py                make typed-in target-script text render in text and choice fields
   compare.py                    self-contained side-by-side HTML
