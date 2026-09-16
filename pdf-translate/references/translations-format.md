@@ -6,7 +6,7 @@ this file is where your judgment lives.
 ```jsonc
 {
   "fonts": {
-    "regular": "font-sub.ttf",           // required; path relative to cwd
+    "regular": "font-sub.ttf",           // required; relative to this JSON file
     "bold": "font-sub-bold.ttf",         // optional; falls back to regular
     "italic": "font-sub-italic.ttf",     // optional; falls back to regular
     "bold_italic": "font-sub-bi.ttf"     // optional; falls back to bold,
@@ -153,6 +153,14 @@ this file is where your judgment lives.
   ]
 }
 ```
+
+Font paths are relative to the directory containing `translations.json`;
+absolute paths also work. This rule is the same for direct `retypeset.py`
+and `pipeline.py rebuild`. Existing caller-relative font paths are accepted
+with a compatibility note only when the mapping-relative file is absent.
+Prefer mapping-relative paths so a job can be moved or rebuilt from any
+directory. Command-line paths, including verification flags passed to
+`rebuild`, remain relative to the caller's working directory.
 
 Authoring order that works well:
 

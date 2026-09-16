@@ -3816,6 +3816,92 @@ class ScriptAwareLeakTests(unittest.TestCase):
 
 
 class HotLoopTests(unittest.TestCase):
+    def test_rebuild_resolves_verify_arguments_from_the_callers_directory(self):
+        font = os.path.abspath(find_test_font())
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+            work = os.path.join(tmp, 'job')
+            os.mkdir(work)
+            src = os.path.join(tmp, 'original.pdf')
+            out = os.path.join(work, 'out.pdf')
+            build_plain_pdf(src)
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(pipeline.main(['init', src, '--work', work]), 0)
+            tr = os.path.join(work, 'translations.json')
+            write_mapping(tr, {SOURCE_SENTENCE: TARGET_SENTENCE}, font, lang='es')
+            here = os.getcwd()
+            buf = io.StringIO()
+            try:
+                # Windows CI keeps the checkout and TEMP on different drives.
+                # Make the isolated temp directory the caller so relative paths
+                # exist, while the mapping remains in its separate job folder.
+                os.chdir(tmp)
+                with redirect_stdout(buf):
+                    rc = pipeline.main([
+                        'rebuild', '--work', os.path.relpath(work),
+                        os.path.relpath(src), os.path.relpath(out),
+                        '--source-words-from', os.path.relpath(os.path.join(work, 'segments.json')),
+                        '--translations', os.path.relpath(tr),
+                        '--segments', os.path.relpath(os.path.join(work, 'segments.json')),
+                    ])
+                self.assertEqual(os.getcwd(), tmp)
+            except FileNotFoundError as exc:
+                self.fail(f'caller-relative verification path was lost: {exc}')
+            finally:
+                os.chdir(here)
+            self.assertEqual(rc, 0, buf.getvalue())
+            self.assertIn('PASS authored translations present', buf.getvalue())
+
+    def test_direct_retypeset_resolves_fonts_beside_the_mapping(self):
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'original.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            build_plain_pdf(src)
+            shutil.copyfile(font, os.path.join(tmp, 'local-font.ttf'))
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(pipeline.main(['init', src, '--work', tmp]), 0)
+            tr = os.path.join(tmp, 'translations.json')
+            write_mapping(tr, {SOURCE_SENTENCE: TARGET_SENTENCE}, 'local-font.ttf')
+            buf = io.StringIO()
+            try:
+                with redirect_stdout(buf):
+                    rc = retypeset.retypeset(os.path.join(tmp, 'stripped.pdf'),
+                                            os.path.join(tmp, 'segments.json'), tr, out)
+            except Exception as exc:
+                self.fail(f'mapping-relative font was not resolved: {exc}')
+            self.assertEqual(rc, 0, buf.getvalue())
+            with pymupdf.open(out) as doc:
+                self.assertIn(TARGET_SENTENCE, doc[0].get_text())
+
+    def test_story_uses_the_configured_font_in_a_directory_with_spaces(self):
+        from fontTools.ttLib import TTFont
+
+        font = find_test_font()
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / "job with spaces (ñ)'s"
+            work.mkdir()
+            src, out = work / 'original.pdf', work / 'out.pdf'
+            build_plain_pdf(str(src))
+            shutil.copyfile(font, work / 'local-font.ttf')
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(pipeline.main(['init', str(src), '--work', str(work)]), 0)
+            tr = work / 'translations.json'
+            write_mapping(str(tr), {SOURCE_SENTENCE: f'<b>{TARGET_SENTENCE}</b>'},
+                          'local-font.ttf')
+            with redirect_stdout(io.StringIO()):
+                rc = retypeset.retypeset(str(work / 'stripped.pdf'),
+                                        str(work / 'segments.json'), str(tr), str(out))
+            self.assertEqual(rc, 0)
+            normalize = lambda name: name.replace(' ', '').replace('-', '').lower()
+            with TTFont(font) as face:
+                expected = normalize(face['name'].getDebugName(6))
+            with pymupdf.open(out) as doc:
+                spans = [span for block in doc[0].get_text('dict')['blocks']
+                         for line in block.get('lines', []) for span in line['spans']]
+                self.assertIn(TARGET_SENTENCE, doc[0].get_text())
+                self.assertTrue(any(normalize(span['font']) == expected for span in spans),
+                                f'configured font {expected} was replaced: {spans}')
+
     def test_rebuild_and_render_without_reextract(self):
         font = find_test_font()
         with tempfile.TemporaryDirectory() as tmp:

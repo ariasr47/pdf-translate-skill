@@ -35,11 +35,25 @@ Two pages, chosen so one document exercises all five axes at once:
 ```
 Translate {fixture} into {target language}, keeping the layout and every
 form field working. Use the pdf-translate skill at {path}.
+
+Work in a new, empty run directory. Before finishing, write DELIVERY.md
+and delivery.json there. The manifest must declare the finished PDF in
+output, the translations and segments JSON paths, the deliberate source
+phrases kept by verification in allow, and a target-language fill_text
+sample. Paths in the manifest are relative to the run directory. Finalize
+both delivery files before scoring; keep the scoring report outside the
+run directory and leave the finalized run unchanged.
 ```
 
-Nothing more. Telling the model what to look for is what the skill text is
-for; if it has to be said again in the prompt, the skill text is the thing
-to fix.
+These extra instructions establish where the delivery and its evaluation
+belong. They do not coach translation judgments or disclose the rubric.
+Telling the model what to look for is what the skill text is for; if those
+quality instructions must be repeated in the prompt, fix the skill text.
+
+The evaluator must check that `DELIVERY.md` and `delivery.json` exist before
+scoring a new canary. Use the manifest schema below, and store all score
+output outside the finalized run. The scorer's explicit-output option and
+single-candidate fallback remain available for older runs.
 
 ## Scoring
 
@@ -63,11 +77,62 @@ glossary (it should not).
 python3 dev/canary/score.py dev/canary/fixtures/permission_form.pdf RUNDIR [...]
 ```
 
+Declare the deliverable before freezing a run. For a single run, select it
+explicitly (the PDF path is relative to `RUNDIR`):
+
+```bash
+mkdir new-evaluation
+python3 dev/canary/score.py dev/canary/fixtures/permission_form.pdf RUNDIR \
+    --output final.pdf --allow "Riverside Elementary School" \
+    --fill-text "José Muñoz García" --report new-evaluation/score.json
+```
+
+For repeatable scoring or multiple runs, place `delivery.json` in each run:
+
+```json
+{
+  "output": "final.pdf",
+  "translations": "translations.json",
+  "segments": "segments.json",
+  "allow": ["Riverside Elementary School"],
+  "fill_text": "José Muñoz García"
+}
+```
+
+Only `output` is required. All manifest paths resolve inside the run,
+including when the deliverable is in a subdirectory. Document why each
+allowlisted phrase must remain in the source language in `DELIVERY.md` or
+`NOTES.md`; the scorer does not infer exceptions from prose. Repeat the CLI
+`--allow` option to add phrases. It extends the manifest allowlist;
+`--output` and `--fill-text` override their manifest values. Unrecognized
+manifest keys and missing declared files are errors, not reasons to guess
+a different output. The allowlist affects only the existing leak scan;
+translation-placement, field, identifier and QA checks still run.
+
+Without an explicit output or manifest, scoring accepts exactly one
+root-level PDF after excluding stripped files and copies of the original.
+It never chooses by modification time or searches subdirectories for a
+candidate. Multiple candidates produce an ambiguity error. Diagnostic PDFs
+can remain under `tmp/` without becoming deliverables. Without declared
+mapping paths, the scorer looks beside the selected output, then at the
+run root, for `translations.json`; `segments.json` defaults beside it.
+
+The JSON report includes the complete verification log and the effective
+verification settings. `--report` resolves from the caller's directory;
+the default remains `dev/canary/last-score.json`. Use a fresh report location
+when evaluating a frozen run. Reports must be outside every run directory
+and cannot overwrite the original, even when output selection fails.
+The scorer leaves all run artifacts unchanged. Exit codes are `0`
+for passed objective checks, `1` for failed gates, lost identifiers, QA
+errors or missing output, and `2` for invalid configuration or ambiguous
+selection. QA warnings remain advisory.
+
 Axes 1, 2, 4 and 5 are judgements a person makes by reading the delivery.
 Axis 3 is not, and neither is "did the thing they produced pass the gates".
 `score.py` finds each run's output, runs `verify.py` and `qa_check.py`
 against it, and reports every write/find/say span from the original as kept
-or lost. Run it before scoring, so the arguable half is the only part
+or lost. Run it after finalizing delivery and before assigning the rubric
+scores, so the arguable half is the only part
 anyone has to argue about.
 
 The same five checks are also written as graders in

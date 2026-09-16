@@ -334,19 +334,16 @@ def cmd_rebuild(argv):
     stripped = os.path.join(work, 'stripped.pdf')
     segs = os.path.join(work, 'segments.json')
     tr = os.path.join(work, 'translations.json')
-    here = os.getcwd()
     t0 = time.perf_counter()
-    try:
-        os.chdir(work)
-        rc = retypeset(stripped, segs, tr, out)
-        if rc != 0:
-            print(f'elapsed {time.perf_counter()-t0:.2f}s (retypeset failed)')
-            return rc
-        rc = verify_main([orig, out] + extra)
-        print(f'elapsed {time.perf_counter()-t0:.2f}s')
+    rc = retypeset(stripped, segs, tr, out)
+    if rc != 0:
+        print(f'elapsed {time.perf_counter()-t0:.2f}s (retypeset failed)')
         return rc
-    finally:
-        os.chdir(here)
+    # Retypeset resolves font paths beside the mapping. Leave the caller's
+    # directory intact so all command-line verification paths keep meaning.
+    rc = verify_main([orig, out] + extra)
+    print(f'elapsed {time.perf_counter()-t0:.2f}s')
+    return rc
 
 
 def cmd_render(argv):
