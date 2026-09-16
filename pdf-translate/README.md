@@ -101,9 +101,10 @@ scripts/
   strip_text.py                 remove text + XFA (nested XObjects too), keep graphics and widgets;
                                 rewrite captions and widget text; delete /Perms; fails if page text survives
   extract_segments.py           geometry, direction, color, markers, dot leaders, warnings -> segments.json
-  prepare_font.py               subset + instance a font, assert it rasterizes, refuse restricted licences
+  prepare_font.py               subset + instance a font, assert it rasterizes, refuse restricted licences,
+                                probe conjunct shaping (Devanagari, Bengali, Tamil, Khmer, Myanmar)
   retypeset.py                  place translations; rotation; shrink-to-fit; colors; merges; canonical text layer
-  verify.py                     seventeen structural gates
+  verify.py                     eighteen structural gates
   qa_check.py                   linguistic QA on the mapping (numbers, dates, consistency, expansion)
   field_fonts.py                make typed-in target-script text render in text and choice fields
   compare.py                    self-contained side-by-side HTML

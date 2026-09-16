@@ -78,6 +78,17 @@
                   initial or medial form) was drawn letter by letter and
                   FAILs. Reads the glyph forms, not /ActualText. Silent
                   when the page has no Arabic presentation forms.
+18. conjunct shaping every embedded face on a page that draws a conjunct-
+                  forming script (Devanagari, Bengali, Tamil, Khmer, Myanmar)
+                  is probed: that script's cluster string, rendered off the
+                  extracted font program glyph by glyph and again through
+                  the Story engine, must lose glyphs (क्षत्रिय 8 -> 4). No
+                  loss means the face has no usable GSUB and every conjunct
+                  drawn with it is broken: FAIL. A face that lacks the probe
+                  glyphs is REVIEW (cannot attest; prepare_font adds them).
+                  Thai, Lao and Hebrew niqqud have no count tell and are
+                  REVIEW, never PASS; Arabic stays with gate 12. Always
+                  runs; silent when no such script is on the page.
 13. override markers with --translations: an override replaces its whole
                   span, so its parts must keep the source segment's list
                   marker (d.) and tail ($). Needs segments.json: --segments
@@ -128,6 +139,7 @@ import pymupdf
 
 from .extract_segments import write_find_say_hits
 from .strip_text import choice_exports, invisible_text_pages
+from . import shaping_probe
 
 # Unicode letter ranges per script (goal 15). A range table, not an ICU
 # dependency: the scan only needs to tell the source script from the target
@@ -980,6 +992,94 @@ def unshaped_arabic_pages(doc):
     return flagged, saw
 
 
+def conjunct_shaping_report(doc):
+    """(lines, status) for gate 18: probe every embedded face that draws a
+    conjunct-forming script in the output.
+
+    The text layer cannot show a broken conjunct (the shaper writes glyph
+    ids), but the face can be asked directly: extract the embedded font
+    program, render the script's probe cluster off it glyph by glyph and
+    through the Story engine, and compare the counts (shaping_probe). Each
+    (script, font) pair is probed once and reported once with the pages it
+    draws. status is FAIL if any probe failed, else REVIEW if anything could
+    not be attested, else PASS, else None when no such script is present.
+    """
+    fonts = {}       # xref -> (name, ext, program bytes or None)
+    judged = {}      # (script, xref) -> [ProbeResult, pages]
+    unattested = {}  # script -> pages with no face carrying the probe
+    reviews = {}     # script -> pages (blind or unmeasured scripts)
+    for page in doc:
+        scripts = shaping_probe.scripts_in(page_search_text(page))
+        for script in sorted(scripts):
+            if shaping_probe.review_reason(script):
+                reviews.setdefault(script, []).append(page.number + 1)
+                continue
+            probe = shaping_probe.PROBE_FOR.get(script)
+            if probe is None:
+                continue
+            attested = False
+            for entry in page.get_fonts(full=True):
+                xref = entry[0]
+                if xref not in fonts:
+                    try:
+                        info = doc.extract_font(xref)
+                        fonts[xref] = (info[0], info[1], info[3] or None)
+                    except Exception:
+                        fonts[xref] = (str(entry[3]), '', None)
+                name, ext, program = fonts[xref]
+                if not program:
+                    continue
+                key = (script, xref)
+                if key not in judged:
+                    try:
+                        results = shaping_probe.probe_font_bytes(program, ext, [script])
+                        result = results[0] if results else None
+                    except Exception as exc:
+                        result = shaping_probe.review_result(
+                            script, f'could not load the embedded font {name}: {exc}')
+                    judged[key] = [result, []]
+                result, pages = judged[key]
+                if result is None or result.status == 'SKIP':
+                    continue
+                attested = True
+                pages.append(page.number + 1)
+            if not attested:
+                unattested.setdefault(script, []).append(page.number + 1)
+
+    def pages_of(nums):
+        return 'page ' + ', '.join(str(n) for n in sorted(set(nums)))
+
+    lines, statuses = [], []
+    for (script, xref), (result, pages) in sorted(judged.items()):
+        if result is None or result.status == 'SKIP' or not pages:
+            continue
+        line = f'{result.line()} [{pages_of(pages)}]'
+        if result.status == 'FAIL':
+            line += ' — every conjunct drawn with this face is broken; do not ship'
+        lines.append(line)
+        statuses.append(result.status)
+    for script, pages in sorted(unattested.items()):
+        probe = shaping_probe.PROBE_FOR[script]
+        lines.append(f'REVIEW conjunct shaping {script}: cannot attest [{pages_of(pages)}]: '
+                     f'no embedded face carries the probe "{probe.text}"; rebuild the subset '
+                     f'with prepare_font.py, which adds the probe glyphs, or check a render '
+                     f'with a reader of the script')
+        statuses.append('REVIEW')
+    for script, pages in sorted(reviews.items()):
+        lines.append(f'REVIEW conjunct shaping {script}: '
+                     f'{shaping_probe.review_reason(script)} [{pages_of(pages)}]')
+        statuses.append('REVIEW')
+    if 'FAIL' in statuses:
+        status = 'FAIL'
+    elif 'REVIEW' in statuses:
+        status = 'REVIEW'
+    elif 'PASS' in statuses:
+        status = 'PASS'
+    else:
+        status = None
+    return lines, status
+
+
 def page_unextractable(page):
     """True when the page looks scanned: visible content, no text layer."""
     if page.get_text().strip():
@@ -1191,6 +1291,14 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         fail = 1
     if saw_arabic and not unshaped:
         print('PASS Arabic letterforms joined')
+
+    shaping_lines, shaping_status = conjunct_shaping_report(jc)
+    for line in shaping_lines:
+        print(line)
+    if shaping_status == 'FAIL':
+        fail = 1
+    if shaping_status:
+        record('conjunct-shaping', shaping_status)
 
     # Two buckets, because "a Latin word survived" and "a sentence went
     # untranslated" are completely different findings and must not score alike.

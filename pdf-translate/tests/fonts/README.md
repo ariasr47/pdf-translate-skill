@@ -10,8 +10,11 @@ Populate it with:
 python3 tools/fetch_test_fonts.py
 ```
 
-That downloads four SIL Open Font License 1.1 faces: Noto Sans, Noto Naskh
-Arabic, Noto Sans Hebrew and Noto Sans Devanagari. No single Noto face
+That downloads nine SIL Open Font License 1.1 faces: Noto Sans, Noto Naskh
+Arabic, Noto Sans Hebrew, Noto Sans Devanagari, and (added 15 September
+2026, because `_SHAPING_RANGES` already routed these scripts through the
+Story engine while every test for them skipped) Noto Sans Thai, Khmer,
+Tamil, Bengali and Myanmar. No single Noto face
 carries both Arabic and Hebrew (Arial does, which is why these tests only
 ever passed on macOS and Windows), so each test asks for a font covering
 the characters it actually needs. Nothing here is committed: the repository

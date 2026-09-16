@@ -129,6 +129,14 @@ TextWriter (direction only). Verify gate 12 reads the drawn glyph forms and
 fails Arabic that came out as isolated forms. Pipeline renders were checked by
 eye; the FL-150 rebuild text layer is identical on all four pages.
 
+**15 September update.** The by-eye check now has a mechanical successor
+for conjunct-forming scripts: gate 18 (`pdf_translate/shaping_probe.py`)
+renders a known cluster off the embedded face glyph by glyph and through
+the Story engine and fails a face whose count does not drop (Devanagari
+क्षत्रिय 8 → 4; Bengali, Tamil, Khmer, Myanmar likewise). Thai, Lao and
+Hebrew niqqud have no count tell and stay a human check. Evidence and the
+red run: `docs/reviews/2026-09-15-conjunct-shaping-gate.md`.
+
 ### C2. OCR'd scans pass every gate and ship double-printed. Fixed, gate 14 (`b504da2`)
 
 An OCR'd PDF is an image plus an invisible text layer (render mode 3). The

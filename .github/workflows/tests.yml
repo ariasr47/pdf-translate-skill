@@ -37,7 +37,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: pdf-translate/tests/fonts
-          key: noto-fonts-v1
+          key: noto-fonts-v2
 
       - name: Fetch test fonts
         run: python tools/fetch_test_fonts.py
@@ -46,7 +46,7 @@ jobs:
         run: python tools/fetch_test_fonts.py --check
 
       - name: Run the suite
-        run: python -m unittest tests.test_pipeline tests.test_corpus_verdicts tests.test_import_surface -v
+        run: python -m unittest tests.test_pipeline tests.test_corpus_verdicts tests.test_import_surface tests.test_shaping_probe -v
 
       - name: Test canary output selection and scoring
         run: python -m unittest discover -s ../dev/canary -p test_score.py -v

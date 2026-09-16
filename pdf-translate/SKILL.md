@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "48"
+  version: "49"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -70,8 +70,11 @@ Tell the user; do not ship that file as a translation.
 
 Shaped scripts (Arabic, every Indic script, Thai, Khmer, Myanmar) go
 through the Story engine with `/ActualText` in logical order; Hebrew is
-direction only; verify fails unshaped Arabic and any shaping-script target
-with no `/ActualText`. **Layout is not mirrored unless** translations.json
+direction only; verify fails unshaped Arabic, any shaping-script target
+with no `/ActualText`, and a face that cannot form conjuncts (gate 18:
+Devanagari, Bengali, Tamil, Khmer, Myanmar; Thai, Lao and Hebrew niqqud
+have no glyph-count tell and stay REVIEW). **Layout is not mirrored
+unless** translations.json
 sets `"mirror": true`. Read `references/fonts.md` and halt unless you have
 checked the render, the logical text layer, *and* whether the skeleton
 (default) or the opt-in mirror is acceptable. Confidently wrong text
@@ -334,6 +337,11 @@ perfectly. Use an OFL font (the Noto family always is);
 `--allow-restricted` downgrades the refusal if you hold a licence that
 permits embedding, though FreeType declines to load a restricted-licence
 face at all.
+For Devanagari, Bengali, Tamil, Khmer and Myanmar jobs it also adds the
+script's probe cluster to the subset and **probes the subset it wrote**:
+the cluster must lose glyphs through the Story engine (क्षत्रिय 8 → 4)
+or the face has no usable GSUB and the script refuses (exit 1). Thai, Lao
+and Hebrew niqqud print a REVIEW line instead: no count tell exists.
 `pyftsubset` is found on PATH, next to the interpreter, or as
 `python -m fontTools.subset` — it does not have to be on PATH.
 
@@ -424,6 +432,11 @@ Every gate — what it reads, what fails, and why — is in
   the wording is the right term.
 - **`/Opt` export parity** (always on): the export half of every dropdown
   entry byte-identical to the original's, in order.
+- **Conjunct shaping** (always on): every embedded face on a page that
+  draws Devanagari, Bengali, Tamil, Khmer or Myanmar is probed from the
+  font program inside the output; a face whose probe cluster does not
+  lose glyphs FAILs, one without the probe glyphs is REVIEW (cannot
+  attest), and Thai, Lao and Hebrew niqqud are REVIEW, never PASS.
 
 Omit `--translations`: the always-on gates run unchanged.
 

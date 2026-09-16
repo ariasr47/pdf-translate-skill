@@ -38,6 +38,8 @@ from pathlib import Path
 
 import pymupdf
 
+from . import shaping_probe
+
 
 def find_pyftsubset():
     """Locate pyftsubset: PATH, then next to the interpreter, then fontTools."""
@@ -143,6 +145,14 @@ def prepare_font(font_in, trf, font_out, instance=None, sample=None,
     with open(trf, encoding='utf-8') as f:
         conf = json.load(f)
     chars = job_charset(conf)
+    # A conjunct-forming script gets its probe cluster added to the subset
+    # (a dozen glyphs at most), so the face this job embeds can be attested
+    # here, and again by verify from the font program inside the output.
+    job_scripts = sorted(shaping_probe.scripts_in(''.join(chars)))
+    for script in job_scripts:
+        probe = shaping_probe.PROBE_FOR.get(script)
+        if probe:
+            chars.update(probe.text)
 
     src = font_in
     if instance:
@@ -218,6 +228,19 @@ def prepare_font(font_in, trf, font_out, instance=None, sample=None,
         print(f'FAIL: font does not rasterize sample "{sample[:30]}" '
               f'({dark} dark px). Use a glyf-flavored TTF source.')
         return 1
+    if job_scripts:
+        # Rasterizing proves the glyphs exist; it does not prove they join.
+        # Ask the subset directly (gate 18): the probe cluster must lose
+        # glyphs through the Story engine, or every conjunct is broken.
+        probes = shaping_probe.probe_font(font_out, scripts=job_scripts)
+        for r in probes:
+            print(r.line())
+        if any(r.status == 'FAIL' for r in probes):
+            print(f'FAIL: {font_out} does not shape the conjuncts this job draws; a '
+                  f'page built with it shows consonant+halant where a conjunct '
+                  f'belongs. Use a glyf TTF that carries the script\'s GSUB tables '
+                  f'(references/fonts.md).')
+            return 1
     print(f'OK: {font_out} ({os.path.getsize(font_out)//1024} KB, '
           f'{len(chars)} chars, render check {dark} px)')
     return 0
