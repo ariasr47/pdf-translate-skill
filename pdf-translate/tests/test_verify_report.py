@@ -163,14 +163,23 @@ class FormAndPageGateFindingsTests(unittest.TestCase):
 
     def test_drifted_code_point_is_named(self):
         from pdf_translate.verify import run_verify
+        latin = FONTS / 'NotoSans-Regular.ttf'
+        if not latin.is_file():
+            raise unittest.SkipTest('NotoSans-Regular.ttf not fetched (tools/fetch_test_fonts.py)')
         with tempfile.TemporaryDirectory() as tmp:
             src = os.path.join(tmp, 'orig.pdf')
             out = os.path.join(tmp, 'out.pdf')
             tr = os.path.join(tmp, 'translations.json')
             _tiny_pdf(src, 'Hello world.')
-            _tiny_pdf(out, 'Hola mundo.')
-            if ' ' not in pymupdf.open(out)[0].get_text():
-                raise unittest.SkipTest('the renderer folded NBSP; fixture cannot drift')
+            doc = pymupdf.open()
+            try:
+                page = doc.new_page()
+                page.insert_text((72, 72), 'Hola\u00a0mundo.', fontname='F', fontfile=str(latin))
+                doc.save(out)
+            finally:
+                doc.close()
+            self.assertIn('\u00a0', pymupdf.open(out)[0].get_text(),
+                          msg='the embedded face must keep U+00A0 in the text layer')
             Path(tr).write_text(json.dumps({'translations': {'Hello world.': 'Hola mundo.'}, 'skip': []}),
                                 encoding='utf-8')
             v = run_verify(src, out, translations=tr, min_ink=0.1)
