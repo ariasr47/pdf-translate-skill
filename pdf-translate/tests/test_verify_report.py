@@ -445,3 +445,19 @@ class ReportAndPolicyTests(unittest.TestCase):
             data = json.loads(Path(tmp, 'verify_report.json').read_text(encoding='utf-8'))
             self.assertEqual(data['schema'], 1)
             self.assertEqual(data['exit_code'], 0)
+
+
+class VersionLockstepTests(unittest.TestCase):
+    def test_four_version_sources_agree(self):
+        import re
+        import pdf_translate
+        root = SKILL.parent
+        skill = re.search(r'^\s+version:\s*"(\d+)"', (SKILL / 'SKILL.md').read_text(encoding='utf-8'),
+                          re.M).group(1)
+        plugin = json.loads((root / '.claude-plugin' / 'plugin.json').read_text(encoding='utf-8'))['version']
+        pyproject = re.search(r'^version\s*=\s*"([\d.]+)"', (SKILL / 'pyproject.toml').read_text(encoding='utf-8'),
+                              re.M).group(1)
+        self.assertEqual(plugin, f'{skill}.0.0')
+        self.assertEqual(pyproject, plugin)
+        self.assertEqual(pdf_translate.__version__, skill)
+        self.assertEqual(skill, '51')

@@ -152,6 +152,21 @@ metadata-lang, scaled-runs, identifiers. A gate that prints nothing for a
 job — no fields, no Arabic, no `--translations` — records nothing, so an
 `exit_code` of 1 always has at least one FAIL entry to explain it.
 
+Each `GateResult` carries `findings`, a tuple of `Finding(page, where,
+text)`: the page (1-based, or `None` for document-level gates), the thing
+the finding names (a field, a font's PostScript name, a script, `lang`, a
+`U+XXXX` code point, a `0.85x` scale) and the run, caption, token or
+detail, untruncated — the console prints the first ten to thirty, the
+verdict keeps them all. `verify.py … --report PATH` writes
+`verdict.to_dict()` as JSON (`schema` 1, the skill `version`, both paths,
+`exit_code`, `gates`); `pipeline.py rebuild` writes it to
+`<work>/verify_report.json`. `--fail-on-review` (CLI) or
+`fail_on_review=True` (library) turns a run with REVIEW lines and no FAIL
+into exit 1, for pipelines with nobody to read the REVIEW. Both are off by
+default. A consumer removes two REVIEWs on its own: always pass `lang` in
+the mapping (`metadata-lang`), and build faces with `prepare_font`, which
+adds the probe glyphs gate 18 needs (`conjunct-shaping` "cannot attest").
+
 ## Flags
 
 `--fill-text` (a value in the target script for the round-trip),

@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "50"
+  version: "51"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -405,8 +405,11 @@ reader has to look for.
 python3 scripts/verify.py original.pdf out.pdf \
     --fill-text "text in target script" \
     --source-words-from segments.json --allow ACRONYM1,PROPERNOUN \
-    --translations translations.json
+    --translations translations.json [--report verify_report.json]
 ```
+
+`--report` writes every gate and its findings as JSON; the pipeline's
+`rebuild` writes it into the work dir.
 
 Every gate — what it reads, what fails, and why — is in
 `references/gates.md`. The rules in one line each:
