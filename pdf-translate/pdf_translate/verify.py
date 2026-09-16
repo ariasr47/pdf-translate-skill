@@ -1033,7 +1033,7 @@ def unshaped_arabic_pages(doc):
 
 
 def conjunct_shaping_report(doc):
-    """(lines, status) for gate 18: probe every embedded face that draws a
+    """(lines, status, findings) for gate 18: probe every embedded face that draws a
     conjunct-forming script in the output.
 
     The text layer cannot show a broken conjunct (the shaper writes glyph
@@ -1089,7 +1089,7 @@ def conjunct_shaping_report(doc):
     def pages_of(nums):
         return 'page ' + ', '.join(str(n) for n in sorted(set(nums)))
 
-    lines, statuses = [], []
+    lines, statuses, findings = [], [], []
     for (script, xref), (result, pages) in sorted(judged.items()):
         if result is None or result.status == 'SKIP' or not pages:
             continue
@@ -1098,6 +1098,8 @@ def conjunct_shaping_report(doc):
             line += ' — every conjunct drawn with this face is broken; do not ship'
         lines.append(line)
         statuses.append(result.status)
+        face = result.expected_font or fonts[xref][0]
+        findings.extend(Finding(p, face, result.line()) for p in sorted(set(pages)))
     for script, pages in sorted(unattested.items()):
         probe = shaping_probe.PROBE_FOR[script]
         lines.append(f'REVIEW conjunct shaping {script}: cannot attest [{pages_of(pages)}]: '
@@ -1105,10 +1107,13 @@ def conjunct_shaping_report(doc):
                      f'with prepare_font.py, which adds the probe glyphs, or check a render '
                      f'with a reader of the script')
         statuses.append('REVIEW')
+        findings.extend(Finding(p, script, f'cannot attest: no embedded face carries the probe "{probe.text}"')
+                        for p in sorted(set(pages)))
     for script, pages in sorted(reviews.items()):
-        lines.append(f'REVIEW conjunct shaping {script}: '
-                     f'{shaping_probe.review_reason(script)} [{pages_of(pages)}]')
+        reason = shaping_probe.review_reason(script)
+        lines.append(f'REVIEW conjunct shaping {script}: {reason} [{pages_of(pages)}]')
         statuses.append('REVIEW')
+        findings.extend(Finding(p, script, reason) for p in sorted(set(pages)))
     if 'FAIL' in statuses:
         status = 'FAIL'
     elif 'REVIEW' in statuses:
@@ -1117,7 +1122,7 @@ def conjunct_shaping_report(doc):
         status = 'PASS'
     else:
         status = None
-    return lines, status
+    return lines, status, findings
 
 
 def page_unextractable(page):
@@ -1349,18 +1354,20 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
               f'form and none connected. The run bypassed the Story engine; do not ship.')
         fail = 1
     if unshaped:
-        record('arabic-letterforms', 'FAIL', f'{len(unshaped)} page(s)')
+        record('arabic-letterforms', 'FAIL', f'{len(unshaped)} page(s)', findings=[
+            Finding(pno + 1, 'page', f'{n} joining letters in isolated form, none connected')
+            for pno, n in unshaped])
     elif saw_arabic:
         print('PASS Arabic letterforms joined')
         record('arabic-letterforms', 'PASS')
 
-    shaping_lines, shaping_status = conjunct_shaping_report(jc)
+    shaping_lines, shaping_status, shaping_findings = conjunct_shaping_report(jc)
     for line in shaping_lines:
         print(line)
     if shaping_status == 'FAIL':
         fail = 1
     if shaping_status:
-        record('conjunct-shaping', shaping_status)
+        record('conjunct-shaping', shaping_status, findings=shaping_findings)
 
     # Two buckets, because "a Latin word survived" and "a sentence went
     # untranslated" are completely different findings and must not score alike.

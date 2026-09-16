@@ -185,3 +185,35 @@ class FormAndPageGateFindingsTests(unittest.TestCase):
             v = run_verify(src, out, translations=tr, min_ink=0.1)
             self.assertEqual(_gate(v, 'canonical-text').status, 'FAIL')
             self.assertEqual(_findings(v, 'canonical-text'), [(None, 'U+00A0', 'NO-BREAK SPACE x1')])
+
+
+class ScriptGateFindingsTests(unittest.TestCase):
+    def test_unshaped_arabic_page_is_named(self):
+        from pdf_translate.verify import run_verify
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            bad = os.path.join(tmp, 'bad.pdf')
+            _tiny_pdf(src, 'Peace be upon you and mercy')
+            _arabic_glyph_by_glyph(bad)
+            v = run_verify(src, bad, min_ink=0.05)
+            self.assertEqual(_gate(v, 'arabic-letterforms').status, 'FAIL')
+            (page, where, text), = _findings(v, 'arabic-letterforms')
+            self.assertEqual((page, where), (1, 'page'))
+            self.assertIn('isolated form', text)
+
+    def test_broken_conjunct_face_is_named(self):
+        from pdf_translate.verify import run_verify
+        from tests.test_shaping_probe import DV_TARGET, build_source_pdf, draw_story_output, noto, strip_gsub
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            bad = os.path.join(tmp, 'bad.pdf')
+            build_source_pdf(src)
+            no_gsub = strip_gsub(noto('Devanagari'), os.path.join(tmp, 'no-gsub.ttf'))
+            draw_story_output(bad, DV_TARGET, no_gsub)
+            v = run_verify(src, bad, min_ink=0.1)
+            self.assertEqual(_gate(v, 'conjunct-shaping').status, 'FAIL')
+            (page, where, text), = _findings(v, 'conjunct-shaping')
+            self.assertEqual(page, 1)
+            self.assertEqual(where, 'NotoSansDevanagari-Regular')
+            self.assertIn('क्षत्रिय', text)
+            self.assertIn('8 -> 8', text)
