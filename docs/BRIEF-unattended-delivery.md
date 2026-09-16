@@ -152,7 +152,7 @@ is the evidence.
 - `references/gates.md` "As a library": say plainly which REVIEWs a consumer eliminates by always
   passing `lang` and by building faces with `prepare_font`.
 
-### Task C — Thai (and Lao) join gate 18 through the mark-layout tell (v52)
+### Task C — Thai (and Lao) join gate 18 through the mark-layout tell (parked 2026-09-16; v52 became the kinsoku gate — see docs/reviews/2026-09-16-cjk-request-assessment.md)
 
 **Design.** `shaping_probe` gains a second kind of probe: `MarkProbe(script, text, note)` judged
 by *signature* — `shaped_signature != naive_signature`, both arms drawn by the expected face. PASS

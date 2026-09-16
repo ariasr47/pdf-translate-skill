@@ -24,7 +24,7 @@ original.pdf out.pdf --fill-text "…" --source-words-from segments.json
 | leak scan | untranslated running text in the source script (below) |
 | unshaped Arabic | a page whose Arabic letters are all isolated presentation forms was drawn letter by letter |
 | conjunct shaping | an embedded face used on a page that draws Devanagari, Bengali, Tamil, Khmer or Myanmar does not lose glyphs when its probe cluster (क्षत्रिय, 8 → 4) is rendered through the Story engine: no usable GSUB, so every conjunct drawn with it is broken. A face without the probe glyphs is REVIEW (cannot attest; `prepare_font` adds them). Thai, Lao and Hebrew niqqud are REVIEW, never PASS |
-| kinsoku | a drawn line of a CJK block begins with a character JIS X 4051 / JLREQ forbids at line start (closing brackets, hyphens, dividing punctuation, middle dots, full stops, commas, iteration marks, the prolonged sound mark, small kana; half-width forms included) or ends with an opening bracket. Judged block by block on the lines MuPDF reads back, every line of a block that carries a CJK letter, a lone bracket included; a block's first line is never a line-start violation and its last never a line-end one. The Story engine never does this to a merge; a target split by hand across source lines can |
+| kinsoku | REVIEW, never FAIL: a drawn line of CJK text begins with a character JIS X 4051 / JLREQ forbids at line start (closing brackets, hyphens, dividing punctuation, middle dots, full stops, commas, iteration marks, the prolonged sound mark, small kana; half-width forms included) or ends with an opening bracket. Lines are grouped into stacks by geometry — one under another, up to about three times the line height — so a stack's first line is never a line-start violation and its last never a line-end one; a single-character line (ー for "none", a bracket after a field) and a marker that begins two or more lines (・ lists) are values, not breaks. The Story engine never does this to a merge; a target split by hand across source lines does, and a form label can look the same — hence REVIEW. Horizontal text only; prefix and postfix abbreviations (￥ ％ °) are not covered |
 | `/Opt` export parity | the export half of a choice entry differs from the original's, in value or order |
 | canonical text layer | the output reports NBSP, soft hyphen, U+2010/U+2011, a CJK compatibility ideograph or a Latin ligature (U+FB00–FB06, U+007F) that is in neither the original nor the mapping (`/ToUnicode` drift) |
 
@@ -165,9 +165,11 @@ verdict keeps them all. `verify.py … --report PATH` writes
 `<work>/verify_report.json`. `--fail-on-review` (CLI) or
 `fail_on_review=True` (library) turns a run with REVIEW lines and no FAIL
 into exit 1, for pipelines with nobody to read the REVIEW. Both are off by
-default. A consumer removes two REVIEWs on its own: always pass `lang` in
-the mapping (`metadata-lang`), and build faces with `prepare_font`, which
-adds the probe glyphs gate 18 needs (`conjunct-shaping` "cannot attest").
+default. A consumer removes three REVIEWs on its own: always pass `lang` in
+the mapping (`metadata-lang`), build faces with `prepare_font`, which adds
+the probe glyphs gate 18 needs (`conjunct-shaping` "cannot attest"), and
+never split a target by hand across source lines — declare a merge
+(`kinsoku`).
 
 | gate | `where` | `text` |
 |---|---|---|
