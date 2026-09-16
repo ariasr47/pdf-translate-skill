@@ -165,8 +165,11 @@ verdict keeps them all. `verify.py … --report PATH` writes
 `<work>/verify_report.json`. The report is written whole or not at all —
 a temp file beside the path, moved into place — and any report from an
 earlier run at that path is removed before the gates run, so a report that
-exists always describes the last run; a refused write is printed, leaves
-nothing behind, and does not change the exit code. `--fail-on-review` (CLI) or
+exists describes the last run; a refused write is printed and does not
+change the exit code. Best effort: when the directory itself cannot be
+written (a read-only mount), neither the removal nor the write can happen,
+the console says the file there does not describe this run, and a consumer
+should treat the report as absent. `--fail-on-review` (CLI) or
 `fail_on_review=True` (library) turns a run with REVIEW lines and no FAIL
 into exit 1, for pipelines with nobody to read the REVIEW. Both are off by
 default. A consumer removes three REVIEWs on its own: always pass `lang` in

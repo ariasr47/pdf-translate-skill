@@ -1823,7 +1823,8 @@ def _remove_stale_report(path):
 def write_report(verdict, path):
     """verdict.to_dict() as JSON at path, written whole or not at all: a temp
     file beside it moved into place. A failure is printed, never raised, and
-    leaves no earlier report behind."""
+    removes an earlier report when the directory allows it (best effort: a
+    read-only directory keeps the old file, and the console says so)."""
     text = json.dumps(verdict.to_dict(), ensure_ascii=False, indent=1)
     tmp = None
     try:

@@ -40,6 +40,14 @@ The process exited 1; the report on disk said `exit_code 0` for the **good** doc
 After the fix the second run removes the read-only file and writes its own report: the test's
 "either no report, or one describing run 2" holds on the second branch.
 
+**Residual case, named by the review of this fix:** when the containing directory cannot be
+written (a read-only mount, `chmod 555` on POSIX), neither the removal nor the atomic write can
+happen — permission for unlink and rename is checked on the directory, not the file — so the old
+file stays. The console then prints that the file there does not describe this run, and the exit
+code is untouched. The docs say "best effort" for that reason; a consumer that sees the message
+treats the report as absent. Not reproducible on NTFS, where a read-only directory attribute does
+not block either operation.
+
 ## Green
 
 ```
