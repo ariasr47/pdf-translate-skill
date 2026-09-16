@@ -26,7 +26,7 @@ Without --font, tries tests/fonts/NotoSansJP[wght].ttf, then the Windows
 Noto Sans JP, then MuPDF's bundled CJK face (Droid Sans Fallback). Line
 breaking is the engine's, not the face's, so the face only needs the glyphs.
 Measured 2026-09-16 (PyMuPDF 1.28.2, Noto Sans JP 2.04): 0 violations on
-158 drawn lines against 38 + 8 for the naive breaker; 91/91 line-start and
+158 drawn lines against 38 + 8 for the naive breaker; 75/75 line-start and
 15/15 line-end members protected. Record: docs/reviews/2026-09-16-cjk-request-assessment.md
 """
 import os
