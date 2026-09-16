@@ -847,7 +847,7 @@ the measurement, the red and green runs, the parity diff and the suite.
 ## Red, then green
 
 <paste the ImportError from Task 2 Step 3 (first lines), then `Ran 11 tests … OK`;
-the four failures from Task 3 Step 2, then `Ran 16 tests … OK`>
+the four failures from Task 3 Step 2, then `Ran 18 tests … OK`>
 
 ## Parity against `main` (Task 3, Step 5)
 
