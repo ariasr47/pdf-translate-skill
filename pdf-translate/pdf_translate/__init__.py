@@ -18,11 +18,13 @@ from .field_fonts import field_fonts
 from .render_pages import render_pages
 from .compare import compare
 from .bilingual import interleave
-from .verify import VerifyVerdict, run_verify, verify
+from .verify import GATE_NAMES, GateResult, VerifyVerdict, run_verify, verify
 from .qa_check import QAVerdict, qa_check, run_qa
 from .shaping_probe import ProbeResult, probe_font
 
 __all__ = (
+    'GATE_NAMES',
+    'GateResult',
     'ProbeResult',
     'QAVerdict',
     'VerifyVerdict',
