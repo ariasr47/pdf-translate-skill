@@ -179,5 +179,69 @@ class KinsokuReportTests(unittest.TestCase):
         self.assertEqual((status, findings), ('PASS', []))
 
 
+class KinsokuVerifyTests(unittest.TestCase):
+    """The gate through run_verify and the CLI: recorded, printed once, exit 1."""
+
+    def _job(self, tmp, out_lines):
+        orig = os.path.join(tmp, 'orig.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        doc = pymupdf.open()
+        page = doc.new_page(width=595, height=842)
+        for i, text in enumerate(SPLIT_GOOD):
+            page.insert_text((60, 100 + 14 * i), text, fontname='japan', fontsize=10)
+        doc.save(orig)
+        doc.close()
+        doc = pymupdf.open()
+        split_lines_page(doc, out_lines)
+        doc.save(out)
+        doc.close()
+        return orig, out
+
+    def test_the_gate_has_a_name(self):
+        self.assertIn('kinsoku', GATE_NAMES)
+        self.assertEqual(GATE_NAMES.index('kinsoku'), GATE_NAMES.index('conjunct-shaping') + 1)
+
+    def test_a_broken_delivery_records_kinsoku_fail_and_exits_1(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orig, out = self._job(tmp, SPLIT_BAD)
+            v = run_verify(orig, out, min_ink=0.1)
+            gate = {g.name: g for g in v.gates}['kinsoku']
+            self.assertEqual(gate.status, 'FAIL')
+            self.assertEqual(gate.message, '2 line(s)')
+            self.assertEqual([(f.page, f.where, f.text) for f in gate.findings],
+                             [(1, 'line-end', SPLIT_BAD[0]), (1, 'line-start', SPLIT_BAD[2])])
+            self.assertEqual(v.exit_code, 1)
+
+    def test_a_clean_delivery_records_kinsoku_pass(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orig, out = self._job(tmp, SPLIT_GOOD)
+            v = run_verify(orig, out, min_ink=0.1)
+            gate = {g.name: g for g in v.gates}['kinsoku']
+            self.assertEqual((gate.status, gate.message, gate.findings), ('PASS', '', ()))
+
+    def test_the_console_prints_the_gate_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orig, out = self._job(tmp, SPLIT_BAD)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify(orig, out, min_ink=0.1)
+            printed = buf.getvalue().splitlines()
+            heads = [ln for ln in printed if ln.startswith(('FAIL kinsoku', 'PASS kinsoku'))]
+            self.assertEqual(len(heads), 1, printed)
+            self.assertIn(f'   p1 line-start: {SPLIT_BAD[2]}', printed)
+            self.assertEqual(rc, 1)
+
+    def test_a_latin_job_prints_no_kinsoku_line_and_records_none(self):
+        from tests.test_import_surface import _job
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                verify(src, out, translations=tr)
+            self.assertNotIn('kinsoku', buf.getvalue())
+            v = run_verify(src, out, translations=tr)
+            self.assertNotIn('kinsoku', [g.name for g in v.gates])
+
+
 if __name__ == '__main__':
     unittest.main()

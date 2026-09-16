@@ -250,7 +250,7 @@ class GateResult:
 GATE_NAMES = (
     'field-parity', 'opt-export-parity', 'fill-roundtrip',
     'extractable-text', 'ink-ratio', 'visible-text', 'canonical-text',
-    'arabic-letterforms', 'conjunct-shaping',
+    'arabic-letterforms', 'conjunct-shaping', 'kinsoku',
     'leak-scan', 'leak-running', 'leak-isolated',
     'empty-targets', 'placement', 'shaped-actualtext',
     'button-captions', 'caption-width', 'override-markers',
@@ -1462,6 +1462,16 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         fail = 1
     if shaping_status:
         record('conjunct-shaping', shaping_status, findings=shaping_findings)
+
+    kinsoku_lines, kinsoku_status, kinsoku_findings = kinsoku_report(jc)
+    for line in kinsoku_lines:
+        print(line)
+    if kinsoku_status == 'FAIL':
+        fail = 1
+    if kinsoku_status:
+        record('kinsoku', kinsoku_status,
+               f'{len(kinsoku_findings)} line(s)' if kinsoku_status == 'FAIL' else '',
+               findings=kinsoku_findings)
 
     # Two buckets, because "a Latin word survived" and "a sentence went
     # untranslated" are completely different findings and must not score alike.
