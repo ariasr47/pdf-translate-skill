@@ -120,3 +120,54 @@ VERDICTS IDENTICAL
 ```
 
 Suite as CI runs it, seven modules: `Ran 351 tests in 109.079s` ... `OK`.
+
+## Task 4 — prepare_font, red then green
+
+Red: a subset built from 申請書を提出 lacks 直 (the brief's "not drawn"), and a Japanese job set
+with the Simplified Chinese face is prepared without complaint:
+
+```
+FAIL: test_a_cjk_subset_carries_the_probes (tests.test_han_forms.PrepareFontTests.test_a_cjk_subset_carries_the_probes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Dev\pdf-translate-skill\pdf-translate\tests\test_han_forms.py", line 410, in test_a_cjk_subset_carries_the_probes
+    self.assertTrue(font.has_glyph(ord(ch)), f'U+{ord(ch):04X} missing from the subset')
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 is not true : U+76F4 missing from the subset
+
+======================================================================
+FAIL: test_a_japanese_job_with_the_chinese_face_is_refused (tests.test_han_forms.PrepareFontTests.test_a_japanese_job_with_the_chinese_face_is_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Dev\pdf-translate-skill\pdf-translate\tests\test_han_forms.py", line 422, in test_a_japanese_job_with_the_chinese_face_is_refused
+    self.assertEqual(rc, 1, log)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : OK: C:\Users\rodri\AppData\Local\Temp\tmpf9jy65dq\subset.ttf (20 KB, 124 chars, render check 229 px)
+```
+
+Also red, differently from the brief's step-2 narrative: `test_a_japanese_job_with_the_japanese_face_passes`
+failed on the missing PASS line, `test_the_cli_takes_reference_fonts` failed `0 != 1`, and
+`test_without_lang_or_references_prepare_font_stays_quiet` **errored** (`TypeError: prepare_font() got
+an unexpected keyword argument 'reference_fonts'`) rather than passing outright — the brief's Step 2
+text says this one "passes already"; in this checkout it does not, because its second call already
+passes `reference_fonts=empty` to `prepare_font`, a keyword that does not exist before Step 3. Only
+`test_a_latin_subset_is_left_alone` passed unmodified at red. `Ran 6 tests in 63.083s` — `FAILED
+(failures=4, errors=1)`.
+
+Green:
+
+```
+test_a_cjk_subset_carries_the_probes (tests.test_han_forms.PrepareFontTests.test_a_cjk_subset_carries_the_probes) ... ok
+test_a_japanese_job_with_the_chinese_face_is_refused (tests.test_han_forms.PrepareFontTests.test_a_japanese_job_with_the_chinese_face_is_refused) ... ok
+test_a_japanese_job_with_the_japanese_face_passes (tests.test_han_forms.PrepareFontTests.test_a_japanese_job_with_the_japanese_face_passes) ... ok
+test_a_latin_subset_is_left_alone (tests.test_han_forms.PrepareFontTests.test_a_latin_subset_is_left_alone) ... ok
+test_the_cli_takes_reference_fonts (tests.test_han_forms.PrepareFontTests.test_the_cli_takes_reference_fonts) ... ok
+test_without_lang_or_references_prepare_font_stays_quiet (tests.test_han_forms.PrepareFontTests.test_without_lang_or_references_prepare_font_stays_quiet) ... ok
+[... the pre-existing 28 tests of MeasurementTests, JudgeTests, VerifyGateTests, all ok ...]
+
+Ran 34 tests in 89.212s
+
+OK
+```
+
+Suite, seven modules: `Ran 357 tests in 251.755s` ... `OK`.

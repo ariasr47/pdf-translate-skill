@@ -9,7 +9,11 @@ rasterizes in MuPDF by rendering a sample and counting dark pixels.
 CJK glyphs from subsetted CFF/OTF fonts. Only TrueType-flavored (glyf) fonts
 are safe. For CJK, start from a variable TTF (e.g. Google Fonts Noto Sans JP)
 and pass --instance to extract a weight. See references/fonts.md for
-per-script font sources.
+per-script font sources. A Japanese or Chinese subset also carries 直 骨 海
+東, which verify's han-forms gate renders off the embedded program; with
+`lang` and the reference faces present (`--reference-fonts DIR`, default
+`tests/fonts/`), the subset is judged here first and a face of the wrong
+convention is refused.
 
 It also reads the source font's OS/2.fsType and REFUSES a font whose vendor
 forbids embedding or subsetting: that licence problem would otherwise end up
@@ -38,7 +42,7 @@ from pathlib import Path
 
 import pymupdf
 
-from . import shaping_probe
+from . import han_forms, shaping_probe
 
 
 def find_pyftsubset():
@@ -120,7 +124,7 @@ def job_charset(conf):
 
 
 def prepare_font(font_in, trf, font_out, instance=None, sample=None,
-                 allow_restricted=False):
+                 allow_restricted=False, reference_fonts=None):
     """Subset (and optionally instance) a font; rasterization-assert the result.
 
     Returns 0 on success, 1 if the font does not rasterize the sample.
@@ -145,6 +149,7 @@ def prepare_font(font_in, trf, font_out, instance=None, sample=None,
     with open(trf, encoding='utf-8') as f:
         conf = json.load(f)
     chars = job_charset(conf)
+    cjk_job = han_forms.has_cjk(''.join(chars))
     # A conjunct-forming script gets its probe cluster added to the subset
     # (a dozen glyphs at most), so the face this job embeds can be attested
     # here, and again by verify from the font program inside the output.
@@ -153,6 +158,11 @@ def prepare_font(font_in, trf, font_out, instance=None, sample=None,
         probe = shaping_probe.PROBE_FOR.get(script)
         if probe:
             chars.update(probe.text)
+    if cjk_job:
+        # Gate 20 renders these four off the embedded program; a Japanese or
+        # Chinese subset without them is REVIEW "cannot attest" (measured: a
+        # subset built from a target with no probe character lacks 直).
+        chars.update(han_forms.HAN_CHARS)
 
     src = font_in
     if instance:
@@ -241,6 +251,19 @@ def prepare_font(font_in, trf, font_out, instance=None, sample=None,
                   f'belongs. Use a glyf TTF that carries the script\'s GSUB tables '
                   f'(references/fonts.md).')
             return 1
+    if cjk_job:
+        # Ask the subset now what verify will ask the embedded program later
+        # (gate 20), so a job set with the wrong region's face stops here.
+        convention = han_forms.convention_for_lang(conf.get('lang'))
+        if convention and han_forms.reference_status(convention, reference_fonts)[0]:
+            result = han_forms.judge_file(font_out, convention, reference_fonts)
+            print(result.line())
+            if result.status == 'FAIL':
+                want = han_forms.CONVENTIONS[convention][0]
+                print(f'FAIL: {font_out} draws the other region\'s Han forms; a {want} reader '
+                      f'sees the wrong shapes for {han_forms.HAN_PROBES}. Use a {want} face '
+                      f'(references/fonts.md).')
+                return 1
     print(f'OK: {font_out} ({os.path.getsize(font_out)//1024} KB, '
           f'{len(chars)} chars, render check {dark} px)')
     return 0
@@ -253,9 +276,12 @@ def main(argv=None):
                 if '--instance' in argv else None)
     sample = (argv[argv.index('--sample') + 1]
               if '--sample' in argv else None)
+    reference_fonts = (argv[argv.index('--reference-fonts') + 1]
+                       if '--reference-fonts' in argv else None)
     return prepare_font(font_in, trf, font_out, instance=instance,
                         sample=sample,
-                        allow_restricted='--allow-restricted' in argv)
+                        allow_restricted='--allow-restricted' in argv,
+                        reference_fonts=reference_fonts)
 
 
 if __name__ == '__main__':

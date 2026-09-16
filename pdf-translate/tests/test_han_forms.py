@@ -258,7 +258,9 @@ class VerifyGateTests(unittest.TestCase):
         cls.ja_jp = job('ja-jp', face=JP_FACE, target=TARGET, lang='ja')
         cls.ja_sc = job('ja-sc', face=SC_FACE, target=TARGET, lang='ja')
         cls.nolang = job('nolang', face=JP_FACE, target=TARGET, lang=None)
-        cls.plain = job('plain', face=JP_FACE, target=PLAIN, lang='ja')
+        # A subset built before this version, or by another tool: no probe glyphs.
+        with mock.patch.object(han_forms, 'HAN_CHARS', ''):
+            cls.plain = job('plain', face=JP_FACE, target=PLAIN, lang='ja')
         cls.bold = job('bold', face=JP_FACE, target=TARGET, lang='ja', instance='wght=700')
 
     @classmethod
@@ -385,6 +387,78 @@ class VerifyGateTests(unittest.TestCase):
                                       '--reference-fonts', empty])
         self.assertEqual(rc, 0, buf.getvalue())
         self.assertIn('REVIEW han-forms Japanese: reference faces not found in', buf.getvalue())
+
+
+class PrepareFontTests(unittest.TestCase):
+    """prepare_font adds the probes to a CJK subset and judges it early when
+    lang names a convention and the references are present."""
+
+    def prepare(self, face, target, lang, instance='wght=400', **kw):
+        from tests.test_pipeline import SOURCE_SENTENCE, prepare_font, write_mapping
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        tr, out = os.path.join(tmp, 'translations.json'), os.path.join(tmp, 'subset.ttf')
+        write_mapping(tr, {SOURCE_SENTENCE: target}, Path(face), lang=lang)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = prepare_font.prepare_font(str(face), tr, out, instance=instance, **kw)
+        return rc, buf.getvalue(), out
+
+    def test_a_cjk_subset_carries_the_probes(self):
+        rc, log, out = self.prepare(_face(JP_FACE), PLAIN, None)
+        self.assertEqual(rc, 0, log)
+        font = pymupdf.Font(fontfile=out)
+        for ch in han_forms.HAN_CHARS:
+            self.assertTrue(font.has_glyph(ord(ch)), f'U+{ord(ch):04X} missing from the subset')
+
+    def test_a_latin_subset_is_left_alone(self):
+        rc, log, out = self.prepare(_face(LATIN_FACE), 'El solicitante debe presentar este formulario hoy.',
+                                    'es', instance=None)
+        self.assertEqual(rc, 0, log)
+        font = pymupdf.Font(fontfile=out)
+        self.assertFalse(any(font.has_glyph(ord(ch)) for ch in han_forms.HAN_CHARS))
+        self.assertNotIn('han-forms', log)
+
+    def test_a_japanese_job_with_the_chinese_face_is_refused(self):
+        rc, log, _ = self.prepare(_face(SC_FACE), TARGET, 'ja')
+        self.assertEqual(rc, 1, log)
+        self.assertIn('FAIL han-forms Japanese: ', log)
+        self.assertIn('draws Simplified Chinese forms', log)
+        self.assertIn('Use a Japanese face', log)
+
+    def test_a_japanese_job_with_the_japanese_face_passes(self):
+        rc, log, _ = self.prepare(_face(JP_FACE), TARGET, 'ja')
+        self.assertEqual(rc, 0, log)
+        self.assertIn('PASS han-forms Japanese: ', log)
+        self.assertIn('draws Japanese forms', log)
+
+    def test_without_lang_or_references_prepare_font_stays_quiet(self):
+        rc, log, _ = self.prepare(_face(JP_FACE), TARGET, None)
+        self.assertEqual(rc, 0, log)
+        self.assertNotIn('han-forms', log)
+        with tempfile.TemporaryDirectory() as empty:
+            rc, log, _ = self.prepare(_face(JP_FACE), TARGET, 'ja', reference_fonts=empty)
+        self.assertEqual(rc, 0, log)
+        self.assertNotIn('han-forms', log)
+        rc, log, _ = self.prepare(_face(JP_FACE), TARGET, 'zh-Hant')
+        self.assertEqual(rc, 0, log)
+        self.assertNotIn('han-forms', log)
+
+    def test_the_cli_takes_reference_fonts(self):
+        from tests.test_pipeline import SOURCE_SENTENCE, prepare_font, write_mapping
+        with tempfile.TemporaryDirectory() as tmp:
+            tr, out = os.path.join(tmp, 'translations.json'), os.path.join(tmp, 'subset.ttf')
+            write_mapping(tr, {SOURCE_SENTENCE: TARGET}, _face(SC_FACE), lang='ja')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = prepare_font.main([str(SC_FACE), tr, out, '--instance', 'wght=400',
+                                        '--reference-fonts', tmp])
+            self.assertEqual(rc, 0, buf.getvalue())      # no references there: nothing judged
+            self.assertNotIn('han-forms', buf.getvalue())
+            with redirect_stdout(buf):
+                rc = prepare_font.main([str(SC_FACE), tr, out, '--instance', 'wght=400',
+                                        '--reference-fonts', str(FONTS)])
+            self.assertEqual(rc, 1, buf.getvalue())
 
 
 if __name__ == '__main__':
