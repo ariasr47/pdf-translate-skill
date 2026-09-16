@@ -166,5 +166,184 @@ class CoverageTests(unittest.TestCase):
         self.assertIn('no probe measured', results[0].reason)
 
 
+# ---------------------------------------------------------------------------
+# Hooks: prepare_font attests the subset it writes; verify re-probes the
+# font program embedded in the output.
+
+import io  # noqa: E402
+import json  # noqa: E402
+from contextlib import redirect_stdout  # noqa: E402
+
+import pymupdf  # noqa: E402
+
+from pdf_translate.prepare_font import prepare_font  # noqa: E402
+from pdf_translate.verify import run_verify, verify  # noqa: E402
+
+SOURCE_LINE = 'Peace be upon you and mercy'
+DV_TARGET = 'नमस्ते'          # a virama, but not the probe cluster
+TH_TARGET = 'สวัสดี'
+LATIN_TARGET = 'La paz sea contigo'
+PROBE_CLUSTER = shaping_probe.PROBE_FOR['Devanagari'].text
+
+
+def build_source_pdf(path, text=SOURCE_LINE):
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_text((72, 80), text, fontsize=12)
+    doc.save(path)
+    doc.close()
+
+
+def draw_story_output(path, text, fontfile, size=12):
+    """One line placed through the Story engine, the way retypeset does it,
+    so the whole font program is embedded and can be extracted again."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    css = ('@font-face {font-family: t; src: url("%s");} '
+           'body {font-family: t; margin: 0; padding: 0;}' % Path(fontfile).as_posix())
+    page.insert_htmlbox(pymupdf.Rect(72, 80 - 0.8 * size, 540, 80 - 0.8 * size + 15),
+                        '<div style="font-size:%dpx; line-height:1">%s</div>' % (size, text),
+                        css=css, archive=pymupdf.Archive('.'))
+    doc.save(path)
+    doc.close()
+
+
+def subset_to(src, dst, text):
+    """A subset carrying only text's glyphs (so the probe cluster is absent)."""
+    from fontTools import subset
+    font = TTFont(src)
+    subsetter = subset.Subsetter(subset.Options())
+    subsetter.populate(text=text)
+    subsetter.subset(font)
+    font.save(dst)
+    return dst
+
+
+def write_mapping(path, translations, font):
+    Path(path).write_text(json.dumps({
+        'fonts': {'regular': str(font)}, 'translations': translations,
+        'merges': [], 'overrides': [], 'center': [], 'skip': []},
+        ensure_ascii=False), encoding='utf-8')
+
+
+class PrepareFontHookTests(unittest.TestCase):
+    def _prepare(self, font_in, target, sample):
+        with tempfile.TemporaryDirectory() as tmp:
+            tr = os.path.join(tmp, 'translations.json')
+            out = os.path.join(tmp, 'sub.ttf')
+            write_mapping(tr, {SOURCE_LINE: target}, font_in)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = prepare_font(font_in, tr, out, sample=sample)
+            covers = os.path.isfile(out) and shaping_probe.font_covers(out, PROBE_CLUSTER)
+            return rc, buf.getvalue(), covers
+
+    def test_fails_when_the_face_cannot_shape_the_job_script(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bad = strip_gsub(noto('Devanagari'), os.path.join(tmp, 'no-gsub.ttf'))
+            rc, log, _ = self._prepare(bad, DV_TARGET, DV_TARGET)
+        self.assertEqual(rc, 1, log)
+        self.assertIn('FAIL conjunct shaping Devanagari', log)
+        self.assertIn('no conjunct formed', log)
+
+    def test_adds_the_probe_glyphs_and_attests_the_subset(self):
+        """The job text has no ksha/tra, so a plain subset could not be
+        probed later. prepare_font adds the probe's glyphs and probes the
+        subset it actually wrote."""
+        rc, log, covers = self._prepare(noto('Devanagari'), DV_TARGET, DV_TARGET)
+        self.assertEqual(rc, 0, log)
+        self.assertIn('PASS conjunct shaping Devanagari', log)
+        self.assertTrue(covers, 'the written subset does not carry the probe glyphs')
+
+    def test_reviews_a_blind_script_without_claiming_it(self):
+        rc, log, _ = self._prepare(noto('Thai'), TH_TARGET, TH_TARGET)
+        self.assertEqual(rc, 0, log)
+        self.assertIn('REVIEW conjunct shaping Thai', log)
+        self.assertNotIn('PASS conjunct shaping', log)
+
+    def test_says_nothing_for_a_latin_job(self):
+        latin = FONTS / 'NotoSans-Regular.ttf'
+        if not latin.is_file():
+            raise unittest.SkipTest('NotoSans-Regular.ttf not fetched')
+        rc, log, _ = self._prepare(str(latin), LATIN_TARGET, LATIN_TARGET)
+        self.assertEqual(rc, 0, log)
+        self.assertNotIn('conjunct shaping', log)
+
+
+class VerifyGateTests(unittest.TestCase):
+    def _verify(self, src, out):
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = verify(src, out, min_ink=0.1)
+        return rc, buf.getvalue()
+
+    def test_fails_an_output_whose_embedded_face_cannot_shape(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            bad = os.path.join(tmp, 'bad.pdf')
+            good = os.path.join(tmp, 'good.pdf')
+            build_source_pdf(src)
+            no_gsub = strip_gsub(noto('Devanagari'), os.path.join(tmp, 'no-gsub.ttf'))
+            draw_story_output(bad, DV_TARGET, no_gsub)
+            draw_story_output(good, DV_TARGET, noto('Devanagari'))
+            rc, log = self._verify(src, bad)
+            self.assertEqual(rc, 1, log)
+            self.assertIn('FAIL conjunct shaping Devanagari', log)
+            rc, log = self._verify(src, good)
+            self.assertIn('PASS conjunct shaping Devanagari', log)
+            self.assertEqual(rc, 0, log)
+
+    def test_gate_is_recorded_in_the_verdict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            bad = os.path.join(tmp, 'bad.pdf')
+            build_source_pdf(src)
+            no_gsub = strip_gsub(noto('Devanagari'), os.path.join(tmp, 'no-gsub.ttf'))
+            draw_story_output(bad, DV_TARGET, no_gsub)
+            verdict = run_verify(src, bad, min_ink=0.1)
+            gates = {g.name: g.status for g in verdict.gates}
+            self.assertEqual(gates.get('conjunct-shaping'), 'FAIL', gates)
+            self.assertEqual(verdict.exit_code, 1)
+
+    def test_reviews_thai_instead_of_passing_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            out = os.path.join(tmp, 'thai.pdf')
+            build_source_pdf(src)
+            draw_story_output(out, TH_TARGET, noto('Thai'))
+            rc, log = self._verify(src, out)
+            self.assertIn('REVIEW conjunct shaping Thai', log)
+            self.assertNotIn('PASS conjunct shaping', log)
+            self.assertEqual(rc, 0, log)
+
+    def test_reviews_when_no_embedded_face_carries_the_probe(self):
+        """An output built with a subset that lacks the probe cluster cannot
+        be attested. That is a REVIEW naming the fix, not a PASS."""
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            out = os.path.join(tmp, 'subset.pdf')
+            build_source_pdf(src)
+            small = subset_to(noto('Devanagari'), os.path.join(tmp, 'small.ttf'), DV_TARGET)
+            self.assertFalse(shaping_probe.font_covers(small, PROBE_CLUSTER))
+            draw_story_output(out, DV_TARGET, small)
+            rc, log = self._verify(src, out)
+            self.assertIn('REVIEW conjunct shaping Devanagari', log)
+            self.assertIn('cannot attest', log)
+            self.assertNotIn('PASS conjunct shaping', log)
+            self.assertEqual(rc, 0, log)
+
+    def test_says_nothing_for_a_latin_output(self):
+        latin = FONTS / 'NotoSans-Regular.ttf'
+        if not latin.is_file():
+            raise unittest.SkipTest('NotoSans-Regular.ttf not fetched')
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            out = os.path.join(tmp, 'latin.pdf')
+            build_source_pdf(src)
+            draw_story_output(out, LATIN_TARGET, str(latin))
+            rc, log = self._verify(src, out)
+            self.assertNotIn('conjunct shaping', log)
+
+
 if __name__ == '__main__':
     unittest.main()

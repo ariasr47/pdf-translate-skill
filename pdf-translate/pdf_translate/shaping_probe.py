@@ -264,7 +264,18 @@ def judge(probe, naive_glyphs, shaped_glyphs, naive_font, shaped_font, expected_
     return result('PASS', reason)
 
 
-def _review(script, reason):
+def review_reason(script):
+    """Why a script gets REVIEW instead of a verdict; None if it is judged."""
+    if script in BLIND_SCRIPTS:
+        return (f'no glyph-count tell: {BLIND_SCRIPTS[script]}; needs a reference '
+                f'raster or a reader of the script')
+    if script in UNMEASURED_CONJUNCT_SCRIPTS:
+        return ('no probe measured for this script; add a row to '
+                'shaping_probe.PROBES with a measured face first')
+    return None
+
+
+def review_result(script, reason):
     return ProbeResult(script=script, probe='', codepoints=0, naive_glyphs=0,
                        shaped_glyphs=0, expected_shaped=0, naive_font='',
                        shaped_font='', expected_font='', status='REVIEW', reason=reason)
@@ -282,13 +293,9 @@ def probe_font(fontfile, scripts=None):
     expected_font = font_psname(fontfile)
     out = []
     for script in wanted:
-        if script in BLIND_SCRIPTS:
-            out.append(_review(script, f'no glyph-count tell: {BLIND_SCRIPTS[script]}; '
-                                       f'needs a reference raster or a reader of the script'))
-            continue
-        if script in UNMEASURED_CONJUNCT_SCRIPTS:
-            out.append(_review(script, 'no probe measured for this script; add a row to '
-                                       'shaping_probe.PROBES with a measured face first'))
+        why = review_reason(script)
+        if why:
+            out.append(review_result(script, why))
             continue
         probe = PROBE_FOR.get(script)
         if probe is None:
