@@ -181,39 +181,123 @@ FAIL document metadata (1):
    [lang] translations.json asks for "es", output declares "nothing"
 SKIP scaled runs: no scale_report.json beside the output (a build from before it was written)
 PASS write/find/say identifiers
-elapsed 0.09s
+elapsed 0.10s
 ```
 
-`<dir>/meta-fail/verify_report.json`, in full — this is what a consumer
+`<dir>/f1fx/meta-fail/verify_report.json`, in full — this is what a consumer
 gets instead of parsing the console:
 
 ```json
 {
  "schema": 1,
  "version": "51",
- "original": "<dir>/f1fx/meta-fail/orig.pdf",
- "output": "<dir>/f1fx/meta-fail/out.pdf",
+ "original": "<dir>\\f1fx\\meta-fail\\orig.pdf",
+ "output": "<dir>\\f1fx\\meta-fail\\out.pdf",
  "exit_code": 1,
+ "fail_on_review": false,
  "gates": [
-  {"name": "field-parity", "status": "PASS", "message": "", "findings": []},
-  {"name": "fill-roundtrip", "status": "SKIP", "message": "no fields", "findings": []},
-  {"name": "ink-ratio", "status": "PASS", "message": "", "findings": [
-    {"page": 1, "where": "page", "text": "ink ratio 1.05"}
-  ]},
-  {"name": "visible-text", "status": "PASS", "message": "", "findings": []},
-  {"name": "canonical-text", "status": "PASS", "message": "", "findings": []},
-  {"name": "leak-running", "status": "PASS", "message": "", "findings": []},
-  {"name": "leak-isolated", "status": "PASS", "message": "none", "findings": []},
-  {"name": "empty-targets", "status": "PASS", "message": "", "findings": []},
-  {"name": "placement", "status": "PASS", "message": "", "findings": []},
-  {"name": "button-captions", "status": "PASS", "message": "", "findings": []},
-  {"name": "caption-width", "status": "PASS", "message": "", "findings": []},
-  {"name": "override-markers", "status": "SKIP", "message": "no segments.json", "findings": []},
-  {"name": "metadata", "status": "FAIL", "message": "lang", "findings": [
-    {"page": null, "where": "lang", "text": "translations.json asks for \"es\", output declares \"nothing\""}
-  ]},
-  {"name": "scaled-runs", "status": "SKIP", "message": "no scale_report.json", "findings": []},
-  {"name": "identifiers", "status": "PASS", "message": "", "findings": []}
+  {
+   "name": "field-parity",
+   "status": "PASS",
+   "message": "",
+   "findings": []
+  },
+  {
+   "name": "fill-roundtrip",
+   "status": "SKIP",
+   "message": "no fields",
+   "findings": []
+  },
+  {
+   "name": "ink-ratio",
+   "status": "PASS",
+   "message": "",
+   "findings": [
+    {
+     "page": 1,
+     "where": "page",
+     "text": "PASS ink ratio 1.05"
+    }
+   ]
+  },
+  {
+   "name": "visible-text",
+   "status": "PASS",
+   "message": "",
+   "findings": []
+  },
+  {
+   "name": "canonical-text",
+   "status": "PASS",
+   "message": "",
+   "findings": []
+  },
+  {
+   "name": "leak-running",
+   "status": "PASS",
+   "message": "",
+   "findings": []
+  },
+  {
+   "name": "leak-isolated",
+   "status": "PASS",
+   "message": "none",
+   "findings": []
+  },
+  {
+   "name": "empty-targets",
+   "status": "PASS",
+   "message": "",
+   "findings": []
+  },
+  {
+   "name": "placement",
+   "status": "PASS",
+   "message": "",
+   "findings": []
+  },
+  {
+   "name": "button-captions",
+   "status": "PASS",
+   "message": "",
+   "findings": []
+  },
+  {
+   "name": "caption-width",
+   "status": "PASS",
+   "message": "",
+   "findings": []
+  },
+  {
+   "name": "override-markers",
+   "status": "SKIP",
+   "message": "no segments.json",
+   "findings": []
+  },
+  {
+   "name": "metadata",
+   "status": "FAIL",
+   "message": "lang",
+   "findings": [
+    {
+     "page": null,
+     "where": "lang",
+     "text": "translations.json asks for \"es\", output declares \"nothing\""
+    }
+   ]
+  },
+  {
+   "name": "scaled-runs",
+   "status": "SKIP",
+   "message": "no scale_report.json",
+   "findings": []
+  },
+  {
+   "name": "identifiers",
+   "status": "PASS",
+   "message": "",
+   "findings": []
+  }
  ]
 }
 ```
