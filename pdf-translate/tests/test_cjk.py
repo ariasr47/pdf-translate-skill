@@ -60,6 +60,17 @@ def story_page(doc, html, fontfile=None, width=140):
     return page
 
 
+def runs_page(doc, runs):
+    """Independent runs at given origins — cells of a form — in the bundled CJK face."""
+    page = doc.new_page(width=595, height=842)
+    font = pymupdf.Font('cjk')
+    tw = pymupdf.TextWriter(page.rect)
+    for x, y, text in runs:
+        tw.append((x, y), text, font=font, fontsize=10)
+    tw.write_text(page)
+    return page
+
+
 class KinsokuSetTests(unittest.TestCase):
 
     def test_members_from_the_public_classes(self):
@@ -83,14 +94,14 @@ class KinsokuSetTests(unittest.TestCase):
 
 class KinsokuReportTests(unittest.TestCase):
 
-    def test_hand_split_lines_fail_with_a_finding_per_broken_line(self):
+    def test_hand_split_lines_review_with_a_finding_per_broken_line(self):
         doc = pymupdf.open()
         split_lines_page(doc, SPLIT_BAD)
         lines, status, findings = kinsoku_report(doc)
-        self.assertEqual(status, 'FAIL')
+        self.assertEqual(status, 'REVIEW')
         self.assertEqual([(f.page, f.where, f.text) for f in findings],
                          [(1, 'line-end', SPLIT_BAD[0]), (1, 'line-start', SPLIT_BAD[2])])
-        self.assertTrue(lines[0].startswith('FAIL kinsoku: 2 CJK line(s)'), lines)
+        self.assertTrue(lines[0].startswith('REVIEW kinsoku: 2 line(s) of CJK text'), lines)
         self.assertEqual(lines[1], f'   p1 line-end: {SPLIT_BAD[0]}')
         self.assertEqual(lines[2], f'   p1 line-start: {SPLIT_BAD[2]}')
 
@@ -137,27 +148,75 @@ class KinsokuReportTests(unittest.TestCase):
         self.assertEqual(kinsoku_report(doc), ([], None, []))
 
     def test_a_latin_line_inside_a_cjk_block_keeps_the_neighbours(self):
-        # Adjacency is judged on every line of the block; only CJK lines are
-        # judged for the rule. The Latin middle line neither hides the break
-        # before the third line nor is itself judged.
+        # Every line of a CJK stack counts for adjacency and is judged; the
+        # Latin middle line matches no member and neither hides the break
+        # before the third line nor is flagged.
         doc = pymupdf.open()
         split_lines_page(doc, ['申立人は', 'Form 1040', '。氏名と住所'])
         lines, status, findings = kinsoku_report(doc)
-        self.assertEqual(status, 'FAIL')
+        self.assertEqual(status, 'REVIEW')
         self.assertEqual([(f.where, f.text) for f in findings],
                          [('line-start', '。氏名と住所')])
-        self.assertEqual(lines[0].split(':')[0], 'FAIL kinsoku')
+        self.assertEqual(lines[0].split(':')[0], 'REVIEW kinsoku')
 
-    def test_a_line_of_only_punctuation_is_judged_like_any_other(self):
-        # A hand split can leave a bracket or a full stop alone on a line. It
-        # carries no letter, so it is judged by its block, not by itself.
+    def test_a_punctuation_only_line_of_two_or_more_characters_is_judged(self):
+        # A hand split can leave 」。 on its own line: no letter, two characters,
+        # judged by its stack like any other line.
         doc = pymupdf.open()
-        split_lines_page(doc, ['\u3042\u308b\u6587\u7ae0\u3067\u3059', '\u300c', '\u7d9a\u304f\u6587\u7ae0'])
-        split_lines_page(doc, ['\u3042\u308b\u6587\u7ae0', '\u3002', '\u7d9a\u304f'])
+        split_lines_page(doc, ['\u5f7c\u306f\u300c\u306f\u3044', '\u300d\u3002'])
         lines, status, findings = kinsoku_report(doc)
-        self.assertEqual(status, 'FAIL')
+        self.assertEqual(status, 'REVIEW')
         self.assertEqual([(f.page, f.where, f.text) for f in findings],
-                         [(1, 'line-end', '\u300c'), (2, 'line-start', '\u3002')])
+                         [(1, 'line-start', '\u300d\u3002')])
+
+    def test_a_single_character_line_is_a_value_not_a_break(self):
+        # ー for "none" in a column of cells, a bracket after a field, a lone
+        # 「 — a form sets these on purpose. (A lone 「 left by a hand split is
+        # therefore not caught: documented in gates.md.)
+        doc = pymupdf.open()
+        split_lines_page(doc, ['\u6c0f\u540d\uff1a\u7530\u4e2d', '\u30fc', '\u4f4f\u6240\uff1a\u6771\u4eac'])
+        split_lines_page(doc, ['\u3042\u308b\u6587\u7ae0\u3067\u3059', '\u300c', '\u7d9a\u304f\u6587\u7ae0'])
+        split_lines_page(doc, ['\u6ce8\u8a18\u4e8b\u9805', '\uff09', '\u5099\u8003'])
+        lines, status, findings = kinsoku_report(doc)
+        self.assertEqual((status, findings), ('PASS', []))
+        self.assertEqual(lines, ['PASS kinsoku: 9 CJK line(s) break within the rules'])
+
+    def test_a_marker_that_begins_two_or_more_lines_is_a_list(self):
+        doc = pymupdf.open()
+        split_lines_page(doc, ['\u30fb\u6c0f\u540d', '\u30fb\u4f4f\u6240', '\u30fb\u96fb\u8a71\u756a\u53f7'])
+        self.assertEqual(kinsoku_report(doc)[1:], ('PASS', []))
+        # One ・ alone at a line start is still a break before a middle dot.
+        doc = pymupdf.open()
+        split_lines_page(doc, ['\u30ad\u30e3\u30c3\u30b7\u30e5', '\u30fb\u30b5\u30fc\u30d0\u30fc'])
+        lines, status, findings = kinsoku_report(doc)
+        self.assertEqual(status, 'REVIEW')
+        self.assertEqual([(f.where, f.text) for f in findings],
+                         [('line-start', '\u30fb\u30b5\u30fc\u30d0\u30fc')])
+
+    def test_side_by_side_cells_are_not_a_stack(self):
+        # Two cells on one baseline never sit one under the other, whatever
+        # block MuPDF puts them in; the next row stacks under the first cell.
+        doc = pymupdf.open()
+        runs_page(doc, [(60, 100, '\u9805\u76ee\u540d'),
+                        (200, 100, '\uff09\u5185\u306b\u8a18\u5165'),
+                        (60, 114, '\u5099\u8003')])
+        lines, status, findings = kinsoku_report(doc)
+        self.assertEqual((status, findings), ('PASS', []))
+        self.assertEqual(lines, ['PASS kinsoku: 3 CJK line(s) break within the rules'])
+
+    def test_hand_split_lines_are_caught_up_to_three_times_the_line_height(self):
+        # MuPDF's blocks split above ~1.6x leading; the stacks do not.
+        for leading in (16, 24, 30):
+            doc = pymupdf.open()
+            split_lines_page(doc, SPLIT_BAD, leading=leading)
+            lines, status, findings = kinsoku_report(doc)
+            self.assertEqual(status, 'REVIEW', leading)
+            self.assertEqual(len(findings), 2, (leading, findings))
+        # The documented bound: at four times the line height the lines are
+        # independent labels, and nothing is judged against its neighbour.
+        doc = pymupdf.open()
+        split_lines_page(doc, SPLIT_BAD, leading=40)
+        self.assertEqual(kinsoku_report(doc)[1:], ('PASS', []))
 
     def test_a_block_without_any_cjk_letter_is_never_judged(self):
         # Latin lines ending in a curly opening quote are not Japanese
@@ -201,16 +260,16 @@ class KinsokuVerifyTests(unittest.TestCase):
         self.assertIn('kinsoku', GATE_NAMES)
         self.assertEqual(GATE_NAMES.index('kinsoku'), GATE_NAMES.index('conjunct-shaping') + 1)
 
-    def test_a_broken_delivery_records_kinsoku_fail_and_exits_1(self):
+    def test_a_broken_delivery_records_kinsoku_review_and_fail_on_review_exits_1(self):
         with tempfile.TemporaryDirectory() as tmp:
             orig, out = self._job(tmp, SPLIT_BAD)
             v = run_verify(orig, out, min_ink=0.1)
             gate = {g.name: g for g in v.gates}['kinsoku']
-            self.assertEqual(gate.status, 'FAIL')
+            self.assertEqual(gate.status, 'REVIEW')
             self.assertEqual(gate.message, '2 line(s)')
             self.assertEqual([(f.page, f.where, f.text) for f in gate.findings],
                              [(1, 'line-end', SPLIT_BAD[0]), (1, 'line-start', SPLIT_BAD[2])])
-            self.assertEqual(v.exit_code, 1)
+            self.assertEqual(run_verify(orig, out, min_ink=0.1, fail_on_review=True).exit_code, 1)
 
     def test_a_clean_delivery_records_kinsoku_pass(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -226,10 +285,9 @@ class KinsokuVerifyTests(unittest.TestCase):
             with redirect_stdout(buf):
                 rc = verify(orig, out, min_ink=0.1)
             printed = buf.getvalue().splitlines()
-            heads = [ln for ln in printed if ln.startswith(('FAIL kinsoku', 'PASS kinsoku'))]
+            heads = [ln for ln in printed if ln.startswith(('REVIEW kinsoku', 'PASS kinsoku'))]
             self.assertEqual(len(heads), 1, printed)
             self.assertIn(f'   p1 line-start: {SPLIT_BAD[2]}', printed)
-            self.assertEqual(rc, 1)
 
     def test_a_latin_job_prints_no_kinsoku_line_and_records_none(self):
         from tests.test_import_surface import _job
@@ -250,7 +308,7 @@ def _face(path):
 
 
 def _drawing_fonts(page):
-    """Base names of the fonts that drew text on the page, spaces removed.
+    """Names of the fonts that drew text on the page, spaces removed.
 
     MuPDF names the embedded face 'Noto Sans JP Thin', and a page's resource
     dictionary can list faces nothing draws with (strip_text leaves the

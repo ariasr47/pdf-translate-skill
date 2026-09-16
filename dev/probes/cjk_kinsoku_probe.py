@@ -22,12 +22,12 @@ half-width forms (U+FF61..U+FF70). Nothing here comes from any other code.
 
   python dev/probes/cjk_kinsoku_probe.py [--font PATH]
 
-Without --font, tries tests/fonts/NotoSansJP[wght].ttf, then the Windows
+Without --font, tries tests/fonts/NotoSansJP-VF.ttf, then the Windows
 Noto Sans JP, then MuPDF's bundled CJK face (Droid Sans Fallback). Line
 breaking is the engine's, not the face's, so the face only needs the glyphs.
 Measured 2026-09-16 (PyMuPDF 1.28.2, Noto Sans JP 2.04): 0 violations on
-158 drawn lines against 38 + 8 for the naive breaker; 75/75 line-start and
-15/15 line-end members protected. Record: docs/reviews/2026-09-16-cjk-request-assessment.md
+158 drawn lines against 38 + 8 for the naive breaker; 93/94 line-start and
+15/16 line-end members protected. Record: docs/reviews/2026-09-16-cjk-request-assessment.md
 """
 import os
 import sys
@@ -38,7 +38,7 @@ import pymupdf
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 CANDIDATES = (
-    os.path.join(ROOT, 'pdf-translate', 'tests', 'fonts', 'NotoSansJP[wght].ttf'),
+    os.path.join(ROOT, 'pdf-translate', 'tests', 'fonts', 'NotoSansJP-VF.ttf'),
     r'C:\Windows\Fonts\NotoSansJP-VF.ttf',
 )
 FS = 10.0
@@ -46,11 +46,11 @@ WIDTHS = (120, 131, 143, 157, 173, 190)
 FILL = '\u3042'  # あ: full-width, carries no prohibition of its own
 
 NO_START = {
-    'cl-02 closing brackets': '\u300d\u300f\uff09\uff3d\uff5d\u3009\u300b\u3011\u3015\u3019\u3017\u2019\u201d\uff60',
+    'cl-02 closing brackets': '\u300d\u300f\uff09\uff3d\uff5d\u3009\u300b\u3011\u3015\u3019\u3017\u2019\u201d\uff60\u2986',
     'cl-02 half-width closer': '\uff63',
     'cl-03 hyphens': '\u2010\u301c\u30a0\u2013\uff5e',
     'cl-04 dividing punctuation': '\uff1f\uff01\u203c\u2047\u2048\u2049',
-    'cl-05 middle dots': '\u30fb\uff1a\uff1b',
+    'cl-05 middle dots': '\u30fb\uff1a\uff1b\uff65',
     'cl-06 full stops': '\u3002\uff0e',
     'cl-06 half-width': '\uff61',
     'cl-07 commas': '\u3001\uff0c',
@@ -61,9 +61,10 @@ NO_START = {
     'cl-11 small kana, hiragana': '\u3041\u3043\u3045\u3047\u3049\u3063\u3083\u3085\u3087\u308e\u3095\u3096',
     'cl-11 small kana, katakana': '\u30a1\u30a3\u30a5\u30a7\u30a9\u30c3\u30e3\u30e5\u30e7\u30ee\u30f5\u30f6',
     'cl-11 half-width small kana': '\uff67\uff68\uff69\uff6a\uff6b\uff6c\uff6d\uff6e\uff6f',
+    'cl-11 small katakana extension': '\u31f0\u31f1\u31f2\u31f3\u31f4\u31f5\u31f6\u31f7\u31f8\u31f9\u31fa\u31fb\u31fc\u31fd\u31fe\u31ff',
 }
 NO_END = {
-    'cl-01 opening brackets': '\u300c\u300e\uff08\uff3b\uff5b\u3008\u300a\u3010\u3014\u3018\u3016\u2018\u201c\uff5f',
+    'cl-01 opening brackets': '\u300c\u300e\uff08\uff3b\uff5b\u3008\u300a\u3010\u3014\u3018\u3016\u2018\u201c\uff5f\u2985',
     'cl-01 half-width opener': '\uff62',
 }
 START_SET = set(''.join(NO_START.values()))

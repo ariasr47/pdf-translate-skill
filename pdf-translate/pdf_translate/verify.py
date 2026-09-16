@@ -113,6 +113,16 @@
                   original nor the authored mapping are ToUnicode drift and
                   FAIL: the page looks right while the words in it cannot
                   be searched or copied. Always runs.
+19. kinsoku       no drawn line of CJK text begins with a character JIS X
+                  4051 / JLREQ forbids at line start, or ends with one it
+                  forbids at line end (half-width forms included). Lines
+                  are grouped into stacks by geometry, not MuPDF's blocks,
+                  so a stack's first line is never a line-start violation
+                  and its last never a line-end one; a single-character
+                  line and a marker that begins two or more lines are
+                  exempt. REVIEW, never FAIL: a form label can look like a
+                  hand-split line. Always runs; silent when no page has an
+                  eligible stack.
 
 These gates catch structural failures. They do NOT catch visual defects —
 after they pass you still render pages side-by-side and look at them.
@@ -183,18 +193,20 @@ SPACELESS_SCRIPTS = {'CJK', 'Thai', 'Lao', 'Khmer', 'Myanmar', 'Tibetan'}
 # every CJK line, not only Japanese ones. The Story engine breaks by UAX #14
 # and never violates these (measured: dev/probes/cjk_kinsoku_probe.py); a
 # target split by hand across source lines can.
+# Not covered: cl-12 prefix abbreviations (￥＄＃№, line-end) and cl-13 postfix
+# abbreviations (％‰℃°′″, line-start).
 #
 # Characters that may not BEGIN a line:
 KINSOKU_LINE_START = frozenset(
-    # cl-02 closing brackets 」』）］｝〉》】〕〙〗’”｠ and half-width ｣
+    # cl-02 closing brackets 」』）］｝〉》】〕〙〗’”｠⦆ and half-width ｣
     '\u300d\u300f\uff09\uff3d\uff5d\u3009\u300b\u3011\u3015\u3019\u3017'
-    '\u2019\u201d\uff60\uff63'
+    '\u2019\u201d\uff60\uff63\u2986'
     # cl-03 hyphens ‐ 〜 ゠ – and the full-width tilde ～ Windows writes for 〜
     '\u2010\u301c\u30a0\u2013\uff5e'
     # cl-04 dividing punctuation ？！‼⁇⁈⁉
     '\uff1f\uff01\u203c\u2047\u2048\u2049'
-    # cl-05 middle dots ・：；
-    '\u30fb\uff1a\uff1b'
+    # cl-05 middle dots ・：； and half-width ･
+    '\u30fb\uff1a\uff1b\uff65'
     # cl-06 full stops 。． and half-width ｡
     '\u3002\uff0e\uff61'
     # cl-07 commas 、， and half-width ､
@@ -207,12 +219,14 @@ KINSOKU_LINE_START = frozenset(
     '\u3041\u3043\u3045\u3047\u3049\u3063\u3083\u3085\u3087\u308e\u3095\u3096'
     '\u30a1\u30a3\u30a5\u30a7\u30a9\u30c3\u30e3\u30e5\u30e7\u30ee\u30f5\u30f6'
     '\uff67\uff68\uff69\uff6a\uff6b\uff6c\uff6d\uff6e\uff6f'
+    # cl-11 small katakana extension ㇰ..ㇿ (Ainu), counted as CJK letters by SCRIPT_RANGES
+    '\u31f0\u31f1\u31f2\u31f3\u31f4\u31f5\u31f6\u31f7\u31f8\u31f9\u31fa\u31fb\u31fc\u31fd\u31fe\u31ff'
 )
-# ... and that may not END one: cl-01 opening brackets 「『（［｛〈《【〔〘〖‘“｟
+# ... and that may not END one: cl-01 opening brackets 「『（［｛〈《【〔〘〖‘“｟⦅
 # and half-width ｢
 KINSOKU_LINE_END = frozenset(
     '\u300c\u300e\uff08\uff3b\uff5b\u3008\u300a\u3010\u3014\u3018\u3016'
-    '\u2018\u201c\uff5f\uff62'
+    '\u2018\u201c\uff5f\uff62\u2985'
 )
 SPACELESS_RUN_CHARS = 6
 # Latin keeps today's 4-letter word floor; other scripts have short real words.
@@ -1170,51 +1184,96 @@ def _has_cjk(text):
     return any(script_of(ch) == 'CJK' for ch in text)
 
 
-def kinsoku_report(doc):
-    """(lines, status, findings) for gate 19: no drawn CJK line begins with a
-    character JIS X 4051 / JLREQ forbids at line start, or ends with one it
-    forbids at line end.
+def _page_lines(page):
+    """Non-empty text lines of a page, top to bottom: (text, x0, y0, x1, y1)."""
+    out = []
+    for block in page.get_text('dict').get('blocks', []):
+        for ln in block.get('lines', []):
+            text = ''.join(sp.get('text', '') for sp in ln.get('spans', ())).strip()
+            if text:
+                x0, y0, x1, y1 = ln['bbox']
+                out.append((text, x0, y0, x1, y1))
+    out.sort(key=lambda t: (t[2], t[1]))
+    return out
 
-    Judged on the lines MuPDF reads back from each page, block by block, in
-    every block that carries a CJK letter on some line. A line that begins
-    with closing punctuation, a small kana or the prolonged sound mark is a
-    violation only when a line of the same block sits above it — the break
-    before it was a choice; a line that ends with an opening bracket only
-    when one sits below it. A block's lone line is a label or one segment,
-    not a break. Every line of a CJK block is judged, including one made
-    only of punctuation — a bracket or full stop left alone by a hand split
-    is the very artefact the gate exists to catch; a block with no CJK
-    letter (Latin text with a curly quote) is not Japanese typography's
-    business. status is FAIL if any line violates, PASS if lines were
-    judged and none did, None when no page has a CJK block.
+
+# A line sits under another when the two overlap horizontally by at least
+# half the narrower width and the gap between their boxes is at most
+# STACK_GAP times the lower line's height — about three times the line
+# height of leading (measured: hand-split lines at 1.4x, 1.6x, 2.4x and 3.0x
+# stay stacked, 4.0x does not). MuPDF's own blocks split at about 1.6x,
+# which ordinary body copy exceeds, so they are not trusted for this.
+STACK_GAP = 1.5
+
+
+def _stacks(lines):
+    """Group lines into stacks: runs of lines set one under the other."""
+    stacks = []
+    for line in lines:
+        _, x0, y0, x1, y1 = line
+        h = y1 - y0
+        for stack in stacks:
+            _, px0, py0, px1, py1 = stack[-1]
+            overlap = min(x1, px1) - max(x0, px0)
+            if (overlap >= 0.5 * min(x1 - x0, px1 - px0)
+                    and -0.5 * h <= y0 - py1 <= STACK_GAP * h):
+                stack.append(line)
+                break
+        else:
+            stacks.append([line])
+    return stacks
+
+
+def kinsoku_report(doc):
+    """(lines, status, findings) for gate 19: no drawn line of CJK text begins
+    with a character JIS X 4051 / JLREQ forbids at line start, or ends with
+    one it forbids at line end. REVIEW, never FAIL.
+
+    Judged on the lines MuPDF reads back from each page, grouped into stacks
+    by geometry (_stacks); a stack is eligible when one of its lines carries
+    a CJK letter. In an eligible stack a line that begins with closing
+    punctuation, a small kana or the prolonged sound mark is a violation
+    when a line sits above it — the break before it was a choice — and one
+    that ends with an opening bracket when a line sits below it. Two shapes
+    a form sets on purpose are values, not breaks, and are exempt: a line
+    that is a single character (ー for "none", a bracket after a field, a
+    lone 「), and a character that begins two or more lines of the stack,
+    each followed by more text (・ as a list marker). The Story engine
+    breaks by UAX #14 and never violates these (dev/probes/cjk_kinsoku_probe.py);
+    a target split by hand across source lines can — and so can a form label
+    that merely looks like one, which is why this is REVIEW. Horizontal text
+    only: vertical setting puts every glyph on its own line. status is
+    REVIEW if any line violates, PASS if lines were judged and none did,
+    None when no page has an eligible stack.
     """
     findings, judged = [], 0
     for page in doc:
-        for block in page.get_text('dict').get('blocks', []):
-            texts = []
-            for ln in block.get('lines', []):
-                text = ''.join(sp.get('text', '') for sp in ln.get('spans', ())).strip()
-                if text:
-                    texts.append(text)
+        for stack in _stacks(_page_lines(page)):
+            texts = [t for t, *_ in stack]
             if not any(_has_cjk(t) for t in texts):
                 continue
+            firsts = [t[0] for t in texts if len(t) > 1]
+            markers = {c for c in firsts if firsts.count(c) >= 2}
             last = len(texts) - 1
             for i, text in enumerate(texts):
                 judged += 1
+                if len(text) == 1:
+                    continue
                 if i < last and text[-1] in KINSOKU_LINE_END:
                     findings.append(Finding(page.number + 1, 'line-end', text))
-                if i > 0 and text[0] in KINSOKU_LINE_START:
+                if i > 0 and text[0] in KINSOKU_LINE_START and text[0] not in markers:
                     findings.append(Finding(page.number + 1, 'line-start', text))
     if not judged:
         return [], None, []
     if findings:
-        lines = [f'FAIL kinsoku: {len(findings)} CJK line(s) break a line-breaking rule '
-                 f'(JIS X 4051 / JLREQ): closing punctuation, a small kana or the prolonged '
-                 f'sound mark begins a line, or an opening bracket ends one. Declare the '
-                 f'paragraph as a merge instead of splitting the target by hand:']
+        lines = [f'REVIEW kinsoku: {len(findings)} line(s) of CJK text break a line-breaking '
+                 f'rule (JIS X 4051 / JLREQ): closing punctuation, a small kana or the prolonged '
+                 f'sound mark begins a line, or an opening bracket ends one. A target split by '
+                 f'hand across source lines does this — declare the paragraph as a merge; a form '
+                 f'label can look the same, so check the lines:']
         for f in findings[:20]:
             lines.append(f'   p{f.page} {f.where}: {f.text[:60]}')
-        return lines, 'FAIL', findings
+        return lines, 'REVIEW', findings
     return [f'PASS kinsoku: {judged} CJK line(s) break within the rules'], 'PASS', []
 
 
@@ -1466,11 +1525,9 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     kinsoku_lines, kinsoku_status, kinsoku_findings = kinsoku_report(jc)
     for line in kinsoku_lines:
         print(line)
-    if kinsoku_status == 'FAIL':
-        fail = 1
     if kinsoku_status:
         record('kinsoku', kinsoku_status,
-               f'{len(kinsoku_findings)} line(s)' if kinsoku_status == 'FAIL' else '',
+               f'{len(kinsoku_findings)} line(s)' if kinsoku_status == 'REVIEW' else '',
                findings=kinsoku_findings)
 
     # Two buckets, because "a Latin word survived" and "a sentence went
