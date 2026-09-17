@@ -1304,15 +1304,15 @@ def kinsoku_report(doc):
 def _cjk_drawing_fonts(page):
     """(draws, keys): whether the page draws CJK glyphs at all, and the
     han_forms.font_key of every font that drew one, from the spans MuPDF
-    gives back — the only witness of who drew what."""
+    gives back — the only witness of who drew what. A span with no font name
+    contributes the key 'an unnamed font', so it is never silently dropped."""
     draws, keys = False, set()
     for block in page.get_text('rawdict').get('blocks', []):
         for line in block.get('lines', []):
             for span in line.get('spans', []):
                 if any(han_forms.is_cjk(c['c']) for c in span.get('chars', ()) if c.get('c')):
                     draws = True
-                    keys.add(han_forms.font_key(span.get('font', '')))
-    keys.discard('')
+                    keys.add(han_forms.font_key(span.get('font', '')) or 'an unnamed font')
     return draws, keys
 
 

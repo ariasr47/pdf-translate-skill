@@ -614,6 +614,29 @@ class AttributionTests(unittest.TestCase):
         self.assertTrue(any('cannot attest' in l and 'an unnamed font' in l for l in lines), lines)
         self.assertEqual(findings[0].where, 'JP')
 
+    def test_a_span_without_a_font_name_contributes_the_unnamed_key(self):
+        # MuPDF names every span it draws; a nameless one must still count as a CJK drawer.
+        class FakePage:
+            def get_text(self, kind):
+                return {'blocks': [{'lines': [{'spans': [
+                    {'font': '', 'chars': [{'c': '申'}]},
+                    {'font': 'NotoSansJP-Regular', 'chars': [{'c': '請'}]},
+                    {'font': 'Helvetica', 'chars': [{'c': 'a'}]},
+                ]}]}]}
+        draws, keys = verify_mod._cjk_drawing_fonts(FakePage())
+        self.assertTrue(draws)
+        self.assertEqual(keys, {'notosansjpregular', 'an unnamed font'})
+
+    def test_an_unnamed_drawer_beside_a_named_face_is_reported(self):
+        doc = _page_with(drawn=self.jp400)
+        _, keys = verify_mod._cjk_drawing_fonts(doc[0])
+        with mock.patch.object(verify_mod, '_cjk_drawing_fonts',
+                               return_value=(True, keys | {'an unnamed font'})):
+            lines, status, findings = self.report(doc)
+        self.assertEqual(status, 'REVIEW', lines)
+        self.assertTrue(any(l.startswith('PASS han-forms Japanese: ') for l in lines), lines)
+        self.assertTrue(any('cannot attest' in l and 'an unnamed font' in l for l in lines), lines)
+
 
 if __name__ == '__main__':
     unittest.main()

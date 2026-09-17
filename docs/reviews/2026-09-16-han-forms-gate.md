@@ -350,6 +350,28 @@ drawing face that carries no probes, or is not an embedded program, is cannot-at
 page even when another drawing face passes" (or the DECISIONS.md parenthetical equivalent),
 right after the existing "neither fails nor attests" clause.
 
+Fix wave 3: a residual named by the confirmation pass — `_cjk_drawing_fonts` discarded the empty
+key of an unnamed-font CJK span (`keys.discard('')`), so a page drawing one CJK run through an
+unnamed span and another through a judgeable named face lost the unnamed drawer silently (the
+named face's key fully covered `matched`, leaving `unmatched` empty). Fixed by keying an unnamed
+span's contribution as the sentinel `'an unnamed font'` instead of discarding it. The first test
+written for this (`test_an_unnamed_drawer_beside_a_named_face_is_reported`, mocking
+`_cjk_drawing_fonts`'s return value directly) passed unchanged on the pre-fix code — it exercises
+only `han_forms_report`'s consumption of the sentinel, already correct since fix wave 2, not
+`_cjk_drawing_fonts`'s production of it — so it does not prove the gap; kept as a report-level
+pin, not treated as the red. The real red is the extraction-level
+`test_a_span_without_a_font_name_contributes_the_unnamed_key`, run against the pre-fix
+`_cjk_drawing_fonts` by reverting only that function's patch (`git apply -R`, not `git stash`) and
+restoring it afterward (`git apply`, diffed byte-identical to the original patch before
+re-applying):
+```
+AssertionError: Items in the second set but not the first:
+'an unnamed font'
+```
+Green after restoring the fix: `tests.test_han_forms -v` → `Ran 45 tests in 87.236s` `OK` (43 + 2
+new). Parity not re-run: no non-CJK code path changed. Seven-module suite: `Ran 368 tests in
+140.984s` `OK` (366 + 2 new).
+
 ## Rule 1 verification
 
 Appended by the independent verifier's pass, on another model, after the whole-branch review —
