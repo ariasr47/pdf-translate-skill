@@ -398,12 +398,12 @@ class VerifyGateTests(unittest.TestCase):
         rc, gate = self.gate(self.plain)
         self.assertEqual((rc, gate.status), (0, 'REVIEW'), gate)
         self.assertEqual(gate.findings[0].where, 'JP')
-        self.assertIn('cannot attest: no embedded face that drew the page\'s CJK text carries the probes',
-                      gate.findings[0].text)
+        self.assertIn('cannot attest:', gate.findings[0].text)
+        self.assertIn('carries none of the probes "\u76f4\u9aa8\u6d77\u6771"', gate.findings[0].text)
         _, lines = self.console(self.plain)
-        self.assertTrue(any(l.startswith('REVIEW han-forms Japanese: cannot attest [page 1]: '
-                                         'no embedded face that drew the page\'s CJK text carries the probes '
-                                         '"\u76f4\u9aa8\u6d77\u6771"')
+        self.assertTrue(any(l.startswith('REVIEW han-forms Japanese: cannot attest [page 1]: ')
+                            for l in lines), lines)
+        self.assertTrue(any('carries none of the probes "\u76f4\u9aa8\u6d77\u6771"' in l
                             for l in lines), lines)
 
     def test_a_bold_delivery_is_judged_at_its_own_weight(self):
@@ -587,6 +587,32 @@ class AttributionTests(unittest.TestCase):
         self.assertEqual(status, 'FAIL', lines)
         self.assertEqual(len([l for l in lines if l.startswith('FAIL')]), 1, lines)
         self.assertFalse([l for l in lines if l.startswith('PASS')], lines)
+
+    def test_a_probeless_drawing_face_is_reported_even_when_another_face_attests(self):
+        # 申請書を提出 in a probe-less Chinese subset, 直骨海東京 in the Japanese face: the
+        # Japanese face passes, and the Chinese one must still surface.
+        with tempfile.TemporaryDirectory() as tmp:
+            thin = os.path.join(tmp, 'sc-no-probes.ttf')
+            _subset(self.sc400, PLAIN, thin)
+            doc = pymupdf.open()
+            page = doc.new_page(width=595, height=842)
+            tw = pymupdf.TextWriter(page.rect)
+            tw.append((60, 100), PLAIN, font=pymupdf.Font(fontfile=thin), fontsize=12)
+            tw.append((60, 140), TARGET, font=pymupdf.Font(fontfile=str(self.jp400)), fontsize=12)
+            tw.write_text(page)
+            lines, status, findings = self.report(doc)
+        self.assertEqual(status, 'REVIEW', lines)
+        self.assertTrue(any(l.startswith('PASS han-forms Japanese: ') for l in lines), lines)
+        self.assertTrue(any('cannot attest' in l and 'carries none of the probes' in l for l in lines), lines)
+        self.assertIn('JP', [f.where for f in findings])
+
+    def test_an_unnamed_span_font_is_cannot_attest_not_silence(self):
+        doc = _page_with(drawn=self.jp400)
+        with mock.patch.object(verify_mod, '_cjk_drawing_fonts', return_value=(True, set())):
+            lines, status, findings = self.report(doc)
+        self.assertEqual(status, 'REVIEW', lines)
+        self.assertTrue(any('cannot attest' in l and 'an unnamed font' in l for l in lines), lines)
+        self.assertEqual(findings[0].where, 'JP')
 
 
 if __name__ == '__main__':

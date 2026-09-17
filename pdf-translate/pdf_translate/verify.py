@@ -1302,16 +1302,18 @@ def kinsoku_report(doc):
 
 
 def _cjk_drawing_fonts(page):
-    """Keys (han_forms.font_key) of the fonts that drew CJK glyphs on the page,
-    read from the spans MuPDF gives back — the only witness of who drew what."""
-    keys = set()
+    """(draws, keys): whether the page draws CJK glyphs at all, and the
+    han_forms.font_key of every font that drew one, from the spans MuPDF
+    gives back — the only witness of who drew what."""
+    draws, keys = False, set()
     for block in page.get_text('rawdict').get('blocks', []):
         for line in block.get('lines', []):
             for span in line.get('spans', []):
                 if any(han_forms.is_cjk(c['c']) for c in span.get('chars', ()) if c.get('c')):
+                    draws = True
                     keys.add(han_forms.font_key(span.get('font', '')))
     keys.discard('')
-    return keys
+    return draws, keys
 
 
 def han_forms_report(doc, mapping_lang, output_lang, reference_dir=None):
@@ -1322,8 +1324,9 @@ def han_forms_report(doc, mapping_lang, output_lang, reference_dir=None):
     Only the faces that drew CJK glyphs on a page are judged, matched by name
     to the page's spans: a face that is embedded but drew none — the source
     document's face strip_text leaves in the resources, a heading face that
-    drew only Latin — neither fails the page nor attests it. A page whose
-    drawing faces carry no probes is "cannot attest" whatever else is embedded.
+    drew only Latin — neither fails the page nor attests it. A drawing face
+    that carries no probes, or that is not an embedded program, is reported
+    as cannot attest for that page even when another drawing face passes.
     Each face is judged once (per xref) and reported once with its pages.
 
     mapping_lang is the mapping's lang and is authoritative: a non-CJK value
@@ -1337,7 +1340,7 @@ def han_forms_report(doc, mapping_lang, output_lang, reference_dir=None):
     glyphs or the mapping names a non-CJK language.
     """
     drawing_by_page = {page.number: _cjk_drawing_fonts(page) for page in doc}
-    cjk_pages = [page for page in doc if drawing_by_page[page.number]]
+    cjk_pages = [page for page in doc if drawing_by_page[page.number][0]]
     if not cjk_pages:
         return [], None, []
     all_pages = [p.number + 1 for p in cjk_pages]
@@ -1368,10 +1371,12 @@ def han_forms_report(doc, mapping_lang, output_lang, reference_dir=None):
     name = han_forms.CONVENTIONS[convention][0]
     fonts = {}       # xref -> (face name, {keys}, program bytes or None)
     judged = {}      # xref -> [HanResult, pages]
-    unattested = []  # pages none of whose drawing faces could be judged
+    unattested = {}  # page number -> why its CJK text could not be attested
     for page in cjk_pages:
-        drawing = drawing_by_page[page.number]
-        attested = False
+        _, drawing = drawing_by_page[page.number]
+        matched = set()        # drawing keys some embedded face accounts for
+        without_probes = []    # faces that drew CJK glyphs but carry no probes
+        unjudgeable = []       # faces that drew CJK glyphs but have no program
         for entry in page.get_fonts(full=True):
             xref = entry[0]
             if xref not in fonts:
@@ -1387,18 +1392,33 @@ def han_forms_report(doc, mapping_lang, output_lang, reference_dir=None):
                 keys.discard('')
                 fonts[xref] = (face, keys, program)
             face, keys, program = fonts[xref]
-            if not (keys & drawing) or not program:
+            hit = keys & drawing
+            if not hit:
+                continue
+            matched |= hit
+            if not program:
+                unjudgeable.append(face)
                 continue
             if xref not in judged:
                 judged[xref] = [han_forms.judge_program(program, convention, reference_dir,
                                                         face=face), []]
             result, pages = judged[xref]
             if result.status == 'SKIP':
+                without_probes.append(face)
                 continue
-            attested = True
             pages.append(page.number + 1)
-        if not attested:
-            unattested.append(page.number + 1)
+        unmatched = drawing - matched if drawing else {'an unnamed font'}
+        parts = []
+        if without_probes:
+            parts.append(f'{", ".join(sorted(set(without_probes)))} drew CJK text but carries '
+                         f'none of the probes "{han_forms.HAN_CHARS}" — rebuild that subset with '
+                         f'prepare_font.py, which adds them')
+        if unjudgeable or unmatched:
+            parts.append(f'the CJK text drawn with {", ".join(sorted(set(unjudgeable) | unmatched))} '
+                         f'is not an embedded program this gate can judge — check a render with '
+                         f'a reader of the language')
+        if parts:
+            unattested[page.number + 1] = '; '.join(parts)
 
     lines, statuses, findings = [], [], []
     for xref, (result, pages) in sorted(judged.items()):
@@ -1412,13 +1432,13 @@ def han_forms_report(doc, mapping_lang, output_lang, reference_dir=None):
         statuses.append(result.status)
         text = result.line() if result.status in ('PASS', 'FAIL') else result.reason
         findings.extend(Finding(p, result.face, text) for p in sorted(set(pages)))
-    if unattested:
-        reason = (f'no embedded face that drew the page\'s CJK text carries the probes '
-                  f'"{han_forms.HAN_CHARS}"; rebuild the subset with prepare_font.py, which adds '
-                  f'them, or check a render with a reader of the language')
-        lines.append(f'REVIEW han-forms {name}: cannot attest [{pages_of(unattested)}]: {reason}')
+    by_reason = {}
+    for pno, reason in unattested.items():
+        by_reason.setdefault(reason, []).append(pno)
+    for reason, pages in sorted(by_reason.items()):
+        lines.append(f'REVIEW han-forms {name}: cannot attest [{pages_of(pages)}]: {reason}')
         statuses.append('REVIEW')
-        findings.extend(Finding(p, convention, f'cannot attest: {reason}') for p in unattested)
+        findings.extend(Finding(p, convention, f'cannot attest: {reason}') for p in sorted(pages))
     if 'FAIL' in statuses:
         status = 'FAIL'
     elif 'REVIEW' in statuses:
