@@ -50,6 +50,8 @@ def _encodable(ch, enc):
         return True
     except UnicodeEncodeError:
         return False
+    except LookupError:      # no such codec on this build: nothing can be a tell
+        return True
 
 
 def is_tell(ch, convention):
@@ -83,8 +85,10 @@ def convention_of(text):
 
 
 def strip_allowed(text, allow):
-    """text with every allowlisted token removed, so its characters are not counted."""
+    """text with every allowlisted token removed, longest first and without
+    regard to case (verify lower-cases single --allow tokens), so its
+    characters are not counted."""
     for token in sorted(allow or (), key=len, reverse=True):
         if token:
-            text = text.replace(token, '')
+            text = re.sub(re.escape(token), '', text, flags=re.IGNORECASE)
     return text

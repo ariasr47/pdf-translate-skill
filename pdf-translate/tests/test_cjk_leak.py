@@ -75,14 +75,14 @@ def build_cjk_delivery(tmp, lines, src_face, out_face, lang):
     return src, out, tr, segments
 
 
-JA = ['申請者は本日中にこの書類を提出してください。',   # 申請者は本日中にこの書類を提出してください。
-      '指定された欄に氏名と住所を記入してください。',   # 指定された欄に氏名と住所を記入してください。
-      '手続きには約二十営業日かかります。']                                # 手続きには約二十営業日かかります。
-ZH = ['申请人必须在今天提交此表格。',                   # 申请人必须在今天提交此表格。
-      '请在指定栏目中填写姓名和地址。',             # 请在指定栏目中填写姓名和地址。
-      '办理时间约为二十个工作日。']                         # 办理时间约为二十个工作日。
-DATE, NAME = '2026年3月31日', '山田太郎'                                          # 2026年3月31日, 山田太郎
-KANA_NAME = 'やまだ たろう'                                                            # やまだ たろう
+JA = ['申請者は本日中にこの書類を提出してください。',
+      '指定された欄に氏名と住所を記入してください。',
+      '手続きには約二十営業日かかります。']
+ZH = ['申请人必须在今天提交此表格。',
+      '请在指定栏目中填写姓名和地址。',
+      '办理时间约为二十个工作日。']
+DATE, NAME = '2026年3月31日', '山田太郎'
+KANA_NAME = 'やまだ たろう'
 # A single Traditional sentence has no tell for Japanese or Traditional (請 須 are in both repertoires)
 # and is ambiguous; the two-sentence text of the table, measured (1, 11, 0), names TC.
 TC_PARA = TEXTS[8][1]
@@ -160,6 +160,7 @@ class TellTests(unittest.TestCase):
                          '\u7533\u8bf7\u4eba\uff1a')
         self.assertEqual(cjk_tell.strip_allowed('abc', set()), 'abc')
         self.assertEqual(cjk_tell.strip_allowed('abc', None), 'abc')
+        self.assertEqual(cjk_tell.strip_allowed('Nintendo\u30b9\u30a4\u30c3\u30c1\u767a\u58f2', {'nintendo\u30b9\u30a4\u30c3\u30c1'}), '\u767a\u58f2')
 
 
 class LeakCjkGateTests(unittest.TestCase):
@@ -209,19 +210,23 @@ class LeakCjkGateTests(unittest.TestCase):
     def test_an_echoed_japanese_segment_in_a_chinese_delivery_fails(self):
         rc, lines = self.console(self.ja_zh_echo)
         self.assertEqual(rc, 1, lines)
-        head = [l for l in lines if l.startswith('FAIL leak scan (CJK tell): 1 line(s) carry characters that cannot belong to a Simplified Chinese target')]
+        head = [l for l in lines if l.startswith('FAIL leak scan (CJK tell): 1 line(s) carry characters that cannot belong to a Simplified Chinese target — untranslated Japanese text, or a proper noun to allowlist with --allow:')]
         self.assertEqual(len(head), 1, lines)
         self.assertTrue(any(l.startswith('   p1: ' + JA[1][:20]) and '[14 tells:' in l for l in lines), lines)
-        self.assertTrue(any(l == 'PASS leak scan: source and output share the spaceless CJK family; judged by the CJK tell (leak-cjk)' for l in lines), lines)
+        self.assertTrue(any(l == 'SKIP leak scan: source and output share the spaceless CJK family; judged by the CJK tell (leak-cjk) — a line of Han both languages share is invisible to the tell; lean on --translations and the visual pass' for l in lines), lines)
         self.assertFalse([l for l in lines if l.startswith('REVIEW leak scan: source and output share')], lines)
+        self.assertNotIn('PASS no untranslated running text', lines)
+        self.assertNotIn('PASS isolated source-script tokens: none', lines)
         v, g = self.gates(self.ja_zh_echo)
         self.assertEqual(g['leak-cjk'].status, 'FAIL', g['leak-cjk'])
         self.assertEqual([(f.page, f.where, f.text) for f in g['leak-cjk'].findings], [(1, 'line', JA[1])])
-        self.assertEqual(g['leak-scan'].status, 'PASS')
+        self.assertEqual(g['leak-scan'].status, 'SKIP')
+        self.assertNotIn('leak-running', g)
+        self.assertNotIn('leak-isolated', g)
 
     def test_a_clean_chinese_delivery_passes_with_the_date_the_name_and_a_drifted_target(self):
         rc, lines = self.console(self.ja_zh_clean)
-        self.assertTrue(any(l.startswith('PASS leak scan (CJK tell): 5 line(s) hold only characters a Simplified Chinese target can carry') for l in lines), lines)
+        self.assertIn('PASS leak scan (CJK tell): 5 line(s) hold only characters a Simplified Chinese target can carry; a line of Han both languages share is invisible to the tell', lines)
         v, g = self.gates(self.ja_zh_clean)
         self.assertEqual((g['leak-cjk'].status, g['leak-cjk'].findings), ('PASS', ()))
         self.assertNotIn('leak-cjk', [x.name for x in v.gates if x.status == 'FAIL'])
@@ -242,16 +247,16 @@ class LeakCjkGateTests(unittest.TestCase):
             tw.write_text(page)
             return doc
 
-        lines, status, findings = verify_mod.cjk_tell_report(page_with(ZH_PARA), 'JP', set(), [], set())
+        lines, status, findings = verify_mod.cjk_tell_report(page_with(ZH_PARA), 'JP', set(), [], set(), source='SC')
         self.assertEqual(status, 'FAIL', lines)
-        self.assertTrue(lines[0].startswith('FAIL leak scan (CJK tell): 1 line(s) carry characters that cannot belong to a Japanese target'), lines)
+        self.assertTrue(lines[0].startswith('FAIL leak scan (CJK tell): 1 line(s) carry characters that cannot belong to a Japanese target — untranslated Simplified Chinese text, or a proper noun to allowlist with --allow:'), lines)
         # The finding carries the drawn line as MuPDF reads it back; a TextWriter page drawn
         # straight from the SC face drifts 理 to U+F9E4 (no retypeset to canonicalise ToUnicode),
         # so compare NFKC-folded — the same fold the tell applies.
         self.assertEqual([(f.page, f.where, unicodedata.normalize('NFKC', f.text)) for f in findings],
                          [(1, 'line', ZH_PARA)])
         # A one-sentence echo carries only 2 tells (请 栏): REVIEW, not FAIL — measured, and honest.
-        lines, status, findings = verify_mod.cjk_tell_report(page_with(ZH[1]), 'JP', set(), [], set())
+        lines, status, findings = verify_mod.cjk_tell_report(page_with(ZH[1]), 'JP', set(), [], set(), source='SC')
         self.assertEqual(status, 'REVIEW', lines)
         self.assertTrue(lines[0].startswith('REVIEW leak scan (CJK tell): 1 line(s) carry a few characters that cannot belong to a Japanese target'), lines)
         self.assertIn('[2 tells:', lines[1])
@@ -274,7 +279,7 @@ class LeakCjkGateTests(unittest.TestCase):
         v, g = self.gates(self.ja_zh_kana, allow=[KANA_NAME])
         self.assertEqual((g['leak-cjk'].status, g['leak-cjk'].findings), ('PASS', ()), g['leak-cjk'])
         _, lines = self.console(self.ja_zh_kana, allow=[KANA_NAME])
-        self.assertTrue(any(l.startswith('note: 1 source-language run(s) kept') or 'kept' in l for l in lines), lines)
+        self.assertTrue(any(l.startswith('note: 1 source-language run(s) kept as the original /Title or an allowlisted phrase: ') for l in lines), lines)
 
     def test_a_single_allow_token_that_clears_a_whole_line_is_said_so(self):
         # A CJK sentence has no spaces, so a whole echoed line can be one --allow token. Allowed is
@@ -282,8 +287,8 @@ class LeakCjkGateTests(unittest.TestCase):
         v, g = self.gates(self.ja_zh_echo, allow=[JA[1]])
         self.assertEqual((g['leak-cjk'].status, g['leak-cjk'].findings), ('PASS', ()), g['leak-cjk'])
         _, lines = self.console(self.ja_zh_echo, allow=[JA[1]])
-        self.assertIn('PASS leak scan (CJK tell): 5 line(s) hold only characters a Simplified Chinese target can carry (1 line(s) cleared by --allow)', lines)
-        self.assertTrue(any(l.startswith('note: ') and 'kept' in l for l in lines), lines)
+        self.assertIn('PASS leak scan (CJK tell): 5 line(s) hold only characters a Simplified Chinese target can carry (1 line(s) reduced by --allow); a line of Han both languages share is invisible to the tell', lines)
+        self.assertTrue(any(l.startswith('note: 1 source-language run(s) kept as the original /Title or an allowlisted phrase: ') for l in lines), lines)
 
     def test_a_page_with_a_fail_line_and_a_review_line_is_fail_and_lists_both(self):
         doc = pymupdf.open()
@@ -293,11 +298,36 @@ class LeakCjkGateTests(unittest.TestCase):
         for i, text in enumerate((JA[0], ZH_PARA, ZH[1])):
             tw.append((72, 100 + 40 * i), text, font=font, fontsize=12)
         tw.write_text(page)
-        lines, status, findings = verify_mod.cjk_tell_report(doc, 'JP', set(), [], set())
+        lines, status, findings = verify_mod.cjk_tell_report(doc, 'JP', set(), [], set(), source='SC')
         self.assertEqual(status, 'FAIL', lines)
         self.assertTrue(lines[0].startswith('FAIL leak scan (CJK tell): 2 line(s)'), lines)
         self.assertEqual(len(lines), 3, lines)
         self.assertEqual([unicodedata.normalize('NFKC', f.text) for f in findings], [ZH_PARA, ZH[1]])
+
+    def test_a_traditional_echo_into_a_simplified_target_is_named_traditional(self):
+        doc = pymupdf.open()
+        page = doc.new_page(width=842, height=595)
+        tw = pymupdf.TextWriter(page.rect)
+        font = pymupdf.Font(fontfile=str(self.sc400))
+        for i, text in enumerate((ZH[0], TC_PARA, DATE)):
+            tw.append((72, 100 + 40 * i), text, font=font, fontsize=12)
+        tw.write_text(page)
+        lines, status, findings = verify_mod.cjk_tell_report(doc, 'SC', set(), [], set(), source='TC')
+        self.assertEqual(status, 'FAIL', lines)
+        self.assertIn('— untranslated Traditional Chinese text, or a proper noun to allowlist with --allow:', lines[0])
+        # TC_PARA carries a full-width comma (U+FF0C), which NFKC folds too: compare both sides folded.
+        self.assertEqual([unicodedata.normalize('NFKC', f.text) for f in findings],
+                         [unicodedata.normalize('NFKC', TC_PARA)])
+
+    def test_a_partial_allow_that_leaves_tells_is_still_noted(self):
+        # --allow removes nine of the echoed line's fourteen tells (された, てください, に): the
+        # line drops to REVIEW, and the kept-runs note says --allow touched it.
+        allow = ['\u3055\u308c\u305f', '\u3066\u304f\u3060\u3055\u3044', '\u306b']
+        v, g = self.gates(self.ja_zh_echo, allow=allow)
+        self.assertEqual(g['leak-cjk'].status, 'REVIEW', g['leak-cjk'])
+        self.assertEqual([f.text for f in g['leak-cjk'].findings], [JA[1]])
+        _, lines = self.console(self.ja_zh_echo, allow=allow)
+        self.assertTrue(any(l.startswith('note: 1 source-language run(s) kept as the original /Title or an allowlisted phrase: ') for l in lines), lines)
 
     def test_a_single_rare_character_is_review_not_fail(self):
         src, out, tr, segments = self.ja_zh_clean

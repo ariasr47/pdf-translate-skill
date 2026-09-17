@@ -173,6 +173,76 @@ Suite as CI runs it, eight modules: `Ran 390 tests in 145.242s` `OK`. Parity
 not re-run: the fix touches only the `same_spaceless`/`leak-cjk` path, never
 the nine non-CJK parity jobs.
 
+### Fix wave 2 — the whole-branch review
+
+The Opus review's verdict on the whole branch: "with fixes", every item in the
+reporting layer. Fixed: (I1) `leak-scan` no longer claims PASS for a scan the
+CJK tell judged — it records SKIP `judged by leak-cjk`, and both the console
+line and `cjk_tell_report`'s own PASS line now say a line of Han both
+languages share is invisible to the tell; the two vacuous `leak-running`/
+`leak-isolated` blocks are skipped once the tell has run, since they never
+scanned anything. (I2+I3) The FAIL head names the source's convention
+(`cjk_tell_report` gains `source=`) and offers `--allow` for a proper noun,
+replacing the old two/three-way `other` guess. (I4) The unclear-source `why`
+now says no single repertoire holds every one of the source's characters, or
+several do. (M5) `cleared` is renamed `reduced`: a line whose tell count
+`--allow` only lowered (not zeroed) joins the kept-runs note and the PASS
+suffix. (M6) `cjk_tell.strip_allowed` matches case-insensitively (`verify`
+lower-cases single `--allow` tokens). (M7) `cjk_tell._encodable` tolerates a
+missing codec (a stripped CPython build) instead of raising.
+
+Red, `LeakCjkGateTests` on the pre-fix-wave code (7 of 14 fail/error — the
+3 ERRORs are `cjk_tell_report() got an unexpected keyword argument 'source'`,
+since the new/changed tests already called it):
+
+```
+ERROR: test_a_page_with_a_fail_line_and_a_review_line_is_fail_and_lists_both (tests.test_cjk_leak.LeakCjkGateTests.test_a_page_with_a_fail_line_and_a_review_line_is_fail_and_lists_both)
+ERROR: test_a_traditional_echo_into_a_simplified_target_is_named_traditional (tests.test_cjk_leak.LeakCjkGateTests.test_a_traditional_echo_into_a_simplified_target_is_named_traditional)
+ERROR: test_an_echoed_chinese_segment_in_a_japanese_delivery_fails (tests.test_cjk_leak.LeakCjkGateTests.test_an_echoed_chinese_segment_in_a_japanese_delivery_fails)
+
+Ran 14 tests in 10.478s
+
+FAILED (failures=4, errors=3)
+```
+
+Red, `TellTests.test_strip_allowed` (the M6 case-insensitive `Nintendo`/カタカナ
+assertion) on the pre-fix-wave `cjk_tell.py`:
+
+```
+Ran 8 tests in 0.013s
+
+FAILED (failures=1)
+```
+
+Two of the brief's new tests needed a fixture correction, caught only after
+measuring against the implemented code rather than guessed: the first
+`--allow` list for `test_a_partial_allow_that_leaves_tells_is_still_noted`
+stripped 8 of `JA[1]`'s 14 tells, landing on exactly `LINE_FAIL` (6) — still
+FAIL, not the REVIEW the test wanted; a third token (`に`) strips a 9th,
+landing on 5. `test_a_traditional_echo_into_a_simplified_target_is_named_traditional`
+compared an NFKC-folded finding against the raw `TC_PARA` constant, which
+carries a full-width comma (U+FF0C) that NFKC unconditionally folds to ASCII —
+fixed by folding both sides of the comparison. Both corrections were
+measured against `cjk_tell.strip_allowed`/`tells_in` directly before being
+applied, byte-compared against the corrected fixtures afterward.
+
+Green, module (14 gate tests + 8 tell tests):
+
+```
+Ran 22 tests in 10.602s
+
+OK
+```
+
+Suite as CI runs it, eight modules: `Ran 392 tests in 154.323s` `OK`. Parity
+not re-run: the `else` branch and every non-CJK path in `_execute_verify` are
+untouched by this wave — console output of non-CJK jobs is unaffected by
+construction. No pre-existing test outside `test_cjk_leak` exercises a CJK↔CJK
+job with a usable `lang` through the `leak-running`/`leak-isolated` vacuous
+PASS lines (the `test_pipeline.py`/`test_verify_report.py` hits on those two
+strings are all Latin-target jobs), so none needed extending; the full
+eight-module green run confirms nothing else regressed.
+
 ## Docs and version
 
 `SKILL.md`'s Leak scan bullet and `references/gates.md`'s leak-scan section,

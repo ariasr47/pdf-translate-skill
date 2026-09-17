@@ -1313,7 +1313,7 @@ def kinsoku_report(doc):
     return [f'PASS kinsoku: {judged} CJK line(s) break within the rules'], 'PASS', []
 
 
-def cjk_tell_report(doc, convention, keep, kept, allow):
+def cjk_tell_report(doc, convention, keep, kept, allow, source=None):
     """(lines, status, findings) for gate 21: every drawn line of the output
     that carries characters which cannot belong to the target convention
     (cjk_tell.tells_in). Kept runs (the original's /Title, multi-word --allow
@@ -1321,11 +1321,18 @@ def cjk_tell_report(doc, convention, keep, kept, allow):
     A line with cjk_tell.LINE_FAIL or more tells is FAIL (an echoed sentence
     carries 9–56), one to five REVIEW (a name in kana, a rare character);
     status FAIL > REVIEW > PASS; one Finding(page, 'line', text) per line.
+    source is the source's convention, named in the FAIL line.
+
     A CJK sentence has no spaces, so one --allow token can be a whole line:
-    allowed is allowed, but never silently — a line whose every tell an
-    --allow token removed joins the kept-runs note and the PASS line counts it."""
+    allowed is allowed, but never silently — a line whose tells an --allow
+    token reduced joins the kept-runs note and the PASS line counts it. A line
+    of Han both languages share (住所氏名, 令和七年) is invisible to the tell,
+    and the PASS line says so: --translations and the visual pass remain the
+    check for those."""
     name = cjk_tell.REPERTOIRE[convention][0]
-    hits, judged, cleared = [], 0, 0
+    source_name = (cjk_tell.REPERTOIRE[source][0] if source in cjk_tell.REPERTOIRE
+                   else 'source-language')
+    hits, judged, reduced = [], 0, 0
     for page in doc:
         for text, *_ in _page_lines(page):
             if _kept(text, keep, kept, 'CJK'):
@@ -1333,23 +1340,24 @@ def cjk_tell_report(doc, convention, keep, kept, allow):
             judged += 1
             stripped = cjk_tell.strip_allowed(text, allow)
             tells = cjk_tell.tells_in(stripped, convention)
-            if stripped != text and not tells and cjk_tell.tells_in(text, convention):
+            if stripped != text and len(tells) < len(cjk_tell.tells_in(text, convention)):
                 if kept is not None:
                     kept.append(text.strip()[:70])
-                cleared += 1
+                reduced += 1
             if tells:
                 hits.append((page.number + 1, text, tells))
+    blind = 'a line of Han both languages share is invisible to the tell'
     if not hits:
         line = (f'PASS leak scan (CJK tell): {judged} line(s) hold only characters a {name} '
                 f'target can carry')
-        if cleared:
-            line += f' ({cleared} line(s) cleared by --allow)'
-        return [line], 'PASS', []
+        if reduced:
+            line += f' ({reduced} line(s) reduced by --allow)'
+        return [f'{line}; {blind}'], 'PASS', []
     worst = max(len(t) for _, _, t in hits)
     if worst >= cjk_tell.LINE_FAIL:
-        other = {'JP': 'Chinese', 'SC': 'Japanese', 'TC': 'Japanese or Simplified Chinese'}
         head = (f'FAIL leak scan (CJK tell): {len(hits)} line(s) carry characters that cannot '
-                f'belong to a {name} target — untranslated {other[convention]} text:')
+                f'belong to a {name} target — untranslated {source_name} text, or a proper noun '
+                f'to allowlist with --allow:')
         status = 'FAIL'
     else:
         head = (f'REVIEW leak scan (CJK tell): {len(hits)} line(s) carry a few characters that '
@@ -1802,6 +1810,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     #                   form name is itself an error, since the reader has to
     #                   locate a document that carries that exact name.
     running, isolated = [], []
+    tell_ran = False
     if same_spaceless:
         target_conv = han_forms.convention_for_lang(mapping_lang)
         source_conv = cjk_tell.convention_of(o_text)
@@ -1810,23 +1819,27 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         elif target_conv not in cjk_tell.REPERTOIRE:
             why = f'lang "{mapping_lang}" names no Han convention'
         elif source_conv is None:
-            why = 'the source\'s convention is not clear'
+            why = ('the source\'s convention is not clear: no '
+                   'single repertoire holds every one of its characters, or several do')
         elif (source_conv, target_conv) not in cjk_tell.STRONG_PAIRS:
             why = (f'the pair {cjk_tell.REPERTOIRE[source_conv][0]} -> '
                    f'{cjk_tell.REPERTOIRE[target_conv][0]} is not separable by repertoire (measured)')
         else:
             why = None
         if why is None:
-            tell_lines, tell_status, tell_findings = cjk_tell_report(jc, target_conv, keep, kept, allow)
+            tell_lines, tell_status, tell_findings = cjk_tell_report(jc, target_conv, keep, kept, allow,
+                                                                     source=source_conv)
             for line in tell_lines:
                 print(line)
             if tell_status == 'FAIL':
                 fail = 1
             record('leak-cjk', tell_status, f'{len(tell_findings)} line(s)' if tell_findings else '',
                    findings=tell_findings)
-            print(f'PASS leak scan: source and output share the spaceless {src_script} family; '
-                  f'judged by the CJK tell (leak-cjk)')
-            record('leak-scan', 'PASS', 'judged by leak-cjk')
+            print(f'SKIP leak scan: source and output share the spaceless {src_script} family; '
+                  f'judged by the CJK tell (leak-cjk) — a line of Han both languages share is '
+                  f'invisible to the tell; lean on --translations and the visual pass')
+            record('leak-scan', 'SKIP', 'judged by leak-cjk')
+            tell_ran = True
         else:
             print(f'REVIEW leak scan: source and output share the spaceless {src_script} '
                   f'family; the scan cannot tell them apart. Rely on --translations and '
@@ -1847,27 +1860,29 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         uniq = sorted(set(kept))
         print(f'note: {len(kept)} source-language run(s) kept as the original '
               f'/Title or an allowlisted phrase: ' + '; '.join(uniq[:5]))
-    if running:
-        print(f'FAIL untranslated running text ({len(running)}):')
-        for pg, ph in running[:10]:
-            print(f'   p{pg}: {ph}')
-        fail = 1
-        record('leak-running', 'FAIL', f'{len(running)}',
-               findings=[Finding(pg, 'run', ph) for pg, ph in running])
-    else:
-        print('PASS no untranslated running text')
-        record('leak-running', 'PASS')
+    if not tell_ran:
+        if running:
+            print(f'FAIL untranslated running text ({len(running)}):')
+            for pg, ph in running[:10]:
+                print(f'   p{pg}: {ph}')
+            fail = 1
+            record('leak-running', 'FAIL', f'{len(running)}',
+                   findings=[Finding(pg, 'run', ph) for pg, ph in running])
+        else:
+            print('PASS no untranslated running text')
+            record('leak-running', 'PASS')
 
-    if isolated:
-        uniq = sorted({w for _, w in isolated})
-        print(f'REVIEW isolated source-script tokens ({len(uniq)}) - expected for '
-              f'form names, statutes and proper nouns; confirm each is deliberate:')
-        print('   ' + ', '.join(uniq[:20]))
-        record('leak-isolated', 'REVIEW', f'{len(uniq)}',
-               findings=[Finding(pg, 'token', w) for pg, w in sorted(set(isolated))])
-    else:
-        print('PASS isolated source-script tokens: none')
-        record('leak-isolated', 'PASS', 'none')
+    if not tell_ran:
+        if isolated:
+            uniq = sorted({w for _, w in isolated})
+            print(f'REVIEW isolated source-script tokens ({len(uniq)}) - expected for '
+                  f'form names, statutes and proper nouns; confirm each is deliberate:')
+            print('   ' + ', '.join(uniq[:20]))
+            record('leak-isolated', 'REVIEW', f'{len(uniq)}',
+                   findings=[Finding(pg, 'token', w) for pg, w in sorted(set(isolated))])
+        else:
+            print('PASS isolated source-script tokens: none')
+            record('leak-isolated', 'PASS', 'none')
 
     if translations:
         with open(translations, encoding='utf-8') as f:
