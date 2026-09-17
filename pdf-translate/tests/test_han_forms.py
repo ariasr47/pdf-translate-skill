@@ -151,9 +151,16 @@ class MeasurementTests(unittest.TestCase):
         cases = {'ja': 'JP', 'ja-JP': 'JP', 'JA': 'JP', 'zh': 'SC', 'zh-Hans': 'SC', 'zh-CN': 'SC',
                  'zh-SG': 'SC', 'zh_Hans_CN': 'SC', 'zh-Hant': 'TC', 'zh-TW': 'TC', 'zh-HK': 'TC',
                  'zh-MO': 'TC', 'ko': 'KR', 'ko-KR': 'KR', 'es': None, 'en-US': None, '': None,
-                 None: None}
+                 None: None, 'jpn': 'JP', 'zho': 'SC', 'kor': 'KR', 'Japanese': None,
+                 '日本語': None}
         for lang, want in cases.items():
             self.assertEqual(han_forms.convention_for_lang(lang), want, lang)
+
+    def test_is_language_tag(self):
+        for tag in ('ja', 'ja-JP', 'zh-Hans', 'zh_Hans_CN', 'es-MX', 'jpn', 'en-US-x-private'):
+            self.assertTrue(han_forms.is_language_tag(tag), tag)
+        for bad in ('Japanese', '日本語', 'j', 'ja-', '-ja', 'ja--JP', '', None, 'Japanese (JP)'):
+            self.assertFalse(han_forms.is_language_tag(bad), bad)
 
     def test_is_cjk_agrees_with_verify(self):
         sample = '\u76f4\u9aa8\u6d77\u6771 \u3072\u3089\u304c\u306a \u30ab\u30bf\u30ab\u30ca \uff76\uff80\uff76\uff85 \ud55c\uad6d\uc5b4 Latin 123 \u3002\u3001\u300c\u300d\u30fb\u30fc'
@@ -380,6 +387,18 @@ class VerifyGateTests(unittest.TestCase):
         self.assertIsNone(gate)
         _, lines = self.console(_with_lang(self.ja_jp, 'es', 'es.json'))
         self.assertFalse([l for l in lines if 'han-forms' in l], lines)
+
+    def test_a_lang_that_is_not_a_tag_is_review_not_silence(self):
+        # A display name is what a consumer's workbench most often holds; it must not pass unnoticed.
+        for label in ('Japanese', '日本語'):
+            src, out, tr, _ = _with_lang(self.ja_jp, label, 'label.json')
+            v = run_verify(src, out, translations=tr, min_ink=0.1)
+            gate = [g for g in v.gates if g.name == 'han-forms'][0]
+            self.assertEqual(gate.status, 'REVIEW', (label, gate))
+            self.assertEqual(gate.findings[0].where, 'lang')
+            self.assertIn(f'lang "{label}" is not a language tag', gate.findings[0].text)
+        _, lines = self.console(_with_lang(self.ja_jp, 'Japanese', 'label.json'))
+        self.assertTrue(any(l.startswith('REVIEW han-forms: lang "Japanese" is not a language tag') for l in lines), lines)
 
     def test_a_stale_non_cjk_output_lang_is_review_not_silence(self):
         # No mapping; the output's /Lang says en (the original's, never updated) while the page draws Japanese.

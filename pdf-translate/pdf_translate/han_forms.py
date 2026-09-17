@@ -82,20 +82,28 @@ def font_key(name):
 
 
 def convention_for_lang(lang):
-    """'JP', 'SC', 'TC' or 'KR' for a BCP 47 tag (ja, zh-Hans, zh-TW, ko…);
+    """'JP', 'SC', 'TC' or 'KR' for a BCP 47 tag (ja, zh-Hans, zh-TW, ko, jpn…);
     None for any other language or no language."""
     tags = [t for t in (lang or '').strip().lower().replace('_', '-').split('-') if t]
     if not tags:
         return None
-    if tags[0] == 'ja':
+    if tags[0] in ('ja', 'jpn'):
         return 'JP'
-    if tags[0] == 'ko':
+    if tags[0] in ('ko', 'kor'):
         return 'KR'
-    if tags[0] == 'zh':
+    if tags[0] in ('zh', 'zho', 'chi'):
         if 'hant' in tags[1:] or any(t in ('tw', 'hk', 'mo') for t in tags[1:]):
             return 'TC'
         return 'SC'
     return None
+
+
+def is_language_tag(lang):
+    """A well-formed BCP 47 tag (ja, zh-Hans, es-MX, jpn; '_' accepted for '-'):
+    a 2–3 letter primary subtag and optional subtags of 1–8 letters or digits.
+    A display name (Japanese, 日本語) is not one."""
+    return bool(re.fullmatch(r'[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8})*',
+                             (lang or '').strip().replace('_', '-')))
 
 
 def default_reference_dir():

@@ -1333,7 +1333,8 @@ def han_forms_report(doc, mapping_lang, output_lang, reference_dir=None):
     means the page's CJK is not the target's script (a leak; those gates own
     it) and nothing is printed. output_lang is the delivered /Lang, used only
     when the mapping gives none; a non-CJK /Lang on a page that draws CJK text
-    is REVIEW, not silence — it may be the original's, never updated.
+    is REVIEW, not silence — it may be the original's, never updated. A
+    mapping lang that is not a language tag at all (a display name) is REVIEW.
 
     status is FAIL if any drawing face draws the other convention, else REVIEW
     if anything could not be judged, else PASS; None when no page draws CJK
@@ -1353,7 +1354,12 @@ def han_forms_report(doc, mapping_lang, output_lang, reference_dir=None):
     lang = mapping_lang or output_lang
     convention = han_forms.convention_for_lang(lang)
     if not convention and mapping_lang:
-        return [], None, []
+        if han_forms.is_language_tag(mapping_lang):
+            return [], None, []      # a real non-CJK target: the page's CJK is a leak, those gates own it
+        reason = (f'lang "{mapping_lang}" is not a language tag; pass a BCP 47 tag such as ja or '
+                  f'zh-Hans (not a display name) so the gate can name the convention')
+        return ([f'REVIEW han-forms: {reason} [{pages_of(all_pages)}]'], 'REVIEW',
+                [Finding(p, 'lang', reason) for p in all_pages])
     if not convention and output_lang:
         reason = (f'the output declares /Lang "{output_lang}" while the page draws CJK text; '
                   f'pass --translations with lang to name the convention the page should '
