@@ -1,0 +1,334 @@
+{
+  "document": {
+    "class": "California Judicial Council family-law court form (FL-150, Income and Expense Declaration [Rev. September 1, 2024]), 4 pages, delivered as an unofficial working copy for understanding only",
+    "issuer": "Judicial Council of California",
+    "parallel_text": null,
+    "pair": "en->ja",
+    "register": "court form for the general public: plain-language instructions in です・ます, noun labels on fields; footer identity block, Family Code citation, form/schedule names, program acronyms and the URL kept in English"
+  },
+  "reviewer": {
+    "kind": "model",
+    "name": "Claude Opus (independent reviser, 2026-09-17)",
+    "qualified_in_pair": false
+  },
+  "findings": [
+    {
+      "core": "head of household",
+      "target": "世帯主",
+      "category": "terminology",
+      "subtype": "calque",
+      "severity": "critical",
+      "detail": "US federal filing status \"Head of Household\" requires the filer to be unmarried (or treated as unmarried) and to have maintained a home for a qualifying person. Japanese 世帯主 is the person registered as head of a 住民票 household — a married person living with a spouse is normally the 世帯主. A Japanese reader who is married and is the registered 世帯主 will read this box as describing them, tick it on the English form, and thereby declare a filing status they did not use — on a form signed under penalty of perjury (item 3b sits directly above the perjury clause on page 1). The neighbouring boxes 独身 / 既婚・個別申告 / 既婚・合算申告 reinforce the trap, because 世帯主 is the only one that does not state a marital status. The established rendering in Japanese-language US tax material is 特定世帯主.",
+      "suggestion": "特定世帯主",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "SUPERIOR COURT OF CALIFORNIA, COUNTY OF",
+      "target": "カリフォルニア州上位裁判所、郡：",
+      "category": "terminology",
+      "subtype": "mistranslation",
+      "severity": "major",
+      "detail": "上位裁判所 is not the name of this court. 上位 is a relative ranking word (上位審, 上位機関) and reads as \"the court above\", not as a proper name. The established Japanese name of the California Superior Court — used by Japanese consular and legal material and by the courts' own Japanese-language notices — is カリフォルニア州上級裁判所 (or 郡上級裁判所). This is a one-character fix with identical length, and it is the most prominent line in the caption box. The same wrong string is also carried into the CrtCounty_ft[0] form-field tooltip, so it must be corrected in both places.",
+      "suggestion": "カリフォルニア州上級裁判所、郡：",
+      "resolution": "rejected: both renderings are attested; Japanese legal reference works and the annotated statute collections use 上位裁判所, the press 上級; kept 上位 (human reviewer agreed, 2026-09-17)"
+    },
+    {
+      "core": "children under the age of 18 with the other parent in this case.",
+      "target": "人の18歳未満の子が本件の相手方の親との間にいます。",
+      "category": "terminology",
+      "subtype": "mistranslation",
+      "severity": "major",
+      "detail": "\"The other parent\" is the child's other parent (the opposing party). 相手方の親 parses in Japanese as \"the parent of 相手方\", i.e. the opposing party's own parent — the child's grandparent. 相手方 is already the form's word for RESPONDENT (page 1 caption), so the possessive reading is the natural one. Japanese family-law usage for \"the other parent\" is 他方の親 (or もう一方の親); 他方の親 is two characters shorter, so it fits the label.",
+      "suggestion": "人の18歳未満の子が本件の他方の親との間にいます。",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "percent of their time with me and",
+      "target": "％、相手方の親と",
+      "category": "terminology",
+      "subtype": "mistranslation",
+      "severity": "major",
+      "detail": "Second occurrence of 相手方の親 for \"the other parent\" (item 16b). This line carries the parenting-time percentages, which drive the guideline child-support calculation, so the wrong party is named at the one place on page 4 where the reader enters a number that changes the outcome. Use 他方の親; it is shorter than the current text and the line has room.",
+      "suggestion": "％、他方の親と",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "For your protection and privacy, please press the Clear This Form button after you have printed the form.",
+      "target": "(none — the string is absent from review_pairs.md, from translations.json and from the delivered page; an empty grey box remains at the foot of page 4)",
+      "category": "accuracy",
+      "subtype": "omission",
+      "severity": "major",
+      "detail": "The grey privacy banner at the foot of page 4 of the source was stripped and never re-typeset. Compare renders/orig_p4.png (grey box carrying the sentence, followed by the Print/Save/Clear buttons) with renders/out_p4.png, where only an empty grey rectangle survives. Two consequences: the reader loses a privacy instruction that matters precisely because this form carries income, employer and Social Security data; and the delivered page ends on an unexplained blank grey block, which reads as a production defect. The string does not appear anywhere in review_pairs.md, so it was dropped before translation rather than mistranslated — worth checking the extraction step, not just the wording.",
+      "suggestion": "個人情報保護のため、印刷後は「Clear this form」ボタンを押してください。",
+      "resolution": "rejected as a translation finding: this is a pushbutton caption, not page text; the four dead XFA buttons are hidden and disclosed in NOTES.md; the gray band is page graphics"
+    },
+    {
+      "core": "California",
+      "target": "カリフォルニア",
+      "category": "style",
+      "subtype": "other",
+      "severity": "major",
+      "detail": "Layout collision on page 1, item 3c. カリフォルニア is wider than the gap the English \"California\" occupied, and the final ア is overprinted by the checkbox that belongs to the following 「その他（州名）：」 option (visible in renders/out_p1.png at the 州税の申告先 line). The label and the next option's control are fused, so the reader cannot tell which box belongs to which choice — on the page that is the reader's first impression of the document. Katakana cannot be shortened further without losing the state name, so the fix is typographic: move the 「その他」 checkbox right, or set this one label at a smaller size.",
+      "suggestion": null,
+      "resolution": "rejected on measurement: the label ends at 259.5 pt, the checkbox starts at 261.0 pt; tight, not overprinted"
+    },
+    {
+      "core": "* Check the box if the spousal support order or judgment was executed by the parties and the court before January 1, 2019, or if a court-ordered change",
+      "target": "* 配偶者扶養料の命令または判決が2019年1月1日より前に当事者および裁判所により締結された場合、または裁判所命令による変更により配偶者扶養料が受取人の課税所得かつ支払人の税控除対象のままである場合は、このボックスにチェックしてください。",
+      "category": "terminology",
+      "subtype": "mistranslation",
+      "severity": "major",
+      "detail": "\"Executed\" of an order or judgment means signed and entered, not agreed. 締結 is the verb for concluding a contract or treaty (契約を締結する) and cannot take 判決 as its object — 判決を締結する is not Japanese. The footnote governs the two federal-tax checkboxes (連邦課税対象* / 連邦税控除対象*), so it should read cleanly; as written it also invites the reader to think a negotiated agreement is required, when a court-entered order qualifies.",
+      "suggestion": "* 配偶者扶養料の命令または判決が2019年1月1日より前に当事者および裁判所によって署名・成立した場合、または裁判所命令による変更により配偶者扶養料が受取人の課税所得かつ支払人の税控除対象のままである場合は、このボックスにチェックしてください。",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "If no, highest grade completed (specify):",
+      "target": "（いいえの場合）最終学年（記入）：",
+      "category": "accuracy",
+      "subtype": "mistranslation",
+      "severity": "minor",
+      "detail": "最終学年 normally means \"the final year of a school\" (小学校の最終学年 = 6th grade), not \"the highest grade you completed\". A reader who did not finish high school could write the grade they were enrolled in, or the final year of the school they attended, rather than the last grade actually completed. 最終修了学年 keeps the length (one character longer) and removes the ambiguity, picking up 修了 from the line above.",
+      "suggestion": "（いいえの場合）最終修了学年（記入）：",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "married, filing separately",
+      "target": "既婚・個別申告",
+      "category": "terminology",
+      "subtype": "other",
+      "severity": "minor",
+      "detail": "The established Japanese names for these two US filing statuses are 夫婦個別申告 (Married Filing Separately) and 夫婦合算申告 (Married Filing Jointly). 既婚・個別申告 / 既婚・合算申告 are transparent paraphrases rather than the terms a reader will meet in any Japanese-language US tax guide or on a preparer's worksheet. Both replacements are one character shorter than the current labels, so they fit. The same change applies to the paired core 'married, filing jointly with (specify name):' → 既婚・合算申告（配偶者名を記入）：.",
+      "suggestion": "夫婦個別申告",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "from this domestic partnership",
+      "target": "本件のパートナーシップから",
+      "category": "terminology",
+      "subtype": "omission",
+      "severity": "minor",
+      "detail": "\"Domestic partnership\" is a registered California civil status; the target reduces it to パートナーシップ, which in Japanese first reads as a business partnership. The risk is real on this form: item 7 two lines below uses 共同経営者 for \"business partner\", so the reader meets both senses on the same page. Add the qualifier — 登録パートナーシップ — in the three affected pairs ('from this domestic partnership', 'from a different domestic partnership', and item 10f's 別のパートナーシップについて…). Each becomes two characters longer; page 2 line 5f is the tightest and may need the checkbox positions nudged.",
+      "suggestion": "本件の登録パートナーシップから",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "Other (military allowances, royalty payments) (specify):",
+      "target": "その他（軍手当、ロイヤルティ等）（記入）：",
+      "category": "linguistic-conventions",
+      "subtype": "other",
+      "severity": "minor",
+      "detail": "軍手当 is not a Japanese word and garden-paths badly: 軍手 (gunte) is the everyday word for cotton work gloves, so 軍手当 is first parsed as 軍手＋当. The term for military pay and allowances is 軍人手当 (or 軍の各種手当). One character longer.",
+      "suggestion": "その他（軍人手当、ロイヤルティ等）（記入）：",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "other (specify):",
+      "target": "その他：",
+      "category": "accuracy",
+      "subtype": "omission",
+      "severity": "minor",
+      "detail": "The (specify) instruction is dropped here (item 7, 私の立場 line) while every other \"(specify)\" on the form is rendered （記入）— including the identical core 'Other (specify):' in item 6d, which is その他（記入）：. The reader loses the cue that this box needs a written answer, and the form loses its one-source-one-target consistency for the most frequent instruction on it.",
+      "suggestion": "その他（記入）：",
+      "resolution": "rejected: a field follows; the full form would scale to 0.85 in the item-7 gap"
+    },
+    {
+      "core": "Cash and checking accounts, savings, credit union, money market, and other deposit accounts",
+      "target": "現金、当座預金、普通預金、信用組合、MMF、その他の預金口座",
+      "category": "terminology",
+      "subtype": "mistranslation",
+      "severity": "minor",
+      "detail": "\"Money market\" in this list means a money market deposit account, and the list closes with \"and other deposit accounts\". MMF in Japanese usage is a money market fund — an investment product, not a deposit — which belongs conceptually with item 11b (株式、債券…). A reader holding a US money-market account may skip it here, or a reader holding a fund may enter it twice. The line has free space before the leader dots, so the longer replacement fits.",
+      "suggestion": "現金、当座預金、普通預金、信用組合、マネーマーケット口座、その他の預金口座",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "Necessary job-related expenses not reimbursed by my employer (attach explanation labeled \"Question 10g\")",
+      "target": "雇用主から償還されない必要な業務関連費用（「Question 10g」と題した説明を添付）",
+      "category": "audience-appropriateness",
+      "subtype": "register",
+      "severity": "minor",
+      "detail": "償還 is legal/financial vocabulary (費用償還請求権; bond redemption) and is opaque to the general-public reader this register targets. The everyday word for an employer paying you back for work expenses is 払い戻す or 精算する. One character longer, and the line has room before the leader dots.",
+      "suggestion": "雇用主から払い戻されない必要な業務関連費用（「Question 10g」と題した説明を添付）",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "Utilities (gas, electric, water, trash)",
+      "target": "光熱費（ガス、電気、水道、ごみ）",
+      "category": "terminology",
+      "subtype": "other",
+      "severity": "minor",
+      "detail": "光熱費 is heat and light only; the standard Japanese cover term that includes water is 水道光熱費 (the accounting term) or 公共料金. The parenthetical rescues the meaning, but the head noun contradicts two of its own four examples. Two characters longer.",
+      "suggestion": "水道光熱費（ガス、電気、水道、ごみ）",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "Entertainment, gifts, and vacation",
+      "target": "娯楽・贈答・休暇",
+      "category": "accuracy",
+      "subtype": "mistranslation",
+      "severity": "minor",
+      "detail": "In a list of monthly expense categories, 休暇 names the time off, not the money spent on it — 休暇 is what an employer grants. The expense meant here is travel and holidays: 旅行 (or 旅行・休暇費). Same length if 休暇 is replaced by 旅行.",
+      "suggestion": "娯楽・贈答・旅行",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "Health-care costs not paid by insurance",
+      "target": "保険適用外の医療費",
+      "category": "accuracy",
+      "subtype": "mistranslation",
+      "severity": "minor",
+      "detail": "\"Not paid by insurance\" is broader than \"not covered\": it includes the copays, coinsurance and deductibles the reader pays on care that is covered. 保険適用外 names only the excluded treatments, so a reader with high out-of-pocket costs on covered care may under-report this line. Three characters longer; the left column of page 3 has room.",
+      "suggestion": "保険でカバーされない医療費",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "Monthly payments listed in item 14",
+      "target": "第14項に記載の月々の支払",
+      "category": "linguistic-conventions",
+      "subtype": "inconsistency",
+      "severity": "minor",
+      "detail": "Three different styles are used for the same kind of internal cross-reference: 第14項 here, a bare 14 on the very next line ('(itemize below in 14 and insert total here)' → （14に内訳を記入し、合計をここに）), and a bare 18b on page 4 (18bに含まれない特別な医療費). Pick one — the form's own numbering is plain arabic, so bare 14 / 18b is the cheaper and more form-like choice. Note also that the next line ends 合計をここに with the verb elided; 合計をここに記入 closes it.",
+      "suggestion": "14に記載の月々の支払",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "Proposed needs",
+      "target": "必要見込額",
+      "category": "style",
+      "subtype": "other",
+      "severity": "minor",
+      "detail": "These three checkboxes must be told apart at a glance: Estimated expenses / Actual expenses / Proposed needs. 見積支出 and 必要見込額 both read as \"an estimate\" (見積 and 見込 are near-synonyms), so the contrast that matters — what you spend now versus what you are asking the court to accept as your need — is lost. 今後必要な額 is the same length and states it.",
+      "suggestion": "今後必要な額",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "Children's educational or other special needs (specify below):",
+      "target": "子の教育またはその他の特別な必要（下に記入）：",
+      "category": "style",
+      "subtype": "calque",
+      "severity": "minor",
+      "detail": "特別な必要 is a word-for-word calque of \"special needs\"; as a noun phrase it is not idiomatic Japanese. The established rendering is 特別なニーズ. Also, \"educational or other special needs\" modifies both members — 教育上その他の特別なニーズ keeps that reading, where 子の教育またはその他の特別な必要 splits it into \"education, or other special needs\".",
+      "suggestion": "子の教育上その他の特別なニーズ（下に記入）：",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "Extraordinary health expenses not included in 18b",
+      "target": "18bに含まれない特別な医療費",
+      "category": "terminology",
+      "subtype": "other",
+      "severity": "minor",
+      "detail": "\"Extraordinary\" here means unusually large, and it is the test the court applies for a hardship deduction. 特別な medical costs says only \"special\", and 特別 has already been spent twice in the same item (特別な困窮事情, 特別な経済的事情), so the word no longer carries weight where it matters. 多額の is the same length and states the test.",
+      "suggestion": "18bに含まれない多額の医療費",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "Major losses not covered by insurance (examples: fire, theft, other",
+      "target": "保険適用外の重大な損失（例：火災、盗難、",
+      "category": "accuracy",
+      "subtype": "omission",
+      "severity": "minor",
+      "detail": "The continuation 'insured loss)' → その他の損失） drops \"insured\". The source's own wording is awkward (losses not covered by insurance, examples including \"other insured loss\"), but silently deleting the qualifier changes an odd source into a different statement, and the reader of a reading aid cannot see that the English said something else. その他の被保険損害 keeps it; the line has room.",
+      "suggestion": "その他の被保険損害）",
+      "resolution": "rejected: the source contradicts its own heading (\"other insured loss\" under \"not covered by insurance\"); rendered その他の損失 and the slip recorded in NOTES.md"
+    },
+    {
+      "core": "Other information I want the court to know concerning support in my case (specify):",
+      "target": "本件の扶養に関して裁判所に知らせたいその他の情報（記入）：",
+      "category": "terminology",
+      "subtype": "inconsistency",
+      "severity": "minor",
+      "detail": "The form otherwise keeps two distinct words: 養育費 for child support and 配偶者扶養料 / パートナー扶養料 for spousal and partner support. Bare 扶養 appears only here, on the page headed 子の養育費に関する情報, and reads as generic maintenance — the reader cannot tell whether item 20 is about child support only or about both. 養育費・扶養料 names both and is four characters longer on a line that has room.",
+      "suggestion": "本件の養育費・扶養料に関して裁判所に知らせたいその他の情報（記入）：",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "Date:",
+      "target": "日付:",
+      "category": "linguistic-conventions",
+      "subtype": "punctuation",
+      "severity": "minor",
+      "detail": "Half-width colon, where every other label on the form uses the full-width ：(氏名：, 事件番号：, 保険会社名：…). It occurs twice, on page 1 and page 3, and both are on the signature block where the eye lands.",
+      "suggestion": "日付：",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "Attach copies  / of your pay  / stubs for last  / two months  / (black out  / Social  / Security  / numbers).",
+      "target": "直近2か月分の給与明細の写しを添付（社会保障番号は黒塗り）。",
+      "category": "style",
+      "subtype": "register",
+      "severity": "minor",
+      "detail": "Telegraphic noun-ending style (添付…黒塗り) in a document whose instructions are otherwise です・ます — including the same instruction on page 2, which reads 直近2か月分の給与明細の写しと…添付してください…黒塗りにしてください. The narrow side box partly justifies the compression, but the box renders in five of its eight available lines (renders/out_p1.png), so there is room for at least 添付してください。",
+      "suggestion": "直近2か月分の給与明細の写しを添付してください（社会保障番号は黒塗り）。",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "参考訳・裁判所には提出できません。‖これは「FL-150 INCOME AND EXPENSE DECLARATION」の非公式な日本語訳で、書式の内容を理解するためのものです。裁判所には正式な英語版の書式に記入して提出してください。両者に相違がある場合は、英語版が優先します。",
+      "target": "参考訳・裁判所には提出できません。",
+      "category": "linguistic-conventions",
+      "subtype": "punctuation",
+      "severity": "minor",
+      "detail": "The bold lead-in joins a noun phrase (参考訳) to a finished sentence (裁判所には提出できません。) with a nakaguro. ・ coordinates like items, so the line first reads as a two-item list and then has to be re-parsed. The body of the notice itself is correct and covers all three compliance points — unofficial translation for understanding, file the official English form, English governs. Only the lead-in needs repair: 【参考訳】 as a bracketed tag, or two sentences.",
+      "suggestion": "【参考訳】裁判所には提出できません。",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "参考訳・裁判所には提出できません。‖これは「FL-150 INCOME AND EXPENSE DECLARATION」の非公式な日本語訳で、書式の内容を理解するためのものです。裁判所には正式な英語版の書式に記入して提出してください。両者に相違がある場合は、英語版が優先します。",
+      "target": "（同上 — 配置について）",
+      "category": "audience-appropriateness",
+      "subtype": "other",
+      "severity": "minor",
+      "detail": "Placement, not wording. The notice is set inside the FOR COURT USE ONLY box, directly under the bold 裁判所記入欄 heading and with no rule or frame between them (renders/out_p1.png). Read top-down, 裁判所記入欄 becomes the heading of the notice, which makes an unofficial third-party disclaimer look like text the court placed there — the opposite of what the notice is for. Separate it: a hairline rule above the notice, or a box of its own, or move it below the caption block.",
+      "suggestion": null,
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "per hour.",
+      "target": "時給",
+      "category": "style",
+      "subtype": "inconsistency",
+      "severity": "minor",
+      "detail": "The three parallel checkboxes are rendered 月額 / 週額 / 時給. The first two are amount-per-period nouns built on 額; the third switches pattern to a compensation noun (時給 = hourly wage). The set no longer reads as one choice of unit. 時間額 keeps the pattern at the same width.",
+      "suggestion": "時間額",
+      "resolution": "accepted with a different fix: 月給／週給／時給, the pattern Japanese forms use (human reviewer agreed)"
+    },
+    {
+      "core": "have health insurance available to me for the children through my job.",
+      "target": "（勤務先を通じて子のために利用できる健康保険）",
+      "category": "style",
+      "subtype": "other",
+      "severity": "minor",
+      "detail": "This is the weakest of the checkbox-with-fields sentences. The English is one sentence split by the two boxes (\"I do / I do not have health insurance available…\"); the target answers first (あり／なし) and then puts the whole subject in a bare parenthetical, so the line reads as an aside rather than a question, and it is the only item on the form where the parentheses carry the substance instead of an instruction. Dropping the parentheses and ending in a noun-phrase label reads as a form label rather than a stray note: 勤務先を通じて子のために利用できる健康保険.",
+      "suggestion": "勤務先を通じて子のために利用できる健康保険",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    },
+    {
+      "core": "Partner support",
+      "target": "パートナー扶養料",
+      "category": "style",
+      "subtype": "other",
+      "severity": "minor",
+      "detail": "Layout fit on page 2, item 5f: the label runs the full width to its checkbox and the final 料 abuts the box border, with no gap, while the parallel 配偶者扶養料 on line 5e has a clear gap (renders/out_p2.png). Cosmetic, but it is the one place on page 2 where label and control touch, and item 5f gets tighter still if 登録パートナーシップ is adopted per the domestic-partnership finding.",
+      "suggestion": null,
+      "resolution": "rejected: measured 4.3 pt clear of the checkbox"
+    },
+    {
+      "core": "I declare under penalty of perjury under the laws of the State of California that the information contained on all pages of this form and  / any attachments is true and correct.",
+      "target": "私は、カリフォルニア州法に基づく偽証罪の制裁のもとで、本書式の全ページおよび添付書類に記載した情報が真実かつ正確であることを宣言します。",
+      "category": "terminology",
+      "subtype": "other",
+      "severity": "minor",
+      "detail": "The clause is otherwise a good rendering of the standard California perjury declaration. 制裁 is \"sanction\" in the disciplinary or international sense; the collocation for a criminal penalty attaching to an offence is 罰則 — 偽証罪の罰則の下で is the established wording of this clause in Japanese. One character shorter.",
+      "suggestion": "私は、カリフォルニア州法に基づく偽証罪の罰則の下で、本書式の全ページおよび添付書類に記載した情報が真実かつ正確であることを宣言します。",
+      "resolution": "accepted, applied in v2 (2026-09-17)"
+    }
+  ],
+  "summary": {
+    "critical": 1,
+    "major": 6,
+    "minor": 24,
+    "verdict": "ship after v2 (revise applied)",
+    "remaining_risks": "Four risks survive this pass. (1) Term-of-art traps are the failure mode of this document, not fluency: 世帯主 for Head of Household and 相手方の親 for \"the other parent\" are both plausible enough that a monolingual reviewer would sign them off, and there may be more in the US-tax vocabulary I did not have a Japanese authority to check against (納税申告区分 for filing status, 控除対象人数 for exemptions, 信用組合 for credit union — all defensible, none verified against published Japanese-language US tax usage). (2) No published Japanese FL-150 exists, so nothing anchors the form's title: 申告書 follows the issuer's Chinese/Korean pattern (申報書/신고서), but this instrument is a declaration under penalty of perjury and a reviser who prefers 宣誓供述書 would be renaming the document and its 申告者 signature label with it — decide once, in writing. (3) The page-4 omission was found by comparing renders, not by any check in the pipeline: nothing in review_pairs.md, translations.json or verify_report.json records that a source string went missing, so other pages should be swept the same way before delivery. (4) Two layout collisions (page 1 カリフォルニア over its neighbour's checkbox; page 2 パートナー扶養料 against its box) are typesetting, not translation, and three of the accepted wording fixes above are longer than what they replace — re-render and re-check fit after applying them.",
+    "human_review": "page 1 reviewed by a second human reader on 2026-09-17: agreed with every accepted item, kept 上位裁判所, and asked for the Japanese court idiom on ATTORNEY FOR (name) → （氏名）の代理人弁護士："
+  }
+}

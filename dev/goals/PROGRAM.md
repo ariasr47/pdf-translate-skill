@@ -209,8 +209,13 @@ code that shipped the same day:
 |---|---|---|
 | 30 | `goals/30-font-charset-gaps.md` | **Closed 3 Sep.** The whole walk is now `job_charset(conf)`: a `null` core is skipped rather than iterated, `notices[].text` is harvested, `‖` dropped once at the end, and the docstring names it as the one place the next block goes. Was Opus 5 and Fable 5.1 independently |
 | 31 | `goals/31-bold-role-is-real.md` | **Closed 3 Sep.** retypeset names any role that resolved to the regular face, once, with what asked for it — covering both `role()` and the Story engine's `<b>`/`<i>`, since the case that opened the row went through the second. Resolved paths, so a symlink counts. Not a failure. Was Sonnet 5 shipping it and Fable 5.1 catching it by eye |
+**17 September (late) re-opened lane A with one row, and it is P0:**
 
-**Order:** 30 and 31 both closed 3 September. **Only P4 is left, and it is blocked** on its early-access grant; when that lands, or before it does, the canary is what opens the next rows. Rows 24, 25, 27,
+| # | Brief | Trigger |
+|---|---|---|
+| **32** | `goals/32-terminology-loop.md` | **Open, P0 — top of the order once PRs #10 and #11 merge.** The first FL-150 → Japanese job on the current skill shipped 世帯主 for "head of household" through verify exit 0 and qa_check 0 errors; an independent MQM review found it (1 critical, 6 major, 24 minor) and a human page-1 read agreed. The fix is a loop, not a model: reviser step required before `finish`, `references/terminology-failure-modes.md`, a termbase per class and language grown from `review.json`, the canary scored on terminology. Was Fable 5.1 authoring, Opus reviewing, a person asking |
+
+**Order (17 September):** row 32 first, after the two pending merges (#10 gate 21 v55, #11 the three gate fixes v56); then E3 from `docs/REQUESTS-from-product.md`. The earlier order is kept for the record: **Order (3 September):** 30 and 31 both closed 3 September. **Only P4 is left, and it is blocked** on its early-access grant; when that lands, or before it does, the canary is what opens the next rows. Rows 24, 25, 27,
 28, 26, 29 and P7 all closed on 3 September, one commit and one
 `metadata.version` bump each, and canary run 3 confirmed every one of
 them held. **P4 is blocked, not queued**: its brief and its three cases

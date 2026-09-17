@@ -3,6 +3,21 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 17 September 2026, late (this section wins over everything below it)
+
+**State.** `main` is at v54 (gates 19 kinsoku, 20 han-forms; the product's work order transcribed in `docs/REQUESTS-from-product.md`). Two branches are ahead: `feat/cjk-leak-tell` — PR #10, gate 21 `leak-cjk`, v55, CI green, base `main` — and `fix/cjk-job-gates` on top of it (v56: three gate gaps found by the first FL-150 → Japanese job — wrapped CJK paragraphs invisible to the placement gate, Noto Sans JP `locl` digit alternates drifting in the text layer, hidden pushbuttons counted as chrome — red-first tests, suite 401 OK; **not pushed**; the PR body is in `docs/sessions/`'s zip README and in the session log). Merge, push and delete are the operator's, always.
+
+**Do first — P0: row 32 in `PROGRAM.md`, brief `dev/goals/32-terminology-loop.md`.** Design before build (a new authoring-workflow surface): reviser step required before `finish`, `references/terminology-failure-modes.md`, a termbase per class and language, the canary scored on terminology. Then **E3** (step-2 readiness for the product; inventory in `docs/E3-surface-inventory-2026-09-17.md`; design before build).
+
+**Open threads.**
+1. Operator: push `fix/cjk-job-gates`, open PR #11 against `feat/cjk-leak-tell` (GitHub retargets to `main` when #10 merges), merge #10 then #11.
+2. Row 32 (above).
+3. E3 design pass, then E4–E7 in the product's order (`docs/REQUESTS-from-product.md`).
+4. FL-150 job follow-ups, only if asked: re-caption and re-wire the four hidden dead buttons; a human read of pages 2–4; a bilingual tooltip on the court name. The job lives in `dev/jobs/fl150-ja-2026-09-17/` (its README fetches the source and rebuilds in ten seconds).
+5. Operator: delete merged branches; pick the PyPI name for E10.
+
+**Session log:** `docs/sessions/Session_Log_2026-09-17_FL150_Japanese_And_Gate_Fixes.md` (verbatim prompts, decisions, artifact inventory). The Claude memory directory on the Windows box mirrors this file and is not portable; on a new machine this file is the truth. End the next session by adding a dated section above this one and a log under `docs/sessions/`.
+
 **Nothing in lane A is open, and nothing in it was invented.** The audit
 roadmap and the repo's own queue are closed, and so is every defect the
 two canary runs and the wild corpus produced — rows 18 to 29 in
