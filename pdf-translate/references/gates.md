@@ -24,6 +24,7 @@ original.pdf out.pdf --fill-text "…" --source-words-from segments.json
 | leak scan | untranslated running text in the source script (below) |
 | unshaped Arabic | a page whose Arabic letters are all isolated presentation forms was drawn letter by letter |
 | conjunct shaping | an embedded face used on a page that draws Devanagari, Bengali, Tamil, Khmer or Myanmar does not lose glyphs when its probe cluster (क्षत्रिय, 8 → 4) is rendered through the Story engine: no usable GSUB, so every conjunct drawn with it is broken. A face without the probe glyphs is REVIEW (cannot attest; `prepare_font` adds them). Thai, Lao and Hebrew niqqud are REVIEW, never PASS |
+| kinsoku | REVIEW, never FAIL: a drawn line of CJK text begins with a character JIS X 4051 / JLREQ forbids at line start (closing brackets, hyphens, dividing punctuation, middle dots, full stops, commas, iteration marks, the prolonged sound mark, small kana; half-width forms included) or ends with an opening bracket. Lines are grouped into stacks by geometry — one under another, up to about two and a half times the line height (three times the font size) — so a stack's first line is never a line-start violation and its last never a line-end one; a single-character line (ー for "none", a bracket after a field) and a bullet (・ ･) that begins two or more lines are values, not breaks. The Story engine never does this to a merge; a target split by hand across source lines does, and a form label can look the same — hence REVIEW. Horizontal text only; prefix and postfix abbreviations (￥ ％ °) are not covered |
 | `/Opt` export parity | the export half of a choice entry differs from the original's, in value or order |
 | canonical text layer | the output reports NBSP, soft hyphen, U+2010/U+2011, a CJK compatibility ideograph or a Latin ligature (U+FB00–FB06, U+007F) that is in neither the original nor the mapping (`/ToUnicode` drift) |
 
@@ -145,7 +146,7 @@ CLI, prints nothing, and returns a `VerifyVerdict`: `exit_code` and
 line the CLI would print, same status, same order. Names are the closed
 list `verify.GATE_NAMES`: field-parity, opt-export-parity, fill-roundtrip,
 extractable-text, ink-ratio, visible-text, canonical-text,
-arabic-letterforms, conjunct-shaping, leak-scan, leak-running,
+arabic-letterforms, conjunct-shaping, kinsoku, leak-scan, leak-running,
 leak-isolated, empty-targets, placement, shaped-actualtext,
 button-captions, caption-width, override-markers, metadata,
 metadata-lang, scaled-runs, identifiers. A gate that prints nothing for a
@@ -164,9 +165,11 @@ verdict keeps them all. `verify.py … --report PATH` writes
 `<work>/verify_report.json`. `--fail-on-review` (CLI) or
 `fail_on_review=True` (library) turns a run with REVIEW lines and no FAIL
 into exit 1, for pipelines with nobody to read the REVIEW. Both are off by
-default. A consumer removes two REVIEWs on its own: always pass `lang` in
-the mapping (`metadata-lang`), and build faces with `prepare_font`, which
-adds the probe glyphs gate 18 needs (`conjunct-shaping` "cannot attest").
+default. A consumer removes three REVIEWs on its own: always pass `lang` in
+the mapping (`metadata-lang`), build faces with `prepare_font`, which adds
+the probe glyphs gate 18 needs (`conjunct-shaping` "cannot attest"), and
+never split a target by hand across source lines — declare a merge
+(`kinsoku`).
 
 | gate | `where` | `text` |
 |---|---|---|
@@ -176,6 +179,7 @@ adds the probe glyphs gate 18 needs (`conjunct-shaping` "cannot attest").
 | extractable-text, ink-ratio, visible-text, arabic-letterforms | `page` | the detail (`PASS ink ratio 1.05`, `images=1, ink=200 px`, …) |
 | canonical-text | `U+XXXX` | the character name and count |
 | conjunct-shaping | the face's PostScript name, or the script when it could not be judged | the probe line, or the reason |
+| kinsoku | `line-start` / `line-end` | the drawn line |
 | leak-scan | `script` | the spaceless family source and output share (`CJK`) |
 | leak-running | `run` | the phrase |
 | leak-isolated | `token` | the token |

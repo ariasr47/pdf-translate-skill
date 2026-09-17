@@ -93,6 +93,25 @@ FONTS = {
         'https://raw.githubusercontent.com/notofonts/notofonts.github.io/'
         'main/fonts/NotoSansMyanmar/unhinted/ttf/NotoSansMyanmar-Regular.ttf',
     ),
+    # Added 2026-09-16 for the CJK gates (kinsoku now; Han forms to follow).
+    # The google/fonts builds are glyf-flavoured variable TTFs, the only CJK
+    # source MuPDF renders reliably (references/fonts.md); the notofonts
+    # noto-cjk "Subset" variable TTFs are the same builds under another
+    # path. Both URLs per face answered 200 on 2026-09-16 (JP 9.6 MB, SC
+    # 17.8 MB). Saved without the "[wght]" of the upstream name so a CSS
+    # url() and a shell glob never have to quote it.
+    'NotoSansJP-VF.ttf': (
+        'https://raw.githubusercontent.com/google/fonts/main/ofl/notosansjp/'
+        'NotoSansJP%5Bwght%5D.ttf',
+        'https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/Variable/'
+        'TTF/Subset/NotoSansJP-VF.ttf',
+    ),
+    'NotoSansSC-VF.ttf': (
+        'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/'
+        'NotoSansSC%5Bwght%5D.ttf',
+        'https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/Variable/'
+        'TTF/Subset/NotoSansSC-VF.ttf',
+    ),
 }
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_DEST = os.path.join(os.path.dirname(HERE), 'tests', 'fonts')
