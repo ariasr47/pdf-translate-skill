@@ -198,7 +198,7 @@ fetch a Noto face, find a cluster that loses glyphs (`dev/probes/measure_shaping
 the row in `PROBES` and `AGENTS.md`'s measured table, DECISIONS row. Rule 1 applies. Only worth
 doing for scripts the product will target; ask which before fetching eight faces.
 
-### Task F — the spaceless leak scan (zh→ja): a design experiment first
+### Task F — the spaceless leak scan (zh→ja): a design experiment first (built as gate 21, v55 — see docs/BRIEF-cjk-leak-tell.md)
 
 When source and output share a spaceless family the scan cannot tell them apart and prints one
 REVIEW. With `--source-words-from segments.json` the exact source strings are known: a source

@@ -172,3 +172,19 @@ OK
 Suite as CI runs it, eight modules: `Ran 390 tests in 145.242s` `OK`. Parity
 not re-run: the fix touches only the `same_spaceless`/`leak-cjk` path, never
 the nine non-CJK parity jobs.
+
+## Docs and version
+
+`SKILL.md`'s Leak scan bullet and `references/gates.md`'s leak-scan section,
+name list and `where`/`text` table now describe gate 21 `leak-cjk` in place
+of the old "one REVIEW line, no gate" text; `README.md` counts twenty-one
+structural gates; the CI suite line (`.github/workflows/tests.yml`) gains
+`tests.test_cjk_leak`; the four version sources (`SKILL.md`,
+`.claude-plugin/plugin.json`, `pdf-translate/pyproject.toml`,
+`pdf_translate/__init__.py`) and the lockstep literal in
+`tests/test_verify_report.py` move 54 → 55, red against the old sources
+then green; `docs/DECISIONS.md` gains one ledger row for gate 21;
+`docs/BRIEF-unattended-delivery.md`'s Task F header and the E2 row in
+`docs/REQUESTS-from-product.md` are marked built/merged.
+
+## Review
