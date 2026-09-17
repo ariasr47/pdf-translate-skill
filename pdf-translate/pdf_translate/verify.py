@@ -133,9 +133,13 @@
                   reverse: FAIL. No lang, no reference for the convention
                   (zh-Hant, ko), a face without the probe glyphs, a family
                   that is not Noto, or no reference directory: REVIEW,
-                  never a guess. Silent when no page draws CJK text or lang
-                  is not a CJK language. --reference-fonts DIR names the
-                  references (default: tests/fonts of a checkout).
+                  never a guess. Only the faces that drew CJK glyphs on
+                  the page are judged; an embedded face that drew none
+                  neither fails nor attests. A non-CJK /Lang with no
+                  mapping lang is REVIEW. Silent when no page draws CJK
+                  text or lang is not a CJK language. --reference-fonts
+                  DIR names the references (default: tests/fonts of a
+                  checkout).
 
 These gates catch structural failures. They do NOT catch visual defects —
 after they pass you still render pages side-by-side and look at them.
@@ -1297,28 +1301,62 @@ def kinsoku_report(doc):
     return [f'PASS kinsoku: {judged} CJK line(s) break within the rules'], 'PASS', []
 
 
-def han_forms_report(doc, lang, reference_dir=None):
-    """(lines, status, findings) for gate 20: every embedded face on a page that
-    draws CJK text is judged by han_forms.judge_program against the Noto
-    reference of lang's convention and the other's, at the face's weight.
+def _cjk_drawing_fonts(page):
+    """Keys (han_forms.font_key) of the fonts that drew CJK glyphs on the page,
+    read from the spans MuPDF gives back — the only witness of who drew what."""
+    keys = set()
+    for block in page.get_text('rawdict').get('blocks', []):
+        for line in block.get('lines', []):
+            for span in line.get('spans', []):
+                if any(han_forms.is_cjk(c['c']) for c in span.get('chars', ()) if c.get('c')):
+                    keys.add(han_forms.font_key(span.get('font', '')))
+    keys.discard('')
+    return keys
 
-    Each face is judged once (per xref) and reported once with the pages it
-    is on. status is FAIL if any face draws the other convention, else REVIEW
+
+def han_forms_report(doc, mapping_lang, output_lang, reference_dir=None):
+    """(lines, status, findings) for gate 20: every face that drew CJK glyphs on
+    a page is judged by han_forms.judge_program against the Noto reference of
+    the language's convention and the other's, at the face's weight.
+
+    Only the faces that drew CJK glyphs on a page are judged, matched by name
+    to the page's spans: a face that is embedded but drew none — the source
+    document's face strip_text leaves in the resources, a heading face that
+    drew only Latin — neither fails the page nor attests it. A page whose
+    drawing faces carry no probes is "cannot attest" whatever else is embedded.
+    Each face is judged once (per xref) and reported once with its pages.
+
+    mapping_lang is the mapping's lang and is authoritative: a non-CJK value
+    means the page's CJK is not the target's script (a leak; those gates own
+    it) and nothing is printed. output_lang is the delivered /Lang, used only
+    when the mapping gives none; a non-CJK /Lang on a page that draws CJK text
+    is REVIEW, not silence — it may be the original's, never updated.
+
+    status is FAIL if any drawing face draws the other convention, else REVIEW
     if anything could not be judged, else PASS; None when no page draws CJK
-    text or lang names a language with no Han convention (the page's CJK is
-    then not the target's script — the leak gates own it).
+    glyphs or the mapping names a non-CJK language.
     """
-    cjk_pages = [page for page in doc if _has_cjk(page_search_text(page))]
+    drawing_by_page = {page.number: _cjk_drawing_fonts(page) for page in doc}
+    cjk_pages = [page for page in doc if drawing_by_page[page.number]]
     if not cjk_pages:
         return [], None, []
-    convention = han_forms.convention_for_lang(lang)
-    if lang and not convention:
-        return [], None, []
+    all_pages = [p.number + 1 for p in cjk_pages]
 
     def pages_of(nums):
         return 'page ' + ', '.join(str(n) for n in sorted(set(nums)))
 
-    all_pages = [p.number + 1 for p in cjk_pages]
+    mapping_lang = (mapping_lang or '').strip()
+    output_lang = (output_lang or '').strip()
+    lang = mapping_lang or output_lang
+    convention = han_forms.convention_for_lang(lang)
+    if not convention and mapping_lang:
+        return [], None, []
+    if not convention and output_lang:
+        reason = (f'the output declares /Lang "{output_lang}" while the page draws CJK text; '
+                  f'pass --translations with lang to name the convention the page should '
+                  f'follow (the /Lang may be the original\'s, never updated)')
+        return ([f'REVIEW han-forms: {reason} [{pages_of(all_pages)}]'], 'REVIEW',
+                [Finding(p, 'lang', reason) for p in all_pages])
     ok, reason = han_forms.reference_status(convention, reference_dir)
     if not ok:
         name = han_forms.CONVENTIONS[convention][0] if convention else ''
@@ -1328,21 +1366,28 @@ def han_forms_report(doc, lang, reference_dir=None):
                 [Finding(p, where, reason) for p in all_pages])
 
     name = han_forms.CONVENTIONS[convention][0]
-    fonts = {}       # xref -> (name, program bytes or None)
+    fonts = {}       # xref -> (face name, {keys}, program bytes or None)
     judged = {}      # xref -> [HanResult, pages]
-    unattested = []  # pages where no face carries the probes
+    unattested = []  # pages none of whose drawing faces could be judged
     for page in cjk_pages:
+        drawing = drawing_by_page[page.number]
         attested = False
         for entry in page.get_fonts(full=True):
             xref = entry[0]
             if xref not in fonts:
                 try:
                     info = doc.extract_font(xref)
-                    fonts[xref] = (re.sub(r'^[A-Z]{6}\+', '', info[0] or ''), info[3] or None)
+                    face = re.sub(r'^[A-Z]{6}\+', '', info[0] or '')
+                    program = info[3] or None
                 except Exception:
-                    fonts[xref] = (str(entry[3]), None)
-            face, program = fonts[xref]
-            if not program:
+                    face, program = str(entry[3]), None
+                keys = {han_forms.font_key(face), han_forms.font_key(str(entry[3]))}
+                if program:
+                    keys.add(han_forms.font_key(han_forms.program_psname(program)))
+                keys.discard('')
+                fonts[xref] = (face, keys, program)
+            face, keys, program = fonts[xref]
+            if not (keys & drawing) or not program:
                 continue
             if xref not in judged:
                 judged[xref] = [han_forms.judge_program(program, convention, reference_dir,
@@ -1368,9 +1413,9 @@ def han_forms_report(doc, lang, reference_dir=None):
         text = result.line() if result.status in ('PASS', 'FAIL') else result.reason
         findings.extend(Finding(p, result.face, text) for p in sorted(set(pages)))
     if unattested:
-        reason = (f'no embedded face carries the probes "{han_forms.HAN_CHARS}"; rebuild the '
-                  f'subset with prepare_font.py, which adds them, or check a render with a '
-                  f'reader of the language')
+        reason = (f'no embedded face that drew the page\'s CJK text carries the probes '
+                  f'"{han_forms.HAN_CHARS}"; rebuild the subset with prepare_font.py, which adds '
+                  f'them, or check a render with a reader of the language')
         lines.append(f'REVIEW han-forms {name}: cannot attest [{pages_of(unattested)}]: {reason}')
         statuses.append('REVIEW')
         findings.extend(Finding(p, convention, f'cannot attest: {reason}') for p in unattested)
@@ -1639,16 +1684,16 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
                f'{len(kinsoku_findings)} line(s)' if kinsoku_status == 'REVIEW' else '',
                findings=kinsoku_findings)
 
-    lang = ''
+    mapping_lang = ''
     if translations:
         with open(translations, encoding='utf-8') as f:
-            lang = (json.load(f).get('lang') or '').strip()
-    if not lang:
-        try:
-            lang = (jc.language or '').strip()
-        except Exception:
-            lang = ''
-    han_lines, han_status, han_findings = han_forms_report(jc, lang, reference_fonts)
+            mapping_lang = (json.load(f).get('lang') or '').strip()
+    try:
+        output_lang = (jc.language or '').strip()
+    except Exception:
+        output_lang = ''
+    han_lines, han_status, han_findings = han_forms_report(jc, mapping_lang, output_lang,
+                                                           reference_fonts)
     for line in han_lines:
         print(line)
     if han_status == 'FAIL':

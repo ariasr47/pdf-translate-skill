@@ -43,24 +43,43 @@ def _font(path):
     return pymupdf.Font(fontfile=str(_face(path)))
 
 
-def build_delivery(tmp, face, target, lang, instance='wght=400', prepare_lang=None):
+def build_cjk_source(path, text, fontfile):
+    """An original whose one line of CJK text is drawn with fontfile (embedded)."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=595, height=842)
+    tw = pymupdf.TextWriter(page.rect)
+    tw.append((72, 100), text, font=pymupdf.Font(fontfile=str(fontfile)), fontsize=12)
+    tw.write_text(page)
+    doc.save(path)
+    doc.close()
+
+
+def build_delivery(tmp, face, target, lang, instance='wght=400', prepare_lang=None, source=None):
     """A real delivery: orig -> extract -> strip -> prepare_font(face, instance)
     -> retypeset. prepare_font sees a mapping with prepare_lang (None: no lang,
     so its own han-forms check stays quiet); retypeset sees lang, which it
-    writes as /Lang. Returns (orig, out, translations, subset)."""
+    writes as /Lang. source=(text, fontfile), when given, builds the original
+    with text drawn in fontfile (build_cjk_source) instead of the plain Latin
+    fixture, and text is the mapping key instead of SOURCE_SENTENCE. Returns
+    (orig, out, translations, subset)."""
     from tests.test_pipeline import (SOURCE_SENTENCE, build_plain_pdf, extract_segments,
                                      prepare_font, retypeset, strip_text, write_mapping)
     src, stripped, out = (os.path.join(tmp, n) for n in ('orig.pdf', 'stripped.pdf', 'out.pdf'))
     tr, subset = os.path.join(tmp, 'translations.json'), os.path.join(tmp, 'subset.ttf')
-    build_plain_pdf(src)
+    if source:
+        core, src_fontfile = source
+        build_cjk_source(src, core, src_fontfile)
+    else:
+        core = SOURCE_SENTENCE
+        build_plain_pdf(src)
     extract_segments.extract_segments(src, outdir=tmp)
     strip_text.strip_text(src, stripped)
-    write_mapping(tr, {SOURCE_SENTENCE: target}, Path(face), lang=prepare_lang)
+    write_mapping(tr, {core: target}, Path(face), lang=prepare_lang)
     buf = io.StringIO()
     with redirect_stdout(buf):
         rc = prepare_font.prepare_font(str(face), tr, subset, instance=instance)
     assert rc == 0, buf.getvalue()
-    write_mapping(tr, {SOURCE_SENTENCE: target}, Path(subset), lang=lang)
+    write_mapping(tr, {core: target}, Path(subset), lang=lang)
     with redirect_stdout(buf):
         rc = retypeset.retypeset(stripped, os.path.join(tmp, 'segments.json'), tr, out)
     assert rc == 0, buf.getvalue()
@@ -173,7 +192,8 @@ class JudgeTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        _face(JP_FACE), _face(SC_FACE)
+        _face(JP_FACE)
+        _face(SC_FACE)
         cls.jp400 = han_forms.reference_face('JP', 400, FONTS).read_bytes()
         cls.sc400 = han_forms.reference_face('SC', 400, FONTS).read_bytes()
 
@@ -247,7 +267,8 @@ class VerifyGateTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        _face(JP_FACE), _face(SC_FACE)
+        _face(JP_FACE)
+        _face(SC_FACE)
         cls.tmp = tempfile.TemporaryDirectory()
 
         def job(name, **kw):
@@ -262,6 +283,9 @@ class VerifyGateTests(unittest.TestCase):
         with mock.patch.object(han_forms, 'HAN_CHARS', ''):
             cls.plain = job('plain', face=JP_FACE, target=PLAIN, lang='ja')
         cls.bold = job('bold', face=JP_FACE, target=TARGET, lang='ja', instance='wght=700')
+        # strip_text leaves the source's Simplified Chinese face in the page resources.
+        cls.zh_ja = job('zh-ja', face=JP_FACE, target=TARGET, lang='ja',
+                        source=('\u7533\u8bf7\u4e66', SC_FACE))
 
     @classmethod
     def tearDownClass(cls):
@@ -311,6 +335,18 @@ class VerifyGateTests(unittest.TestCase):
         self.assertTrue(gate.findings[0].text.startswith('FAIL han-forms Japanese: '), gate.findings[0])
         self.assertNotIn('[page', gate.findings[0].text)
 
+    def test_a_chinese_source_translated_to_japanese_passes(self):
+        # strip_text leaves the source's Simplified Chinese face in the page resources.
+        src, out, tr, _ = self.zh_ja
+        with pymupdf.open(out) as doc:
+            names = {f[3] for f in doc[0].get_fonts(full=True)}
+        self.assertTrue(any('SC' in n.replace(' ', '') for n in names), names)
+        rc, gate = self.gate(self.zh_ja)
+        self.assertEqual(gate.status, 'PASS', gate)
+        self.assertFalse([g for g in [gate] if g.status == 'FAIL'])
+        _, lines = self.console(self.zh_ja)
+        self.assertFalse([l for l in lines if l.startswith('FAIL han-forms')], lines)
+
     def test_the_mapping_lang_names_the_convention(self):
         # The Japanese-face output judged as a Simplified Chinese job: the mapping's lang wins
         # over /Lang. (The mapping's zh-Hans also disagrees with the output's /Lang ja, which the
@@ -345,14 +381,29 @@ class VerifyGateTests(unittest.TestCase):
         _, lines = self.console(_with_lang(self.ja_jp, 'es', 'es.json'))
         self.assertFalse([l for l in lines if 'han-forms' in l], lines)
 
+    def test_a_stale_non_cjk_output_lang_is_review_not_silence(self):
+        # No mapping; the output's /Lang says en (the original's, never updated) while the page draws Japanese.
+        src, out, _, _ = self.ja_jp
+        stale = os.path.join(os.path.dirname(out), 'stale-lang.pdf')
+        with pymupdf.open(out) as doc:
+            doc.set_language('en')
+            doc.save(stale)
+        v = run_verify(src, stale, min_ink=0.1)
+        gate = [g for g in v.gates if g.name == 'han-forms'][0]
+        self.assertEqual(gate.status, 'REVIEW', gate)
+        self.assertEqual(gate.findings[0].where, 'lang')
+        self.assertIn('/Lang "en"', gate.findings[0].text)
+
     def test_a_subset_without_the_probes_is_review_cannot_attest(self):
         rc, gate = self.gate(self.plain)
         self.assertEqual((rc, gate.status), (0, 'REVIEW'), gate)
         self.assertEqual(gate.findings[0].where, 'JP')
-        self.assertIn('cannot attest: no embedded face carries the probes', gate.findings[0].text)
+        self.assertIn('cannot attest: no embedded face that drew the page\'s CJK text carries the probes',
+                      gate.findings[0].text)
         _, lines = self.console(self.plain)
         self.assertTrue(any(l.startswith('REVIEW han-forms Japanese: cannot attest [page 1]: '
-                                         'no embedded face carries the probes "\u76f4\u9aa8\u6d77\u6771"')
+                                         'no embedded face that drew the page\'s CJK text carries the probes '
+                                         '"\u76f4\u9aa8\u6d77\u6771"')
                             for l in lines), lines)
 
     def test_a_bold_delivery_is_judged_at_its_own_weight(self):
@@ -459,6 +510,83 @@ class PrepareFontTests(unittest.TestCase):
                 rc = prepare_font.main([str(SC_FACE), tr, out, '--instance', 'wght=400',
                                         '--reference-fonts', str(FONTS)])
             self.assertEqual(rc, 1, buf.getvalue())
+
+    def test_another_family_is_reviewed_not_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            droid = os.path.join(tmp, 'droid.ttf')
+            with open(droid, 'wb') as f:
+                f.write(pymupdf.Font('cjk').buffer)
+            rc, log, _ = self.prepare(Path(droid), TARGET, 'ja', instance=None)
+        self.assertEqual(rc, 0, log)
+        self.assertIn('REVIEW han-forms Japanese: no reference of this family', log)
+        self.assertIn('OK:', log)
+
+
+def _page_with(drawn, latin_face=None, unused_face=None):
+    """A page whose CJK text is drawn by `drawn`; optionally another face that
+    draws only Latin, and another that is embedded but draws nothing (what
+    strip_text leaves behind from the source document)."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=595, height=842)
+    tw = pymupdf.TextWriter(page.rect)
+    tw.append((60, 100), PLAIN, font=pymupdf.Font(fontfile=str(drawn)), fontsize=12)
+    if latin_face:
+        tw.append((60, 140), 'Hello', font=pymupdf.Font(fontfile=str(latin_face)), fontsize=12)
+    tw.write_text(page)
+    if unused_face:
+        page.insert_font(fontname='Leftover', fontfile=str(unused_face))
+    return doc
+
+
+class AttributionTests(unittest.TestCase):
+    """Only the faces that drew the page's CJK glyphs are judged; a face that is
+    embedded but drew none neither fails the page nor attests it (the final
+    review's Critical 1, reproduced both ways)."""
+
+    @classmethod
+    def setUpClass(cls):
+        _face(JP_FACE)
+        _face(SC_FACE)
+        cls.jp400 = han_forms.reference_face('JP', 400, FONTS)
+        cls.sc400 = han_forms.reference_face('SC', 400, FONTS)
+
+    def report(self, doc, lang='ja'):
+        return verify_mod.han_forms_report(doc, lang, '', FONTS)
+
+    def test_an_unused_chinese_face_does_not_fail_a_japanese_page(self):
+        # The source's face survives strip_text in the resources; the Japanese face drew every glyph.
+        doc = _page_with(drawn=self.jp400, unused_face=self.sc400)
+        names = {f[3] for f in doc[0].get_fonts(full=True)}
+        self.assertEqual(len(names), 2, names)
+        lines, status, findings = self.report(doc)
+        self.assertEqual(status, 'PASS', lines)
+        self.assertFalse([l for l in lines if l.startswith('FAIL')], lines)
+        self.assertEqual(len(findings), 1, findings)
+        self.assertTrue(han_forms.font_key(findings[0].where).startswith('notosansjp'), findings)
+
+    def test_a_chinese_face_that_drew_only_latin_does_not_fail_a_japanese_page(self):
+        doc = _page_with(drawn=self.jp400, latin_face=self.sc400)
+        lines, status, findings = self.report(doc)
+        self.assertEqual(status, 'PASS', lines)
+        self.assertFalse([l for l in lines if l.startswith('FAIL')], lines)
+
+    def test_a_probeless_face_that_drew_the_japanese_cannot_hide_behind_another_face(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            thin = os.path.join(tmp, 'sc-no-probes.ttf')
+            _subset(self.sc400, PLAIN, thin)
+            doc = _page_with(drawn=thin, latin_face=self.jp400)
+            lines, status, findings = self.report(doc)
+        self.assertEqual(status, 'REVIEW', lines)
+        self.assertFalse([l for l in lines if l.startswith('PASS')], lines)
+        self.assertTrue(any('cannot attest' in l for l in lines), lines)
+        self.assertEqual(findings[0].where, 'JP', findings)
+
+    def test_a_chinese_face_that_drew_the_japanese_fails_even_beside_a_japanese_face(self):
+        doc = _page_with(drawn=self.sc400, latin_face=self.jp400)
+        lines, status, findings = self.report(doc)
+        self.assertEqual(status, 'FAIL', lines)
+        self.assertEqual(len([l for l in lines if l.startswith('FAIL')]), 1, lines)
+        self.assertFalse([l for l in lines if l.startswith('PASS')], lines)
 
 
 if __name__ == '__main__':

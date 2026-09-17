@@ -24,6 +24,7 @@ caller provides: tests/fonts/ in a checkout, a directory of its own in a
 service (verify --reference-fonts DIR, run_verify(reference_fonts=DIR)).
 """
 import os
+import re
 import tempfile
 import unicodedata
 from dataclasses import dataclass
@@ -38,7 +39,8 @@ HAN_CHARS = HAN_PROBES + HAN_CONTROL     # what prepare_font adds to every CJK s
 
 OWN_MAX = 0.02          # a face equals its own reference (measured 0.000)
 OTHER_MIN = 0.10        # and differs from the other region (measured 0.17–0.51)
-MIN_SEPARATING = 2      # probes, of the three, that must separate
+MIN_PROBES_PRESENT = 2  # fewer of the three probe glyphs present: SKIP, not judged
+MIN_SEPARATING = 2      # probes, of the three, that must separate for a verdict
 
 # convention -> (display name, reference file in the reference directory; None
 # when no reference has been measured for it)
@@ -69,6 +71,14 @@ def is_cjk(ch):
 
 def has_cjk(text):
     return any(is_cjk(ch) for ch in text or '')
+
+
+def font_key(name):
+    """A font name reduced to what survives the spelling differences between a
+    PDF's /BaseFont, a FontDescriptor's /FontName and a program's PostScript
+    name: subset tag, spaces, hyphens and underscores removed, lower case."""
+    name = re.sub(r'^[A-Z]{6}\+', '', str(name or ''))
+    return re.sub(r'[\s\-_]', '', name).lower()
 
 
 def convention_for_lang(lang):
@@ -129,7 +139,7 @@ def reference_face(convention, weight, reference_dir=None):
             return cached
         try:
             cache_dir.mkdir(parents=True, exist_ok=True)
-            fd, tmp = tempfile.mkstemp(prefix=name + '.', suffix='.tmp', dir=str(cache_dir))
+            fd, tmp = tempfile.mkstemp(prefix=name + '.', suffix='.tmp.ttf', dir=str(cache_dir))
         except OSError:
             continue
         os.close(fd)
@@ -208,6 +218,18 @@ def weight_of(program):
         return None
 
 
+def program_psname(program):
+    """PostScript name (name id 6, else the full name 4) of a font program held
+    in memory, or '' when it cannot be read."""
+    try:
+        from fontTools.ttLib import TTFont
+        with TTFont(BytesIO(program), lazy=True) as font:
+            names = font['name']
+            return names.getDebugName(6) or names.getDebugName(4) or ''
+    except Exception:
+        return ''
+
+
 @dataclass(frozen=True)
 class HanResult:
     """One face judged against one convention. status is PASS, FAIL, REVIEW
@@ -222,10 +244,12 @@ class HanResult:
     reason: str
 
     def line(self):
-        """One report line in verify's PASS/FAIL/REVIEW style."""
+        """One report line in verify's PASS/FAIL/REVIEW/SKIP style."""
         want = CONVENTIONS[self.convention][0] if self.convention in CONVENTIONS else ''
         head = f'{self.status} han-forms{" " + want if want else ""}'
         if self.status in ('PASS', 'FAIL'):
+            # PASS/FAIL only reach here for JP/SC: reference_status bounces TC/KR
+            # (no reference measured) to REVIEW before a convention is ever judged.
             other = CONVENTIONS[OTHER[self.convention]][0]
             cells = ', '.join(f'{ch} {own:.3f}/{oth:.3f}' for ch, own, oth in self.ratios)
             drawn = want if self.status == 'PASS' else other
@@ -269,14 +293,14 @@ def judge_program(program, convention, reference_dir=None, face=''):
                          f'could not load the embedded font {face}: {exc}')
     face = face or font.name
     present = [ch for ch in HAN_PROBES if font.has_glyph(ord(ch))]
-    if len(present) < MIN_SEPARATING or not font.has_glyph(ord(HAN_CONTROL)):
+    if len(present) < MIN_PROBES_PRESENT or not font.has_glyph(ord(HAN_CONTROL)):
         return HanResult('SKIP', face, convention, None, (),
                          f'{face} does not carry the probes "{HAN_CHARS}"')
     weight = weight_of(program)
     if weight is None:
         return HanResult('REVIEW', face, convention, None, (),
-                         f'cannot read the weight (OS/2) of {face}; not a TrueType or '
-                         f'OpenType program')
+                         f'cannot read the weight (OS/2) of {face}; cannot read OS/2 (a bare '
+                         f'CFF or Type 3 program)')
     own_ref = reference_face(convention, weight, ref_dir)
     other_ref = reference_face(OTHER[convention], weight, ref_dir)
     if own_ref is None or other_ref is None:
@@ -294,7 +318,9 @@ def judge_program(program, convention, reference_dir=None, face=''):
         return HanResult('REVIEW', face, convention, weight, ((HAN_CONTROL, c_own, c_other),),
                          f'no reference of this family: {face} differs from both Noto references '
                          f'on {HAN_CONTROL} ({c_own:.3f}/{c_other:.3f}), which is drawn the same '
-                         f'in both conventions; check a render with a reader of the language')
+                         f'in both conventions — not a Noto face, or not the same build or weight '
+                         f'as the references (references/fonts.md); check a render with a reader '
+                         f'of the language')
     ratios = tuple((ch, *pair(ch)) for ch in present)
     own_wins = sum(own <= OWN_MAX and other >= OTHER_MIN for _, own, other in ratios)
     other_wins = sum(other <= OWN_MAX and own >= OTHER_MIN for _, own, other in ratios)
