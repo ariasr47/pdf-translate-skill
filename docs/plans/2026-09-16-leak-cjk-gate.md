@@ -410,8 +410,6 @@ class LeakCjkGateTests(unittest.TestCase):
                              cls.jp400, cls.sc400, 'zh-Hans')
         cls.ja_zh_clean = job('ja-zh-clean', [(JA[0], ZH[0]), (JA[1], ZH[1]), (DATE, '2026\uf98e3\u670831\u65e5'), (NAME, NAME), (JA[2], ZH[2])],
                               cls.jp400, cls.sc400, 'zh-Hans')
-        cls.zh_ja_echo = job('zh-ja-echo', [(ZH[0], JA[0]), (ZH[1], None), (DATE, DATE), (ZH[2], JA[2])],
-                             cls.sc400, cls.jp400, 'ja')
         cls.ja_zh_kana = job('ja-zh-kana', [(JA[0], ZH[0]), (NAME, KANA_NAME), (JA[2], ZH[2])],
                              cls.jp400, cls.sc400, 'zh-Hans')
         cls.tc_ja = job('tc-ja', [(TC_LINE, JA[0]), (DATE, DATE)], cls.sc400, cls.jp400, 'ja')
@@ -456,11 +454,30 @@ class LeakCjkGateTests(unittest.TestCase):
         self.assertNotIn('leak-cjk', [x.name for x in v.gates if x.status == 'FAIL'])
 
     def test_an_echoed_chinese_segment_in_a_japanese_delivery_fails(self):
-        rc, lines = self.console(self.zh_ja_echo)
-        self.assertEqual(rc, 1, lines)
-        self.assertTrue(any(l.startswith('FAIL leak scan (CJK tell): 1 line(s) carry characters that cannot belong to a Japanese target') for l in lines), lines)
-        v, g = self.gates(self.zh_ja_echo)
-        self.assertEqual([f.text for f in g['leak-cjk'].findings], [ZH[1]])
+        # The google/fonts Noto Sans JP lacks the Simplified-only glyphs (请 栏 东), so through the
+        # pipeline an echo into it is refused at build (next test). A pan-CJK face draws it, and then
+        # the tell must catch it — modelled with the SC face, which carries both scripts.
+        doc = pymupdf.open()
+        page = doc.new_page(width=595, height=842)
+        tw = pymupdf.TextWriter(page.rect)
+        font = pymupdf.Font(fontfile=str(self.sc400))
+        for i, text in enumerate((JA[0], ZH[1], DATE, JA[2])):
+            tw.append((72, 100 + 40 * i), text, font=font, fontsize=12)
+        tw.write_text(page)
+        lines, status, findings = verify_mod.cjk_tell_report(doc, 'JP', set(), [], set())
+        self.assertEqual(status, 'FAIL', lines)
+        self.assertTrue(lines[0].startswith('FAIL leak scan (CJK tell): 1 line(s) carry characters that cannot belong to a Japanese target'), lines)
+        self.assertEqual([(f.page, f.where, f.text) for f in findings], [(1, 'line', ZH[1])])
+
+    def test_an_echoed_chinese_segment_into_the_japanese_face_is_refused_at_build(self):
+        # retypeset's glyph guard refuses the job before verify could see it: Noto Sans JP has no
+        # 请 (U+8BF7) or 栏 (U+680F). The gate covers faces that can draw both scripts.
+        d = os.path.join(self.tmp.name, 'zh-ja-refused')
+        os.mkdir(d)
+        with self.assertRaises(AssertionError) as cm:
+            build_cjk_delivery(d, [(ZH[0], JA[0]), (ZH[1], None)], self.sc400, self.jp400, 'ja')
+        self.assertIn('cannot draw', str(cm.exception))
+        self.assertIn('U+8BF7', str(cm.exception))
 
     def test_a_kana_name_fails_at_six_and_is_allowlisted_as_a_phrase(self):
         v, g = self.gates(self.ja_zh_kana)
@@ -682,7 +699,7 @@ git commit -m "feat(pdf-translate): gate 21 leak-cjk — characters that cannot 
 - Modify: `docs/DECISIONS.md` — append after the han-forms row:
 
 ```markdown
-| 2026-09-16 | Gate 21 `leak-cjk`: when source and output share the spaceless CJK family and the mapping's `lang` names a Han convention, every drawn line of the output is scanned for characters that cannot belong to the target — kana in a Chinese target; Han outside the target's repertoire, cp932 for Japanese, GB 2312 for Simplified Chinese, Big5 for Traditional Chinese — after NFKC folding; six or more in a line FAIL, one to five REVIEW, one `Finding(page, 'line', text)` per line; kept runs and single `--allow` tokens excluded. The source's convention is read with the same tells and only measured pairs are judged (JP→SC, JP→TC, SC→JP, SC→TC, TC→SC); TC→JP, no `lang`, or an unclear source keep the old one-line REVIEW with the reason. The brief's verbatim rule is not built. Version 54 → 55. | Task F said "measure first": `dev/probes/cjk_leak_tell_probe.py`, `docs/BRIEF-cjk-leak-tell.md` (PyMuPDF 1.28.2). `retypeset` refuses an omitted segment, so the leak that ships is an echo (target == source), which a verbatim rule cannot see by construction — measured on a real ja → zh-Hans delivery, it found nothing. The repertoire tell has zero false tells on eleven own-language texts including `corpus/ja_source.pdf` and 3–56 on the other language's; it found the echoed line with 14 tells; raw it also flagged a date and a name whose 年 and 郎 the source's ToUnicode had drifted to U+F98E and U+F92C — NFKC folds them. TC → JP measured one tell in 38 letters (JIS X 0208 carries most traditional forms): weak, so REVIEW. Console output of non-CJK jobs is byte-identical (parity runner, nine jobs). | A Japanese or Chinese document of the target language that carries six or more repertoire tells in one drawn line for a legitimate reason other than a kana name (that would argue for a higher bound or a wider repertoire, measured on that document); a source whose convention the tells cannot name in practice (mixed-region documents), which would argue for taking the source convention from a declared source `lang` instead; or a measured tell for TC → JP. |
+| 2026-09-16 | Gate 21 `leak-cjk`: when source and output share the spaceless CJK family and the mapping's `lang` names a Han convention, every drawn line of the output is scanned for characters that cannot belong to the target — kana in a Chinese target; Han outside the target's repertoire, cp932 for Japanese, GB 2312 for Simplified Chinese, Big5 for Traditional Chinese — after NFKC folding; six or more in a line FAIL, one to five REVIEW, one `Finding(page, 'line', text)` per line; kept runs and single `--allow` tokens excluded. The source's convention is read with the same tells and only measured pairs are judged (JP→SC, JP→TC, SC→JP, SC→TC, TC→SC); TC→JP, no `lang`, or an unclear source keep the old one-line REVIEW with the reason. The brief's verbatim rule is not built. Version 54 → 55. | Task F said "measure first": `dev/probes/cjk_leak_tell_probe.py`, `docs/BRIEF-cjk-leak-tell.md` (PyMuPDF 1.28.2). `retypeset` refuses an omitted segment, so the leak that ships is an echo (target == source), which a verbatim rule cannot see by construction — measured on a real ja → zh-Hans delivery, it found nothing. The repertoire tell has zero false tells on eleven own-language texts including `corpus/ja_source.pdf` and 3–56 on the other language's; it found the echoed line with 14 tells; raw it also flagged a date and a name whose 年 and 郎 the source's ToUnicode had drifted to U+F98E and U+F92C — NFKC folds them. TC → JP measured one tell in 38 letters (JIS X 0208 carries most traditional forms): weak, so REVIEW. Into a Japanese face from google/fonts an echoed Simplified sentence never reaches verify — Noto Sans JP lacks 请 栏 东 and `retypeset`'s glyph guard refuses the job (`test_an_echoed_chinese_segment_into_the_japanese_face_is_refused_at_build`); the gate's ja-target direction covers faces that draw both scripts (a pan-CJK Noto Sans CJK). Console output of non-CJK jobs is byte-identical (parity runner, nine jobs). | A Japanese or Chinese document of the target language that carries six or more repertoire tells in one drawn line for a legitimate reason other than a kana name (that would argue for a higher bound or a wider repertoire, measured on that document); a source whose convention the tells cannot name in practice (mixed-region documents), which would argue for taking the source convention from a declared source `lang` instead; or a measured tell for TC → JP. |
 ```
 
 - Modify: `docs/BRIEF-unattended-delivery.md` — the Task F header gains ` (built as gate 21, v55 — see docs/BRIEF-cjk-leak-tell.md)`.

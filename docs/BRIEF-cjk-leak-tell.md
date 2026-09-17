@@ -90,6 +90,10 @@ Regular output; a fixture artefact, not a finding.)
    strong pairs: JP → SC, JP → TC (kana), SC → JP (9–16 per paragraph), SC → TC and TC → SC (10–17),
    TC → SC. **TC → JP is weak** (1 tell in 38 letters) and stays REVIEW "cannot tell" — the product
    sells no zh-Hant target or source, so nothing it does is affected.
+   Measured while building the gate: the google/fonts Noto Sans JP lacks the Simplified-only glyphs
+   (请 U+8BF7, 栏 U+680F, 东 U+4E1C), so a zh-Hans echo into that face is refused at build by
+   retypeset's glyph guard before verify runs; the SC → JP direction of the gate covers faces that
+   draw both scripts (a pan-CJK Noto Sans CJK).
 6. Not a rendering change: Rule 1 does not apply. Sonnet lane; review on another model.
 
 ## 4. Design
