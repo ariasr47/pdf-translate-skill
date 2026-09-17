@@ -509,6 +509,29 @@ class LeakCjkGateTests(unittest.TestCase):
         _, lines = self.console(self.ja_zh_kana, allow=[KANA_NAME])
         self.assertTrue(any(l.startswith('note: 1 source-language run(s) kept') or 'kept' in l for l in lines), lines)
 
+    def test_a_single_allow_token_that_clears_a_whole_line_is_said_so(self):
+        # A CJK sentence has no spaces, so a whole echoed line can be one --allow token. Allowed is
+        # allowed, but the PASS line and the kept-runs note must say a line was cleared.
+        v, g = self.gates(self.ja_zh_echo, allow=[JA[1]])
+        self.assertEqual((g['leak-cjk'].status, g['leak-cjk'].findings), ('PASS', ()), g['leak-cjk'])
+        _, lines = self.console(self.ja_zh_echo, allow=[JA[1]])
+        self.assertIn('PASS leak scan (CJK tell): 5 line(s) hold only characters a Simplified Chinese target can carry (1 line(s) cleared by --allow)', lines)
+        self.assertTrue(any(l.startswith('note: ') and 'kept' in l for l in lines), lines)
+
+    def test_a_page_with_a_fail_line_and_a_review_line_is_fail_and_lists_both(self):
+        doc = pymupdf.open()
+        page = doc.new_page(width=842, height=595)
+        tw = pymupdf.TextWriter(page.rect)
+        font = pymupdf.Font(fontfile=str(self.sc400))
+        for i, text in enumerate((JA[0], ZH_PARA, ZH[1])):
+            tw.append((72, 100 + 40 * i), text, font=font, fontsize=12)
+        tw.write_text(page)
+        lines, status, findings = verify_mod.cjk_tell_report(doc, 'JP', set(), [], set())
+        self.assertEqual(status, 'FAIL', lines)
+        self.assertTrue(lines[0].startswith('FAIL leak scan (CJK tell): 2 line(s)'), lines)
+        self.assertEqual(len(lines), 3, lines)
+        self.assertEqual([unicodedata.normalize('NFKC', f.text) for f in findings], [ZH_PARA, ZH[1]])
+
     def test_a_single_rare_character_is_review_not_fail(self):
         src, out, tr, segments = self.ja_zh_clean
         with pymupdf.open(out) as doc:
@@ -582,20 +605,31 @@ def cjk_tell_report(doc, convention, keep, kept, allow):
     phrases) are skipped; single --allow tokens are removed before counting.
     A line with cjk_tell.LINE_FAIL or more tells is FAIL (an echoed sentence
     carries 9–56), one to five REVIEW (a name in kana, a rare character);
-    status FAIL > REVIEW > PASS; one Finding(page, 'line', text) per line."""
+    status FAIL > REVIEW > PASS; one Finding(page, 'line', text) per line.
+    A CJK sentence has no spaces, so one --allow token can be a whole line:
+    allowed is allowed, but never silently — a line whose every tell an
+    --allow token removed joins the kept-runs note and the PASS line counts it."""
     name = cjk_tell.REPERTOIRE[convention][0]
-    hits, judged = [], 0
+    hits, judged, cleared = [], 0, 0
     for page in doc:
         for text, *_ in _page_lines(page):
             if _kept(text, keep, kept, 'CJK'):
                 continue
             judged += 1
-            tells = cjk_tell.tells_in(cjk_tell.strip_allowed(text, allow), convention)
+            stripped = cjk_tell.strip_allowed(text, allow)
+            tells = cjk_tell.tells_in(stripped, convention)
+            if stripped != text and not tells and cjk_tell.tells_in(text, convention):
+                if kept is not None:
+                    kept.append(text.strip()[:70])
+                cleared += 1
             if tells:
                 hits.append((page.number + 1, text, tells))
     if not hits:
-        return ([f'PASS leak scan (CJK tell): {judged} line(s) hold only characters a {name} '
-                 f'target can carry'], 'PASS', [])
+        line = (f'PASS leak scan (CJK tell): {judged} line(s) hold only characters a {name} '
+                f'target can carry')
+        if cleared:
+            line += f' ({cleared} line(s) cleared by --allow)'
+        return [line], 'PASS', []
     worst = max(len(t) for _, _, t in hits)
     if worst >= cjk_tell.LINE_FAIL:
         other = {'JP': 'Chinese', 'SC': 'Japanese', 'TC': 'Japanese or Simplified Chinese'}
@@ -685,7 +719,7 @@ with
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run the module (log to `leak-task2-green.log`): expected 8 + 10 = 18 tests, `OK`.
+Run the module (log to `leak-task2-green.log`): expected 8 + 12 = 20 tests, `OK`.
 
 - [ ] **Step 5: Console parity against `main` on the nine non-CJK jobs**
 
@@ -693,7 +727,7 @@ Exactly the commands of `docs/plans/2026-09-16-han-forms-gate.md` Task 3 Step 5 
 
 - [ ] **Step 6: The full suite as CI runs it**
 
-From `pdf-translate/`: `… -m unittest tests.test_pipeline tests.test_corpus_verdicts tests.test_import_surface tests.test_shaping_probe tests.test_verify_report tests.test_cjk tests.test_han_forms tests.test_cjk_leak` (log to `leak-suite-task2.log`). Expected `OK`, 370 + 18 = 388. A pre-existing test that asserts the exact old REVIEW line on a CJK ↔ CJK job without `lang` now also sees the indented reason line — extend its expectation; never loosen it to "contains". If `tests.test_import_surface.VerdictCompletenessTests` goes red, the record site prints and records differently — fix the code.
+From `pdf-translate/`: `… -m unittest tests.test_pipeline tests.test_corpus_verdicts tests.test_import_surface tests.test_shaping_probe tests.test_verify_report tests.test_cjk tests.test_han_forms tests.test_cjk_leak` (log to `leak-suite-task2.log`). Expected `OK`, 370 + 20 = 390. A pre-existing test that asserts the exact old REVIEW line on a CJK ↔ CJK job without `lang` now also sees the indented reason line — extend its expectation; never loosen it to "contains". If `tests.test_import_surface.VerdictCompletenessTests` goes red, the record site prints and records differently — fix the code.
 
 - [ ] **Step 7: Evidence**
 
@@ -720,14 +754,14 @@ git commit -m "feat(pdf-translate): gate 21 leak-cjk — characters that cannot 
 - Modify: `docs/DECISIONS.md` — append after the han-forms row:
 
 ```markdown
-| 2026-09-16 | Gate 21 `leak-cjk`: when source and output share the spaceless CJK family and the mapping's `lang` names a Han convention, every drawn line of the output is scanned for characters that cannot belong to the target — kana in a Chinese target; Han outside the target's repertoire, cp932 for Japanese, GB 2312 for Simplified Chinese, Big5 for Traditional Chinese — after NFKC folding; six or more in a line FAIL, one to five REVIEW, one `Finding(page, 'line', text)` per line; kept runs and single `--allow` tokens excluded. The source's convention is read with the same tells and only measured pairs are judged (JP→SC, JP→TC, SC→JP, SC→TC, TC→SC); TC→JP, no `lang`, or an unclear source keep the old one-line REVIEW with the reason. The brief's verbatim rule is not built. Version 54 → 55. | Task F said "measure first": `dev/probes/cjk_leak_tell_probe.py`, `docs/BRIEF-cjk-leak-tell.md` (PyMuPDF 1.28.2). `retypeset` refuses an omitted segment, so the leak that ships is an echo (target == source), which a verbatim rule cannot see by construction — measured on a real ja → zh-Hans delivery, it found nothing. The repertoire tell has zero false tells on eleven own-language texts including `corpus/ja_source.pdf` and 3–56 on the other language's; it found the echoed line with 14 tells; raw it also flagged a date and a name whose 年 and 郎 the source's ToUnicode had drifted to U+F98E and U+F92C — NFKC folds them. TC → JP measured one tell in 38 letters (JIS X 0208 carries most traditional forms): weak, so REVIEW; a single Traditional sentence is ambiguous to the tell (no tell for Japanese or Traditional) and gives "the source's convention is not clear". The ja-target direction is the thinner one: a one-sentence Simplified echo carries 2 tells (REVIEW), a paragraph 16 (FAIL). Into a Japanese face from google/fonts an echoed Simplified sentence never reaches verify — Noto Sans JP lacks 请 栏 东 and `retypeset`'s glyph guard refuses the job (`test_an_echoed_chinese_segment_into_the_japanese_face_is_refused_at_build`); the gate's ja-target direction covers faces that draw both scripts (a pan-CJK Noto Sans CJK). Console output of non-CJK jobs is byte-identical (parity runner, nine jobs). | A Japanese or Chinese document of the target language that carries six or more repertoire tells in one drawn line for a legitimate reason other than a kana name (that would argue for a higher bound or a wider repertoire, measured on that document); a source whose convention the tells cannot name in practice (mixed-region documents), which would argue for taking the source convention from a declared source `lang` instead; or a measured tell for TC → JP. |
+| 2026-09-16 | Gate 21 `leak-cjk`: when source and output share the spaceless CJK family and the mapping's `lang` names a Han convention, every drawn line of the output is scanned for characters that cannot belong to the target — kana in a Chinese target; Han outside the target's repertoire, cp932 for Japanese, GB 2312 for Simplified Chinese, Big5 for Traditional Chinese — after NFKC folding; six or more in a line FAIL, one to five REVIEW, one `Finding(page, 'line', text)` per line; kept runs and single `--allow` tokens excluded — a line whose every tell an `--allow` token removed is counted on the PASS line and joins the kept-runs note, never cleared silently. The source's convention is read with the same tells and only measured pairs are judged (JP→SC, JP→TC, SC→JP, SC→TC, TC→SC); TC→JP, no `lang`, or an unclear source keep the old one-line REVIEW with the reason. The brief's verbatim rule is not built. Version 54 → 55. | Task F said "measure first": `dev/probes/cjk_leak_tell_probe.py`, `docs/BRIEF-cjk-leak-tell.md` (PyMuPDF 1.28.2). `retypeset` refuses an omitted segment, so the leak that ships is an echo (target == source), which a verbatim rule cannot see by construction — measured on a real ja → zh-Hans delivery, it found nothing. The repertoire tell has zero false tells on eleven own-language texts including `corpus/ja_source.pdf` and 3–56 on the other language's; it found the echoed line with 14 tells; raw it also flagged a date and a name whose 年 and 郎 the source's ToUnicode had drifted to U+F98E and U+F92C — NFKC folds them. TC → JP measured one tell in 38 letters (JIS X 0208 carries most traditional forms): weak, so REVIEW; a single Traditional sentence is ambiguous to the tell (no tell for Japanese or Traditional) and gives "the source's convention is not clear". The ja-target direction is the thinner one: a one-sentence Simplified echo carries 2 tells (REVIEW), a paragraph 16 (FAIL). Into a Japanese face from google/fonts an echoed Simplified sentence never reaches verify — Noto Sans JP lacks 请 栏 东 and `retypeset`'s glyph guard refuses the job (`test_an_echoed_chinese_segment_into_the_japanese_face_is_refused_at_build`); the gate's ja-target direction covers faces that draw both scripts (a pan-CJK Noto Sans CJK). Console output of non-CJK jobs is byte-identical (parity runner, nine jobs). | A Japanese or Chinese document of the target language that carries six or more repertoire tells in one drawn line for a legitimate reason other than a kana name (that would argue for a higher bound or a wider repertoire, measured on that document); a source whose convention the tells cannot name in practice (mixed-region documents), which would argue for taking the source convention from a declared source `lang` instead; or a measured tell for TC → JP. |
 ```
 
 - Modify: `docs/BRIEF-unattended-delivery.md` — the Task F header gains ` (built as gate 21, v55 — see docs/BRIEF-cjk-leak-tell.md)`.
 - Modify: `docs/REQUESTS-from-product.md` — the E2 row's status: replace `— push and PR are the operator's; task F open.` with `— merged 2026-09-16 (PR #8); task F built as gate 21 \`leak-cjk\` (v55, \`feat/cjk-leak-tell\`, measured in \`docs/BRIEF-cjk-leak-tell.md\`: the verbatim rule is blind to an echo, a repertoire tell is not) — push and PR are the operator's.`
 - Modify: `docs/reviews/2026-09-16-leak-cjk-gate.md` — append `## Docs and version` (one paragraph naming the edits) and `## Review` (left for the reviewer's verdict line — the controller fills it after the whole-branch review).
 
-Steps: the lockstep red then green; each edit at its anchor (grep first; report NEEDS_CONTEXT if an anchor is missing); the eight-module suite once more (expect 388 OK); commit `docs(pdf-translate): gate 21 leak-cjk in SKILL.md, gates.md and README; DECISIONS row; task F closed; version 55`.
+Steps: the lockstep red then green; each edit at its anchor (grep first; report NEEDS_CONTEXT if an anchor is missing); the eight-module suite once more (expect 390 OK); commit `docs(pdf-translate): gate 21 leak-cjk in SKILL.md, gates.md and README; DECISIONS row; task F closed; version 55`.
 
 ---
 
