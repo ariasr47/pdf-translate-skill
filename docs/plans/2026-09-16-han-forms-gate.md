@@ -1497,3 +1497,31 @@ print('work:', work)
 - Spec coverage (brief §4 design and §4 acceptance): the measurement core and the table within 0.02 → Task 1; the judge with PASS/FAIL/REVIEW and the never-the-nearer rule → Task 2; the gate on deliveries built through the pipeline (JP PASS, SC FAIL, no probes REVIEW, no `lang` REVIEW, another family REVIEW, wght 700 PASS at its own weight, `--reference-fonts`) → Tasks 2–3; console parity → Task 3 Step 5; `FindingsInvariantTests` → the suite in Task 3 Step 6; `prepare_font` probes and early refusal → Task 4; version 54, gates.md, SKILL.md, DECISIONS, evidence → Task 5; Rule 1 → the section above. The brief's "delivery in Yu Gothic → REVIEW (skipped off Windows)" is covered platform-independently by the bundled Droid face in Task 2, which is the same case (a family with no reference).
 - Placeholders: the evidence doc's `<…>` markers are instructions to paste real output and each step says so; no code step lacks its code.
 - Type consistency: `HanResult.ratios` is a tuple of `(char, own, other)` in Tasks 2 and 3; `judge_program(program, convention, reference_dir=None, face='')` is called with those names in Tasks 3 and 4; `reference_status` returns `(bool, str)` everywhere; `build_delivery` returns `(orig, out, translations, subset)` in Task 3 and the verifier script; `Finding.where` values are the face name, `lang`, `reference`, or the convention code, as the constraints say.
+
+## Amendments after the whole-branch review
+
+Task sections above are unchanged; the fix wave (evidence:
+`docs/reviews/2026-09-16-han-forms-gate.md` §"Fix wave after the whole-branch review") amended
+this design as follows.
+
+- `han_forms_report`'s signature changed from `(doc, lang, reference_dir=None)` to
+  `(doc, mapping_lang, output_lang, reference_dir=None)`; the record site in `_execute_verify`
+  passes the mapping's `lang` and the output's `/Lang` separately instead of folding them into one.
+- Attribution rule: a face is judged for a page only if it drew CJK glyphs on that page, matched by
+  name (`han_forms.font_key`, `verify._cjk_drawing_fonts`) to the page's spans; an embedded face
+  that drew none neither fails the page nor attests it (`han_forms.py` Task 2/3's `judge_program`
+  enumeration judged every embedded face regardless of what it drew, which is what let a leftover
+  or bystander face flip the verdict).
+- `/Lang` rule: a non-CJK `/Lang` with no mapping `lang` is now REVIEW ("the output declares /Lang
+  … while the page draws CJK text"), not silence — the original design (`han_forms_report(doc,
+  lang, reference_dir=None)`, Task 3) treated any non-CJK `lang` the same whether it came from the
+  mapping or a stale `/Lang` carried over from the source.
+- Wording: the 東 family-REVIEW reason (`judge_program`) gained "— not a Noto face, or not the same
+  build or weight as the references (references/fonts.md)"; the "cannot attest" reason gained
+  "that drew the page's CJK text" to match the new attribution rule.
+- New tests: `tests/test_han_forms.py` `AttributionTests` (4, `han_forms.font_key` +
+  `verify_mod.han_forms_report`'s new signature), `VerifyGateTests.test_a_chinese_source_translated_to_japanese_passes`
+  (a real zh → ja delivery, `build_cjk_source`/`build_delivery(source=...)`),
+  `VerifyGateTests.test_a_stale_non_cjk_output_lang_is_review_not_silence`, and
+  `PrepareFontTests.test_another_family_is_reviewed_not_refused` — 34 + 7 = 41 in the module,
+  357 + 7 = 364 in the seven-module suite.
