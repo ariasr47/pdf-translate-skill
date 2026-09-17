@@ -463,8 +463,10 @@ class LeakCjkGateTests(unittest.TestCase):
         # pipeline an echo into it is refused at build (next test). A pan-CJK face draws it, and then
         # the tell must catch it — modelled with the SC face, which carries both scripts.
         def page_with(echo):
+            # Landscape: the paragraph is 624 pt wide at 12 pt, and MuPDF's text layer holds
+            # only what lies on the page.
             doc = pymupdf.open()
-            page = doc.new_page(width=595, height=842)
+            page = doc.new_page(width=842, height=595)
             tw = pymupdf.TextWriter(page.rect)
             font = pymupdf.Font(fontfile=str(self.sc400))
             for i, text in enumerate((JA[0], echo, DATE, JA[2])):
