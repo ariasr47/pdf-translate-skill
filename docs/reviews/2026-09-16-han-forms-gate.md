@@ -295,6 +295,61 @@ Seven-module suite: `Ran 364 tests in 191.243s` ... `OK` (357 + 7 new, all in `t
 Left as the review said (not touched this wave): the wide `except`s, the `_dir` re-wrap, the
 repeated cell format, `ko`, the double `reference_status`, the third `json.load`.
 
+## Fix wave 2
+
+A re-review after fix wave 1 found a second small defect in the same function: a drawing face
+that is SKIP (carries no probes) or has no embedded program was swallowed whenever another
+drawing face on the same page attested, because the old `attested`/`unattested` bookkeeping was
+per-page, not per-face. Also: an empty span font name (`han_forms.font_key` returning `''`) made
+`_cjk_drawing_fonts`'s key set empty, which dropped the page out of `cjk_pages` entirely — silence
+where an unmatched key should give REVIEW — and the "cannot attest" reason named the wrong remedy
+(rebuild the subset) for a face that was never even matched to a drawing key.
+
+Red first, `tests.test_han_forms.AttributionTests`, on the wave-1 commit (`81ecbce`):
+
+```
+FAIL: test_a_probeless_drawing_face_is_reported_even_when_another_face_attests
+AssertionError: 'PASS' != 'REVIEW'
+ : ['PASS han-forms Japanese: Noto Sans JP Thin draws Japanese forms (直 0.000/0.454, 骨 0.000/0.171,
+    海 0.000/0.212 vs Japanese/Simplified Chinese at wght 400) [page 1]']
+```
+(The probe-less Chinese subset drawing 申請書を提出 is swallowed; only the Japanese face's PASS
+line survives, so the page reports PASS with one finding instead of PASS+REVIEW with two.)
+
+```
+ERROR: test_an_unnamed_span_font_is_cannot_attest_not_silence
+TypeError: unsupported operand type(s) for &: 'set' and 'tuple'
+```
+(`_cjk_drawing_fonts` still returned a bare `keys` set; mocking it to `(True, set())` — the shape
+the fix requires — breaks the unpacking, confirming the old code has no way to represent "draws
+CJK, but no font name to key on" separately from "draws nothing".)
+
+Also red: `VerifyGateTests.test_a_subset_without_the_probes_is_review_cannot_attest`'s updated
+wording assertions (`'carries none of the probes'` not present in the old "no embedded face that
+drew the page's CJK text carries the probes" reason).
+
+Green after `_cjk_drawing_fonts` returning `(draws, keys)`, `cjk_pages` filtered on `draws`, and
+`han_forms_report`'s per-face `matched`/`without_probes`/`unjudgeable`/`unmatched` bookkeeping
+(grouped into `unattested: page -> reason`, then `by_reason` for the printed lines):
+
+```
+Ran 43 tests in 124.352s
+OK
+```
+(41 wave-1 + 2 new: `test_a_probeless_drawing_face_is_reported_even_when_another_face_attests`,
+`test_an_unnamed_span_font_is_cannot_attest_not_silence`.)
+
+Parity re-run (same fixtures and `main` archive as fix wave 1, both runners re-run against this
+change): `CONSOLE IDENTICAL`, `VERDICTS IDENTICAL`.
+
+Seven-module suite: `Ran 366 tests in 192.446s` ... `OK` (364 + 2 new, both in
+`tests.test_han_forms`).
+
+Docs: `references/gates.md` han-forms row and `docs/DECISIONS.md` han-forms row both gained "A
+drawing face that carries no probes, or is not an embedded program, is cannot-attest for that
+page even when another drawing face passes" (or the DECISIONS.md parenthetical equivalent),
+right after the existing "neither fails nor attests" clause.
+
 ## Rule 1 verification
 
 Appended by the independent verifier's pass, on another model, after the whole-branch review —
