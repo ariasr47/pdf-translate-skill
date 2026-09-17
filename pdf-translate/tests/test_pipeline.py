@@ -5625,7 +5625,13 @@ class StoryLigatureTests(unittest.TestCase):
 
     def test_only_authored_ligatures_are_mapped(self):
         font = str(find_test_font())
-        self.assertEqual(retypeset.ligature_gid_map(font, set('xyz')), {})
+        # Since v56 the map also carries single-substitution alternates of
+        # the authored characters (a small-cap or locl form of x is x), so
+        # the contract is: no ligature reaches it unless every component is
+        # authored, and nothing in it is a character that was not authored.
+        unrelated = retypeset.ligature_gid_map(font, set('xyz'))
+        self.assertEqual({g: t for g, t in unrelated.items() if len(t) > 1}, {})
+        self.assertTrue(set(unrelated.values()) <= set('xyz'), unrelated)
         self.assertIn('fi', retypeset.ligature_gid_map(font, set('fi')).values())
         self.assertEqual(retypeset.ligature_gid_map('no-such.ttf', set('fi')), {})
 
@@ -6736,6 +6742,51 @@ class FontRoleFallbackTests(unittest.TestCase):
                                 notices=self._notice())
             self.assertTrue(lines)
             self.assertNotIn('FAIL', lines[0])
+
+
+class HiddenPushbuttonTests(unittest.TestCase):
+    # A pushbutton with the Hidden annotation flag draws nothing — no
+    # caption on the page, no width to fit — so the chrome and
+    # caption-width gates leave it alone. --hide-buttons is the strip path
+    # that sets it; FL-150's four dead XFA buttons were hidden that way
+    # and still FAILed both gates (2026-09-17).
+
+    LONG = 'For your protection and privacy, press Clear after printing'
+    NL = chr(10)
+
+    def _doc(self, hidden):
+        doc = pymupdf.open()
+        page = doc.new_page(width=612, height=792)
+        btn = pymupdf.Widget()
+        btn.field_name = 'PrintForm'
+        btn.field_type = pymupdf.PDF_WIDGET_TYPE_BUTTON
+        btn.field_flags = 1 << 16
+        btn.rect = pymupdf.Rect(400, 400, 440, 412)
+        btn.button_caption = self.LONG
+        page.add_widget(btn)
+        if hidden:
+            for w in page.widgets():
+                doc.xref_set_key(w.xref, 'F', '2')
+        return doc
+
+    def test_hidden_button_is_not_chrome(self):
+        doc = self._doc(hidden=True)
+        self.assertEqual(verify.hidden_pushbuttons(doc), {'PrintForm'})
+        self.assertEqual(verify.overflowing_button_captions(doc), [])
+        orig = {'PrintForm': self.LONG}
+        self.assertEqual(
+            verify.leftover_button_captions(orig, orig, self.LONG + self.NL, skip=[],
+                                            hidden={'PrintForm'}),
+            [])
+
+    def test_visible_button_still_is(self):
+        doc = self._doc(hidden=False)
+        self.assertEqual(verify.hidden_pushbuttons(doc), set())
+        self.assertEqual(len(verify.overflowing_button_captions(doc)), 1)
+        orig = {'PrintForm': self.LONG}
+        self.assertEqual(
+            verify.leftover_button_captions(orig, orig, self.LONG + self.NL, skip=[]),
+            [('PrintForm', self.LONG)])
 
 
 if __name__ == '__main__':
