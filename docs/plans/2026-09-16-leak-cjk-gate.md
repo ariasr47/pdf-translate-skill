@@ -62,6 +62,7 @@ import io
 import json
 import os
 import tempfile
+import unicodedata
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -328,7 +329,7 @@ Console shapes (pinned by the tests):
 
 - [ ] **Step 1: Write the failing tests**
 
-In `pdf-translate/tests/test_cjk_leak.py`, add after `verify_mod = …`:
+In `pdf-translate/tests/test_cjk_leak.py`, add `import unicodedata` to the module imports (after `import tempfile`), and add after `verify_mod = …`:
 
 ```python
 from pdf_translate.verify import GATE_NAMES, run_verify, verify
@@ -477,7 +478,11 @@ class LeakCjkGateTests(unittest.TestCase):
         lines, status, findings = verify_mod.cjk_tell_report(page_with(ZH_PARA), 'JP', set(), [], set())
         self.assertEqual(status, 'FAIL', lines)
         self.assertTrue(lines[0].startswith('FAIL leak scan (CJK tell): 1 line(s) carry characters that cannot belong to a Japanese target'), lines)
-        self.assertEqual([(f.page, f.where, f.text) for f in findings], [(1, 'line', ZH_PARA)])
+        # The finding carries the drawn line as MuPDF reads it back; a TextWriter page drawn
+        # straight from the SC face drifts 理 to U+F9E4 (no retypeset to canonicalise ToUnicode),
+        # so compare NFKC-folded — the same fold the tell applies.
+        self.assertEqual([(f.page, f.where, unicodedata.normalize('NFKC', f.text)) for f in findings],
+                         [(1, 'line', ZH_PARA)])
         # A one-sentence echo carries only 2 tells (请 栏): REVIEW, not FAIL — measured, and honest.
         lines, status, findings = verify_mod.cjk_tell_report(page_with(ZH[1]), 'JP', set(), [], set())
         self.assertEqual(status, 'REVIEW', lines)
