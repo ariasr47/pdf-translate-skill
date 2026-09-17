@@ -9,6 +9,7 @@ import io
 import json
 import os
 import tempfile
+import unicodedata
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -19,6 +20,7 @@ from pdf_translate import cjk_tell, han_forms
 from tests.test_han_forms import FONTS, JP_FACE, SC_FACE, _face
 
 verify_mod = importlib.import_module('pdf_translate.verify')
+from pdf_translate.verify import GATE_NAMES, run_verify, verify
 
 # The eleven texts of the brief, with (tells for a ja target, for zh-Hans, for zh-Hant), exact.
 TEXTS = [
@@ -33,6 +35,60 @@ TEXTS = [
     ('zh-Hant form sentence', '申請人必須在今天提交此表格。請在指定欄位中準確填寫您的姓名和地址，並在簽名處簽字。', (1, 11, 0), 'TC'),
     ('mixed: zh-Hans with a kana name', '申请人：やまだ たろう（山田太郎），出生于1990年。', (1, 6, 7), None),
 ]
+
+
+def build_cjk_delivery(tmp, lines, src_face, out_face, lang):
+    """A real delivery from a multi-line CJK original: each (source, target) in
+    lines is one drawn line; target None means an echo (the target is the
+    extracted source text, as an echoing translator would return it). The
+    mapping is keyed on the EXTRACTED segment texts, never on what was typed —
+    a source PDF's ToUnicode drifts. prepare_font sees no lang (its han-forms
+    check stays quiet); retypeset writes lang as /Lang. Returns
+    (orig, out, translations, segments)."""
+    from tests.test_pipeline import extract_segments, prepare_font, retypeset, strip_text, write_mapping
+    src, stripped, out = (os.path.join(tmp, n) for n in ('orig.pdf', 'stripped.pdf', 'out.pdf'))
+    tr, subset, segments = (os.path.join(tmp, n) for n in ('translations.json', 'subset.ttf', 'segments.json'))
+    doc = pymupdf.open()
+    page = doc.new_page(width=595, height=842)
+    tw = pymupdf.TextWriter(page.rect)
+    font = pymupdf.Font(fontfile=str(src_face))
+    for i, (source, _) in enumerate(lines):
+        tw.append((72, 100 + 40 * i), source, font=font, fontsize=12)
+    tw.write_text(page)
+    doc.save(src)
+    doc.close()
+    extract_segments.extract_segments(src, outdir=tmp)
+    with open(segments, encoding='utf-8') as f:
+        seg_texts = [s['text'] for s in json.load(f)['segments']]
+    assert len(seg_texts) == len(lines), seg_texts
+    mapping = {seg: (seg if target is None else target) for seg, (_, target) in zip(seg_texts, lines)}
+    strip_text.strip_text(src, stripped)
+    write_mapping(tr, mapping, Path(out_face))
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        rc = prepare_font.prepare_font(str(out_face), tr, subset, instance=None)
+    assert rc == 0, buf.getvalue()
+    write_mapping(tr, mapping, Path(subset), lang=lang)
+    with redirect_stdout(buf):
+        rc = retypeset.retypeset(stripped, segments, tr, out)
+    assert rc == 0, buf.getvalue()
+    return src, out, tr, segments
+
+
+JA = ['申請者は本日中にこの書類を提出してください。',   # 申請者は本日中にこの書類を提出してください。
+      '指定された欄に氏名と住所を記入してください。',   # 指定された欄に氏名と住所を記入してください。
+      '手続きには約二十営業日かかります。']                                # 手続きには約二十営業日かかります。
+ZH = ['申请人必须在今天提交此表格。',                   # 申请人必须在今天提交此表格。
+      '请在指定栏目中填写姓名和地址。',             # 请在指定栏目中填写姓名和地址。
+      '办理时间约为二十个工作日。']                         # 办理时间约为二十个工作日。
+DATE, NAME = '2026年3月31日', '山田太郎'                                          # 2026年3月31日, 山田太郎
+KANA_NAME = 'やまだ たろう'                                                            # やまだ たろう
+# A single Traditional sentence has no tell for Japanese or Traditional (請 須 are in both repertoires)
+# and is ambiguous; the two-sentence text of the table, measured (1, 11, 0), names TC.
+TC_PARA = TEXTS[8][1]
+# A one-sentence Simplified echo into Japanese carries 2 tells (请 栏) — REVIEW; the table's
+# paragraph 2 carries 16 — FAIL.
+ZH_PARA = TEXTS[5][1]
 
 
 class TellTests(unittest.TestCase):
@@ -104,6 +160,168 @@ class TellTests(unittest.TestCase):
                          '\u7533\u8bf7\u4eba\uff1a')
         self.assertEqual(cjk_tell.strip_allowed('abc', set()), 'abc')
         self.assertEqual(cjk_tell.strip_allowed('abc', None), 'abc')
+
+
+class LeakCjkGateTests(unittest.TestCase):
+    """Gate 21 on deliveries built through the pipeline (sources drawn with the
+    references instanced at wght 400, so the ink-ratio gate stays near 1)."""
+
+    @classmethod
+    def setUpClass(cls):
+        _face(JP_FACE)
+        _face(SC_FACE)
+        cls.jp400 = han_forms.reference_face('JP', 400, FONTS)
+        cls.sc400 = han_forms.reference_face('SC', 400, FONTS)
+        cls.tmp = tempfile.TemporaryDirectory()
+
+        def job(name, lines, src_face, out_face, lang):
+            d = os.path.join(cls.tmp.name, name)
+            os.mkdir(d)
+            return build_cjk_delivery(d, lines, src_face, out_face, lang)
+
+        cls.ja_zh_echo = job('ja-zh-echo', [(JA[0], ZH[0]), (JA[1], None), (DATE, DATE), (NAME, NAME), (JA[2], ZH[2])],
+                             cls.jp400, cls.sc400, 'zh-Hans')
+        cls.ja_zh_clean = job('ja-zh-clean', [(JA[0], ZH[0]), (JA[1], ZH[1]), (DATE, '2026年3月31日'), (NAME, NAME), (JA[2], ZH[2])],
+                              cls.jp400, cls.sc400, 'zh-Hans')
+        cls.ja_zh_kana = job('ja-zh-kana', [(JA[0], ZH[0]), (NAME, KANA_NAME), (JA[2], ZH[2])],
+                             cls.jp400, cls.sc400, 'zh-Hans')
+        cls.tc_ja = job('tc-ja', [(TC_PARA, JA[0]), (DATE, DATE)], cls.sc400, cls.jp400, 'ja')
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def console(self, job, **kw):
+        src, out, tr, segments = job
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = verify(src, out, translations=tr, segments=segments, min_ink=0.1, **kw)
+        return rc, buf.getvalue().splitlines()
+
+    def gates(self, job, **kw):
+        src, out, tr, segments = job
+        v = run_verify(src, out, translations=tr, segments=segments, min_ink=0.1, **kw)
+        return v, {g.name: g for g in v.gates}
+
+    def test_the_gate_is_named_after_leak_scan(self):
+        self.assertEqual(GATE_NAMES[GATE_NAMES.index('leak-scan') + 1], 'leak-cjk')
+
+    def test_an_echoed_japanese_segment_in_a_chinese_delivery_fails(self):
+        rc, lines = self.console(self.ja_zh_echo)
+        self.assertEqual(rc, 1, lines)
+        head = [l for l in lines if l.startswith('FAIL leak scan (CJK tell): 1 line(s) carry characters that cannot belong to a Simplified Chinese target')]
+        self.assertEqual(len(head), 1, lines)
+        self.assertTrue(any(l.startswith('   p1: ' + JA[1][:20]) and '[14 tells:' in l for l in lines), lines)
+        self.assertTrue(any(l == 'PASS leak scan: source and output share the spaceless CJK family; judged by the CJK tell (leak-cjk)' for l in lines), lines)
+        self.assertFalse([l for l in lines if l.startswith('REVIEW leak scan: source and output share')], lines)
+        v, g = self.gates(self.ja_zh_echo)
+        self.assertEqual(g['leak-cjk'].status, 'FAIL', g['leak-cjk'])
+        self.assertEqual([(f.page, f.where, f.text) for f in g['leak-cjk'].findings], [(1, 'line', JA[1])])
+        self.assertEqual(g['leak-scan'].status, 'PASS')
+
+    def test_a_clean_chinese_delivery_passes_with_the_date_the_name_and_a_drifted_target(self):
+        rc, lines = self.console(self.ja_zh_clean)
+        self.assertTrue(any(l.startswith('PASS leak scan (CJK tell): 5 line(s) hold only characters a Simplified Chinese target can carry') for l in lines), lines)
+        v, g = self.gates(self.ja_zh_clean)
+        self.assertEqual((g['leak-cjk'].status, g['leak-cjk'].findings), ('PASS', ()))
+        self.assertNotIn('leak-cjk', [x.name for x in v.gates if x.status == 'FAIL'])
+
+    def test_an_echoed_chinese_segment_in_a_japanese_delivery_fails(self):
+        # The google/fonts Noto Sans JP lacks the Simplified-only glyphs (请 栏 东), so through the
+        # pipeline an echo into it is refused at build (next test). A pan-CJK face draws it, and then
+        # the tell must catch it — modelled with the SC face, which carries both scripts.
+        def page_with(echo):
+            # Landscape: the paragraph is 624 pt wide at 12 pt, and MuPDF's text layer holds
+            # only what lies on the page.
+            doc = pymupdf.open()
+            page = doc.new_page(width=842, height=595)
+            tw = pymupdf.TextWriter(page.rect)
+            font = pymupdf.Font(fontfile=str(self.sc400))
+            for i, text in enumerate((JA[0], echo, DATE, JA[2])):
+                tw.append((72, 100 + 40 * i), text, font=font, fontsize=12)
+            tw.write_text(page)
+            return doc
+
+        lines, status, findings = verify_mod.cjk_tell_report(page_with(ZH_PARA), 'JP', set(), [], set())
+        self.assertEqual(status, 'FAIL', lines)
+        self.assertTrue(lines[0].startswith('FAIL leak scan (CJK tell): 1 line(s) carry characters that cannot belong to a Japanese target'), lines)
+        # The finding carries the drawn line as MuPDF reads it back; a TextWriter page drawn
+        # straight from the SC face drifts 理 to U+F9E4 (no retypeset to canonicalise ToUnicode),
+        # so compare NFKC-folded — the same fold the tell applies.
+        self.assertEqual([(f.page, f.where, unicodedata.normalize('NFKC', f.text)) for f in findings],
+                         [(1, 'line', ZH_PARA)])
+        # A one-sentence echo carries only 2 tells (请 栏): REVIEW, not FAIL — measured, and honest.
+        lines, status, findings = verify_mod.cjk_tell_report(page_with(ZH[1]), 'JP', set(), [], set())
+        self.assertEqual(status, 'REVIEW', lines)
+        self.assertTrue(lines[0].startswith('REVIEW leak scan (CJK tell): 1 line(s) carry a few characters that cannot belong to a Japanese target'), lines)
+        self.assertIn('[2 tells:', lines[1])
+        self.assertEqual([f.text for f in findings], [ZH[1]])
+
+    def test_an_echoed_chinese_segment_into_the_japanese_face_is_refused_at_build(self):
+        # retypeset's glyph guard refuses the job before verify could see it: Noto Sans JP has no
+        # 请 (U+8BF7) or 栏 (U+680F). The gate covers faces that can draw both scripts.
+        d = os.path.join(self.tmp.name, 'zh-ja-refused')
+        os.mkdir(d)
+        with self.assertRaises(AssertionError) as cm:
+            build_cjk_delivery(d, [(ZH[0], JA[0]), (ZH[1], None)], self.sc400, self.jp400, 'ja')
+        self.assertIn('cannot draw', str(cm.exception))
+        self.assertIn('U+8BF7', str(cm.exception))
+
+    def test_a_kana_name_fails_at_six_and_is_allowlisted_as_a_phrase(self):
+        v, g = self.gates(self.ja_zh_kana)
+        self.assertEqual(g['leak-cjk'].status, 'FAIL', g['leak-cjk'])
+        self.assertEqual([f.text for f in g['leak-cjk'].findings], [KANA_NAME])
+        v, g = self.gates(self.ja_zh_kana, allow=[KANA_NAME])
+        self.assertEqual((g['leak-cjk'].status, g['leak-cjk'].findings), ('PASS', ()), g['leak-cjk'])
+        _, lines = self.console(self.ja_zh_kana, allow=[KANA_NAME])
+        self.assertTrue(any(l.startswith('note: 1 source-language run(s) kept') or 'kept' in l for l in lines), lines)
+
+    def test_a_single_rare_character_is_review_not_fail(self):
+        src, out, tr, segments = self.ja_zh_clean
+        with pymupdf.open(out) as doc:
+            page = doc[0]
+            tw = pymupdf.TextWriter(page.rect)
+            tw.append((72, 400), '镕', font=pymupdf.Font(fontfile=str(self.sc400)), fontsize=12)   # 镕: in no repertoire
+            tw.write_text(page)
+            rare = os.path.join(os.path.dirname(out), 'rare.pdf')
+            doc.save(rare)
+        v = run_verify(src, rare, translations=tr, segments=segments, min_ink=0.1)
+        g = {x.name: x for x in v.gates}
+        self.assertEqual(g['leak-cjk'].status, 'REVIEW', g['leak-cjk'])
+        self.assertEqual([f.text for f in g['leak-cjk'].findings], ['镕'])
+
+    def test_without_a_mapping_lang_the_old_review_line_stays(self):
+        src, out, tr, segments = self.ja_zh_echo
+        with open(tr, encoding='utf-8') as f:
+            data = json.load(f)
+        data.pop('lang', None)
+        nolang = os.path.join(os.path.dirname(tr), 'nolang.json')
+        with open(nolang, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False)
+        rc, lines = self.console((src, out, nolang, segments))
+        self.assertIn('REVIEW leak scan: source and output share the spaceless CJK family; the scan cannot tell them apart. Rely on --translations and the visual pass.', lines)
+        self.assertIn('   (CJK tell not applied: no lang in the mapping)', lines)
+        v, g = self.gates((src, out, nolang, segments))
+        self.assertNotIn('leak-cjk', g)
+        self.assertEqual(g['leak-scan'].status, 'REVIEW')
+
+    def test_a_traditional_source_into_japanese_is_the_weak_pair(self):
+        rc, lines = self.console(self.tc_ja)
+        self.assertIn('   (CJK tell not applied: the pair Traditional Chinese -> Japanese is not separable by repertoire (measured))', lines)
+        v, g = self.gates(self.tc_ja)
+        self.assertNotIn('leak-cjk', g)
+        self.assertEqual(g['leak-scan'].status, 'REVIEW')
+
+    def test_a_non_cjk_delivery_is_untouched(self):
+        # The gate is inside the same_spaceless branch: a Latin job records nothing under leak-cjk.
+        from tests.test_han_forms import build_delivery
+        d = os.path.join(self.tmp.name, 'latin')
+        os.mkdir(d)
+        src, out, tr, _ = build_delivery(d, face=_face(FONTS / 'NotoSans-Regular.ttf'),
+                                         target='El solicitante debe presentar este formulario hoy.',
+                                         lang='es', instance=None)
+        v, g = self.gates((src, out, tr, None))
+        self.assertNotIn('leak-cjk', g)
 
 
 if __name__ == '__main__':

@@ -20,7 +20,8 @@
                   output share a space-delimited script the scan uses the
                   document's own words (--source-words-from, or harvested
                   from the original automatically). A shared spaceless
-                  family (zh->ja) gets one REVIEW line, not a gate.
+                  family (zh->ja) is judged by gate 21 when the mapping's
+                  lang names the target; else one REVIEW line.
                   A run that equals the ORIGINAL's /Title is kept, not
                   counted: the compliance notice names the form it
                   translates, in the source language, and the reader has
@@ -140,6 +141,17 @@
                   text or lang is not a CJK language. --reference-fonts
                   DIR names the references (default: tests/fonts of a
                   checkout).
+21. leak-cjk      when source and output share the spaceless CJK family and
+                  the mapping's lang names a Han convention (ja, zh-Hans,
+                  zh-Hant), every drawn line is scanned for characters that
+                  cannot belong to that target — kana in a Chinese one, Han
+                  outside its repertoire (cp932 / GB 2312 / Big5), NFKC
+                  first. Six or more in a line FAIL (an echoed sentence),
+                  one to five REVIEW (a name in kana, a rare character —
+                  allowlist with --allow). The source's convention is read
+                  the same way; Traditional Chinese -> Japanese is not
+                  separable and keeps the REVIEW line. Kept runs and the
+                  original's /Title are skipped.
 
 These gates catch structural failures. They do NOT catch visual defects —
 after they pass you still render pages side-by-side and look at them.
@@ -168,7 +180,7 @@ import pymupdf
 
 from .extract_segments import write_find_say_hits
 from .strip_text import choice_exports, invisible_text_pages
-from . import han_forms, shaping_probe
+from . import cjk_tell, han_forms, shaping_probe
 
 # Unicode letter ranges per script (goal 15). A range table, not an ICU
 # dependency: the scan only needs to tell the source script from the target
@@ -287,7 +299,7 @@ GATE_NAMES = (
     'field-parity', 'opt-export-parity', 'fill-roundtrip',
     'extractable-text', 'ink-ratio', 'visible-text', 'canonical-text',
     'arabic-letterforms', 'conjunct-shaping', 'kinsoku', 'han-forms',
-    'leak-scan', 'leak-running', 'leak-isolated',
+    'leak-scan', 'leak-cjk', 'leak-running', 'leak-isolated',
     'empty-targets', 'placement', 'shaped-actualtext',
     'button-captions', 'caption-width', 'override-markers',
     'metadata', 'metadata-lang', 'scaled-runs', 'identifiers',
@@ -1301,6 +1313,44 @@ def kinsoku_report(doc):
     return [f'PASS kinsoku: {judged} CJK line(s) break within the rules'], 'PASS', []
 
 
+def cjk_tell_report(doc, convention, keep, kept, allow):
+    """(lines, status, findings) for gate 21: every drawn line of the output
+    that carries characters which cannot belong to the target convention
+    (cjk_tell.tells_in). Kept runs (the original's /Title, multi-word --allow
+    phrases) are skipped; single --allow tokens are removed before counting.
+    A line with cjk_tell.LINE_FAIL or more tells is FAIL (an echoed sentence
+    carries 9–56), one to five REVIEW (a name in kana, a rare character);
+    status FAIL > REVIEW > PASS; one Finding(page, 'line', text) per line."""
+    name = cjk_tell.REPERTOIRE[convention][0]
+    hits, judged = [], 0
+    for page in doc:
+        for text, *_ in _page_lines(page):
+            if _kept(text, keep, kept, 'CJK'):
+                continue
+            judged += 1
+            tells = cjk_tell.tells_in(cjk_tell.strip_allowed(text, allow), convention)
+            if tells:
+                hits.append((page.number + 1, text, tells))
+    if not hits:
+        return ([f'PASS leak scan (CJK tell): {judged} line(s) hold only characters a {name} '
+                 f'target can carry'], 'PASS', [])
+    worst = max(len(t) for _, _, t in hits)
+    if worst >= cjk_tell.LINE_FAIL:
+        other = {'JP': 'Chinese', 'SC': 'Japanese', 'TC': 'Japanese or Simplified Chinese'}
+        head = (f'FAIL leak scan (CJK tell): {len(hits)} line(s) carry characters that cannot '
+                f'belong to a {name} target — untranslated {other[convention]} text:')
+        status = 'FAIL'
+    else:
+        head = (f'REVIEW leak scan (CJK tell): {len(hits)} line(s) carry a few characters that '
+                f'cannot belong to a {name} target (a name in kana, a rare character — allowlist '
+                f'with --allow):')
+        status = 'REVIEW'
+    lines = [head]
+    for pno, text, tells in hits[:20]:
+        lines.append(f'   p{pno}: {text[:60]}  [{len(tells)} tells: {"".join(tells)[:12]}]')
+    return lines, status, [Finding(pno, 'line', text) for pno, text, _ in hits]
+
+
 def _cjk_drawing_fonts(page):
     """(draws, keys): whether the page draws CJK glyphs at all, and the
     han_forms.font_key of every font that drew one, from the spans MuPDF
@@ -1742,12 +1792,38 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     #                   locate a document that carries that exact name.
     running, isolated = [], []
     if same_spaceless:
-        print(f'REVIEW leak scan: source and output share the spaceless {src_script} '
-              f'family; the scan cannot tell them apart. Rely on --translations and '
-              f'the visual pass.')
-        record('leak-scan', 'REVIEW',
-               f'source and output share the spaceless {src_script} family',
-               findings=[Finding(None, 'script', src_script)])
+        target_conv = han_forms.convention_for_lang(mapping_lang)
+        source_conv = cjk_tell.convention_of(o_text)
+        if not mapping_lang:
+            why = 'no lang in the mapping'
+        elif target_conv not in cjk_tell.REPERTOIRE:
+            why = f'lang "{mapping_lang}" names no Han convention'
+        elif source_conv is None:
+            why = 'the source\'s convention is not clear'
+        elif (source_conv, target_conv) not in cjk_tell.STRONG_PAIRS:
+            why = (f'the pair {cjk_tell.REPERTOIRE[source_conv][0]} -> '
+                   f'{cjk_tell.REPERTOIRE[target_conv][0]} is not separable by repertoire (measured)')
+        else:
+            why = None
+        if why is None:
+            tell_lines, tell_status, tell_findings = cjk_tell_report(jc, target_conv, keep, kept, allow)
+            for line in tell_lines:
+                print(line)
+            if tell_status == 'FAIL':
+                fail = 1
+            record('leak-cjk', tell_status, f'{len(tell_findings)} line(s)' if tell_findings else '',
+                   findings=tell_findings)
+            print(f'PASS leak scan: source and output share the spaceless {src_script} family; '
+                  f'judged by the CJK tell (leak-cjk)')
+            record('leak-scan', 'PASS', 'judged by leak-cjk')
+        else:
+            print(f'REVIEW leak scan: source and output share the spaceless {src_script} '
+                  f'family; the scan cannot tell them apart. Rely on --translations and '
+                  f'the visual pass.')
+            print(f'   (CJK tell not applied: {why})')
+            record('leak-scan', 'REVIEW',
+                   f'source and output share the spaceless {src_script} family',
+                   findings=[Finding(None, 'script', src_script)])
     else:
         for i in range(len(jc)):
             r, iso = scan_leaks(jc[i].get_text(), allow, source_words=source_words,
