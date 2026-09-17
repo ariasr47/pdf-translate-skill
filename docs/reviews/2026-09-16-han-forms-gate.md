@@ -374,5 +374,186 @@ new). Parity not re-run: no non-CJK code path changed. Seven-module suite: `Ran 
 
 ## Rule 1 verification
 
-Appended by the independent verifier's pass, on another model, after the whole-branch review —
-not by the implementer of any task. Until that section is here, this gate is not verified.
+Independent pass by Claude Opus 5 (1M context), 2026-09-16, on branch `feat/han-forms-gate` at
+`81ad568` with a clean tree — a session that wrote none of this code and started from runs, not
+from the diff. Environment: `C:/Dev/pdf-translate-skill/pdf-translate.venv/Scripts/python.exe`
+with `PYTHONUTF8=1`, run from `pdf-translate/`; PyMuPDF 1.28.2; the fetched `NotoSansJP-VF.ttf`
+and `NotoSansSC-VF.ttf` with their wght 400 instances cached beside them.
+
+**Verdict: Verified.** Every claim below was re-run here; the two 600 dpi rasters agree with the
+gate's verdicts; console and verdict parity with `main` is byte-identical. One scoped limitation
+is recorded under item 6 — it is a limit of what three probe glyphs can prove, not a false claim
+by any gate line, and the gate's own PASS rule in `references/gates.md` describes exactly the
+measurement it makes.
+
+### 1. The suites
+
+```
+$ python -m unittest tests.test_han_forms -v
+Ran 45 tests in 91.826s
+OK
+
+$ python -m unittest tests.test_pipeline tests.test_corpus_verdicts tests.test_import_surface \
+      tests.test_shaping_probe tests.test_verify_report tests.test_cjk tests.test_han_forms
+Ran 368 tests in 140.876s
+OK
+```
+
+### 2. The runs
+
+`scratchpad/verifier_han_forms.py`, unedited. It first died on an environment collision, not on
+its own code: a stale `inspect.py` left in the scratchpad by an earlier session shadows the
+stdlib module for any script run from that directory (`AttributeError: module 'inspect' has no
+attribute 'signature'`, then `ModuleNotFoundError: No module named 'mupdf'`). Re-run unchanged
+with `python -P` (script directory kept off `sys.path`), exit 0:
+
+```
+work: C:\Users\rodri\AppData\Local\Temp\han-forms-verify-whpx65bd
+faces: True True | pymupdf 1.28.2
+
+== 1. real deliveries, lang ja ==
+-- jp face: exit 0
+    PASS han-forms Japanese: Noto Sans JP Regular draws Japanese forms (直 0.000/0.454, 骨 0.000/0.171, 海 0.000/0.212 vs Japanese/Simplified Chinese at wght 400) [page 1]
+    render of 直: ...\jp-U76F4-600dpi.png chars found: 1
+-- sc face: exit 1
+    FAIL han-forms Japanese: Noto Sans SC Regular draws Simplified Chinese forms (直 0.454/0.000, 骨 0.171/0.000, 海 0.212/0.000 vs Japanese/Simplified Chinese at wght 400) [page 1] — a reader of the language sees the other region's shapes; rebuild with a face of the language (references/fonts.md)
+    render of 直: ...\sc-U76F4-600dpi.png chars found: 1
+
+== 2. zh -> ja delivery (source face survives strip_text) ==
+    fonts in the page resources: ['Noto Sans SC Thin', 'Noto Sans JP Regular']
+-- exit 0
+    PASS han-forms Japanese: Noto Sans JP Regular draws Japanese forms (直 0.000/0.454, 骨 0.000/0.171, 海 0.000/0.212 vs Japanese/Simplified Chinese at wght 400) [page 1]
+
+== 3. two drawing faces: SC draws 申請書を提出, JP draws 直骨海東京 (lang ja) ==
+   status: FAIL | findings: [(1, 'Noto Sans SC Thin'), (1, 'Noto Sans JP Thin')]
+    FAIL han-forms Japanese: Noto Sans SC Thin draws Simplified Chinese forms (直 0.454/0.000, 骨 0.171/0.000, 海 0.212/0.000 vs Japanese/Simplified Chinese at wght 400) [page 1] — ...
+    PASS han-forms Japanese: Noto Sans JP Thin draws Japanese forms (直 0.000/0.454, 骨 0.000/0.171, 海 0.000/0.212 vs Japanese/Simplified Chinese at wght 400) [page 1]
+
+== 4. two drawing faces: probe-less SC subset draws, JP draws (lang ja) ==
+   status: REVIEW | findings: [(1, 'Noto Sans JP Thin'), (1, 'JP')]
+    PASS han-forms Japanese: Noto Sans JP Thin draws Japanese forms (直 0.000/0.454, 骨 0.000/0.171, 海 0.000/0.212 vs Japanese/Simplified Chinese at wght 400) [page 1]
+    REVIEW han-forms Japanese: cannot attest [page 1]: Noto Sans SC Thin Regular drew CJK text but carries none of the probes "直骨海東" — rebuild that subset with prepare_font.py, which adds them
+```
+
+All four sections match what the gate claims: exit 0 with a PASS and exit 1 with a FAIL on the
+two real deliveries; the leftover Simplified Chinese source face in the zh → ja delivery is not
+judged and no FAIL line appears; two drawing faces give both a FAIL and a PASS; the probe-less
+drawing face is cannot-attest beside a passing face rather than being swallowed. Cosmetic only:
+an instanced reference keeps its source name table, so a face reads "Noto Sans JP Thin" (and
+"Noto Sans SC Thin Regular" for the subset) while the judge instanced at wght 400 — the line
+states "at wght 400", so no verdict is affected.
+
+### 3. The eye — 直 at 600 dpi, clipped from the two delivered pages
+
+Both PNGs opened and looked at, and the two compared side by side (XOR over the union of ink
+between the two clips: 0.426; the files are not byte-identical).
+
+- `jp-U76F4-600dpi.png` (the delivery the gate PASSed) — **the Japanese form.** The lowest
+  stroke is one L: a vertical standing to the left of and below the 目 box, running down and
+  turning right into a long horizontal that passes under the box and out past its right edge.
+  The box floats above that stroke, detached from it, and has three inner white rows.
+- `sc-U76F4-600dpi.png` (the delivery the gate FAILed as "draws Simplified Chinese forms") —
+  **the Simplified Chinese form.** No hook: the box's own left and right verticals run down to a
+  flat horizontal bar under it that extends on both sides, the whole glyph symmetric and wider,
+  with four inner white rows.
+
+My eye agrees with the gate on both. The PASS was drawn in Japanese forms; the FAIL was drawn in
+Simplified Chinese forms.
+
+### 4. Console parity with `main`, nine non-CJK jobs
+
+```
+# package: ...\scratchpad\parity\main\pdf-translate\pdf_translate\__init__.py
+# package: C:\Dev\pdf-translate-skill\pdf-translate\pdf_translate\__init__.py
+CONSOLE IDENTICAL
+VERDICTS IDENTICAL
+```
+
+(`main` re-archived for this run; `verdict_parity_fixtures.py` rebuilt; nine `--- verdict` blocks
+in each stderr half.)
+
+### 5. The evidence doc's claims against these runs
+
+Supported: `Ran 45` / `Ran 368` `OK`; the ratios quoted in every gate line (直 0.454, 骨 0.171,
+海 0.212 at wght 400, 東 0.000) are the brief's §2 row 4, and `MeasurementTests` reproduces the
+table within 0.02; `CONSOLE IDENTICAL` / `VERDICTS IDENTICAL`; the warm cache ("0.582 s" for the
+8 measurement tests — 0.586 s here); `git status --short tests/fonts` prints nothing, so the
+instanced references stay untracked; `han-forms` sits immediately after `kinsoku` in
+`GATE_NAMES`; version 54 in `SKILL.md`, `.claude-plugin/plugin.json`, `pyproject.toml` and
+`__version__`, with the SKILL.md "Han forms" bullet present.
+
+Two "red" narratives re-run here rather than taken on trust, both against archived trees of the
+branch's own earlier commits (`git archive`, never `git stash`), judging the *same* delivered
+PDF:
+
+```
+### pre-fix 40d37ef ###          (fix wave 1, C1)
+# signature: (doc, lang, reference_dir=None)
+# fonts in the page resources: ['Noto Sans SC Thin', 'Noto Sans JP Regular']
+status: REVIEW
+   finding p1 where='Noto Sans SC Thin': no reference of this family: ... on 東 (0.027/0.027) ...
+### HEAD 81ad568 ###
+# signature: (doc, mapping_lang, output_lang, reference_dir=None)
+status: PASS
+   finding p1 where='Noto Sans JP Regular': PASS han-forms Japanese: ...
+```
+
+```
+### pre-fix ab98c09 ###          (fix wave 3, the unnamed-span key)
+FAIL: test_a_span_without_a_font_name_contributes_the_unnamed_key
+AssertionError: Items in the second set but not the first: 'an unnamed font'
+Ran 1 test in 0.002s / FAILED (failures=1)
+### HEAD 81ad568 ###
+python -m unittest tests.test_han_forms.AttributionTests -v → Ran 8 tests in 1.063s / OK
+```
+
+Both reproduce exactly as written, including the doc's note that the C1 reproduction reads
+REVIEW (0.027/0.027 on 東 against the un-instanced leftover face) rather than the brief's
+predicted FAIL. No claim in this document is unsupported by these runs. Not re-run: the red
+states of tasks 1, 3 and 4 and of fix wave 2, which live at commits already rewritten by the
+later waves; the reds above are the load-bearing ones.
+
+### 6. My own probe — can a face lie to the gate?
+
+Two hand-built programs, judged both as programs (`han_forms.judge_file`) and through the gate on
+a real page (`verify.han_forms_report`). Script: `scratchpad/v1_probe_mine.py`.
+
+**A. Name spoof — honest.** The Simplified Chinese program with its `name` table rewritten to
+"Noto Sans JP" / "NotoSansJP-Regular":
+
+```
+program PostScript name now: NotoSansJP-Thin
+judge_file(lang ja) -> FAIL
+FAIL han-forms Japanese: NotoSansJP-Thin draws Simplified Chinese forms (直 0.454/0.000, 骨 0.171/0.000, 海 0.212/0.000 ...)
+```
+
+The gate judges outlines, not names: a face that merely claims to be Japanese still FAILs.
+
+**B. Probe forgery — a PASS the face does not deserve.** The Simplified Chinese program with the
+outlines of 直 骨 海 東, and only those four, replaced by the Japanese face's (fontTools glyf +
+hmtx swap). Every other Han glyph — that is, all the text a delivery actually draws — stays
+Simplified Chinese:
+
+```
+forged face vs (JP, SC)      probe 直 0.000 / 0.454    probe 骨 0.000 / 0.171
+                             probe 海 0.000 / 0.212    probe 東 0.000 / 0.000
+ordinary text                真 0.156 / 0.000   者 0.000 / 0.000   令 0.628 / 0.000
+                             涼 0.225 / 0.000   道 0.185 / 0.000   言 0.493 / 0.000
+                             集 0.188 / 0.000
+judge_file(lang ja) -> PASS
+status: PASS | findings: [(1, 'Noto Sans SC Thin')]
+   PASS han-forms Japanese: Noto Sans SC Thin draws Japanese forms (直 0.000/0.454, ...) [page 1]
+```
+
+A page drawn entirely in that face PASSes `lang ja` while every character on it is Simplified
+Chinese. This is a limit of the method, not a defect of this implementation: the gate measures
+what `references/gates.md` says it measures (two of 直 骨 海, own ≤ 0.02, other ≥ 0.10) and prints
+the ratios it measured, so it never guesses — but its PASS generalises from four glyphs to the
+whole face, and the printed wording "draws Japanese forms" is broader than that. `prepare_font`
+takes the probes from the caller's own face, so the pipeline cannot produce such a hybrid by
+accident; a merged or hand-edited multi-source CJK face could. Worth a sentence in `gates.md`
+naming the scope ("on the probe glyphs"), and, if the gate is ever hardened, judging a handful of
+characters the page actually drew instead of only the four probes. Not a blocker, and not fixed
+here: this pass changes no code.
+
+**Verified.**
