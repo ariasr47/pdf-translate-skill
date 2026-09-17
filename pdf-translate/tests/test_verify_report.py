@@ -7,6 +7,7 @@ import io
 import json
 import os
 import shutil
+import stat
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -552,6 +553,38 @@ class ReportAndPolicyTests(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertTrue(any('could not write' in ln for ln in lines), lines)
 
+    def test_a_refused_report_write_leaves_no_stale_report(self):
+        # PR #5 review, defect 1: pipeline.py rebuild writes to a FIXED path, so
+        # a reused work dir is the normal case. A report from an earlier run must
+        # not survive a refused write, or a consumer reads PASS for a job that
+        # failed, attributed to a document it did not ask about. After the second
+        # run either no report exists or it describes the second run.
+        with tempfile.TemporaryDirectory() as tmp:
+            good, bad = os.path.join(tmp, 'good'), os.path.join(tmp, 'bad')
+            os.mkdir(good)
+            os.mkdir(bad)
+            report = os.path.join(tmp, 'r.json')
+            try:
+                src, out, tr = _job(good)
+                rc, _ = self._console([src, out, '--translations', tr, '--min-ink', '0.1',
+                                       '--report', report])
+                self.assertEqual(rc, 0)
+                with open(report, encoding='utf-8') as f:
+                    self.assertEqual(json.load(f)['exit_code'], 0)
+                os.chmod(report, stat.S_IREAD)   # the file is unwritable; its directory is not
+                src2, out2, tr2 = _job(bad, lang='es')   # output declares no lang: metadata FAIL
+                rc, lines = self._console([src2, out2, '--translations', tr2, '--min-ink', '0.1',
+                                           '--report', report])
+                self.assertEqual(rc, 1, lines)
+                if os.path.exists(report):
+                    with open(report, encoding='utf-8') as f:
+                        data = json.load(f)
+                    self.assertEqual(data['exit_code'], 1, data)
+                    self.assertEqual(data['output'], os.path.abspath(out2), data)
+            finally:
+                if os.path.exists(report):
+                    os.chmod(report, stat.S_IREAD | stat.S_IWRITE)
+
     def test_fail_on_review_turns_review_into_exit_1(self):
         from pdf_translate.verify import run_verify
         with tempfile.TemporaryDirectory() as tmp:
@@ -612,4 +645,4 @@ class VersionLockstepTests(unittest.TestCase):
         self.assertEqual(plugin, f'{skill}.0.0')
         self.assertEqual(pyproject, plugin)
         self.assertEqual(pdf_translate.__version__, skill)
-        self.assertEqual(skill, '52')
+        self.assertEqual(skill, '53')

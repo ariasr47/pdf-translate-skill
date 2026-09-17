@@ -162,7 +162,14 @@ detail, untruncated — the console prints the first ten to thirty, the
 verdict keeps them all. `verify.py … --report PATH` writes
 `verdict.to_dict()` as JSON (`schema` 1, the skill `version`, both paths,
 `exit_code`, `gates`); `pipeline.py rebuild` writes it to
-`<work>/verify_report.json`. `--fail-on-review` (CLI) or
+`<work>/verify_report.json`. The report is written whole or not at all —
+a temp file beside the path, moved into place — and any report from an
+earlier run at that path is removed before the gates run, so a report that
+exists describes the last run; a refused write is printed and does not
+change the exit code. Best effort: when the directory itself cannot be
+written (a read-only mount), neither the removal nor the write can happen,
+the console says the file there does not describe this run, and a consumer
+should treat the report as absent. `--fail-on-review` (CLI) or
 `fail_on_review=True` (library) turns a run with REVIEW lines and no FAIL
 into exit 1, for pipelines with nobody to read the REVIEW. Both are off by
 default. A consumer removes three REVIEWs on its own: always pass `lang` in

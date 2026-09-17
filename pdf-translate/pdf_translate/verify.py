@@ -139,6 +139,7 @@ import io
 import json
 import os
 import re
+import stat
 import sys
 import tempfile
 import time
@@ -1795,14 +1796,51 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
     return rc
 
 
-def write_report(verdict, path):
-    """verdict.to_dict() as JSON at path; a failure is printed, never raised."""
-    text = json.dumps(verdict.to_dict(), ensure_ascii=False, indent=1)
+def _remove_stale_report(path):
+    """No report from an earlier run may survive at path. Best effort: True when
+    nothing is there afterwards.
+
+    pipeline.py rebuild writes to a fixed path, so a reused work dir is the
+    normal case; a report that outlives a refused write would tell a consumer
+    PASS for a job that failed, about a document it did not ask for. A missing
+    report any consumer can detect; a stale one none can.
+    """
+    if not os.path.exists(path):
+        return True
     try:
-        with open(path, 'w', encoding='utf-8') as f:
+        os.chmod(path, stat.S_IREAD | stat.S_IWRITE)   # Windows refuses to unlink read-only
+    except OSError:
+        pass
+    try:
+        os.remove(path)
+        return True
+    except OSError as exc:
+        print(f'  (could not remove the previous report at {path}: {exc}; '
+              f'what is there does not describe this run)')
+        return False
+
+
+def write_report(verdict, path):
+    """verdict.to_dict() as JSON at path, written whole or not at all: a temp
+    file beside it moved into place. A failure is printed, never raised, and
+    removes an earlier report when the directory allows it (best effort: a
+    read-only directory keeps the old file, and the console says so)."""
+    text = json.dumps(verdict.to_dict(), ensure_ascii=False, indent=1)
+    tmp = None
+    try:
+        fd, tmp = tempfile.mkstemp(prefix='.verify_report-', suffix='.tmp',
+                                   dir=os.path.dirname(os.path.abspath(path)))
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
             f.write(text)
+        os.replace(tmp, path)
     except OSError as exc:
         print(f'  (could not write {path}: {exc})')
+        if tmp and os.path.exists(tmp):
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+        _remove_stale_report(path)
 
 
 def main(argv=None):
@@ -1810,6 +1848,9 @@ def main(argv=None):
     orig, trans = argv[0], argv[1]
     allow = [w for w in (_arg(argv, '--allow', '') or '').split(',') if w]
     t0 = time.perf_counter()
+    report = _arg(argv, '--report', None)
+    if report:
+        _remove_stale_report(report)   # the only report that can exist is this run's
     rc, gates = _execute_verify(
         orig, trans,
         fill_text=_arg(argv, '--fill-text', 'Test value 123'),
@@ -1822,7 +1863,6 @@ def main(argv=None):
         segments=_arg(argv, '--segments', None),
         fail_on_review='--fail-on-review' in argv,
     )
-    report = _arg(argv, '--report', None)
     if report:
         write_report(_verdict(rc, gates, orig, trans, '--fail-on-review' in argv), report)
     print(f'elapsed {time.perf_counter()-t0:.2f}s')
