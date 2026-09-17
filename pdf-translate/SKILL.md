@@ -429,8 +429,10 @@ Every gate — what it reads, what fails, and why — is in
   the mapping's `lang` names the target, gate 21 scans every drawn line
   for characters that cannot belong to it (kana in a Chinese target; Han
   outside its repertoire) — six or more in a line FAIL, fewer REVIEW, a
-  name in kana allowlisted with `--allow`; without `lang`, or for a
-  Traditional Chinese source into Japanese, one REVIEW line remains.
+  name in kana allowlisted with `--allow`; a line of Han both languages
+  share is invisible to the tell, and the PASS line says so; without
+  `lang`, or for a Traditional Chinese source into Japanese, one REVIEW
+  line remains.
 - **`--translations`**: every authored non-passthrough target appears
   **verbatim** in the output text layer (retypeset canonicalizes
   `/ToUnicode`; NBSP, soft-hyphen and compatibility-ideograph drift

@@ -14,7 +14,7 @@
 - Run every test from `C:\Dev\pdf-translate-skill\pdf-translate` with the repo venv and UTF-8: `PYTHONUTF8=1 C:/Dev/pdf-translate-skill/pdf-translate.venv/Scripts/python.exe -m unittest …`. Tests are `unittest`, by module path, never pytest. Capture long runs to a log file under `C:/Users/rodri/AppData/Local/Temp/claude/C--Dev-pdf-translate-skill/f71acf3b-389c-49ff-881b-f6d3f7417505/scratchpad/` and grep `^test_|^Ran |^OK|^FAILED|^ERROR` — Git-Bash `| tail` scrambles unittest output.
 - TDD: write the test, run it, watch it fail for the expected reason, then write the minimal code. Task 3 (docs) has no red except the lockstep literal.
 - **The measured table is the spec.** `LINE_FAIL = 6`; `STRONG_PAIRS = {('JP','SC'), ('JP','TC'), ('SC','JP'), ('SC','TC'), ('TC','SC')}`; repertoires `JP: cp932`, `SC: gb2312`, `TC: big5`; kana is a tell for SC and TC, never for JP; NFKC before any tell. The eleven-text counts in Task 1 are exact, measured by `dev/probes/cjk_leak_tell_probe.py` on 2026-09-16; a mismatch is a code defect, never a reason to edit the numbers.
-- **Console output and exit codes of every CLI must not change for a job whose output has no CJK text.** `dev/probes/verdict_parity_runner.py` over its nine jobs must diff empty against `main`. A CJK ↔ CJK job with a mapping `lang` gains the `leak-cjk` line(s) and its `REVIEW leak scan: … spaceless …` line becomes a PASS line; without a usable `lang` the old REVIEW line is printed unchanged, followed by one indented reason line.
+- **Console output and exit codes of every CLI must not change for a job whose output has no CJK text.** `dev/probes/verdict_parity_runner.py` over its nine jobs must diff empty against `main`. A CJK ↔ CJK job with a mapping `lang` gains the `leak-cjk` line(s) and its `REVIEW leak scan: … spaceless …` line becomes a SKIP line (`judged by leak-cjk`); without a usable `lang` the old REVIEW line is printed unchanged, followed by one indented reason line.
 - `Finding.page` is 1-based; `where` is `line`; `text` is the drawn line, untruncated. `'leak-cjk'` sits in `GATE_NAMES` directly after `'leak-scan'`.
 - Kept runs (`keep`: the original's `/Title`, multi-word `--allow` phrases) are excluded before counting, through the existing `_kept`; single-word `--allow` entries are removed from a line's text before counting.
 - Never copy code from `C:\Dev\pdf-translator`. Do not open it.
@@ -775,3 +775,15 @@ Steps: the lockstep red then green; each edit at its anchor (grep first; report 
 - Spec coverage (brief §4 design, §4 acceptance): the table exact → Task 1; the judge, deliveries (echo both ways, clean with a drifted target, kana name and `--allow`, rare character REVIEW, no `lang`, weak pair, Latin untouched), parity, the findings invariant → Task 2; docs, version 55, the E2 and Task F status lines → Task 3. The brief's "a zh-Hant source into ja → the old REVIEW with the weak-pair reason" → `test_a_traditional_source_into_japanese_is_the_weak_pair`.
 - Placeholders: the evidence doc's `<paste …>` markers are instructions to paste real output; no code step lacks its code.
 - Type consistency: `tells_in` returns a list of characters (Tasks 1–2); `cjk_tell_report(doc, convention, keep, kept, allow)` matches its one call site; `build_cjk_delivery` returns `(orig, out, translations, segments)` and the tests unpack four; `Finding(page, 'line', text)` as the constraints say.
+
+## Amendments after the whole-branch review
+
+- `leak-scan` records SKIP, never PASS, when the CJK tell judged the job; the console line and the PASS line both say a line of Han both languages share is invisible to the tell.
+- The FAIL head names the source's convention and offers `--allow` for a proper noun, in place of the old two/three-way `other` guess.
+- `cjk_tell_report`'s `cleared` counter is renamed `reduced`: a line whose tell count `--allow` merely lowered (not zeroed) is now counted and noted too.
+- `cjk_tell.strip_allowed` matches case-insensitively, since `verify` lower-cases single `--allow` tokens.
+- `cjk_tell._encodable` tolerates a missing codec (a stripped CPython build) by treating the character as encodable rather than raising.
+- The `leak-running`/`leak-isolated` vacuous PASS lines and gate records are silent once the CJK tell has run, since they never scanned anything.
+- The unclear-source `why` reason now says why the source's convention is unclear (no single repertoire holds every character, or several do).
+- Two new tests: `test_a_traditional_echo_into_a_simplified_target_is_named_traditional`, `test_a_partial_allow_that_leaves_tells_is_still_noted`.
+- Counts: module 22 OK; the eight-module suite 392 OK.
