@@ -102,9 +102,11 @@ scripts/
                                 rewrite captions and widget text; delete /Perms; fails if page text survives
   extract_segments.py           geometry, direction, color, markers, dot leaders, warnings -> segments.json
   prepare_font.py               subset + instance a font, assert it rasterizes, refuse restricted licences,
-                                probe conjunct shaping (Devanagari, Bengali, Tamil, Khmer, Myanmar)
+                                probe conjunct shaping (Devanagari, Bengali, Tamil, Khmer, Myanmar);
+                                a CJK subset also gets the four Han-forms probe glyphs and can be
+                                refused for the wrong convention
   retypeset.py                  place translations; rotation; shrink-to-fit; colors; merges; canonical text layer
-  verify.py                     nineteen structural gates
+  verify.py                     twenty structural gates
   qa_check.py                   linguistic QA on the mapping (numbers, dates, consistency, expansion)
   field_fonts.py                make typed-in target-script text render in text and choice fields
   compare.py                    self-contained side-by-side HTML

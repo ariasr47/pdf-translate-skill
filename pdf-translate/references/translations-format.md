@@ -18,6 +18,7 @@ this file is where your judgment lives.
   // and without it the output still declares the source language. verify
   // REVIEWs a mapping with no "lang" and FAILs an output whose /Lang does
   // not match this.
+  // A tag, not a display name: "ja", never "Japanese" or "日本語". ISO 639-2 ("jpn") is accepted.
   "lang": "es-MX",
 
   // core string (from to_translate.json) -> translation.

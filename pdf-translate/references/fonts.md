@@ -28,6 +28,20 @@ whose original is serif. Bold in CJK forms is often better served by the
 For field input (field_fonts.py) use the FULL instanced font, not the
 translation subset — users type names with characters outside the document.
 
+`verify`'s `han-forms` gate (20) compares the delivered face with the Noto
+Sans JP and SC references at the same weight, exactly. Use the same builds
+for the job's face and for the references — the google/fonts variable TTFs
+that `tools/fetch_test_fonts.py` fetches — or a legitimately Japanese face
+can read above the 0.02 match bound and come back REVIEW instead of PASS. A
+service ships the two reference faces beside its job faces and passes their
+directory (`--reference-fonts DIR` / `reference_fonts=`). The directory must
+hold `NotoSansJP-VF.ttf` and `NotoSansSC-VF.ttf` under exactly those names
+(google/fonts publishes them as `NotoSansJP[wght].ttf` and
+`NotoSansSC[wght].ttf`; rename on copy). An installed package has no
+`tests/fonts/`, so until a service ships them every CJK job is REVIEW
+`reference faces not found`, and a pipeline that runs with
+`--fail-on-review` exits 1 on every CJK job from version 54 on.
+
 ## Arabic (and Syriac, N'Ko): shaped through the Story engine
 
 Arabic letters join. A run drawn glyph by glyph comes out as isolated

@@ -123,6 +123,23 @@
                   exempt. REVIEW, never FAIL: a form label can look like a
                   hand-split line. Always runs; silent when no page has an
                   eligible stack.
+20. han forms     on a page that draws Japanese or Chinese text, every
+                  embedded face is rendered off its font program and
+                  compared, pixel for pixel, with the Noto reference of the
+                  language's convention (lang: ja -> Japanese; zh, zh-Hans
+                  -> Simplified Chinese) and with the other convention's,
+                  both instanced at the face's weight. Own reference 0.000
+                  and the other >= 0.10 on two of 直 骨 海: PASS; the
+                  reverse: FAIL. No lang, no reference for the convention
+                  (zh-Hant, ko), a face without the probe glyphs, a family
+                  that is not Noto, or no reference directory: REVIEW,
+                  never a guess. Only the faces that drew CJK glyphs on
+                  the page are judged; an embedded face that drew none
+                  neither fails nor attests. A non-CJK /Lang with no
+                  mapping lang is REVIEW. Silent when no page draws CJK
+                  text or lang is not a CJK language. --reference-fonts
+                  DIR names the references (default: tests/fonts of a
+                  checkout).
 
 These gates catch structural failures. They do NOT catch visual defects —
 after they pass you still render pages side-by-side and look at them.
@@ -151,7 +168,7 @@ import pymupdf
 
 from .extract_segments import write_find_say_hits
 from .strip_text import choice_exports, invisible_text_pages
-from . import shaping_probe
+from . import han_forms, shaping_probe
 
 # Unicode letter ranges per script (goal 15). A range table, not an ICU
 # dependency: the scan only needs to tell the source script from the target
@@ -269,7 +286,7 @@ class GateResult:
 GATE_NAMES = (
     'field-parity', 'opt-export-parity', 'fill-roundtrip',
     'extractable-text', 'ink-ratio', 'visible-text', 'canonical-text',
-    'arabic-letterforms', 'conjunct-shaping', 'kinsoku',
+    'arabic-letterforms', 'conjunct-shaping', 'kinsoku', 'han-forms',
     'leak-scan', 'leak-running', 'leak-isolated',
     'empty-targets', 'placement', 'shaped-actualtext',
     'button-captions', 'caption-width', 'override-markers',
@@ -1284,6 +1301,161 @@ def kinsoku_report(doc):
     return [f'PASS kinsoku: {judged} CJK line(s) break within the rules'], 'PASS', []
 
 
+def _cjk_drawing_fonts(page):
+    """(draws, keys): whether the page draws CJK glyphs at all, and the
+    han_forms.font_key of every font that drew one, from the spans MuPDF
+    gives back — the only witness of who drew what. A span with no font name
+    contributes the key 'an unnamed font', so it is never silently dropped."""
+    draws, keys = False, set()
+    for block in page.get_text('rawdict').get('blocks', []):
+        for line in block.get('lines', []):
+            for span in line.get('spans', []):
+                if any(han_forms.is_cjk(c['c']) for c in span.get('chars', ()) if c.get('c')):
+                    draws = True
+                    keys.add(han_forms.font_key(span.get('font', '')) or 'an unnamed font')
+    return draws, keys
+
+
+def han_forms_report(doc, mapping_lang, output_lang, reference_dir=None):
+    """(lines, status, findings) for gate 20: every face that drew CJK glyphs on
+    a page is judged by han_forms.judge_program against the Noto reference of
+    the language's convention and the other's, at the face's weight.
+
+    Only the faces that drew CJK glyphs on a page are judged, matched by name
+    to the page's spans: a face that is embedded but drew none — the source
+    document's face strip_text leaves in the resources, a heading face that
+    drew only Latin — neither fails the page nor attests it. A drawing face
+    that carries no probes, or that is not an embedded program, is reported
+    as cannot attest for that page even when another drawing face passes.
+    Each face is judged once (per xref) and reported once with its pages.
+
+    mapping_lang is the mapping's lang and is authoritative: a non-CJK value
+    means the page's CJK is not the target's script (a leak; those gates own
+    it) and nothing is printed. output_lang is the delivered /Lang, used only
+    when the mapping gives none; a non-CJK /Lang on a page that draws CJK text
+    is REVIEW, not silence — it may be the original's, never updated. A
+    mapping lang that is not a language tag at all (a display name) is REVIEW.
+
+    status is FAIL if any drawing face draws the other convention, else REVIEW
+    if anything could not be judged, else PASS; None when no page draws CJK
+    glyphs or the mapping names a non-CJK language.
+    """
+    drawing_by_page = {page.number: _cjk_drawing_fonts(page) for page in doc}
+    cjk_pages = [page for page in doc if drawing_by_page[page.number][0]]
+    if not cjk_pages:
+        return [], None, []
+    all_pages = [p.number + 1 for p in cjk_pages]
+
+    def pages_of(nums):
+        return 'page ' + ', '.join(str(n) for n in sorted(set(nums)))
+
+    mapping_lang = (mapping_lang or '').strip()
+    output_lang = (output_lang or '').strip()
+    lang = mapping_lang or output_lang
+    convention = han_forms.convention_for_lang(lang)
+    if not convention and mapping_lang:
+        if han_forms.is_language_tag(mapping_lang):
+            return [], None, []      # a real non-CJK target: the page's CJK is a leak, those gates own it
+        reason = (f'lang "{mapping_lang}" is not a language tag; pass a BCP 47 tag such as ja or '
+                  f'zh-Hans (not a display name) so the gate can name the convention')
+        return ([f'REVIEW han-forms: {reason} [{pages_of(all_pages)}]'], 'REVIEW',
+                [Finding(p, 'lang', reason) for p in all_pages])
+    if not convention and output_lang:
+        reason = (f'the output declares /Lang "{output_lang}" while the page draws CJK text; '
+                  f'pass --translations with lang to name the convention the page should '
+                  f'follow (the /Lang may be the original\'s, never updated)')
+        return ([f'REVIEW han-forms: {reason} [{pages_of(all_pages)}]'], 'REVIEW',
+                [Finding(p, 'lang', reason) for p in all_pages])
+    ok, reason = han_forms.reference_status(convention, reference_dir)
+    if not ok:
+        name = han_forms.CONVENTIONS[convention][0] if convention else ''
+        head = f'REVIEW han-forms{" " + name if name else ""}'
+        where = 'lang' if not convention else 'reference'
+        return ([f'{head}: {reason} [{pages_of(all_pages)}]'], 'REVIEW',
+                [Finding(p, where, reason) for p in all_pages])
+
+    name = han_forms.CONVENTIONS[convention][0]
+    fonts = {}       # xref -> (face name, {keys}, program bytes or None)
+    judged = {}      # xref -> [HanResult, pages]
+    unattested = {}  # page number -> why its CJK text could not be attested
+    for page in cjk_pages:
+        _, drawing = drawing_by_page[page.number]
+        matched = set()        # drawing keys some embedded face accounts for
+        without_probes = []    # faces that drew CJK glyphs but carry no probes
+        unjudgeable = []       # faces that drew CJK glyphs but have no program
+        for entry in page.get_fonts(full=True):
+            xref = entry[0]
+            if xref not in fonts:
+                try:
+                    info = doc.extract_font(xref)
+                    face = re.sub(r'^[A-Z]{6}\+', '', info[0] or '')
+                    program = info[3] or None
+                except Exception:
+                    face, program = str(entry[3]), None
+                keys = {han_forms.font_key(face), han_forms.font_key(str(entry[3]))}
+                if program:
+                    keys.add(han_forms.font_key(han_forms.program_psname(program)))
+                keys.discard('')
+                fonts[xref] = (face, keys, program)
+            face, keys, program = fonts[xref]
+            hit = keys & drawing
+            if not hit:
+                continue
+            matched |= hit
+            if not program:
+                unjudgeable.append(face)
+                continue
+            if xref not in judged:
+                judged[xref] = [han_forms.judge_program(program, convention, reference_dir,
+                                                        face=face), []]
+            result, pages = judged[xref]
+            if result.status == 'SKIP':
+                without_probes.append(face)
+                continue
+            pages.append(page.number + 1)
+        unmatched = drawing - matched if drawing else {'an unnamed font'}
+        parts = []
+        if without_probes:
+            parts.append(f'{", ".join(sorted(set(without_probes)))} drew CJK text but carries '
+                         f'none of the probes "{han_forms.HAN_CHARS}" — rebuild that subset with '
+                         f'prepare_font.py, which adds them')
+        if unjudgeable or unmatched:
+            parts.append(f'the CJK text drawn with {", ".join(sorted(set(unjudgeable) | unmatched))} '
+                         f'is not an embedded program this gate can judge — check a render with '
+                         f'a reader of the language')
+        if parts:
+            unattested[page.number + 1] = '; '.join(parts)
+
+    lines, statuses, findings = [], [], []
+    for xref, (result, pages) in sorted(judged.items()):
+        if result.status == 'SKIP' or not pages:
+            continue
+        line = f'{result.line()} [{pages_of(pages)}]'
+        if result.status == 'FAIL':
+            line += (' — a reader of the language sees the other region\'s shapes; rebuild '
+                     'with a face of the language (references/fonts.md)')
+        lines.append(line)
+        statuses.append(result.status)
+        text = result.line() if result.status in ('PASS', 'FAIL') else result.reason
+        findings.extend(Finding(p, result.face, text) for p in sorted(set(pages)))
+    by_reason = {}
+    for pno, reason in unattested.items():
+        by_reason.setdefault(reason, []).append(pno)
+    for reason, pages in sorted(by_reason.items()):
+        lines.append(f'REVIEW han-forms {name}: cannot attest [{pages_of(pages)}]: {reason}')
+        statuses.append('REVIEW')
+        findings.extend(Finding(p, convention, f'cannot attest: {reason}') for p in sorted(pages))
+    if 'FAIL' in statuses:
+        status = 'FAIL'
+    elif 'REVIEW' in statuses:
+        status = 'REVIEW'
+    elif 'PASS' in statuses:
+        status = 'PASS'
+    else:
+        status = None
+    return lines, status, findings
+
+
 def page_unextractable(page):
     """True when the page looks scanned: visible content, no text layer."""
     if page.get_text().strip():
@@ -1303,7 +1475,8 @@ def ink(page):
 
 def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
                     source_regex=None, source_words_from=None, allow_extra_prefix=None,
-                    translations=None, segments=None, fail_on_review=False):
+                    translations=None, segments=None, fail_on_review=False,
+                    reference_fonts=None):
     """Run structural gates. Returns (exit_code, gates). Prints as it goes."""
     # A multi-word --allow entry is a phrase: it matches a whole run and
     # nothing else (row 20). Single words behave as before. Until now a
@@ -1537,6 +1710,23 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
                f'{len(kinsoku_findings)} line(s)' if kinsoku_status == 'REVIEW' else '',
                findings=kinsoku_findings)
 
+    mapping_lang = ''
+    if translations:
+        with open(translations, encoding='utf-8') as f:
+            mapping_lang = (json.load(f).get('lang') or '').strip()
+    try:
+        output_lang = (jc.language or '').strip()
+    except Exception:
+        output_lang = ''
+    han_lines, han_status, han_findings = han_forms_report(jc, mapping_lang, output_lang,
+                                                           reference_fonts)
+    for line in han_lines:
+        print(line)
+    if han_status == 'FAIL':
+        fail = 1
+    if han_status:
+        record('han-forms', han_status, findings=han_findings)
+
     # Two buckets, because "a Latin word survived" and "a sentence went
     # untranslated" are completely different findings and must not score alike.
     #
@@ -1764,14 +1954,16 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
 
 def run_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
                source_regex=None, source_words_from=None, allow_extra_prefix=None,
-               translations=None, segments=None, fail_on_review=False):
+               translations=None, segments=None, fail_on_review=False,
+               reference_fonts=None):
     """Run structural gates. Returns a VerifyVerdict; does not print or exit."""
     with redirect_stdout(io.StringIO()):
         rc, gates = _execute_verify(
             orig, trans, fill_text=fill_text, allow=allow, min_ink=min_ink,
             source_regex=source_regex, source_words_from=source_words_from,
             allow_extra_prefix=allow_extra_prefix, translations=translations,
-            segments=segments, fail_on_review=fail_on_review)
+            segments=segments, fail_on_review=fail_on_review,
+            reference_fonts=reference_fonts)
     return _verdict(rc, gates, orig, trans, fail_on_review)
 
 
@@ -1786,13 +1978,15 @@ def _verdict(rc, gates, orig, trans, fail_on_review):
 
 def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
            source_regex=None, source_words_from=None, allow_extra_prefix=None,
-           translations=None, segments=None, fail_on_review=False):
+           translations=None, segments=None, fail_on_review=False,
+           reference_fonts=None):
     """Run structural gates. Returns 0 on pass, 1 on any failure."""
     rc, _ = _execute_verify(
         orig, trans, fill_text=fill_text, allow=allow, min_ink=min_ink,
         source_regex=source_regex, source_words_from=source_words_from,
         allow_extra_prefix=allow_extra_prefix, translations=translations,
-        segments=segments, fail_on_review=fail_on_review)
+        segments=segments, fail_on_review=fail_on_review,
+        reference_fonts=reference_fonts)
     return rc
 
 
@@ -1862,6 +2056,7 @@ def main(argv=None):
         translations=_arg(argv, '--translations', None),
         segments=_arg(argv, '--segments', None),
         fail_on_review='--fail-on-review' in argv,
+        reference_fonts=_arg(argv, '--reference-fonts', None),
     )
     if report:
         write_report(_verdict(rc, gates, orig, trans, '--fail-on-review' in argv), report)

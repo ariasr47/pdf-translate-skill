@@ -24,7 +24,8 @@ original.pdf out.pdf --fill-text "…" --source-words-from segments.json
 | leak scan | untranslated running text in the source script (below) |
 | unshaped Arabic | a page whose Arabic letters are all isolated presentation forms was drawn letter by letter |
 | conjunct shaping | an embedded face used on a page that draws Devanagari, Bengali, Tamil, Khmer or Myanmar does not lose glyphs when its probe cluster (क्षत्रिय, 8 → 4) is rendered through the Story engine: no usable GSUB, so every conjunct drawn with it is broken. A face without the probe glyphs is REVIEW (cannot attest; `prepare_font` adds them). Thai, Lao and Hebrew niqqud are REVIEW, never PASS |
-| kinsoku | REVIEW, never FAIL: a drawn line of CJK text begins with a character JIS X 4051 / JLREQ forbids at line start (closing brackets, hyphens, dividing punctuation, middle dots, full stops, commas, iteration marks, the prolonged sound mark, small kana; half-width forms included) or ends with an opening bracket. Lines are grouped into stacks by geometry — one under another, up to about two and a half times the line height (three times the font size) — so a stack's first line is never a line-start violation and its last never a line-end one; a single-character line (ー for "none", a bracket after a field) and a bullet (・ ･) that begins two or more lines are values, not breaks. The Story engine never does this to a merge; a target split by hand across source lines does, and a form label can look the same — hence REVIEW. Horizontal text only; prefix and postfix abbreviations (￥ ％ °) are not covered |
+| kinsoku | REVIEW, never FAIL: a drawn line of CJK text begins with a character JIS X 4051 / JLREQ forbids at line start (closing brackets, hyphens, dividing punctuation, middle dots, full stops, commas, iteration marks, the prolonged sound mark, small kana; half-width forms included) or ends with an opening bracket. The set includes the small kana counters ゎ ゕ ゖ ヮ ヵ ヶ and the half-width prolonged sound mark ｰ (U+FF70), which some layout engines allow at line start; a REVIEW on one of them is that known difference, not a defect. Lines are grouped into stacks by geometry — one under another, up to about two and a half times the line height (three times the font size) — so a stack's first line is never a line-start violation and its last never a line-end one; a single-character line (ー for "none", a bracket after a field) and a bullet (・ ･) that begins two or more lines are values, not breaks. The Story engine never does this to a merge; a target split by hand across source lines does, and a form label can look the same — hence REVIEW. Horizontal text only; prefix and postfix abbreviations (￥ ％ °) are not covered |
+| han-forms | on a page that draws CJK text, every embedded face with a font program is rendered off that program and compared pixel for pixel with the Noto reference of `lang`'s convention (ja → Noto Sans JP; zh, zh-Hans, zh-CN, zh-SG → Noto Sans SC) and with the other convention's, both instanced at the face's OS/2 weight. Only the faces that drew CJK glyphs on the page are judged; a face embedded but unused — the source's face `strip_text` leaves behind — neither fails nor attests. A drawing face that carries no probes, or is not an embedded program, is cannot-attest for that page even when another drawing face passes. PASS: ≤ 0.02 against its own reference and ≥ 0.10 against the other on at least two of 直 骨 海; FAIL: the reverse — the face draws the other region's forms. REVIEW, never a guess: no `lang`; a mapping `lang` that is not a language tag (a display name such as `Japanese`); a non-CJK `/Lang` with no mapping `lang` (the original's, never updated); zh-Hant, ko (no reference measured); a face without the probe glyphs (cannot attest; `prepare_font` adds them); a face that differs from both references on 東, which is the same in both conventions (not a Noto family — no nearer-reference guess); reference faces not found (`--reference-fonts DIR`, default `tests/fonts/`); an inconclusive spread. Silent when the mapping's `lang` is a well-formed tag of a non-CJK language: the page's CJK is then a leak, and those gates own it |
 | `/Opt` export parity | the export half of a choice entry differs from the original's, in value or order |
 | canonical text layer | the output reports NBSP, soft hyphen, U+2010/U+2011, a CJK compatibility ideograph or a Latin ligature (U+FB00–FB06, U+007F) that is in neither the original nor the mapping (`/ToUnicode` drift) |
 
@@ -146,7 +147,7 @@ CLI, prints nothing, and returns a `VerifyVerdict`: `exit_code` and
 line the CLI would print, same status, same order. Names are the closed
 list `verify.GATE_NAMES`: field-parity, opt-export-parity, fill-roundtrip,
 extractable-text, ink-ratio, visible-text, canonical-text,
-arabic-letterforms, conjunct-shaping, kinsoku, leak-scan, leak-running,
+arabic-letterforms, conjunct-shaping, kinsoku, han-forms, leak-scan, leak-running,
 leak-isolated, empty-targets, placement, shaped-actualtext,
 button-captions, caption-width, override-markers, metadata,
 metadata-lang, scaled-runs, identifiers. A gate that prints nothing for a
@@ -172,10 +173,12 @@ the console says the file there does not describe this run, and a consumer
 should treat the report as absent. `--fail-on-review` (CLI) or
 `fail_on_review=True` (library) turns a run with REVIEW lines and no FAIL
 into exit 1, for pipelines with nobody to read the REVIEW. Both are off by
-default. A consumer removes three REVIEWs on its own: always pass `lang` in
-the mapping (`metadata-lang`), build faces with `prepare_font`, which adds
-the probe glyphs gate 18 needs (`conjunct-shaping` "cannot attest"), and
-never split a target by hand across source lines — declare a merge
+default. A consumer removes four REVIEWs on its own: always pass `lang` in the mapping
+(`metadata-lang`, and `han-forms` "no lang"), build faces with `prepare_font`,
+which adds the probe glyphs gates 18 and 20 need (`conjunct-shaping` and
+`han-forms` "cannot attest"), set Japanese and Chinese in Noto Sans JP / SC and
+ship the two reference faces (`reference_fonts=DIR`; `han-forms` "no reference"),
+and never split a target by hand across source lines — declare a merge
 (`kinsoku`).
 
 | gate | `where` | `text` |
@@ -187,6 +190,7 @@ never split a target by hand across source lines — declare a merge
 | canonical-text | `U+XXXX` | the character name and count |
 | conjunct-shaping | the face's PostScript name, or the script when it could not be judged | the probe line, or the reason |
 | kinsoku | `line-start` / `line-end` | the drawn line |
+| han-forms | the face's PostScript name (subset tag stripped); `lang`, `reference` or the convention code (`JP`, `SC`) when the face could not be judged | the PASS/FAIL line with the ratios, or the reason |
 | leak-scan | `script` | the spaceless family source and output share (`CJK`) |
 | leak-running | `run` | the phrase |
 | leak-isolated | `token` | the token |
@@ -206,5 +210,8 @@ never split a target by hand across source lines — declare a merge
 `--allow WORD,"Multi Word Name"` (leak-scan allowlist; a phrase matches a
 whole run), `--source-words-from segments.json`, `--translations
 translations.json`, `--segments segments.json`, `--allow-extra-prefix`,
-`--min-ink`, `--report verify_report.json`, `--fail-on-review`. Omit
+`--min-ink`, `--report verify_report.json`, `--fail-on-review`, `--reference-fonts DIR` (the
+`NotoSansJP-VF.ttf` and `NotoSansSC-VF.ttf` faces gate 20 compares against; default `tests/fonts/`
+of a checkout — an installed package has none, so a service passes its own; with
+`--fail-on-review`, a CJK job exits 1 until they are shipped). Omit
 `--translations`: the always-on gates run unchanged.
