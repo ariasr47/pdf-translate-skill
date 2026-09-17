@@ -372,6 +372,40 @@ Green after restoring the fix: `tests.test_han_forms -v` → `Ran 45 tests in 87
 new). Parity not re-run: no non-CJK code path changed. Seven-module suite: `Ran 368 tests in
 140.984s` `OK` (366 + 2 new).
 
+## Fix wave 4 — the product's PR review
+
+Two changes, answering a read-only review of the open PRs (branch `feat/han-forms-gate`, PR #8, no
+version bump — v54 unchanged).
+
+1. A mapping `lang` that names no CJK convention was silent whether it was a real non-CJK tag
+(`es`) or a display name (`Japanese`, 日本語) a consumer's workbench most often holds; the latter
+is now REVIEW, the former still silent (the leak gates own that page's CJK).
+`han_forms.is_language_tag` — a 2–3 letter primary subtag plus BCP 47 subtags of 1–8 letters or
+digits — tells the two apart; `convention_for_lang` also accepts the ISO 639-2 forms `jpn`, `zho`
+and `kor` alongside `ja`, `zh` and `ko`.
+
+Red (HEAD 5381c56, before this wave):
+```
+AssertionError: None != 'JP' : jpn
+AttributeError: module 'pdf_translate.han_forms' has no attribute 'is_language_tag'
+IndexError: list index out of range
+```
+`tests.test_han_forms -v` → `Ran 47 tests in 86.430s` `FAILED (failures=1, errors=2)`.
+
+Green after the fix (`pdf_translate/han_forms.py`: `is_language_tag`, `convention_for_lang`
+extended; `pdf_translate/verify.py`: `han_forms_report`'s no-convention branch):
+`tests.test_han_forms -v` → `Ran 47 tests in 84.686s` `OK` (45 + 2 new). Parity unaffected by
+construction — a non-CJK job never reaches this branch
+(`test_a_non_cjk_lang_on_a_cjk_page_prints_nothing` stayed green throughout) — so the parity runner
+was not re-run. Seven-module suite: `Ran 370 tests in 180.863s` `OK` (368 + 2 new).
+
+2. Docs only: the kinsoku row now names the small kana counters (ゎ ゕ ゖ ヮ ヵ ヶ) and the
+half-width prolonged sound mark (ｰ, U+FF70) as a known engine difference, and every `lang`
+reference (`references/gates.md`, `SKILL.md`, `references/translations-format.md`,
+`docs/DECISIONS.md`) now says a tag, not a display name.
+
+The kinsoku note and the tag rule answer the product's review of 2026-09-16 §2 and §3.
+
 ## Rule 1 verification
 
 Independent pass by Claude Opus 5 (1M context), 2026-09-16, on branch `feat/han-forms-gate` at

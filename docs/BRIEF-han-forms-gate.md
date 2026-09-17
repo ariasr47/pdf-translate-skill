@@ -10,7 +10,9 @@ Han unification gives 直 骨 海 one code point each, but a Japanese reader see
 shape at once. This skill never selects a face — the caller supplies one — so nothing today
 checks that a `lang: ja` delivery was drawn with a Japanese face, or a `zh-Hans` one with a
 Chinese face. The gate must judge the delivered document, not a synthetic render, and must say
-"cannot attest" rather than guess.
+"cannot attest" rather than guess. The three probe characters 直 骨 海 are the ones the product's
+request named as known to differ between the conventions — given as behaviour, in words; the
+measurement and the gate are this repo's.
 
 ## 2. Measured — do not re-derive, do not alter
 

@@ -457,7 +457,8 @@ Every gate — what it reads, what fails, and why — is in
   zh, zh-Hans → Simplified Chinese) and with the other's, at the face's
   weight: only the faces that drew the CJK glyphs are judged; a face that
   draws the other region's forms of 直 骨 海 FAILs. No `lang` (a non-CJK
-  `/Lang` with no mapping `lang` counts as none), a face without the probe
+  `/Lang` with no mapping `lang` counts as none), a `lang` that is not a tag
+  (`Japanese` is a display name; use `ja`), a face without the probe
   glyphs (build faces with `prepare_font`, which adds them), a family that
   is not Noto, zh-Hant or ko (no reference measured yet), or no reference
   faces (`--reference-fonts DIR`; default `tests/fonts/`) is REVIEW, never
