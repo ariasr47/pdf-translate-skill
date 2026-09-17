@@ -276,6 +276,29 @@ class LeakCjkGateTests(unittest.TestCase):
         _, lines = self.console(self.ja_zh_kana, allow=[KANA_NAME])
         self.assertTrue(any(l.startswith('note: 1 source-language run(s) kept') or 'kept' in l for l in lines), lines)
 
+    def test_a_single_allow_token_that_clears_a_whole_line_is_said_so(self):
+        # A CJK sentence has no spaces, so a whole echoed line can be one --allow token. Allowed is
+        # allowed, but the PASS line and the kept-runs note must say a line was cleared.
+        v, g = self.gates(self.ja_zh_echo, allow=[JA[1]])
+        self.assertEqual((g['leak-cjk'].status, g['leak-cjk'].findings), ('PASS', ()), g['leak-cjk'])
+        _, lines = self.console(self.ja_zh_echo, allow=[JA[1]])
+        self.assertIn('PASS leak scan (CJK tell): 5 line(s) hold only characters a Simplified Chinese target can carry (1 line(s) cleared by --allow)', lines)
+        self.assertTrue(any(l.startswith('note: ') and 'kept' in l for l in lines), lines)
+
+    def test_a_page_with_a_fail_line_and_a_review_line_is_fail_and_lists_both(self):
+        doc = pymupdf.open()
+        page = doc.new_page(width=842, height=595)
+        tw = pymupdf.TextWriter(page.rect)
+        font = pymupdf.Font(fontfile=str(self.sc400))
+        for i, text in enumerate((JA[0], ZH_PARA, ZH[1])):
+            tw.append((72, 100 + 40 * i), text, font=font, fontsize=12)
+        tw.write_text(page)
+        lines, status, findings = verify_mod.cjk_tell_report(doc, 'JP', set(), [], set())
+        self.assertEqual(status, 'FAIL', lines)
+        self.assertTrue(lines[0].startswith('FAIL leak scan (CJK tell): 2 line(s)'), lines)
+        self.assertEqual(len(lines), 3, lines)
+        self.assertEqual([unicodedata.normalize('NFKC', f.text) for f in findings], [ZH_PARA, ZH[1]])
+
     def test_a_single_rare_character_is_review_not_fail(self):
         src, out, tr, segments = self.ja_zh_clean
         with pymupdf.open(out) as doc:

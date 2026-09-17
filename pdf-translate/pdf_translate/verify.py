@@ -1320,20 +1320,31 @@ def cjk_tell_report(doc, convention, keep, kept, allow):
     phrases) are skipped; single --allow tokens are removed before counting.
     A line with cjk_tell.LINE_FAIL or more tells is FAIL (an echoed sentence
     carries 9–56), one to five REVIEW (a name in kana, a rare character);
-    status FAIL > REVIEW > PASS; one Finding(page, 'line', text) per line."""
+    status FAIL > REVIEW > PASS; one Finding(page, 'line', text) per line.
+    A CJK sentence has no spaces, so one --allow token can be a whole line:
+    allowed is allowed, but never silently — a line whose every tell an
+    --allow token removed joins the kept-runs note and the PASS line counts it."""
     name = cjk_tell.REPERTOIRE[convention][0]
-    hits, judged = [], 0
+    hits, judged, cleared = [], 0, 0
     for page in doc:
         for text, *_ in _page_lines(page):
             if _kept(text, keep, kept, 'CJK'):
                 continue
             judged += 1
-            tells = cjk_tell.tells_in(cjk_tell.strip_allowed(text, allow), convention)
+            stripped = cjk_tell.strip_allowed(text, allow)
+            tells = cjk_tell.tells_in(stripped, convention)
+            if stripped != text and not tells and cjk_tell.tells_in(text, convention):
+                if kept is not None:
+                    kept.append(text.strip()[:70])
+                cleared += 1
             if tells:
                 hits.append((page.number + 1, text, tells))
     if not hits:
-        return ([f'PASS leak scan (CJK tell): {judged} line(s) hold only characters a {name} '
-                 f'target can carry'], 'PASS', [])
+        line = (f'PASS leak scan (CJK tell): {judged} line(s) hold only characters a {name} '
+                f'target can carry')
+        if cleared:
+            line += f' ({cleared} line(s) cleared by --allow)'
+        return [line], 'PASS', []
     worst = max(len(t) for _, _, t in hits)
     if worst >= cjk_tell.LINE_FAIL:
         other = {'JP': 'Chinese', 'SC': 'Japanese', 'TC': 'Japanese or Simplified Chinese'}

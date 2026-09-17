@@ -127,3 +127,48 @@ VERDICTS IDENTICAL
 ```
 
 Suite as CI runs it, eight modules: `Ran 388 tests in 146.280s` `OK`.
+
+### Fix wave
+
+Review finding (Important, reproduced): a single `--allow` token equal to a
+whole echoed CJK line has no spaces, so it never reaches the `keep` phrase
+path — `strip_allowed` erases every tell and the PASS line then claimed the
+line held only characters the target can carry, with no trace that a line
+had been allowed away. Fixed: `cjk_tell_report` now counts such a line as
+`cleared`, appends it (truncated to 70 chars) to the kept-runs note, and the
+PASS line gains ` ({cleared} line(s) cleared by --allow)` when any line was
+cleared. Allowed stays allowed; it is no longer silent.
+
+Red (`test_a_single_allow_token_that_clears_a_whole_line_is_said_so` fails on
+the PASS line missing the `cleared` suffix; the FAIL/REVIEW combination test
+already passed — the status logic needed no change):
+
+```
+FAIL: test_a_single_allow_token_that_clears_a_whole_line_is_said_so (tests.test_cjk_leak.LeakCjkGateTests.test_a_single_allow_token_that_clears_a_whole_line_is_said_so)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Dev\pdf-translate-skill\pdf-translate\tests\test_cjk_leak.py", line 285, in test_a_single_allow_token_that_clears_a_whole_line_is_said_so
+    self.assertIn('PASS leak scan (CJK tell): 5 line(s) hold only characters a Simplified Chinese target can carry (1 line(s) cleared by --allow)', lines)
+AssertionError: 'PASS leak scan (CJK tell): 5 line(s) hold only characters a Simplified Chinese target can carry (1 line(s) cleared by --allow)' not found in [... 'PASS leak scan (CJK tell): 5 line(s) hold only characters a Simplified Chinese target can carry', ...]
+
+----------------------------------------------------------------------
+Ran 2 tests in 4.569s
+
+FAILED (failures=1)
+```
+
+Green, module (12 gate tests + 8 tell tests):
+
+```
+test_a_page_with_a_fail_line_and_a_review_line_is_fail_and_lists_both (tests.test_cjk_leak.LeakCjkGateTests.test_a_page_with_a_fail_line_and_a_review_line_is_fail_and_lists_both) ... ok
+test_a_single_allow_token_that_clears_a_whole_line_is_said_so (tests.test_cjk_leak.LeakCjkGateTests.test_a_single_allow_token_that_clears_a_whole_line_is_said_so) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 10.065s
+
+OK
+```
+
+Suite as CI runs it, eight modules: `Ran 390 tests in 145.242s` `OK`. Parity
+not re-run: the fix touches only the `same_spaceless`/`leak-cjk` path, never
+the nine non-CJK parity jobs.
