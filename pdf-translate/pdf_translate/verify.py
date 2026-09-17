@@ -1872,7 +1872,6 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             print('PASS no untranslated running text')
             record('leak-running', 'PASS')
 
-    if not tell_ran:
         if isolated:
             uniq = sorted({w for _, w in isolated})
             print(f'REVIEW isolated source-script tokens ({len(uniq)}) - expected for '

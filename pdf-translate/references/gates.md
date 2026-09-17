@@ -62,7 +62,8 @@ one REVIEW line, as does a job with no `lang`. The tell cannot see a line
 of Han both languages share (住所氏名, 令和七年, 个人所得税): such a line is
 PASS for the tell and the PASS line says so — `--translations` and the
 visual pass remain the check for those, and `leak-scan` records SKIP
-`judged by leak-cjk`, never PASS, on such a job. Measured:
+`judged by leak-cjk`, never PASS, on such a job. A CJK ↔ CJK job whose tell finds nothing therefore no longer trips
+`--fail-on-review` on the old spaceless REVIEW (v54 exited 1 there); only what the tell sees can. Measured:
 `docs/BRIEF-cjk-leak-tell.md`.
 
 ## What `--translations translations.json` adds

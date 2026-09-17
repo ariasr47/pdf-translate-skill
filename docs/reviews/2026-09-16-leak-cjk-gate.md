@@ -258,3 +258,24 @@ then green; `docs/DECISIONS.md` gains one ledger row for gate 21;
 `docs/REQUESTS-from-product.md` are marked built/merged.
 
 ## Review
+
+Whole-branch review on Opus (2026-09-16), the independent pass for this branch (not a rendering change).
+First verdict **with fixes**: the tell sound, measured and cheap (33,600 CJK characters scanned in 0.016 s;
+no cache warranted); four Important items in the reporting layer, each reproduced by the reviewer — (1) the
+`leak-scan` PASS overclaimed what the tell can see: shared-Han lines (住所氏名生年月日, 令和七年三月十日,
+个人所得税) score zero tells for every convention, so `leak-scan` is now SKIP `judged by leak-cjk` and both
+lines state the blind spot; (2) the FAIL head named Japanese for a Traditional Chinese echo into a Simplified
+target — it now names the source convention; (3) the FAIL line asserted "untranslated" with no remedy — now
+"or a proper noun to allowlist with --allow"; (4) `convention_of` is zero-tolerance over the whole source (one
+rare kanji such as 𠮟 or 镕 keeps the old REVIEW) — reworded, and a tolerant variant parked as a measured
+follow-up in DECISIONS. Minors fixed in the same wave: partial `--allow` reductions noted, `strip_allowed`
+case-insensitive, a missing codec tolerated, the vacuous leak-running / leak-isolated lines silenced when the
+tell ran, "nine to fifty-six", a pinned note assertion, duplicate glyph comments removed.
+
+Confirmation pass after fix wave 2: every item re-run by the reviewer and confirmed; suite 392 OK re-run;
+**Ready to merge: Yes.** Cosmetics left: the kept-runs note says "kept" for a line `--allow` merely touched
+(the note's wording is shared with the Latin scan, so it stays); `_encodable` returns True on a build without
+the codec — a silent PASS on a stripped CPython, unreachable on a normal build; a `codecs.lookup` probe at
+import would route it to the REVIEW instead (follow-up). Taken in the closing commit: the two `tell_ran`
+guards merged (`tests.test_cjk_leak` + `tests.test_import_surface`: 41 OK); the `--fail-on-review`
+consequence (a clean CJK ↔ CJK job no longer exits 1 on the old spaceless REVIEW) written into gates.md.
