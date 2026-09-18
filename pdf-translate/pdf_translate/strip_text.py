@@ -328,8 +328,10 @@ def invisible_text_pages(src):
 # [export, display] so scripts, /V and submitted data keep working.
 
 
-class WidgetTextError(Exception):
-    """A widget-text mapping that cannot be applied honestly."""
+# Defined in .results with the rest of the refusal family; re-exported here so
+# `except strip_text.WidgetTextError` keeps working for everything that
+# catches it today. The name did not move, only its home.
+from .results import WidgetTextError  # noqa: F401  (re-export)
 
 
 def _target_of(spec, what, field):
