@@ -59,9 +59,12 @@ ones. If you edit an artboard, keep this true:
   `severity:5`, `kind:13`, `core[:48]!r`, then the detail. The 48 is a real
   truncation, not an ellipsis.
 - Gate lines use `verify`'s `REVIEW <gate>: <detail>`.
-- Commands are named by subcommand; the runnable spelling is
-  `python3 -m pdf_translate.pipeline …` — the package uses relative imports,
-  so the docstring's own `python3 pipeline.py` form raises `ImportError`.
+- Commands are named by subcommand. Two spellings run: `python3
+  scripts/pipeline.py …`, which is what `SKILL.md` documents and what the
+  thin wrappers from PR #2 exist for, and `python3 -m pdf_translate.pipeline
+  …`. The consoles use the package form. Only running the package module by
+  path (`python3 pdf_translate/pipeline.py`) raises `ImportError`, since the
+  modules import each other relatively — that is by design, not a defect.
 - Job counts are the real FL-150 → ja job in `dev/jobs/fl150-ja-2026-09-17/`:
   **247 cores, 13 merges, 5 overrides, 1 notice**; **31 findings** (1 critical,
   6 major, 24 minor); **25 accepted / 6 rejected** by the file's own
