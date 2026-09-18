@@ -51,14 +51,18 @@ issuer's own terms up.
 """
 import csv
 import json
+import logging
 import os
 import re
 import sys
 import unicodedata
 from dataclasses import dataclass
 
+from ._console import console, say
 from .extract_segments import write_find_say_hits
 from .verify import SPACELESS_SCRIPTS, dominant_script, strip_inline_markup
+
+log = logging.getLogger(__name__)
 
 # W3C i18n / IBM guidance: the shorter the string, the more room it needs.
 # (max source length, allowed growth factor). Forms are short labels, so
@@ -356,13 +360,15 @@ def _arg(argv, name, default=None):
 
 
 def _say(line):
-    try:
-        print(line)
-    except UnicodeEncodeError:
-        print(line.encode('ascii', 'backslashreplace').decode('ascii'))
+    say(log, line)
 
 
 def main(argv=None):
+    with console():
+        return _main(argv)
+
+
+def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv:
         print(__doc__)

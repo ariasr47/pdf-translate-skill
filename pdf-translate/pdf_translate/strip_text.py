@@ -59,6 +59,7 @@ and leftover_text (empty on success). Exit 1 when leftover_text is not
 empty.
 """
 import json
+import logging
 import os
 import sys
 import tempfile
@@ -331,7 +332,10 @@ def invisible_text_pages(src):
 # Defined in .results with the rest of the refusal family; re-exported here so
 # `except strip_text.WidgetTextError` keeps working for everything that
 # catches it today. The name did not move, only its home.
-from .results import WidgetTextError  # noqa: F401  (re-export)
+from ._console import console, say
+from .results import StripResult, WidgetTextError  # noqa: F401
+
+log = logging.getLogger(__name__)
 
 
 def _target_of(spec, what, field):
@@ -659,14 +663,47 @@ def strip_text(src, dst, hide_buttons=None, captions=None, widget_text=None,
     return report
 
 
+def run_strip(src, dst, hide_buttons=None, captions=None, widget_text=None,
+              keep_encryption=False):
+    """Strip every page's text. Silent. Returns a StripResult. Raises on refusal.
+
+    `strip_text` was already the silent half of this pair — it returns a report
+    dict and does not print; `main` is what prints. This is the same work with
+    the family's shape on the way out, so a consumer learns one result type
+    rather than one dict schema per stage. The dict is not going anywhere:
+    `strip_text` keeps returning it, and the 1 capture block and every caller
+    that reads `report['leftover_text']` are untouched.
+    """
+    report = strip_text(src, dst, hide_buttons=hide_buttons, captions=captions,
+                        widget_text=widget_text,
+                        keep_encryption=keep_encryption)
+    encryption = report.get('encryption') or {}
+    return StripResult(
+        output=dst,
+        pages=len(report.get('pages') or ()),
+        xfa_removed=bool(report.get('xfa_removed')),
+        perms_removed=', '.join(report.get('perms_removed') or ()),
+        certified=bool(report.get('certified')),
+        encrypted=bool(encryption.get('encrypted')),
+        reencrypted=bool(report.get('reencrypted')),
+        dead_buttons=tuple(report.get('dead_buttons') or ()),
+        hidden=tuple(report.get('hidden') or ()),
+        rewritten_captions=tuple(report.get('rewritten_captions') or ()),
+        rewritten_widget_text=tuple(report.get('rewritten_widget_text') or ()),
+        leftover_text=tuple(report.get('leftover_text') or ()),
+    )
+
+
 def _say(line):
-    try:
-        print(line)
-    except UnicodeEncodeError:
-        print(line.encode('ascii', 'backslashreplace').decode('ascii'))
+    say(log, line)
 
 
 def main(argv=None):
+    with console():
+        return _main(argv)
+
+
+def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     src, dst = argv[0], argv[1]
     hide = []

@@ -24,6 +24,7 @@ self-contained and carry their own ZapfDingbats resource.
 
 Usage: python3 field_fonts.py IN.pdf FULL_FONT.ttf OUT.pdf [--name TransFF]
 """
+import logging
 import os
 import re
 import sys
@@ -31,9 +32,33 @@ import sys
 import pikepdf
 import pymupdf
 
+from ._console import console
+from .results import FieldFontsResult, PdfTranslateError
+
+log = logging.getLogger(__name__)
+
 
 def field_fonts(inp, font, out, name='TransFF'):
-    """Embed a full-coverage field font and rewrite text-field /DA. Returns 0."""
+    """Embed a full-coverage field font and rewrite text-field /DA. Returns 0.
+
+    The loud shape, unchanged: same signature, same printed bytes, same return
+    code. `run_field_fonts` is the one a service calls — it returns a
+    `FieldFontsResult` and raises instead of printing.
+    """
+    with console():
+        try:
+            run_field_fonts(inp, font, out, name=name)
+        except PdfTranslateError as exc:
+            log.info(exc.console_line)
+            return exc.exit_code
+    return 0
+
+
+def run_field_fonts(inp, font, out, name='TransFF'):
+    """Embed a full-coverage field font and rewrite text-field /DA.
+
+    Silent. Returns a FieldFontsResult. Raises on refusal.
+    """
     tmp = out + '.tmp_withfont.pdf'
     doc = pymupdf.open(inp)
     try:
@@ -47,9 +72,10 @@ def field_fonts(inp, font, out, name='TransFF'):
         fobj = pdf.pages[0].Resources.Font.TransFieldFont
 
         if '/AcroForm' not in pdf.Root:
-            print('no /AcroForm — nothing to do (non-form PDF); copying through')
+            log.info('no /AcroForm — nothing to do (non-form PDF); copying through')
             pdf.save(out)
-            return 0
+            return FieldFontsResult(output=out, fields=0, face=name,
+                                    acroform=False)
         af = pdf.Root.AcroForm
 
         if '/DR' not in af:
@@ -111,15 +137,16 @@ def field_fonts(inp, font, out, name='TransFF'):
         # Windows: the temp file can stay locked (WinError 32) after a
         # successful save. The output PDF is already written; do not fail.
         if getattr(e, 'winerror', None) == 32 or e.errno in (13, 16):
-            print(f'(temp cleanup skipped: {e})')
+            log.info(f'(temp cleanup skipped: {e})')
         else:
             raise
-    print(f'registered /{name} in /DR, rewrote /DA on {count} text and '
-          f'choice field objects -> {out}')
+    log.info(f'registered /{name} in /DR, rewrote /DA on {count} text and '
+             f'choice field objects -> {out}')
     if count == 0:
-        print('  (no text or choice fields found — checkboxes and buttons '
-              'are unaffected by design)')
-    return 0
+        log.info('  (no text or choice fields found — checkboxes and buttons '
+                 'are unaffected by design)')
+    return FieldFontsResult(output=out, fields=count, face=name,
+                            acroform=True)
 
 
 def main(argv=None):
