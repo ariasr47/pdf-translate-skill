@@ -13,6 +13,7 @@ A mismatch here is a defect in review.py, never a reason to edit the numbers.
 """
 import importlib
 import json
+import logging
 import os
 import tempfile
 import unittest
@@ -436,6 +437,247 @@ class RunReviewTests(unittest.TestCase):
             back = json.loads(text)
             self.assertEqual(back['schema'], review.SCHEMA)
             self.assertEqual(len(back['findings']), 31)
+
+
+pipeline = importlib.import_module('pdf_translate.pipeline')
+
+
+class RefusalTests(unittest.TestCase):
+    """The CLI surface: `review`, and the refusal inside `finish`.
+
+    Every assertion here is on REAL captured stdout, never on a logger record.
+    The new commands emit through the package logger, and a logger with no
+    handler attached produces nothing at all — a mistake every other kind of
+    test would sail straight past.
+    """
+
+    FONT = Path(__file__).resolve().parent / 'fonts' / 'NotoSans-Regular.ttf'
+
+    def _work(self, tmp, review_json=True, resolution=None):
+        work = Path(tmp) / 'work'
+        work.mkdir(parents=True, exist_ok=True)
+        for name in ('translations.json', 'NOTES.md'):
+            (work / name).write_bytes((JOB / name).read_bytes())
+        if review_json:
+            with open(JOB / 'review.json', encoding='utf-8') as fh:
+                doc = json.load(fh)
+            if resolution is not None:
+                doc['findings'][0]['resolution'] = resolution
+            with open(work / 'review.json', 'w', encoding='utf-8') as fh:
+                json.dump(doc, fh, ensure_ascii=False)
+        return work
+
+    def _delivery(self, tmp):
+        """A one-page original and output, enough for field_fonts + compare."""
+        import pymupdf
+        paths = {}
+        for name in ('orig.pdf', 'out.pdf'):
+            doc = pymupdf.open()
+            doc.new_page().insert_text((72, 72), 'Income and Expense')
+            path = Path(tmp) / name
+            doc.save(path)
+            doc.close()
+            paths[name] = str(path)
+        paths['final'] = str(Path(tmp) / 'final.pdf')
+        paths['html'] = str(Path(tmp) / 'compare.html')
+        return paths
+
+    def _run(self, argv):
+        """pipeline.main with stdout captured — the real console, not a mock."""
+        import io
+        from contextlib import redirect_stdout
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = pipeline.main(argv)
+        return rc, buf.getvalue()
+
+    # --- finish -----------------------------------------------------------
+
+    def test_finish_without_work_refuses_and_names_the_flag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = self._delivery(tmp)
+            rc, out = self._run(['finish', d['orig.pdf'], d['out.pdf'],
+                                 str(self.FONT), d['final'], d['html']])
+            self.assertEqual(rc, 2)
+            self.assertIn('--work', out)
+            self.assertFalse(os.path.exists(d['final']))
+
+    def test_finish_refuses_when_review_json_is_absent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = self._work(tmp, review_json=False)
+            d = self._delivery(tmp)
+            rc, out = self._run(['finish', d['orig.pdf'], d['out.pdf'],
+                                 str(self.FONT), d['final'], d['html'],
+                                 '--work', str(work)])
+            self.assertEqual(rc, 2)
+            # What is missing, the one command that fixes it, and the escape.
+            self.assertIn('review.json', out)
+            self.assertIn('review --work', out)
+            self.assertIn('--no-review', out)
+
+    def test_finish_refuses_while_any_finding_is_open(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = self._work(tmp, resolution='open')
+            d = self._delivery(tmp)
+            rc, out = self._run(['finish', d['orig.pdf'], d['out.pdf'],
+                                 str(self.FONT), d['final'], d['html'],
+                                 '--work', str(work)])
+            self.assertEqual(rc, 2)
+            open_lines = [ln for ln in out.splitlines()
+                          if ln.startswith('OPEN ')]
+            self.assertEqual(len(open_lines), 1)
+            # qa_check's column shape, reused verbatim.
+            self.assertIn("'head of household'", open_lines[0])
+
+    def test_finish_passes_when_every_finding_is_resolved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = self._work(tmp)
+            d = self._delivery(tmp)
+            rc, out = self._run(['finish', d['orig.pdf'], d['out.pdf'],
+                                 str(self.FONT), d['final'], d['html'],
+                                 '--work', str(work)])
+            self.assertEqual(rc, 0, out)
+            self.assertTrue(os.path.isfile(d['final']))
+
+    def test_no_review_delivers_and_prints_one_review_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = self._work(tmp, review_json=False)
+            d = self._delivery(tmp)
+            rc, out = self._run(['finish', d['orig.pdf'], d['out.pdf'],
+                                 str(self.FONT), d['final'], d['html'],
+                                 '--work', str(work), '--no-review'])
+            self.assertEqual(rc, 0, out)
+            self.assertTrue(os.path.isfile(d['final']))
+            lines = [ln for ln in out.splitlines()
+                     if ln.startswith('REVIEW no reviser: ')]
+            self.assertEqual(len(lines), 1, out)
+
+    def test_finish_writes_review_state_json_on_every_run(self):
+        for review_json, expect_rc in ((False, 2), (True, 0)):
+            with tempfile.TemporaryDirectory() as tmp:
+                work = self._work(tmp, review_json=review_json)
+                d = self._delivery(tmp)
+                rc, out = self._run(['finish', d['orig.pdf'], d['out.pdf'],
+                                     str(self.FONT), d['final'], d['html'],
+                                     '--work', str(work)])
+                self.assertEqual(rc, expect_rc, out)
+                state = Path(d['final']).parent / 'review_state.json'
+                self.assertTrue(state.is_file(),
+                                f'no record on the {"passing" if review_json else "refused"} run')
+                with open(state, encoding='utf-8') as fh:
+                    record = json.load(fh)
+                self.assertEqual(record['schema'], review.SCHEMA)
+                self.assertIn('version', record)
+                self.assertEqual(record['blocks_delivery'], not review_json)
+
+    def test_review_state_json_records_the_no_review_escape(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = self._work(tmp, review_json=False)
+            d = self._delivery(tmp)
+            self._run(['finish', d['orig.pdf'], d['out.pdf'], str(self.FONT),
+                       d['final'], d['html'], '--work', str(work),
+                       '--no-review'])
+            with open(Path(d['final']).parent / 'review_state.json',
+                      encoding='utf-8') as fh:
+                record = json.load(fh)
+            self.assertTrue(record['no_review'])
+            # The REVIEW line lives in the delivery's record, not only in a
+            # terminal scrollback a caller may never read.
+            self.assertTrue(record['review_line'].startswith('REVIEW no reviser'))
+
+    # --- review -----------------------------------------------------------
+
+    def test_review_subcommand_generates_then_ingests(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = self._work(tmp, resolution='open')
+            rc, out = self._run(['review', '--work', str(work)])
+            self.assertEqual(rc, 0, out)
+            self.assertIn('247 cores, 13 merges, 5 overrides, 1 notice', out)
+            self.assertIn('review_pairs.md', out)
+            self.assertIn('review_prompt.md', out)
+
+            rc, out = self._run(['review', '--work', str(work),
+                                 '--ingest', 'review.json'])
+            self.assertEqual(rc, 1, out)
+            self.assertIn('31 finding(s)', out)
+            self.assertIn('1 open', out)
+            # findings[0] is the accepted terminology finding this row exists
+            # for, forced back to open here — so ten accepted terminology
+            # findings remain, all ten skipped for want of a named term.
+            self.assertIn('10 skipped', out)
+
+    def test_review_reports_a_migrated_resolution(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = self._work(tmp)
+            rc, out = self._run(['review', '--work', str(work),
+                                 '--ingest', 'review.json'])
+            self.assertEqual(rc, 0, out)
+            self.assertIn('migrated resolution', out)
+            self.assertIn('resolution_note', out)
+
+    def test_review_without_work_refuses(self):
+        rc, out = self._run(['review'])
+        self.assertEqual(rc, 2)
+        self.assertIn('--work', out)
+
+    def test_the_new_commands_reach_real_stdout(self):
+        # The regression test for the one way the logger change fails
+        # silently: log.info with no handler attached writes nothing, and
+        # every other assertion in this class would still pass if the lines
+        # were merely built and dropped.
+        with tempfile.TemporaryDirectory() as tmp:
+            work = self._work(tmp)
+            rc, out = self._run(['review', '--work', str(work)])
+            self.assertEqual(rc, 0)
+            self.assertTrue(out.strip(), 'review wrote nothing to real stdout')
+            self.assertTrue(any(ln.startswith('review: ')
+                                for ln in out.splitlines()), out)
+            self.assertTrue(any(ln.startswith('elapsed ')
+                                for ln in out.splitlines()), out)
+
+    def test_a_bare_glossary_name_resolves_against_work(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = self._work(tmp, review_json=False)
+            append_termbase(str(work / 'glossary.csv'),
+                            [('head of household', '特定世帯主')])
+            rc, out = self._run(['qa', '--work', str(work),
+                                 '--glossary', 'glossary.csv'])
+            # The point is that the glossary was FOUND, not what qa says.
+            self.assertNotIn('could not read', out.lower())
+            self.assertNotIn('no such file', out.lower())
+            self.assertIn('qa_check:', out)
+
+
+class LoggingHygieneTests(unittest.TestCase):
+
+    def test_importing_the_package_configures_no_logging(self):
+        # A library must never configure logging for its host. Run in a child
+        # so nothing this suite already imported can mask the answer.
+        import subprocess
+        import sys as _sys
+        code = (
+            'import logging, json, sys;'
+            'import pdf_translate;'
+            'root = logging.getLogger();'
+            'pkg = logging.getLogger("pdf_translate");'
+            'print(json.dumps({'
+            '"root_handlers": len(root.handlers),'
+            '"root_level": root.level,'
+            '"pkg_handlers": [type(h).__name__ for h in pkg.handlers],'
+            '}))'
+        )
+        proc = subprocess.run(
+            [_sys.executable, '-c', code],
+            cwd=str(Path(__file__).resolve().parents[1]),
+            capture_output=True, text=True)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        got = json.loads(proc.stdout)
+        self.assertEqual(got['root_handlers'], 0)
+        # logging.root is constructed at WARNING; an untouched root still
+        # reads 30, so that — not NOTSET — is what "configured nothing" looks
+        # like here. What matters is that no handler was attached to it.
+        self.assertEqual(got['root_level'], logging.WARNING)
+        self.assertEqual(got['pkg_handlers'], ['NullHandler'])
 
 
 if __name__ == '__main__':

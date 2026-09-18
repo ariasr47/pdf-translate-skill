@@ -494,12 +494,17 @@ def append_termbase(path, rows):
     return added, conflicts
 
 
-def run_review(work, ingest=None, notes=None):
-    """The whole stage. Reads, writes three files, returns a verdict.
+def run_review(work, ingest=None, notes=None, generate=True):
+    """The whole stage. Reads, writes up to three files, returns a verdict.
 
     Prints nothing, raises nothing, exits nothing. A missing work directory is
     an error in the verdict, not an exception, and is never created here: this
     stage runs against a job someone else built.
+
+    `generate=False` makes it read-only — no pairs file, no prompt, no
+    termbase append. That is how `finish` asks "what is the review state of
+    this job?" without a packaging step quietly rewriting the reviser's inputs
+    underneath them.
     """
     errors, wrote = [], []
     if not os.path.isdir(work):
@@ -531,7 +536,7 @@ def run_review(work, ingest=None, notes=None):
         except (OSError, ValueError):
             segments = None
 
-    if translations:
+    if translations and generate:
         pairs_path = os.path.join(work, 'review_pairs.md')
         with open(pairs_path, 'w', encoding='utf-8', newline='\n') as fh:
             fh.write(review_pairs_md(translations, segments, notes_text))
@@ -555,17 +560,19 @@ def run_review(work, ingest=None, notes=None):
             migrations = [(f.core, f.resolution_note, f.resolution)
                           for f in findings if f.migrated]
             rows, skipped = termbase_rows(findings)
-            if rows:
+            if rows and generate:
                 glossary = os.path.join(work, 'glossary.csv')
                 added, conflicts = append_termbase(glossary, rows)
                 if added:
                     wrote.append(glossary)
 
-    prompt_doc = document or (translations.get('document') if translations else None)
-    prompt_path = os.path.join(work, 'review_prompt.md')
-    with open(prompt_path, 'w', encoding='utf-8', newline='\n') as fh:
-        fh.write(review_prompt_md(prompt_doc, 'review_pairs.md'))
-    wrote.append(prompt_path)
+    if generate:
+        prompt_doc = (document or
+                      (translations.get('document') if translations else None))
+        prompt_path = os.path.join(work, 'review_prompt.md')
+        with open(prompt_path, 'w', encoding='utf-8', newline='\n') as fh:
+            fh.write(review_prompt_md(prompt_doc, 'review_pairs.md'))
+        wrote.append(prompt_path)
 
     return ReviewVerdict(
         work=work, findings=tuple(findings), reviewer=reviewer,
