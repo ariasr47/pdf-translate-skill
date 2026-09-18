@@ -23,7 +23,16 @@ and they are the whole reason this probe has four cases instead of one.
 Nothing here is a gate and nothing here is shipped: it is a measurement whose
 answer belongs in a brief, per the house rule that a design follows a probe.
 
+Without --source the job is a synthetic one-pager: one core, no form fields, no
+widgets, no merges. That shape is what the first run measured, and it is the
+shape a "only /ID varies" claim is weakest on -- a form's widget appearances and
+a dense table's many cores are exactly where a second varying key would hide.
+Pass --source to run the same four comparisons over a corpus PDF instead; the
+mapping is then identity (every core translated to itself), because the question
+is byte stability, not translation quality, and identity cannot overflow a box.
+
     PYTHONUTF8=1 python dev/probes/determinism_probe.py [--work DIR] [--gap 3]
+    PYTHONUTF8=1 python dev/probes/determinism_probe.py --source corpus/choice_fields.pdf
 """
 import json
 import re
@@ -58,29 +67,55 @@ def _quiet():
     return contextlib.redirect_stdout(io.StringIO())
 
 
-def build_job(work):
-    """A one-page job the real pipeline produced: strip, extract, a mapping."""
+def shape_of(path):
+    """How much furniture the source carries, so the brief can say what shape
+    the claim is established for instead of implying every shape."""
+    doc = pymupdf.open(str(path))
+    widgets = sum(1 for page in doc for _ in page.widgets())
+    annots = sum(1 for page in doc for _ in page.annots())
+    pages = doc.page_count
+    doc.close()
+    return pages, widgets, annots
+
+
+def build_job(work, source=None):
+    """A job the real pipeline produced: strip, extract, a mapping.
+
+    Synthetic and one-page by default. With `source`, the same pipeline over a
+    corpus PDF, translated identically core-for-core."""
     work.mkdir(parents=True, exist_ok=True)
     src = work / 'orig.pdf'
-    doc = pymupdf.open()
-    page = doc.new_page()
-    page.insert_text((72, 72), SOURCE)
-    doc.save(src)
-    doc.close()
+    if source is None:
+        doc = pymupdf.open()
+        page = doc.new_page()
+        page.insert_text((72, 72), SOURCE)
+        doc.save(src)
+        doc.close()
+        mapping = {SOURCE: TARGET}
+    else:
+        shutil.copyfile(source, src)
+
+    with _quiet():
+        strip_text(str(src), str(work / 'stripped.pdf'))
+        extract_segments(str(src), outdir=str(work))
+
+    if source is not None:
+        cores = json.loads((work / 'to_translate.json')
+                           .read_text(encoding='utf-8'))['cores']
+        # Identity: the probe asks whether the bytes are stable, not whether
+        # the words are right, and identity is the one mapping that cannot
+        # overflow a box or reach for a glyph the face does not have.
+        mapping = {core['text']: core['text'] for core in cores}
 
     font = str(FONT)
     (work / 'translations.json').write_text(json.dumps({
         'fonts': {'regular': font, 'bold': font,
                   'italic': font, 'bold_italic': font},
         'lang': 'es',
-        'translations': {SOURCE: TARGET},
+        'translations': mapping,
         'merges': [], 'overrides': [], 'center': [], 'skip': [],
     }, ensure_ascii=False), encoding='utf-8')
-
-    with _quiet():
-        strip_text(str(src), str(work / 'stripped.pdf'))
-        extract_segments(str(src), outdir=str(work))
-    return src
+    return src, len(mapping)
 
 
 def run(work, out):
@@ -111,6 +146,61 @@ def doc_ids(data):
     decides how much of C7 there is."""
     m = re.search(rb'/ID\s*\[\s*<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>', data)
     return (m.group(1).decode(), m.group(2).decode()) if m else None
+
+
+def discriminate(work, rounds=8):
+    """"Same instant" is an assumption, not a measurement -- so measure it.
+
+    The four-case layout above calls a vs c "same instant", but c runs after b.
+    If the clock ticks in that gap, a path-leak and a clock-leak produce exactly
+    the same evidence, and "the output path does not leak" rests on the tick
+    having happened to fall elsewhere. That is luck, not a measurement.
+
+    So: alternate X and Y many times, and use the /ID's own second element as
+    the tick counter. Runs sharing an element 2 ran inside one tick. Any tick
+    holding BOTH paths is a controlled experiment the clock cannot confound:
+
+      * bytes equal there            -> the path is NOT in the bytes.
+      * bytes differ there           -> the path IS in the bytes.
+      * no tick ever holds both      -> nothing is proved; say so.
+    """
+    print(f'\n--- path vs clock discriminator ({rounds} X/Y pairs, back to back)')
+    seq = []
+    t0 = time.monotonic()
+    for _ in range(rounds):
+        for name in ('out_x.pdf', 'out_y.pdf'):
+            data = run(work, work / name)
+            pair = doc_ids(data)
+            seq.append((name, data, pair[1] if pair else None))
+    elapsed = time.monotonic() - t0
+
+    ticks = {}
+    for name, data, tick in seq:
+        ticks.setdefault(tick, []).append((name, data))
+    both = {t: members for t, members in ticks.items()
+            if len({n for n, _ in members}) == 2}
+    print(f'    {len(seq)} runs in {elapsed:.2f}s, '
+          f'{len(ticks)} distinct /ID element 2 value(s)')
+    print(f'    {len(both)} tick(s) contain BOTH output paths')
+
+    verdict = None
+    for tick, members in both.items():
+        x = next(d for n, d in members if n == 'out_x.pdf')
+        y = next(d for n, d in members if n == 'out_y.pdf')
+        same = x == y
+        print(f'      tick {tick[:16]}…  x == y: {same}')
+        verdict = same if verdict is None else (verdict and same)
+
+    if verdict is True:
+        print('    => the OUTPUT PATH is not in the bytes. Two runs to')
+        print('       different paths inside one tick are byte-identical, so')
+        print('       the only thing left varying is the tick itself.')
+    elif verdict is False:
+        print('    => the OUTPUT PATH is in the bytes. A fixed doc_id is not')
+        print('       enough on this shape; the path must stop reaching /ID.')
+    else:
+        print('    => inconclusive: no tick held both paths. Raise --rounds.')
+    return verdict
 
 
 def diff(a, b, label):
@@ -144,14 +234,26 @@ def main(argv):
     work = Path(argv[argv.index('--work') + 1]) if '--work' in argv else \
         ROOT / 'runs' / 'determinism-probe'
     gap = float(argv[argv.index('--gap') + 1]) if '--gap' in argv else 3.0
+    source = None
+    if '--source' in argv:
+        source = Path(argv[argv.index('--source') + 1])
+        if not source.is_absolute():
+            source = (ROOT / 'pdf-translate' / source).resolve()
+        if not source.exists():
+            raise SystemExit(f'no such source: {source}')
     if work.exists():
         shutil.rmtree(work)
 
     print(f'pymupdf {(pymupdf.__doc__ or "?").strip().splitlines()[0]}')
     print(f'python  {sys.version.split()[0]}')
     print(f'work    {work}')
+    print(f'source  {source.name if source else "(synthetic one-pager)"}')
 
-    build_job(work)
+    _, ncores = build_job(work, source)
+    if source is not None:
+        pages, widgets, annots = shape_of(source)
+        print(f'shape   {pages} page(s), {ncores} core(s), '
+              f'{widgets} widget(s), {annots} annotation(s)')
     a = run(work, work / 'out_a.pdf')
     b = run(work, work / 'out_a.pdf')          # same path, immediately
     c = run(work, work / 'out_c.pdf')          # different path, same instant
@@ -180,6 +282,9 @@ def main(argv):
     r3 = diff(a, d, f'same path, {gap:g}s later')
     r4 = diff(a, e, f'different path, {gap:g}s later')
 
+    path_clean = discriminate(work)
+    path_leaks = path_clean is False
+
     print('\n=== verdict')
     if not (r1 or r2 or r3 or r4):
         print('    retypeset is already byte-deterministic on this job.')
@@ -194,12 +299,17 @@ def main(argv):
             print("    the source's /CreationDate, /ModDate and /Producer")
             print('    through unchanged, so no timestamp parameter is needed')
             print('    for them.')
-        if not r2 and (r3 or r4):
-            print('    The output PATH does not leak; the CLOCK does. Pinning or')
-            print('    deriving /ID is the whole of C7 for this path.')
-        elif r2:
+        if path_leaks:
             print('    The output path leaks into the bytes — that is a second')
             print('    problem and it is not a timestamp.')
+        elif r3 or r4 or r2:
+            print('    The output PATH does not leak; the CLOCK does. Pinning or')
+            print('    deriving /ID is the whole of C7 for this path.')
+            if r2:
+                print('    (The "same instant" pair differed too, but the')
+                print('     discriminator shows two runs to the SAME path also')
+                print('     differ, so that pair measures elapsed time, not the')
+                print('     path.)')
     return 0
 
 
