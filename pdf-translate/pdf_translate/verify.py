@@ -738,8 +738,16 @@ def missing_translation_targets(page_text, targets):
     /ToUnicode to the authored code points, so an authored NBSP must land
     as an NBSP, and folding that here would hide exactly the drift the
     canonical-text-layer gate exists for.
+
+    A target in a spaceless script (CJK, Thai, Khmer, ...) wraps with no
+    space at the break, so the layer holds a newline where the paragraph
+    holds nothing; for those the wrapping whitespace is removed on both
+    sides instead of collapsed. A Latin target still needs its spaces.
+    Measured on the FL-150 -> ja job (2026-09-17): every wrapped merge and
+    the notice came back "missing" from a correct file.
     """
     hay = normalize_ws(page_text)
+    hay_joined = None
     missing = []
     seen = set()
     for raw in targets:
@@ -749,9 +757,20 @@ def missing_translation_targets(page_text, targets):
         if nt in seen:
             continue
         seen.add(nt)
-        if nt not in hay:
-            missing.append(raw)
+        if nt in hay:
+            continue
+        if _has_spaceless_script(nt):
+            if hay_joined is None:
+                hay_joined = _WRAP_WS.sub('', page_text or '')
+            if _WRAP_WS.sub('', raw) in hay_joined:
+                continue
+        missing.append(raw)
     return missing
+
+
+def _has_spaceless_script(text):
+    """True if any letter of text belongs to a script written without spaces."""
+    return any(script_of(ch) in SPACELESS_SCRIPTS for ch in text)
 
 
 PUSHBUTTON = 1 << 16
@@ -760,8 +779,9 @@ PUSHBUTTON = 1 << 16
 def pushbutton_captions(doc):
     """Pushbutton captions (/MK /CA) keyed by field name.
 
-    Hidden is an annotation /F bit, not field flags — not filtered here.
-    --hide-buttons is a different path; skip/captions is this gate.
+    Hidden is an annotation /F bit, not field flags — not filtered here:
+    the ORIGINAL's captions are all wanted. hidden_pushbuttons() is the
+    filter the two gates apply to the output.
     """
     caps = {}
     for page in doc:
@@ -774,14 +794,49 @@ def pushbutton_captions(doc):
     return caps
 
 
-def leftover_button_captions(orig_caps, out_caps, out_text, skip=None):
+def _annot_hidden(doc, widget):
+    """The Hidden bit of the widget ANNOTATION's /F flags (not field flags)."""
+    try:
+        kind, val = doc.xref_get_key(widget.xref, 'F')
+    except Exception:
+        return False
+    if kind != 'int':
+        return False
+    try:
+        return bool(int(val) & 2)
+    except (TypeError, ValueError):
+        return False
+
+
+def hidden_pushbuttons(doc):
+    """Field names of pushbuttons whose annotation flags say Hidden.
+
+    A hidden widget draws nothing: no caption on the page, no width to
+    fit. --hide-buttons sets the bit at strip time; the chrome and
+    caption-width gates leave those buttons alone (FL-150's four dead XFA
+    buttons were hidden that way and FAILed both gates, 2026-09-17).
+    """
+    names = set()
+    for page in doc:
+        for w in page.widgets() or []:
+            if not (w.field_flags & PUSHBUTTON):
+                continue
+            if _annot_hidden(doc, w):
+                names.add(w.field_name)
+    return names
+
+
+def leftover_button_captions(orig_caps, out_caps, out_text, skip=None, hidden=None):
     """Original pushbutton captions still drawing, and not skip / not rewritten.
 
     get_text() includes widget appearance streams, so a leftover /AP of
     'Print' is visible here even after strip removed page text. Rewritten
-    CA plus dropped /AP removes it. skip is the explicit leave-chrome path.
+    CA plus dropped /AP removes it. skip is the explicit leave-chrome path;
+    hidden names the output pushbuttons whose annotation is Hidden, which
+    draw nothing and are not leftover.
     """
     skip = set(skip or [])
+    hidden = set(hidden or [])
     hay = normalize_ws_nbsp(out_text)
     leftover = []
     for name, cap in orig_caps.items():
@@ -789,6 +844,8 @@ def leftover_button_captions(orig_caps, out_caps, out_text, skip=None):
         if len(nt) < 2:
             continue
         if cap in skip or nt in skip:
+            continue
+        if name in hidden:
             continue
         out_n = normalize_ws_nbsp(out_caps.get(name) or '')
         rewritten = bool(out_n) and out_n != nt
@@ -821,11 +878,16 @@ def caption_fontsize(widget):
 
 
 def overflowing_button_captions(doc):
-    """Output pushbuttons whose /CA does not fit the widget rect."""
+    """Output pushbuttons whose /CA does not fit the widget rect.
+
+    A Hidden pushbutton draws no caption, so it has nothing to fit.
+    """
     hits = []
     for page in doc:
         for w in page.widgets() or []:
             if not (w.field_flags & PUSHBUTTON):
+                continue
+            if _annot_hidden(doc, w):
                 continue
             cap = (w.button_caption or '').strip()
             if not cap:
@@ -1936,6 +1998,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             pushbutton_captions(jc),
             hay,
             skip=conf.get('skip') or [],
+            hidden=hidden_pushbuttons(jc),
         )
         if leftover:
             print(f'FAIL untranslated button captions ({len(leftover)}):')

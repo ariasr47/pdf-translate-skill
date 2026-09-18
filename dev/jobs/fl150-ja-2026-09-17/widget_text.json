@@ -1,0 +1,828 @@
+{
+ "BarNo_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "STATE BAR NUMBER:",
+   "target": "州弁護士会番号："
+  }
+ },
+ "AttyName_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "NAME:",
+   "target": "氏名："
+  }
+ },
+ "AttyFirm_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "FIRM NAME:",
+   "target": "事務所名："
+  }
+ },
+ "AttyStreet_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "STREET ADDRESS:",
+   "target": "住所："
+  }
+ },
+ "AttyCity_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "CITY:",
+   "target": "市："
+  }
+ },
+ "AttyState_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "STATE:",
+   "target": "州："
+  }
+ },
+ "AttyZip_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "ZIP CODE:",
+   "target": "郵便番号："
+  }
+ },
+ "Phone_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "TELEPHONE NO.:",
+   "target": "電話番号："
+  }
+ },
+ "Fax_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "FAX NO.:",
+   "target": "FAX番号："
+  }
+ },
+ "Email_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "E-MAIL ADDRESS:",
+   "target": "メールアドレス："
+  }
+ },
+ "AttyFor_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "ATTORNEY FOR (name):",
+   "target": "（氏名）の代理人弁護士："
+  }
+ },
+ "CrtCounty_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "SUPERIOR COURT OF CALIFORNIA, COUNTY OF",
+   "target": "カリフォルニア州上位裁判所、郡："
+  }
+ },
+ "Street_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "STREET ADDRESS:",
+   "target": "住所："
+  }
+ },
+ "MailingAdd_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "MAILING ADDRESS:",
+   "target": "郵送先住所："
+  }
+ },
+ "CityZip_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "CITY AND ZIP CODE:",
+   "target": "市・郵便番号："
+  }
+ },
+ "Branch_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "BRANCH NAME:",
+   "target": "支部名："
+  }
+ },
+ "Party1_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "PETITIONER:",
+   "target": "申立人："
+  }
+ },
+ "Party2_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "RESPONDENT:",
+   "target": "相手方："
+  }
+ },
+ "Party3_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "OTHER PARTY/PARENT/CLAIMANT:",
+   "target": "その他の当事者／親／請求人："
+  }
+ },
+ "CaseNumber_ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "CASE NUMBER:",
+   "target": "事件番号："
+  }
+ },
+ "Employer_tf[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Employer:",
+   "target": "勤務先："
+  }
+ },
+ "Employer_address_tf[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Employer's address:",
+   "target": "勤務先住所："
+  }
+ },
+ "ft[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Employer's phone number:",
+   "target": "勤務先電話番号："
+  }
+ },
+ "Party_occupation_tf[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Occupation:",
+   "target": "職業："
+  }
+ },
+ "Date_started_job_tf[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Date job started:",
+   "target": "就職日："
+  }
+ },
+ "FillText1[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "If unemployed, date job ended:",
+   "target": "無職の場合、退職日："
+  }
+ },
+ "hours_tf[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Number of hours per week that I work",
+   "target": "週の労働時間数"
+  }
+ },
+ "gross_tf[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "I get paid $",
+   "target": "給与額 $"
+  }
+ },
+ "Gross_cb[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "per month",
+   "target": "月給"
+  }
+ },
+ "Gross_cb[1]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "per week",
+   "target": "週給"
+  }
+ },
+ "Gross_cb[2]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "per hour.",
+   "target": "時給"
+  }
+ },
+ "HSchl_cb[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "Yes",
+   "target": "はい"
+  }
+ },
+ "HSchl_cb[1]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "No",
+   "target": "いいえ"
+  }
+ },
+ "RB2Choices[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "Degree(s) obtained",
+   "target": "取得学位"
+  }
+ },
+ "FillText109[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "(specify):",
+   "target": "（記入）："
+  }
+ },
+ "FillText10[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "(specify):",
+   "target": "（記入）："
+  }
+ },
+ "RB2Choices[1]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "vocational training",
+   "target": "職業訓練"
+  }
+ },
+ "Tax_cb1[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "single",
+   "target": "独身"
+  }
+ },
+ "Tax_cb2[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "head of household",
+   "target": "特定世帯主"
+  }
+ },
+ "Tax_cb3[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "married, filing separately",
+   "target": "夫婦個別申告"
+  }
+ },
+ "TaxSt_cb[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "California",
+   "target": "カリフォルニア"
+  }
+ },
+ "TaxSt_CB[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "other",
+   "target": "その他"
+  }
+ },
+ "FillTextincm[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Other party's income. I estimate the gross monthly income (before taxes) of the other party in this case at (specify): $",
+   "target": "相手方の収入。本件の相手方の月間総収入（税引前）を次の額と推定します（記入）：$"
+  }
+ },
+ "FillTextpage[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Number of pages attached:",
+   "target": "添付ページ数："
+  }
+ },
+ "Signdate[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Date:",
+   "target": "日付："
+  }
+ },
+ "FillText56[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "(TYPE OR PRINT NAME)",
+   "target": "（氏名を活字体で記入）"
+  }
+ },
+ "TextField7[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Average monthly",
+   "target": "月平均"
+  }
+ },
+ "TextField8[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Average monthly",
+   "target": "月平均"
+  }
+ },
+ "TextField9[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Average monthly",
+   "target": "月平均"
+  }
+ },
+ "CBChoice1_cb[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "currently receiving",
+   "target": "現在受給中"
+  }
+ },
+ "TextField10[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Average monthly",
+   "target": "月平均"
+  }
+ },
+ "CBChoice1_cb2[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "from a different marriage",
+   "target": "別の婚姻から"
+  }
+ },
+ "CBChoice1_cb3[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "federally taxable*",
+   "target": "連邦課税対象*"
+  }
+ },
+ "TextField11[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Average monthly",
+   "target": "月平均"
+  }
+ },
+ "TextField12[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Average monthly",
+   "target": "月平均"
+  }
+ },
+ "TextField13[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Average monthly",
+   "target": "月平均"
+  }
+ },
+ "TextField14[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Average monthly",
+   "target": "月平均"
+  }
+ },
+ "CBChoice1_cb1[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "State disability (SDI)",
+   "target": "州障害保険（SDI）"
+  }
+ },
+ "TextField15[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Average monthly",
+   "target": "月平均"
+  }
+ },
+ "TextField16[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Average monthly",
+   "target": "月平均"
+  }
+ },
+ "TextField17[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Average monthly",
+   "target": "月平均"
+  }
+ },
+ "FillText2[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Last month",
+   "target": "先月"
+  }
+ },
+ "TextField18[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Average monthly",
+   "target": "月平均"
+  }
+ },
+ "TextField23[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Average monthly",
+   "target": "月平均"
+  }
+ },
+ "TextField22[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Average monthly",
+   "target": "月平均"
+  }
+ },
+ "TextField21[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Average monthly",
+   "target": "月平均"
+  }
+ },
+ "TextField20[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Average monthly",
+   "target": "月平均"
+  }
+ },
+ "FillTxt1[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Last month",
+   "target": "先月"
+  }
+ },
+ "TextField[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Average monthly",
+   "target": "月平均"
+  }
+ },
+ "FillText3[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Type of business (specify):",
+   "target": "事業の種類（記入）："
+  }
+ },
+ "CheckBox19[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "Additional income. I received one-time money (lottery winnings, inheritance, etc.) in the last 12 months (specify source and amount):",
+   "target": "追加収入。過去12か月間に一時金（宝くじの当選金、相続等）を受け取りました（出所と金額を記入）："
+  }
+ },
+ "TextField6[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Specify source and amount",
+   "target": "出所と金額を記入"
+  }
+ },
+ "CheckBox1[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "Change in income. My financial situation has changed significantly over the last 12 months because (specify):",
+   "target": "収入の変化。過去12か月間に私の経済状況は次の理由で大きく変化しました（記入）："
+  }
+ },
+ "realcb[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "real and",
+   "target": "不動産"
+  }
+ },
+ "persncb[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "personal",
+   "target": "動産"
+  }
+ },
+ "TextField1[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Age",
+   "target": "年齢"
+  }
+ },
+ "TextField2[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "How the person is related to me (ex: son)",
+   "target": "私との続柄（例：息子）"
+  }
+ },
+ "TextField3[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "That person's gross monthly income",
+   "target": "その人の月間総収入"
+  }
+ },
+ "item12a_cb[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "Yes",
+   "target": "はい"
+  }
+ },
+ "item12a_cb[1]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "No",
+   "target": "いいえ"
+  }
+ },
+ "People2_cb[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "Yes",
+   "target": "はい"
+  }
+ },
+ "People2_cb[1]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "No",
+   "target": "いいえ"
+  }
+ },
+ "People3_cb[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "Yes",
+   "target": "はい"
+  }
+ },
+ "People3_cb[1]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "No",
+   "target": "いいえ"
+  }
+ },
+ "People4_cb[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "Yes",
+   "target": "はい"
+  }
+ },
+ "People4_cb[1]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "No",
+   "target": "いいえ"
+  }
+ },
+ "People5_cb[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "Yes",
+   "target": "はい"
+  }
+ },
+ "People5_cb[1]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "No",
+   "target": "いいえ"
+  }
+ },
+ "MonthEx_cb[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "Estimated expenses",
+   "target": "見積支出"
+  }
+ },
+ "MonthEx_cb[1]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "Actual expenses",
+   "target": "実際の支出"
+  }
+ },
+ "MonthEx_cb[2]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "Proposed needs",
+   "target": "今後必要な額"
+  }
+ },
+ "EXPN[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "$",
+   "target": "$"
+  }
+ },
+ "MortPrin[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "$",
+   "target": "$"
+  }
+ },
+ "MortInt[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "$",
+   "target": "$"
+  }
+ },
+ "TOTAL[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "$",
+   "target": "$"
+  }
+ },
+ "EXPNother[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "$",
+   "target": "$"
+  }
+ },
+ "DateField1[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Date of last payment",
+   "target": "最終支払日"
+  }
+ },
+ "TextField4[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "For",
+   "target": "用途"
+  }
+ },
+ "FillText4[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Balance",
+   "target": "残高"
+  }
+ },
+ "DateField2[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Date of last payment",
+   "target": "最終支払日"
+  }
+ },
+ "TextField5[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Paid to",
+   "target": "支払先"
+  }
+ },
+ "FillText5[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Amount",
+   "target": "金額"
+  }
+ },
+ "FillText6[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Balance",
+   "target": "残高"
+  }
+ },
+ "DateField3[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Date of last payment",
+   "target": "最終支払日"
+  }
+ },
+ "FillText7[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Amount",
+   "target": "金額"
+  }
+ },
+ "FillText8[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Balance",
+   "target": "残高"
+  }
+ },
+ "DateField4[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Date of last payment",
+   "target": "最終支払日"
+  }
+ },
+ "FillText9[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Amount",
+   "target": "金額"
+  }
+ },
+ "DateField5[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Date of last payment",
+   "target": "最終支払日"
+  }
+ },
+ "FillText11[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Amount",
+   "target": "金額"
+  }
+ },
+ "FillText12[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Balance",
+   "target": "残高"
+  }
+ },
+ "DateField6[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Date of last payment",
+   "target": "最終支払日"
+  }
+ },
+ "FillText1140[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "Date:",
+   "target": "日付："
+  }
+ },
+ "ChildHC_cb[0]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "I do",
+   "target": "あり"
+  }
+ },
+ "ChildHC_cb[1]": {
+  "type": "/Btn",
+  "tooltip": {
+   "source": "I do not",
+   "target": "なし"
+  }
+ },
+ "TextField24[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "For how many months?",
+   "target": "何か月間？"
+  }
+ },
+ "TextField25[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "For how many months?",
+   "target": "何か月間？"
+  }
+ },
+ "TextField26[0]": {
+  "type": "/Tx",
+  "tooltip": {
+   "source": "For how many months?",
+   "target": "何か月間？"
+  }
+ }
+}

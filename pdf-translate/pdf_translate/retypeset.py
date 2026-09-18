@@ -431,7 +431,15 @@ def _font_key(name):
 
 
 def ligature_gid_map(fontfile, chars):
-    """{glyph id: 'fi'} for the ligatures this text could have produced.
+    """{glyph id: text} for the ligatures and the single-substitution
+    alternates this text could have produced.
+
+    Alternates: Noto Sans JP swaps its digits for `locl` forms when
+    HarfBuzz shapes a Latin run under the Japanese language tag (FL-150
+    after "FL-", 11 in "11-inch"; digits inside a CJK run are untouched),
+    and the alternate glyph has no cmap entry, so the layer said Ɍɐɋ for
+    150 (measured on the FL-150 -> ja job, 2026-09-17). Each such glyph is
+    mapped to its base glyph's character.
 
     The Story engine shapes Latin too: HarfBuzz applies `liga`/`clig` by
     default, and MuPDF 1.28 honours neither `font-variant-ligatures: none`
@@ -475,6 +483,22 @@ def _ligatures(font, chars):
         for sub in (getattr(lookup, 'SubTable', None) or []):
             # An extension lookup (type 7) wraps the real one.
             sub = getattr(sub, 'ExtSubTable', sub)
+            # A single substitution (locl digits, vert forms, stylistic
+            # sets) parks an authored character on an alternate glyph that
+            # no code point names: map it back to the base's character. An
+            # alternate that cmap already names is somebody's character
+            # and is left alone.
+            for base, alt in (getattr(sub, 'mapping', None) or {}).items():
+                cp = lowest.get(base)
+                if cp is None or chr(cp) not in want or alt in lowest:
+                    continue
+                try:
+                    gid = font.getGlyphID(alt)
+                except Exception:
+                    continue
+                prev = out.get(gid)
+                if prev is None or (len(prev) == 1 and cp < ord(prev)):
+                    out[gid] = chr(cp)
             for first, ligs in (getattr(sub, 'ligatures', None) or {}).items():
                 for lig in ligs:
                     cps = [lowest.get(n)

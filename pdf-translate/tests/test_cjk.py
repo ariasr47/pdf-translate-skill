@@ -408,5 +408,79 @@ class CjkFaceTests(unittest.TestCase):
             self.assertTrue(names and all('NotoSansJP' in n for n in names), names)
 
 
+retypeset_mod = importlib.import_module('pdf_translate.retypeset')
+NL = chr(10)
+
+
+class WrappedCjkTargetTests(unittest.TestCase):
+    # A Story-engine paragraph in a spaceless script wraps with no space at
+    # the break, so the layer holds a newline the authored text never had:
+    # every wrapped Japanese merge and the notice on the FL-150 job came
+    # back "missing" (2026-09-17). Latin keeps its spaces: a wrap there is
+    # a space on both sides, and a target missing one is still missing.
+
+    def test_wrapped_japanese_merge_is_found(self):
+        layer = """氏名
+私との続柄（例：息
+子）
+その人の月間総収入
+"""
+        self.assertEqual(verify_mod.missing_translation_targets(
+            layer, ['私との続柄（例：息子）']), [])
+
+    def test_wrapped_notice_with_a_latin_title_is_found(self):
+        layer = """ん。 これは「FL-150 INCOME AND EXPENSE
+DECLARATION」の非公式な日本語訳で、書式の内
+容を理解するためのものです。"""
+        target = ('これは「FL-150 INCOME AND EXPENSE DECLARATION」の非公式な'
+                  '日本語訳で、書式の内容を理解するためのものです。')
+        self.assertEqual(verify_mod.missing_translation_targets(layer, [target]), [])
+
+    def test_latin_target_still_needs_its_spaces(self):
+        self.assertEqual(verify_mod.missing_translation_targets(
+            'one' + NL + 'two', ['one two']), [])
+        self.assertEqual(verify_mod.missing_translation_targets(
+            'onetwo', ['one two']), ['one two'])
+
+    def test_a_missing_japanese_character_is_still_missing(self):
+        layer = """私との続柄（例：息
+子）"""
+        self.assertEqual(verify_mod.missing_translation_targets(
+            layer, ['私との続柄（例：娘）']), ['私との続柄（例：娘）'])
+
+
+class LoclAlternateTests(unittest.TestCase):
+    # Noto Sans JP substitutes its digits through `locl` when HarfBuzz
+    # shapes a Latin run under the Japanese language tag — 150 after
+    # "FL-", 11 in "11-inch" — so the layer read Ɍɐɋ for 150 on the FL-150
+    # job (2026-09-17; 2019年 was untouched: digits inside a CJK run take
+    # the CJK path). The alternates are single substitutions with no cmap
+    # entry, the same orphaned-glyph problem as a ligature; the canonical
+    # layer maps each one back to its base glyph's character.
+
+    def test_single_substitution_alternates_map_to_their_base(self):
+        m = retypeset_mod.ligature_gid_map(str(JP_FACE), set('150'))
+        self.assertTrue({'1', '5', '0'} <= set(m.values()), m)
+
+    def test_alternates_of_unauthored_characters_are_not_mapped(self):
+        m = retypeset_mod.ligature_gid_map(str(JP_FACE), set('あ'))
+        self.assertFalse(set('0123456789') & set(m.values()), m)
+
+    def test_a_story_run_reads_back_as_authored(self):
+        text = 'FL-150 11-inch'
+        with tempfile.TemporaryDirectory() as tmp:
+            doc = pymupdf.open()
+            story_page(doc, text, fontfile=str(JP_FACE), width=300)
+            path = os.path.join(tmp, 'story.pdf')
+            doc.save(path)
+            doc.close()
+            with pymupdf.open(path) as before:
+                drifted = before[0].get_text()
+            self.assertNotIn(text, drifted, 'premise: the layer drifts before the rewrite')
+            retypeset_mod.canonicalize_text_layer(path, [str(JP_FACE)], [text])
+            with pymupdf.open(path) as after:
+                self.assertIn(text, after[0].get_text())
+
+
 if __name__ == '__main__':
     unittest.main()

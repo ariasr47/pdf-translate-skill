@@ -70,7 +70,7 @@ visual pass remain the check for those, and `leak-scan` records SKIP
 
 **Placement.** Every authored non-passthrough **target** (length ≥ 2) must
 appear **verbatim** in the output text layer, apart from wrapping
-whitespace — a stripped file or a failed write fails here. Missing targets
+whitespace — a stripped file or a failed write fails here. A target in a spaceless script (CJK, Thai, Khmer…) wraps with no space at the break, so for those the comparison removes wrapping whitespace on both sides instead of collapsing it to a space; a Latin target still needs its spaces. Missing targets
 are listed. Empty and whitespace-only targets fail and are named. This
 does not judge whether the wording is the right term.
 
@@ -91,13 +91,13 @@ glyph; MuPDF honours neither `font-variant-ligatures` nor
 the CSS. retypeset reads the ligatures out of the font's GSUB table — the
 subset that `prepare_font` builds keeps the substitution but drops
 U+FB01 from the cmap, which is why cmap cannot find them — and maps each
-ligature glyph to its component code points, so the layer says "oficina".
+ligature glyph to its component code points, so the layer says "oficina". The same reverse mapping covers a font's single-substitution alternates: Noto Sans JP swaps its digits for `locl` forms when HarfBuzz shapes a Latin run under the Japanese language tag (`FL-150` read back as `FL-Ɍɐɋ`; digits inside a CJK run were untouched), and each alternate glyph is mapped to its base glyph's character.
 Nothing is done to the font file itself.
 
 **Pushbutton chrome and caption width.** Captions live in `/MK /CA` and
 draw on top of the page; `get_text()` still sees them. Either rewrite them
 in place with `--captions` at strip time (field count stays exact), or put
-the caption in `skip` and leave the button as UI chrome. If the original
+the caption in `skip` and leave the button as UI chrome; a button that `--hide-buttons` hid draws nothing and is judged by neither gate. If the original
 caption is still in the output and you did neither, verify fails and lists
 it. Do not hide a button and draw a second widget. Captions must **fit the
 widget rect**: the gate FAILs if Helvetica `text_length` of the output
