@@ -143,6 +143,59 @@ OK                             — and not one existing test was edited
 
 Seventy `print` sites moved to the logger and the console did not shift a byte.
 
+## 5. Task 3 — the remaining twins (three of six done)
+
+The plan's order is smallest surface first. Three are done:
+
+| stage | prints | capture blocks | what changed |
+| --- | --- | --- | --- |
+| `strip_text` | 2 | 1 | `_say` routes through the logger; `run_strip` returns a `StripResult` |
+| `field_fonts` | 4 | 2 | 4 prints → `log.info`; body becomes `run_field_fonts`, bare name is the loud wrapper |
+| `qa_check` | 3 | 0 | `_say` routes through the logger; `main` gains the console envelope. `run_qa` already existed |
+
+Two notes worth keeping:
+
+- **`strip_text` was already half-compliant.** `strip_text()` returns a report dict and does not
+  print — `main()` is what prints. `run_strip` is therefore a shape adapter, not a rewrite, and the
+  dict is going nowhere: every caller reading `report['leftover_text']` is untouched.
+- **`say(log, line)` moved into `_console.py`.** `strip_text._say` and `qa_check._say` both carried
+  the same `UnicodeEncodeError` guard — a Japanese finding on a cp1252 terminal must not take the
+  run down. It is now one helper rather than two copies, and it is the reason
+  `tests/test_import_surface.py`'s cp1252 test still passes.
+
+`pdf_translate/__init__.py` now exports the result family, the exception family, `run_strip` and
+`run_field_fonts` — 35 names, every one resolvable.
+
+### Ratchets after Task 3's first three stages
+
+```
+Ran 472 tests in 166.209s      OK      — still no existing test edited
+cli_parity_runner.py           IDENTICAL against feat/terminology-loop @ abc4767
+```
+
+## 6. What is NOT done on this branch
+
+Stated plainly so no one reads the branch as finished. E3 Tasks 1 and 2 are complete; Task 3 is
+three stages of six.
+
+| item | state |
+| --- | --- |
+| Task 3 — `prepare_font` (12 prints, 5 capture blocks) | **not started** |
+| Task 3 — `extract_segments` (11 prints) | **not started** |
+| Task 3 — `retypeset` (32 prints, 55 capture blocks) | **not started** — the largest, and Task 4 builds on it |
+| `compare` (1), `render_pages` (2), `bilingual` (4), `pipeline` (31) | **not converted** — C10 is not finished until these are |
+| Task 4 — progress, cancellation, `resource_root`, `scale_report` path | **not started** |
+| Task 5 — `scale_report.json` envelope (ruling 2) | **not started** |
+| Task 6 — `references/consumer-guide.md` | **not started** |
+| Task 7 — contract test, DECISIONS row, version 58, CI | **not started** |
+
+The version is still **57**. `.claude-plugin/plugin.json`, `pyproject.toml`, `SKILL.md`,
+`__init__.py` and the lockstep literal in `tests/test_verify_report.py` all still read 57, and they
+agree — the lockstep test passes. Nothing on this branch is half-versioned.
+
+Every commit here is independently green: full suite plus both parity runners before each one. The
+branch is a safe place to stop and a safe place to resume.
+
 ## Review
 
 _(the whole-branch reviewer's verdict goes here)_
