@@ -35,36 +35,36 @@
       <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">What a consumer writes</div>
       <div style="padding: 18px 20px; background: oklch(0.175 0.008 60); border-radius: 3px; color: oklch(0.88 0.008 80);">
 <div class="code"><span class="kw">from</span> pdf_translate <span class="kw">import</span> (
-    strip_text, extract_segments, prepare_font,
-    retypeset, field_fonts, run_verify, run_qa,
+    run_strip, run_extract, run_prepare_font,
+    run_retypeset, run_field_fonts, run_verify, run_qa,
 )
 
 <span class="cm"># 1 — strip. Returns what it removed; raises on an unauthored widget map.</span>
-stripped = <span class="fn">strip_text</span>(src, <span class="str">"stripped.pdf"</span>, widget_text=wt)
+stripped = <span class="fn">run_strip</span>(src, <span class="str">"stripped.pdf"</span>, widget_text=wt)
 
 <span class="cm"># 2 — extract. Returns segments, cores and the warnings it used to print.</span>
-seg = <span class="fn">extract_segments</span>(<span class="str">"stripped.pdf"</span>, out_dir=work)
+seg = <span class="fn">run_extract</span>(<span class="str">"stripped.pdf"</span>, outdir=work)
 
-<span class="cm"># … the consumer authors translations.json (references/translations-format.md) …</span>
+<span class="cm"># … the consumer authors translations.json. "lang" lives in that file and is</span>
+<span class="cm">#   a BCP 47 tag — "ja", never "Japanese". references/translations-format.md</span>
 
-<span class="cm"># 3 — fonts, per target language. lang is BCP 47, never a display name.</span>
-font = <span class="fn">prepare_font</span>(face, <span class="str">"ja.ttf"</span>, lang=<span class="str">"ja"</span>)
+<span class="cm"># 3 — fonts. Takes the face, the mapping it must cover, and the output face.</span>
+font = <span class="fn">run_prepare_font</span>(face, <span class="str">"translations.json"</span>, <span class="str">"ja.ttf"</span>,
+                        reference_fonts=refs)
 
-<span class="cm"># 4 — retypeset. Progress per page, cancellable between pages,</span>
-<span class="cm">#     byte-identical given a fixed timestamp.</span>
-built = <span class="fn">retypeset</span>(<span class="str">"stripped.pdf"</span>, <span class="str">"segments.json"</span>, <span class="str">"translations.json"</span>,
-                  <span class="str">"out.pdf"</span>,
-                  timestamp=FIXED, progress=on_page, cancel=stop)
+<span class="cm"># 4 — retypeset. Progress per unit, cancellable between units.</span>
+built = <span class="fn">run_retypeset</span>(<span class="str">"stripped.pdf"</span>, <span class="str">"segments.json"</span>, <span class="str">"translations.json"</span>,
+                      <span class="str">"out.pdf"</span>, progress=on_page, cancel=stop)
 
 <span class="cm"># 5 — gates. Already library-shaped since v51.</span>
 verdict = <span class="fn">run_verify</span>(src, <span class="str">"out.pdf"</span>, reference_fonts=refs)
 
 <span class="cm"># 6 — field fonts, for a fillable form.</span>
-final = <span class="fn">field_fonts</span>(<span class="str">"out.pdf"</span>, <span class="str">"ja.ttf"</span>, <span class="str">"final.pdf"</span>)</div>
+final = <span class="fn">run_field_fonts</span>(<span class="str">"out.pdf"</span>, <span class="str">"ja.ttf"</span>, <span class="str">"final.pdf"</span>)</div>
       </div>
       <div style="display: flex; gap: 12px; padding: 12px 14px; background: oklch(0.955 0.005 85); border: 1px solid oklch(0.88 0.008 75); border-radius: 3px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="oklch(0.55 0.13 70)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
-        <div style="font-size: 12.5px; line-height: 1.55; color: oklch(0.4 0.012 60);">Names are the ones that ship today. Nothing is renamed: <span class="mono" style="font-size: 12px;">pdf_translate</span> already exports a function per stage, and <span class="mono" style="font-size: 12px;">tests/test_import_surface.py</span> pins them. What changes is what they <em>return</em>, what they <em>print</em>, and what they <em>raise</em>.</div>
+        <div style="font-size: 12.5px; line-height: 1.55; color: oklch(0.4 0.012 60);">Signatures are the shipping ones. The bare names (<span class="mono" style="font-size: 12px;">retypeset</span>, <span class="mono" style="font-size: 12px;">verify</span>, …) keep their exact behaviour &mdash; printing, returning an int &mdash; because <span class="mono" style="font-size: 12px;">tests/test_import_surface.py</span> pins them and 128 capture blocks call them. The <span class="mono" style="font-size: 12px;">run_*</span> twins are the new, silent surface.</div>
       </div>
     </div>
 
@@ -75,14 +75,14 @@ final = <span class="fn">field_fonts</span>(<span class="str">"out.pdf"</span>, 
         <div style="display: flex; flex-direction: column; gap: 7px;">
           <div style="display: flex; gap: 9px; align-items: baseline;"><div class="mono" style="font-size: 11.5px; font-weight: 600; width: 26px; flex-shrink: 0; color: oklch(0.55 0.14 25);">C1</div><div style="font-size: 12.5px; line-height: 1.45;">callable, silent, typed refusals &mdash; <strong style="font-weight: 600;">141 print sites</strong> across the stage modules</div></div>
           <div style="display: flex; gap: 9px; align-items: baseline;"><div class="mono" style="font-size: 11.5px; font-weight: 600; width: 26px; flex-shrink: 0; color: oklch(0.68 0.14 150);">C2</div><div style="font-size: 12.5px; line-height: 1.45;">inputs &mdash; holds; <span class="mono" style="font-size: 12px;">translations-format.md</span> is the contract</div></div>
-          <div style="display: flex; gap: 9px; align-items: baseline;"><div class="mono" style="font-size: 11.5px; font-weight: 600; width: 26px; flex-shrink: 0; color: oklch(0.55 0.14 25);">C3</div><div style="font-size: 12.5px; line-height: 1.45;">schema-versioned outputs &mdash; verify yes; <span class="mono" style="font-size: 12px;">scale_report.json</span> is a bare list; strip and extract results are printed, not returned</div></div>
+          <div style="display: flex; gap: 9px; align-items: baseline;"><div class="mono" style="font-size: 11.5px; font-weight: 600; width: 26px; flex-shrink: 0; color: oklch(0.55 0.14 25);">C3</div><div style="font-size: 12.5px; line-height: 1.45;">schema-versioned outputs &mdash; verify yes; <span class="mono" style="font-size: 12px;">scale_report.json</span> is a bare list with no envelope. The row&rsquo;s own note says strip and extract results are &ldquo;printed, not returned&rdquo;; measured, both are returned <em>and</em> printed</div></div>
           <div style="display: flex; gap: 9px; align-items: baseline;"><div class="mono" style="font-size: 11.5px; font-weight: 600; width: 26px; flex-shrink: 0; color: oklch(0.55 0.14 25);">C4</div><div style="font-size: 12.5px; line-height: 1.45;">progress and cancellation &mdash; nothing today</div></div>
           <div style="display: flex; gap: 9px; align-items: baseline;"><div class="mono" style="font-size: 11.5px; font-weight: 600; width: 26px; flex-shrink: 0; color: oklch(0.72 0.14 70);">C5</div><div style="font-size: 12.5px; line-height: 1.45;">concurrency &mdash; no <span class="mono" style="font-size: 12px;">os.chdir</span> anywhere, but three real hazards remain</div></div>
           <div style="display: flex; gap: 9px; align-items: baseline;"><div class="mono" style="font-size: 11.5px; font-weight: 600; width: 26px; flex-shrink: 0; color: oklch(0.6 0.02 70);">C6</div><div style="font-size: 12.5px; line-height: 1.45;">hostile input &mdash; not this epic (E7)</div></div>
           <div style="display: flex; gap: 9px; align-items: baseline;"><div class="mono" style="font-size: 11.5px; font-weight: 600; width: 26px; flex-shrink: 0; color: oklch(0.55 0.14 25);">C7</div><div style="font-size: 12.5px; line-height: 1.45;">determinism &mdash; <span class="mono" style="font-size: 12px;">ez_save</span> with no timestamp option; unmeasured</div></div>
           <div style="display: flex; gap: 9px; align-items: baseline;"><div class="mono" style="font-size: 11.5px; font-weight: 600; width: 26px; flex-shrink: 0; color: oklch(0.6 0.02 70);">C8</div><div style="font-size: 12.5px; line-height: 1.45;">versions &mdash; not this epic (E11)</div></div>
           <div style="display: flex; gap: 9px; align-items: baseline;"><div class="mono" style="font-size: 11.5px; font-weight: 600; width: 26px; flex-shrink: 0; color: oklch(0.68 0.14 150);">C9</div><div style="font-size: 12.5px; line-height: 1.45;">no network &mdash; holds; no network import in the package</div></div>
-          <div style="display: flex; gap: 9px; align-items: baseline;"><div class="mono" style="font-size: 11.5px; font-weight: 600; width: 26px; flex-shrink: 0; color: oklch(0.55 0.14 25);">C10</div><div style="font-size: 12.5px; line-height: 1.45;">logging, never <span class="mono" style="font-size: 12px;">print</span> &mdash; the same 141 sites</div></div>
+          <div style="display: flex; gap: 9px; align-items: baseline;"><div class="mono" style="font-size: 11.5px; font-weight: 600; width: 26px; flex-shrink: 0; color: oklch(0.55 0.14 25);">C10</div><div style="font-size: 12.5px; line-height: 1.45;">logging, never <span class="mono" style="font-size: 12px;">print</span> &mdash; scoped to the package, so all <strong style="font-weight: 600;">172</strong> sites, <span class="mono" style="font-size: 12px;">pipeline.py</span> included</div></div>
         </div>
       </div>
 
@@ -93,7 +93,7 @@ final = <span class="fn">field_fonts</span>(<span class="str">"out.pdf"</span>, 
 
       <div style="display: flex; flex-direction: column; gap: 8px; padding: 16px 17px; background: oklch(0.955 0.005 85); border: 1px solid oklch(0.88 0.008 75); border-radius: 3px;">
         <div class="mono" style="font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: oklch(0.55 0.02 60);">The bill</div>
-        <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);"><span class="mono" style="font-size: 12px;">tests/test_pipeline.py</span> carries <strong style="font-weight: 600;">351</strong> stdout-capture idioms and <strong style="font-weight: 600;">282</strong> <span class="mono" style="font-size: 12px;">assertIn</span> calls against literal printed strings. Silencing the stages naively rewrites most of a 9,900-line suite. The artboard below makes that bill nearly zero.</div>
+        <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);"><span class="mono" style="font-size: 12px;">tests/test_pipeline.py</span> is 6,793 lines and carries <strong style="font-weight: 600;">177</strong> <span class="mono" style="font-size: 12px;">redirect_stdout</span> blocks with <strong style="font-weight: 600;">282</strong> <span class="mono" style="font-size: 12px;">assertIn</span> calls against literal printed strings. <strong style="font-weight: 600;">128 of those blocks call a library function directly</strong>, not a <span class="mono" style="font-size: 12px;">main()</span>. Silencing the stage functions breaks about 200 assertions at once &mdash; which is why the artboard below adds a twin instead.</div>
       </div>
 
     </div>

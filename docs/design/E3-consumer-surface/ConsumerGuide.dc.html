@@ -32,9 +32,9 @@
   <div style="padding: 20px 26px; display: flex; flex-direction: column;">
 <div class="md"><span class="h"># Running one document from Python</span>
 
-<span class="dim">Contents: before you start · the seven calls · what each returns · the
+<span class="dim">Contents: before you start · the six calls · what each returns · the
 files on disk · refusals · progress and cancellation · threads ·
-determinism · what this library never does</span>
+what this library never does</span>
 
 <span class="dim">For an engineer with no context. Every code block runs as written against
 the corpus fixture. The CLI paths in README.md do the same things; this
@@ -57,11 +57,13 @@ document is for calling the stages directly.</span>
    terminology lookup are files you provide. Issuer lookup belongs to
    whoever authors the mapping, never to this library.
 
-<span class="h">## The seven calls</span>
+<span class="h">## The six calls</span>
 
-<span class="dim">strip → extract → [you author the mapping] → prepare_font → retypeset →
-verify → field_fonts. Each takes explicit paths, returns a result object,
-and raises a typed exception when it refuses.</span>
+<span class="dim">run_strip → run_extract → [you author the mapping] → run_prepare_font →
+run_retypeset → run_verify → run_field_fonts. Each takes explicit paths,
+returns a result object, and raises a typed exception when it refuses.
+The bare names (retypeset, verify, …) are the older, printing shape and
+still work unchanged.</span>
 
 <span class="dim">    [ the runnable end-to-end block ]</span>
 
@@ -88,11 +90,6 @@ and raises a typed exception when it refuses.</span>
 
 <span class="dim">    [ what is safe to share, what is per-job, the two paths that take an
       explicit root or path so concurrent jobs do not collide ]</span>
-
-<span class="h">## Determinism</span>
-
-<span class="dim">    [ the fixed-timestamp option and exactly what it does and does not
-      pin — written after the probe, not before ]</span>
 
 <span class="h">## What this library never does</span>
 

@@ -44,7 +44,7 @@
       </div>
       <div style="display: grid; grid-template-columns: 1fr 1.05fr 0.7fr; font-size: 12px; line-height: 1.45;">
         <div class="mono" style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); font-size: 12px;">VerifyVerdict</div>
-        <div style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">exit_code, gates, findings</div>
+        <div style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">exit_code, gates (each a GateResult with its own findings)</div>
         <div style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); color: oklch(0.5 0.13 150); font-weight: 500;">schema 1 &mdash; exists</div>
         <div class="mono" style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); font-size: 12px;">QAVerdict</div>
         <div style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">findings, error_count, warn_count</div>
@@ -82,7 +82,7 @@ report = os.path.<span class="fn">join</span>(os.path.<span class="fn">dirname</
 
   <div style="display: flex; gap: 14px; padding: 14px 16px; background: oklch(0.985 0.012 30); border: 1px solid oklch(0.84 0.07 30); border-radius: 3px;">
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="oklch(0.55 0.15 25)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
-    <div style="font-size: 12.5px; line-height: 1.55; color: oklch(0.35 0.012 60);"><strong style="font-weight: 600;">Wrapping it is a breaking change to a published file format.</strong> That is a decision, not a detail &mdash; it is Q1 on the &ldquo;Decide first&rdquo; artboard. It is cheapest now, before the product pins a version and builds goldens on the current shape.</div>
+    <div style="font-size: 12.5px; line-height: 1.55; color: oklch(0.35 0.012 60);"><strong style="font-weight: 600;">Wrapping it is a breaking change to a published file format.</strong> That is a decision, not a detail &mdash; it is Question 2 on the &ldquo;Decide first&rdquo; artboard. It is cheapest now, before the product pins a version and builds goldens on the current shape.</div>
   </div>
 
 </div>

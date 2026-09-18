@@ -27,7 +27,7 @@
   <div style="display: flex; flex-direction: column; gap: 5px;">
     <div class="mono" style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.55 0.02 60);">C4 &middot; the product streams progress to a browser</div>
     <div style="font-size: 24px; font-weight: 600; letter-spacing: -0.012em;">Progress and cancellation</div>
-    <div style="font-size: 13.5px; line-height: 1.5; color: oklch(0.44 0.012 60);">Nothing today: no callback parameter, no cooperative check in either loop. It is also the cheapest item in the epic, for one structural reason.</div>
+    <div style="font-size: 13.5px; line-height: 1.5; color: oklch(0.44 0.012 60);">Nothing today: no callback parameter, no cooperative check in either loop. It is also the cheapest item in the epic, for one structural reason. (C7&rsquo;s <span class="mono" style="font-size: 12.5px;">timestamp=</span> is not here: determinism moved to E8 on 2026-09-18.)</div>
   </div>
 
   <div style="display: flex; gap: 14px; padding: 15px 17px; background: oklch(0.96 0.02 150); border: 1px solid oklch(0.82 0.08 150); border-radius: 3px;">
@@ -41,11 +41,10 @@
 <div class="code"><span class="cm"># today  — retypeset.py:622</span>
 <span class="kw">def</span> <span class="fn">retypeset</span>(stripped, segf, trf, out):
 
-<span class="cm"># proposed — every new parameter keyword-only, every default today's behaviour</span>
-<span class="kw">def</span> <span class="fn">retypeset</span>(stripped, segf, trf, out, *,
+<span class="cm"># proposed — the silent twin; the bare retypeset() keeps its exact shape</span>
+<span class="kw">def</span> <span class="fn">run_retypeset</span>(stripped, segf, trf, out, *,
               <span class="add">progress=None,</span>      <span class="cm"># progress(done, total) after each unit</span>
               <span class="add">cancel=None,</span>        <span class="cm"># anything with .is_set() — threading.Event fits</span>
-              <span class="add">timestamp=None,</span>     <span class="cm"># C7; see the determinism artboard</span>
               <span class="add">scale_report=None</span>)  <span class="cm"># explicit path, or None to return it only</span></div>
     </div>
   </div>
@@ -75,8 +74,8 @@ done += 1
 <span class="kw">def</span> <span class="fn">on_progress</span>(done, total):
     ws.<span class="fn">send</span>({<span class="str">"done"</span>: done, <span class="str">"total"</span>: total})
 
-built = <span class="fn">retypeset</span>(…, progress=on_progress,
-                            cancel=stop)
+built = <span class="fn">run_retypeset</span>(…, progress=on_progress,
+                                cancel=stop)
 
 <span class="kw">if</span> built.cancelled:
     <span class="cm"># nothing was written. no cleanup.</span>

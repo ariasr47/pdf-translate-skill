@@ -1,7 +1,7 @@
 # E3 design canvas — the consumer surface
 
 The design pass that goes before the build, per "design before build": E3
-turns the eleven stages into a library a service calls, which is a new
+turns the ten stages into a library a service calls, which is a new
 user-facing surface, so it was drawn before any code was planned.
 
 Contract: `docs/REQUESTS-from-product.md` rows C1–C10 and the E3 epic row
@@ -67,10 +67,21 @@ these true or re-measure:
   list with no envelope.
 - **`retypeset.py:1387`** — `doc.ez_save(out)`, the single save, after both
   loops. This is why a cancel between pages cannot leave a partial file.
-- **`tests/test_pipeline.py`** — 351 `redirect_stdout`/`StringIO` idioms and
-  282 `assertIn(` calls; the suite is 9,896 lines.
+- **`tests/test_pipeline.py`** is 6,793 lines and holds **177** `with
+  redirect_stdout(...)` blocks and 282 `assertIn(` calls. **128 of those
+  blocks wrap a library function directly** — `verify.verify(` 64,
+  `retypeset.retypeset(` 55, `prepare_font.prepare_font(` 5,
+  `field_fonts.field_fonts(` 2, `strip_text.strip_text(` 1,
+  `pipeline.propose_merges(` 1 — and only ~41 wrap a `main()`. This is why
+  the design adds a silent `run_*` twin per stage instead of quieting the
+  existing functions. (9,896 is all of `tests/*.py`, not this file.)
 - `strip_text()` and `extract_segments()` **already return** rich dicts. C3's
   status note says they are "printed, not returned"; measured, they are both.
   Correct the note when E3 lands rather than repeating it.
+- `apply_document_metadata` copies `doc.metadata`, pops only `format` and
+  `encryption`, and calls `set_metadata()` — so `/CreationDate`, `/ModDate`
+  and `/Producer` are rewritten with the **source's** values, not left
+  alone. Only `/ID` is untouched.
 - Determinism is **unmeasured**, not known-broken. No probe has run. The
-  Hazards artboard says so and says not to write C7's code from it.
+  Hazards artboard says so and says not to write C7's code from it. C7
+  moved to E8 on 2026-09-18; `timestamp=` is not part of E3.

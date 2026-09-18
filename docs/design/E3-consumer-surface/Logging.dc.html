@@ -18,79 +18,92 @@
     .fn { color: oklch(0.78 0.11 200); }
     .str { color: oklch(0.78 0.11 140); }
     .cm { color: oklch(0.6 0.02 70); }
-    .del { color: oklch(0.72 0.12 30); }
-    .add { color: oklch(0.76 0.12 150); }
   </style>
 </helmet>
 
-<div style="width: 1000px; min-height: 900px; box-sizing: border-box; padding: 34px 36px; background: oklch(0.98 0.006 85); font-family: 'IBM Plex Sans', system-ui, sans-serif; color: oklch(0.22 0.01 60); display: flex; flex-direction: column; gap: 20px;">
+<div style="width: 1000px; min-height: 1020px; box-sizing: border-box; padding: 34px 36px; background: oklch(0.98 0.006 85); font-family: 'IBM Plex Sans', system-ui, sans-serif; color: oklch(0.22 0.01 60); display: flex; flex-direction: column; gap: 19px;">
 
   <div style="display: flex; flex-direction: column; gap: 5px;">
-    <div class="mono" style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.55 0.02 60);">C1 + C10 + the parity acceptance, in one move</div>
-    <div style="font-size: 24px; font-weight: 600; letter-spacing: -0.012em;">The stages log. The CLI prints.</div>
-    <div style="font-size: 13.5px; line-height: 1.5; color: oklch(0.44 0.012 60); max-width: 780px;">One change satisfies &ldquo;no printing unless asked&rdquo;, &ldquo;through the logging module, never print&rdquo;, and &ldquo;the eleven CLIs byte-identical&rdquo; at the same time &mdash; and leaves 351 test assertions untouched.</div>
+    <div class="mono" style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.55 0.02 60);">C1 + C10 + the parity acceptance</div>
+    <div style="font-size: 24px; font-weight: 600; letter-spacing: -0.012em;">A silent twin per stage</div>
+    <div style="font-size: 13.5px; line-height: 1.5; color: oklch(0.44 0.012 60); max-width: 800px;">The repository already solved this twice. <span class="mono" style="font-size: 12.5px;">verify</span>/<span class="mono" style="font-size: 12.5px;">run_verify</span> and <span class="mono" style="font-size: 12.5px;">qa_check</span>/<span class="mono" style="font-size: 12.5px;">run_qa</span> are a loud function and a silent one returning a verdict. E3 finishes the pattern rather than inventing one.</div>
+  </div>
+
+  <div style="display: flex; gap: 14px; padding: 15px 17px; background: oklch(0.985 0.012 30); border: 1px solid oklch(0.84 0.07 30); border-radius: 3px;">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="oklch(0.55 0.15 25)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+    <div style="font-size: 12.5px; line-height: 1.55; color: oklch(0.35 0.012 60);"><strong style="font-weight: 600;">Why not simply silence the stage functions.</strong> Measured in <span class="mono" style="font-size: 12px;">tests/test_pipeline.py</span>: <strong style="font-weight: 600;">177</strong> <span class="mono" style="font-size: 12px;">redirect_stdout</span> blocks, and <strong style="font-weight: 600;">128 of them wrap a library function directly</strong> &mdash; <span class="mono" style="font-size: 12px;">verify.verify(</span> 64, <span class="mono" style="font-size: 12px;">retypeset.retypeset(</span> 55, <span class="mono" style="font-size: 12px;">prepare_font.prepare_font(</span> 5, <span class="mono" style="font-size: 12px;">field_fonts.field_fonts(</span> 2, <span class="mono" style="font-size: 12px;">strip_text.strip_text(</span> 1, <span class="mono" style="font-size: 12px;">pipeline.propose_merges(</span> 1. Only ~41 wrap a <span class="mono" style="font-size: 12px;">main()</span>. Making those functions quiet breaks roughly 200 <span class="mono" style="font-size: 12px;">assertIn</span> calls at once.</div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 9px;">
+    <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">Finish the pattern</div>
+    <div style="border: 1px solid oklch(0.87 0.008 75); border-radius: 3px; overflow: hidden;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1.15fr; background: oklch(0.94 0.008 80); border-bottom: 1px solid oklch(0.87 0.008 75);">
+        <div class="mono" style="padding: 8px 12px; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: oklch(0.45 0.015 60);">loud &mdash; unchanged</div>
+        <div class="mono" style="padding: 8px 12px; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: oklch(0.45 0.015 60);">silent &mdash; C1's surface</div>
+        <div class="mono" style="padding: 8px 12px; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: oklch(0.45 0.015 60);">capture blocks protected</div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1.15fr; font-size: 12px; line-height: 1.45;">
+        <div class="mono" style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">verify()</div><div class="mono" style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); color: oklch(0.45 0.012 60);">run_verify() &mdash; exists</div><div style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">64</div>
+        <div class="mono" style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">retypeset()</div><div class="mono" style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); color: oklch(0.5 0.13 150);">run_retypeset()</div><div style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">55</div>
+        <div class="mono" style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">prepare_font()</div><div class="mono" style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); color: oklch(0.5 0.13 150);">run_prepare_font()</div><div style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">5</div>
+        <div class="mono" style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">field_fonts()</div><div class="mono" style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); color: oklch(0.5 0.13 150);">run_field_fonts()</div><div style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">2</div>
+        <div class="mono" style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">strip_text()</div><div class="mono" style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); color: oklch(0.5 0.13 150);">run_strip()</div><div style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">1</div>
+        <div class="mono" style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">extract_segments()</div><div class="mono" style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); color: oklch(0.5 0.13 150);">run_extract()</div><div style="padding: 7px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); color: oklch(0.5 0.012 60);">0 &mdash; already returns data</div>
+        <div class="mono" style="padding: 7px 12px;">qa_check()</div><div class="mono" style="padding: 7px 12px; color: oklch(0.45 0.012 60);">run_qa() &mdash; exists</div><div style="padding: 7px 12px;">0</div>
+      </div>
+    </div>
   </div>
 
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px;">
     <div style="display: flex; flex-direction: column; gap: 7px;">
-      <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">Every stage module, at the top</div>
+      <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">The silent one &mdash; what a service calls</div>
       <div style="padding: 14px 16px; background: oklch(0.175 0.008 60); border-radius: 3px; color: oklch(0.88 0.008 80); flex-grow: 1;">
-<div class="code"><span class="kw">import</span> logging
+<div class="code">log = logging.<span class="fn">getLogger</span>(__name__)
 
-log = logging.<span class="fn">getLogger</span>(__name__)
-
-<span class="cm"># and in pdf_translate/__init__.py</span>
-logging.<span class="fn">getLogger</span>(<span class="str">"pdf_translate"</span>).<span class="fn">addHandler</span>(
-    logging.<span class="fn">NullHandler</span>())</div>
+<span class="kw">def</span> <span class="fn">run_retypeset</span>(…) -&gt; RetypesetResult:
+    <span class="str">"""Silent. Returns data. Raises on refusal."""</span>
+    log.<span class="fn">info</span>(<span class="str">'placed %d runs on p%d'</span>, n, pno)
+    …
+    <span class="kw">raise</span> <span class="fn">GlyphError</span>(page=pno, char=ch)</div>
       </div>
-      <div style="font-size: 12px; line-height: 1.5; color: oklch(0.45 0.012 60);">The stdlib idiom: a library attaches a <span class="mono" style="font-size: 11.5px;">NullHandler</span> and never configures logging. Silent by default, in-process, thread-safe.</div>
+      <div style="font-size: 12px; line-height: 1.5; color: oklch(0.45 0.012 60);">Silent because no handler is attached &mdash; not because stdout was swapped. That is what makes it safe under threads.</div>
     </div>
 
     <div style="display: flex; flex-direction: column; gap: 7px;">
-      <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">Every call site &mdash; 141 of them</div>
+      <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">The loud one &mdash; byte-identical to today</div>
       <div style="padding: 14px 16px; background: oklch(0.175 0.008 60); border-radius: 3px; color: oklch(0.88 0.008 80); flex-grow: 1;">
-<div class="code"><span class="del">- print(f<span class="str">'PASS field parity'</span>)</span>
-<span class="add">+ log.info(<span class="str">'PASS field parity'</span>)</span>
-
-<span class="del">- print(f<span class="str">'  (could not write {path}: {exc})'</span>)</span>
-<span class="add">+ log.info(<span class="str">'  (could not write %s: %s)'</span>, path, exc)</span></div>
+<div class="code"><span class="kw">def</span> <span class="fn">retypeset</span>(stripped, segf, trf, out):
+    <span class="str">"""Legacy shape: prints, returns an int."""</span>
+    <span class="kw">with</span> <span class="fn">_console</span>():          <span class="cm"># handler on, then off</span>
+        <span class="kw">try</span>:
+            <span class="fn">run_retypeset</span>(stripped, segf, trf, out)
+        <span class="kw">except</span> PdfTranslateError <span class="kw">as</span> exc:
+            log.<span class="fn">info</span>(exc.console_line)
+            <span class="kw">return</span> exc.exit_code
+    <span class="kw">return</span> <span class="mono">0</span></div>
       </div>
-      <div style="font-size: 12px; line-height: 1.5; color: oklch(0.45 0.012 60);">Level <span class="mono" style="font-size: 11.5px;">INFO</span> for everything a gate or stage says today &mdash; the console is the contract, so nothing is re-levelled as part of this move.</div>
+      <div style="font-size: 12px; line-height: 1.5; color: oklch(0.45 0.012 60);">Same name, same arguments, same printed bytes, same return code. Every one of the 128 blocks keeps passing.</div>
     </div>
   </div>
 
-  <div style="display: flex; flex-direction: column; gap: 7px;">
-    <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">Every CLI <span style="text-transform: none;">main()</span>, at the top &mdash; the only place output is configured</div>
-    <div style="padding: 15px 17px; background: oklch(0.175 0.008 60); border-radius: 3px; color: oklch(0.88 0.008 80);">
-<div class="code"><span class="kw">def</span> <span class="fn">_console</span>():
-    <span class="str">"""Attach the one handler that reproduces today's console exactly:
-    the bare message, no level, no logger name, no timestamp."""</span>
-    h = logging.<span class="fn">StreamHandler</span>(sys.stdout)
-    h.<span class="fn">setFormatter</span>(logging.<span class="fn">Formatter</span>(<span class="str">"%(message)s"</span>))
-    pkg = logging.<span class="fn">getLogger</span>(<span class="str">"pdf_translate"</span>)
-    pkg.<span class="fn">addHandler</span>(h)
-    pkg.<span class="fn">setLevel</span>(logging.INFO)</div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px;">
+    <div style="padding: 13px 15px; background: oklch(0.955 0.005 85); border-left: 2px solid oklch(0.68 0.14 150); border-radius: 0 3px 3px 0; display: flex; flex-direction: column; gap: 5px;">
+      <div style="font-size: 12.5px; font-weight: 600;">No test churn</div>
+      <div style="font-size: 12px; line-height: 1.5; color: oklch(0.42 0.012 60);">All 177 blocks and all 282 <span class="mono" style="font-size: 11.5px;">assertIn</span> calls are untouched. New tests are added for the <span class="mono" style="font-size: 11.5px;">run_*</span> twins.</div>
+    </div>
+    <div style="padding: 13px 15px; background: oklch(0.955 0.005 85); border-left: 2px solid oklch(0.68 0.14 150); border-radius: 0 3px 3px 0; display: flex; flex-direction: column; gap: 5px;">
+      <div style="font-size: 12.5px; font-weight: 600;">The stdout swap dies</div>
+      <div style="font-size: 12px; line-height: 1.5; color: oklch(0.42 0.012 60);"><span class="mono" style="font-size: 11.5px;">run_verify</span> drops <span class="mono" style="font-size: 11.5px;">redirect_stdout</span> (<span class="mono" style="font-size: 11.5px;">verify.py:2124</span>) and becomes silent the same way its six new siblings are.</div>
+    </div>
+    <div style="padding: 13px 15px; background: oklch(0.955 0.005 85); border-left: 2px solid oklch(0.68 0.14 150); border-radius: 0 3px 3px 0; display: flex; flex-direction: column; gap: 5px;">
+      <div style="font-size: 12.5px; font-weight: 600;">One stage at a time</div>
+      <div style="font-size: 12px; line-height: 1.5; color: oklch(0.42 0.012 60);">Each twin is its own commit with the parity runner as the ratchet. A 172-site single commit would be unreviewable.</div>
     </div>
   </div>
 
-  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;">
-    <div style="padding: 14px 16px; background: oklch(0.955 0.005 85); border-left: 2px solid oklch(0.68 0.14 150); border-radius: 0 3px 3px 0; display: flex; flex-direction: column; gap: 6px;">
-      <div style="font-size: 13px; font-weight: 600;">The tests do not move</div>
-      <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);">All 351 capture idioms wrap a stage&rsquo;s <span class="mono" style="font-size: 12px;">main()</span>, not the library function. <span class="mono" style="font-size: 12px;">main()</span> still writes the same bytes to stdout, so every <span class="mono" style="font-size: 12px;">assertIn</span> passes unchanged. The bill is near zero.</div>
-    </div>
-    <div style="padding: 14px 16px; background: oklch(0.955 0.005 85); border-left: 2px solid oklch(0.68 0.14 150); border-radius: 0 3px 3px 0; display: flex; flex-direction: column; gap: 6px;">
-      <div style="font-size: 13px; font-weight: 600;">The stdout swap goes away</div>
-      <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);"><span class="mono" style="font-size: 12px;">run_verify</span> is silent today by <span class="mono" style="font-size: 12px;">redirect_stdout</span> (<span class="mono" style="font-size: 12px;">verify.py:2124</span>) &mdash; it swaps <span class="mono" style="font-size: 12px;">sys.stdout</span> <em>process-wide</em>. Under C5 that is a live bug. Silent-by-default deletes it.</div>
-    </div>
-    <div style="padding: 14px 16px; background: oklch(0.955 0.005 85); border-left: 2px solid oklch(0.68 0.14 150); border-radius: 0 3px 3px 0; display: flex; flex-direction: column; gap: 6px;">
-      <div style="font-size: 13px; font-weight: 600;"><span class="mono" style="font-size: 12.5px;">verify</span> and <span class="mono" style="font-size: 12.5px;">run_verify</span> converge</div>
-      <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);">They differ at the library level today: one prints, one redirects. Afterwards there is one function and one question &mdash; is a handler attached.</div>
-    </div>
-  </div>
-
-  <div style="display: flex; gap: 14px; padding: 14px 16px; background: oklch(0.985 0.012 80); border: 1px solid oklch(0.85 0.05 78); border-radius: 3px;">
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="oklch(0.55 0.13 70)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
-    <div style="font-size: 12.5px; line-height: 1.55; color: oklch(0.38 0.012 60);"><strong style="font-weight: 600;">What proves it:</strong> the parity runner E3 already asks for &mdash; every one of the eleven CLIs run before and after, stdout captured, diffed byte for byte. It is the same instrument <span class="mono" style="font-size: 12px;">dev/probes/verdict_parity_runner.py</span> already uses for gate work, widened from verify to all eleven. A single differing byte fails the build, which is exactly the guarantee the product needs before it pins a version.</div>
+  <div style="display: flex; gap: 14px; padding: 13px 15px; background: oklch(0.985 0.012 80); border: 1px solid oklch(0.85 0.05 78); border-radius: 3px;">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="oklch(0.55 0.13 70)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+    <div style="font-size: 12.5px; line-height: 1.55; color: oklch(0.38 0.012 60);"><strong style="font-weight: 600;">The cost this design accepts:</strong> two entry points per stage, and a deprecation story the consumer guide has to tell &mdash; <span class="mono" style="font-size: 12px;">run_*</span> for a service, the bare name for the CLI and for anything written against today&rsquo;s shape. C10 says the package never <span class="mono" style="font-size: 12px;">print</span>s, and after this it does not: the loud wrapper logs too, it just attaches a handler first.</div>
   </div>
 
 </div>
