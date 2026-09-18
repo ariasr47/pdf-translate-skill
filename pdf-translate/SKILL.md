@@ -114,12 +114,13 @@ python3 scripts/pipeline.py render original.pdf out.pdf renders/
 LiveCycle form — Acrobat renders the XFA layer instead of your edited pages
 until it's removed), and whether the file is **encrypted, certified or
 Reader-extended** (`pdf.is_encrypted`, `pdf.allow`, `pdf.Root.Perms`).
-`strip_text.py` reports all of these. Read `references/failure-modes.md`
-**now** — it is short and every item in it was a real, silent,
-hours-costing failure.
+`strip_text.py` reports all of these. Read `references/failure-modes.md` and
+`references/terminology-failure-modes.md` **now** — both are short, every item
+in the first was a real, silent, hours-costing failure, and every item in the
+second passed every gate and reached a delivery.
 
 **Identity — write this down before filling any translation.** Session notes
-or `NOTES.md`, not `translations.json` (the scripts do not read it). Four
+or `NOTES.md`, not `translations.json` (the scripts do not read it). Five
 facts:
 
 1. **Class** — one sentence a librarian could file (court income form,
@@ -129,6 +130,18 @@ facts:
    language, or `none`, or `not searched`.
 4. **Identifiers** — names on *this* PDF the reader must still write, find,
    or say in the source language. Fill after extract (step 3).
+5. **Terms of art** — a table with one row for every **status, role, benefit
+   programme and verb of legal act** on the page:
+
+   | term | established rendering | source |
+   |---|---|---|
+   | head of household | 特定世帯主 | JP-language US tax guides |
+
+   Write it **before** authoring, and hand it to the reviser. `No established
+   rendering found` is a legitimate row and a flag — it means that term needs
+   a lookup or a disclosure, not a guess. These are the terms no script can
+   check: the page is right, the string is present, and the word is wrong.
+   `references/terminology-failure-modes.md` has the five ways it goes wrong.
 
 The class decides one more thing here: whether the output needs a
 target-language **"translation for information only"** notice. Court forms,
@@ -398,6 +411,13 @@ target term. It is a job input, never part of this skill: a public skill
 cannot maintain glossaries for every pair and register, and step 1 already
 tells you to look the issuer's own terms up.
 
+It is also a job **output**. `pipeline.py review --ingest` appends every
+accepted terminology finding that names a `term` and a `term_target` to
+`DIR/glossary.csv`, so a term of art the reviser corrected on this job gates
+the next job of the same class. A bare `--glossary glossary.csv` resolves
+against `--work`, which is where `review --ingest` writes it. The skill still
+ships none.
+
 Nothing here judges whether the wording is right. It narrows what the human
 reader has to look for.
 
@@ -497,6 +517,28 @@ Skip only for non-form PDFs.
 
 ### 8. Deliver
 
+**The review step comes first.** Before you package anything:
+
+```bash
+python3 scripts/pipeline.py review --work .          # writes the two files
+# hand review_pairs.md + review_prompt.md to the reviser; they return review.json
+python3 scripts/pipeline.py review --work . --ingest review.json
+```
+
+`review --work` writes `review_pairs.md` (every core, merge, override and
+notice in one place, with the job's identity record) and `review_prompt.md`
+(the MQM prompt from `references/review.md` §3 with this job's six identity
+slots filled). No model is called: the reviser is a person, or one you run
+yourself in a session of its own.
+
+`--ingest` reads the verdict back, reports every finding, and appends the
+accepted terminology ones to `glossary.csv`. **`finish` refuses while
+`review.json` is absent or any finding is still `open`**, and names the one
+command that fixes it. `--no-review` delivers anyway and marks the delivery
+with a REVIEW line — in the console *and* in `review_state.json`, which is
+written beside the final PDF on every run, refused or not. Use it knowingly:
+it is a record that nobody checked the terminology.
+
 ```bash
 python3 scripts/compare.py original.pdf final.pdf comparison.html \
     --labels "English (original)|Français (traduit)" --lang fr
@@ -519,7 +561,7 @@ page 1, written into `notices` with the wording from
 certified translation is required, hand over the certification template
 for a qualified human to sign, and do not sign on anyone's behalf. Summarize every judgment call: the four
 identity facts (class, issuer, parallel text or `none`/`not searched`,
-identifiers), structural changes (XFA removed, `/Perms` deleted, buttons
+identifiers, terms of art), structural changes (XFA removed, `/Perms` deleted, buttons
 replaced), whether the source was encrypted or certified and what the
 output has instead, compressed translations, everything in
 `scale_report.json`, any font role reported as the regular face, locale
@@ -538,6 +580,8 @@ optional model first pass are in `references/review.md`.
 ## References
 
 - `references/failure-modes.md` — the fourteen silent failures and their fixes.
+- `references/terminology-failure-modes.md` — the five ways a term of art goes
+  wrong while every gate passes.
   Read during recon, before touching the file.
 - `references/gates.md` — every verify gate: what it reads, what fails, and
   why. Read when a gate fails, or before promising what verify checks.
