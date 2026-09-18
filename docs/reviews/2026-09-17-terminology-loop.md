@@ -249,6 +249,94 @@ fact, step 5b names the termbase's new provenance, step 8 puts the review step a
 delivery checklist. `README.md`, `docs/DECISIONS.md`, `docs/REQUESTS-from-product.md` and
 `dev/goals/PROGRAM.md` all carry the row.
 
+## 8. The §4 Proof, run for real
+
+Against the real FL-150 mapping (247 cores) and the real `review.json` (31 findings), through
+`scripts/pipeline.py` — the documented invocation, not the library. Paths shortened here.
+
+**1. `finish` refuses before `review.json` exists.**
+
+```
+finish: no …\fl150-ja\review.json — no second reader has checked this translation.
+finish: run `pipeline.py review --work …\fl150-ja`, have it reviewed, then `review --work …\fl150-ja --ingest review.json`.
+finish: --no-review delivers anyway and marks the delivery.
+elapsed 0.01s
+-> exit 2; FINAL.pdf written: False
+```
+
+**2. `review --work` writes the two files the reviser needs.**
+
+```
+review: 247 cores, 13 merges, 5 overrides, 1 notice
+review: wrote …\fl150-ja\review_pairs.md
+review: wrote …\fl150-ja\review_prompt.md
+review: no review.json yet. finish will refuse.
+elapsed 0.00s
+```
+
+**3. `finish` refuses again with one finding forced back to `open`** — the critical one, in
+`qa_check`'s column shape:
+
+```
+finish: 1 finding(s) are still open; each must be accepted or rejected.
+OPEN  terminology   'head of household': US federal filing status "Head of Household" requires the filer
+                    to be unmarried … 世帯主 is the person registered as head of a 住民票 household …
+                    The established rendering in Japanese-language US tax material is 特定世帯主.
+finish: --no-review delivers anyway and marks the delivery.
+elapsed 0.01s
+-> exit 2; FINAL.pdf written: False
+```
+
+**4. `finish` passes once every finding is resolved**, and the record is there:
+
+```
+-> exit 0; FINAL.pdf written: True
+-> review_state.json: schema=1 version=57 blocks_delivery=False
+   counts={'critical': 1, 'major': 6, 'minor': 24, 'accepted': 25, 'rejected': 6, 'open': 0}
+```
+
+**5. `--no-review` delivers and marks the delivery** — in the console *and* in the record:
+
+```
+REVIEW no reviser: this delivery was built with --no-review. No second reader has checked its
+terminology; a wrong term of art passes every gate.
+-> exit 0; no_review=True
+-> review_line in the record: REVIEW no reviser: this delivery was built with --no-review…
+```
+
+**6. The loop closes.** A reviser answering the new prompt names one term; the other ten accepted
+terminology findings still do not and are reported, not guessed:
+
+```
+review: 1 accepted terminology finding(s) → …\named\glossary.csv
+review: 10 skipped — no term named; add "term" and "term_target"
+
+glossary.csv as written:
+source term,target term
+head of household,特定世帯主
+```
+
+And the next job of this class, reverting the term, is caught by a gate that has existed all along:
+
+```
+ERROR glossary      'head of household': the job termbase maps 'head of household' to '特定世帯主',
+                    which is not in this target
+qa_check: 1 error(s), 78 warning(s) over …\next-job\translations.json
+-> exit 1
+```
+
+That is the whole argument for the row, demonstrated: the term that shipped wrong on a real
+delivery, caught before the next one, by the loop the reviser fed.
+
+## 9. Suite
+
+```
+Ran 452 tests in 177.784s          (pdf-translate/tests, includes 51 new in tests/test_review.py)
+OK
+Ran 15 tests in 0.674s             (dev/canary, includes 4 new)
+OK
+```
+
 ## Review
 
 _(the whole-branch reviewer's verdict goes here)_
