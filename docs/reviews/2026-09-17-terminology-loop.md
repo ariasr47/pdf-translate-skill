@@ -174,6 +174,81 @@ Ran 38 tests in 0.155s
 OK
 ```
 
+## 6. Task 2 — the CLI
+
+`pipeline.py` gains `cmd_review`, and `cmd_finish` gains `--work` / `--no-review`, the refusal, and
+`review_state.json`. Both new commands emit through `logging.getLogger('pdf_translate')` — E3's
+convention, adopted here so this row needs no second pass. `pipeline.main` wraps `_main` in a
+re-entrant `_console()` that attaches one `StreamHandler(sys.stdout)` with `Formatter('%(message)s')`.
+`pdf_translate/__init__.py` attaches a `NullHandler` and nothing else.
+
+`pipeline.py`'s existing 31 `print` sites are deliberately **not** converted. They are E3's job; the
+mixture is expected and temporary.
+
+Two things this task surfaced that the plan did not anticipate:
+
+- **`finish` must read the review without writing anything.** The first implementation called
+  `run_review(work)` with no `ingest`, so it never read `review.json` at all and every job looked
+  unreviewed. Adding `ingest='review.json'` fixed that but introduced a worse problem: a packaging
+  step would have silently regenerated the reviser's inputs and appended to the termbase behind
+  `review --ingest`'s back. `run_review` therefore gained `generate=False`, and `finish` uses it.
+- **`--glossary` now joins `--work`.** `cmd_qa` joined `--segments` to the work directory but left
+  `--glossary` against the caller's cwd, so the two-command story (`review --ingest` writes
+  `work/glossary.csv`; `qa --work … --glossary glossary.csv` reads it back) needed a path dance. A
+  bare name that exists under `--work` now resolves there; an explicit path that resolves is
+  untouched.
+
+### Console parity
+
+Not asserted — run. A `main` worktree at `bacc436` and this branch, the same nine fixture jobs,
+`dev/probes/verdict_parity_runner.py` under each:
+
+```
+# package: C:\Dev\pdf-translate-skill\pdf-translate\pdf_translate\__init__.py
+# package: C:\Users\rodri\AppData\Local\Temp\parity-main\pdf-translate\pdf_translate\__init__.py
+--- diff stdout halves
+IDENTICAL: console parity holds
+```
+
+Only `__init__.py` and `pipeline.py` touch `logging`; `verify.py`, `retypeset.py` and `qa_check.py`
+are untouched, which is why the handler on the package logger cannot reach them.
+
+### One observation for the operator
+
+The plan specifies one migration line per migrated finding. On the FL-150 that is **30 lines**,
+which buries the two lines a reader is actually looking for (the `OPEN` findings and the closing
+count). It is implemented as specified and the summary line is last, so nothing is lost — but if
+this stays noisy in practice, grouping identical values with a count would cut it to four lines
+without losing information.
+
+## 7. Task 4 — the canary's terminology axis
+
+`dev/canary/score.py` gains `terminology_axis()` and `source_words()`. The FL-150, measured:
+
+```json
+{"findings": 31, "accepted": 25, "rejected": 6, "open": 0,
+ "terminology": 12, "terminology_accepted": 11, "termbase_ready": 0,
+ "source_words": 1635, "accepted_per_1000_source_words": 15.29,
+ "false_positive_rate": 0.1935}
+```
+
+A job with no readable `review.json` scores `None`, never `0` — an unmeasured job and a job whose
+reviser found nothing are not the same number, and a zero would read as the second.
+
+The false-positive rate measures the **reviser**, which is the point: 6 of 31, and two of those six
+were in the reviser's own top seven findings. A loop that gates the next job on a reviser's output
+has to measure the reviser too. This is the first measurement, not a target.
+
+## Docs and version
+
+Version 56 → 57 across all four sources, red first against the lockstep test
+(`tests/test_verify_report.py:648`). `.github/workflows/tests.yml` gains `tests.test_review`.
+`references/gates.md` gains a section stating that the review loop is **not** a gate and that nobody
+should look for a gate 22. `SKILL.md` step 1 gains the terms-of-art table as the fifth identity
+fact, step 5b names the termbase's new provenance, step 8 puts the review step ahead of the
+delivery checklist. `README.md`, `docs/DECISIONS.md`, `docs/REQUESTS-from-product.md` and
+`dev/goals/PROGRAM.md` all carry the row.
+
 ## Review
 
 _(the whole-branch reviewer's verdict goes here)_

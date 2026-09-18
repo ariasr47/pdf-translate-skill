@@ -52,9 +52,17 @@ python3 $SK/scripts/prepare_font.py    FONT.ttf translations.json font-sub.ttf -
 python3 $SK/scripts/retypeset.py       stripped.pdf segments.json translations.json out.pdf
 python3 $SK/scripts/verify.py          original.pdf out.pdf --source-words-from segments.json
 python3 $SK/scripts/field_fonts.py     out.pdf FULL_FONT.ttf final.pdf     # fillable PDFs only
+#   ... second reader: review_pairs.md + review_prompt.md -> review.json ...
+python3 $SK/scripts/pipeline.py review --work . --ingest review.json
 python3 $SK/scripts/compare.py         original.pdf final.pdf comparison.html \
     --labels "Original|Translated"
 ```
+
+The review step is the only one no script can do for you. A wrong term of art
+passes every gate — `pipeline.py review --work .` writes the pairs file and the
+MQM prompt, `--ingest` reads the verdict back, and `pipeline.py finish` refuses
+to package until every finding is accepted or rejected (`--no-review` delivers
+anyway and marks the delivery). See `references/terminology-failure-modes.md`.
 
 Hot loop after the first extract (do not re-strip / re-extract / re-subset
 the font, and do not run compare until you are delivering):
@@ -113,7 +121,9 @@ scripts/
   bilingual.py                  optional interleaved source/target reading copy
   render_pages.py               orig/out PNGs for the visual inspect loop
   pipeline.py                   init / from-cores / propose-merges / merge-mappings / qa /
-                                rebuild / render / finish / bilingual wrappers
+                                rebuild / render / review / finish / bilingual wrappers
+pdf_translate/review.py         the second-reader loop: pairs file, MQM prompt,
+                                review.json ingest, per-class termbase
 tools/fetch_test_fonts.py       fetch OFL Noto faces into tests/fonts (never committed)
 tests/test_pipeline.py          constructed-PDF tests of the shipped stages
 tests/test_corpus_verdicts.py   the corpus table
