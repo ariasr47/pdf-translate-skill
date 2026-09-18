@@ -66,7 +66,6 @@ Usage:
       Refuses a fillable input unless --reading-copy (duplicate field
       names fill together).
 """
-import contextlib
 import json
 import logging
 import os
@@ -82,47 +81,20 @@ from .retypeset import retypeset
 from .strip_text import strip_text, WidgetTextError
 from .bilingual import main as bilingual_main
 from .qa_check import main as qa_main
+from ._console import console
 from .review import run_review
 from .verify import verify, main as verify_main
 
 log = logging.getLogger(__name__)
 
-# The new commands emit through the package logger rather than `print`, which
-# is the convention E3 settles for every stage: a consumer that imports the
-# library gets silence and a verdict, a consumer that runs the CLI gets the
-# same lines on stdout. `main` attaches the handler; nothing else does.
+# Row 32's two commands emit through the package logger rather than `print`.
+# E3 is converting the rest; the handler that carries them to stdout now lives
+# in `_console.py`, shared by every CLI entry point, because `pipeline.py`
+# calls five library functions directly and a second handler would print every
+# line twice. `console()` is re-entrant for exactly that reason.
 #
-# pipeline.py's existing 31 `print` sites are deliberately NOT converted here
-# — they keep working untouched and are E3's job. The mixture is expected and
-# temporary.
-_console_depth = 0
-_console_handler = None
-
-
-@contextlib.contextmanager
-def _console():
-    """Attach one stdout handler to the package logger, re-entrantly.
-
-    Re-entrant because `main` may be called from inside another `main` (the
-    scripts/ wrappers, and the tests), and a second handler would double every
-    line. Removed on the way out so importing the library never leaves a
-    handler behind on a logger the caller owns.
-    """
-    global _console_depth, _console_handler
-    pkg = logging.getLogger('pdf_translate')
-    if _console_depth == 0:
-        _console_handler = logging.StreamHandler(sys.stdout)
-        _console_handler.setFormatter(logging.Formatter('%(message)s'))
-        pkg.addHandler(_console_handler)
-        pkg.setLevel(logging.INFO)
-    _console_depth += 1
-    try:
-        yield
-    finally:
-        _console_depth -= 1
-        if _console_depth == 0:
-            pkg.removeHandler(_console_handler)
-            _console_handler = None
+# pipeline.py's own remaining `print` sites are E3's Task 3; the mixture is
+# expected and temporary.
 
 
 def cmd_init(argv):
@@ -575,7 +547,7 @@ def _write_review_state(final, verdict):
 
 
 def main(argv=None):
-    with _console():
+    with console():
         return _main(argv)
 
 

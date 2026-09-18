@@ -483,5 +483,160 @@ class CliPathTests(unittest.TestCase):
         self.assertEqual(lines[0].lower().replace('-', ''), 'cp1252')
 
 
+class ConsoleHandlerTests(unittest.TestCase):
+    """E3 Task 2: the one handler that reproduces today's console exactly.
+
+    `pipeline.py` calls five library functions directly (strip_text at :87,
+    retypeset at :337, render_pages at :354, field_fonts at :362, compare at
+    :365). Once each of those is a loud wrapper that attaches a handler,
+    `pipeline.main()`'s handler and the wrapper's would both be attached and
+    every line would print twice. Re-entrancy is what prevents that, and it is
+    the single most likely way the parity runner goes red.
+    """
+
+    def setUp(self):
+        import logging
+        self.pkg = logging.getLogger('pdf_translate')
+        self.before = list(self.pkg.handlers)
+
+    def test_console_is_reentrant(self):
+        import logging
+        from pdf_translate._console import console
+        log = logging.getLogger('pdf_translate.test_reentrant')
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            with console():
+                with console():
+                    log.info('once')
+        self.assertEqual(buf.getvalue(), 'once\n')
+
+    def test_console_removes_its_handler_on_exit(self):
+        from pdf_translate._console import console
+        with console():
+            pass
+        # A library that leaves a handler attached has configured logging for
+        # its host.
+        self.assertEqual(list(self.pkg.handlers), self.before)
+
+    def test_console_removes_its_handler_even_when_the_body_raises(self):
+        from pdf_translate._console import console
+        with self.assertRaises(ValueError):
+            with console():
+                raise ValueError('boom')
+        self.assertEqual(list(self.pkg.handlers), self.before)
+
+    def test_console_formats_a_record_as_the_bare_message(self):
+        # print(x) wrote `x\n`. Any prefix — level, logger name, timestamp —
+        # is a console change, and the console is the contract.
+        import logging
+        from pdf_translate._console import console
+        log = logging.getLogger('pdf_translate.test_format')
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            with console():
+                log.info('FAIL field parity: 265/266')
+        self.assertEqual(buf.getvalue(), 'FAIL field parity: 265/266\n')
+
+    def test_run_verify_leaves_the_callers_stdout_as_it_found_it(self):
+        # Necessary but not sufficient: `redirect_stdout` restores on exit, so
+        # this passes even with the defect. What it pins is that run_verify
+        # never writes to the caller's stream and never leaves it swapped.
+        # The defect itself — the process's stdout replaced FOR THE DURATION,
+        # which silences the host's other threads — is caught by
+        # test_two_threads_running_run_verify_do_not_swallow_each_other.
+        import pdf_translate
+
+        class Sentinel:
+            def __init__(self):
+                self.text = []
+
+            def write(self, s):
+                self.text.append(s)
+                return len(s)
+
+            def flush(self):
+                pass
+
+        with tempfile.TemporaryDirectory() as tmp:
+            src = _one_page_pdf(Path(tmp) / 'orig.pdf')
+            out = _one_page_pdf(Path(tmp) / 'out.pdf')
+            sentinel = Sentinel()
+            real = sys.stdout
+            sys.stdout = sentinel
+            try:
+                pdf_translate.run_verify(src, out, min_ink=0.0)
+                still_ours = sys.stdout is sentinel
+            finally:
+                sys.stdout = real
+        self.assertTrue(still_ours, 'run_verify replaced sys.stdout')
+        self.assertEqual(''.join(sentinel.text), '',
+                         'run_verify wrote to the caller\'s stdout')
+
+    def test_run_verify_is_silent_and_verify_is_loud(self):
+        import pdf_translate
+        from pdf_translate.verify import verify as loud
+        with tempfile.TemporaryDirectory() as tmp:
+            src = _one_page_pdf(Path(tmp) / 'orig.pdf')
+            out = _one_page_pdf(Path(tmp) / 'out.pdf')
+            quiet_buf = io.StringIO()
+            with redirect_stdout(quiet_buf):
+                verdict = pdf_translate.run_verify(src, out, min_ink=0.0)
+            loud_buf = io.StringIO()
+            with redirect_stdout(loud_buf):
+                rc = loud(src, out, min_ink=0.0)
+        self.assertEqual(quiet_buf.getvalue(), '')
+        self.assertTrue(loud_buf.getvalue().strip())
+        self.assertEqual(rc, verdict.exit_code)
+
+    def test_two_threads_running_run_verify_do_not_swallow_each_other(self):
+        # C5. With redirect_stdout, one thread inside run_verify silences
+        # every other thread in the process for the duration — a service
+        # running two jobs loses the other one's output entirely.
+        import threading
+        import pdf_translate
+
+        with tempfile.TemporaryDirectory() as tmp:
+            src = _one_page_pdf(Path(tmp) / 'orig.pdf')
+            out = _one_page_pdf(Path(tmp) / 'out.pdf')
+
+            import time
+            started = threading.Event()
+            done = threading.Event()
+            printed = 0
+
+            def verifying():
+                started.set()
+                for _ in range(3):
+                    pdf_translate.run_verify(src, out, min_ink=0.0)
+                done.set()
+
+            worker = threading.Thread(target=verifying)
+            worker.start()
+            started.wait(10)
+            buf = io.StringIO()
+            # Bounded on both sides: at most 400 lines, at most ~4 s, and it
+            # stops as soon as the worker is finished. A test that races has
+            # to be cheap when it loses.
+            with redirect_stdout(buf):
+                for _ in range(400):
+                    if done.is_set():
+                        break
+                    print('host output')
+                    printed += 1
+                    time.sleep(0.01)
+            worker.join(60)
+        self.assertGreater(printed, 0, 'the host thread never printed')
+        self.assertEqual(buf.getvalue().count('host output'), printed,
+                         'run_verify swallowed the host thread\'s output')
+
+
+def _one_page_pdf(path, text='Income and Expense Declaration'):
+    doc = pymupdf.open()
+    doc.new_page().insert_text((72, 72), text)
+    doc.save(path)
+    doc.close()
+    return str(path)
+
+
 if __name__ == '__main__':
     unittest.main()

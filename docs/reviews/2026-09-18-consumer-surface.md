@@ -79,6 +79,70 @@ Ran 32 tests in 6.079s       (with tests/test_import_surface.py — the re-expor
 OK
 ```
 
+## 4. Task 2 — the console handler, verify's twin, and the widened ratchet
+
+`pdf_translate/_console.py`, 70 `print` sites in `verify.py`, 7 tests added to
+`tests/test_import_surface.py`, and a new `dev/probes/cli_parity_runner.py`.
+
+### The red that mattered
+
+`test_two_threads_running_run_verify_do_not_swallow_each_other` **failed before the change**. That
+is C5's defect stated as a test: `run_verify` was silent because of
+`redirect_stdout(io.StringIO())` at `verify.py:2124`, which replaces the **process's** stdout for
+the duration. A service running two jobs lost the other one's output entirely. It is now silent
+because the gates log and no handler is attached — the caller's stream is never touched.
+
+One test of mine overclaimed and was corrected rather than kept:
+`test_run_verify_does_not_touch_sys_stdout` passes even with the defect, because `redirect_stdout`
+restores on exit. It is now named `test_run_verify_leaves_the_callers_stdout_as_it_found_it` and
+says in a comment that the thread test is what catches the real thing.
+
+### `console()` and why it is re-entrant
+
+`pipeline.py` calls five library functions directly (`strip_text` :87, `retypeset` :337,
+`render_pages` :354, `field_fonts` :362, `compare` :365). Once each is a loud wrapper opening
+`console()` itself, `pipeline.main()`'s handler and the wrapper's would both be attached and every
+line would print twice. Nested uses share the outermost handler. Row 32's private `_console()` in
+`pipeline.py` is replaced by this shared one, so there is one implementation, not two.
+
+Two details that are load-bearing rather than incidental:
+
+- **The stream is resolved at enter time**, not at import. That is why all 64 existing
+  `redirect_stdout(… verify.verify(…))` capture blocks still capture: the handler attaches to
+  whatever `sys.stdout` is when the loud wrapper opens, which is the test's `StringIO`.
+- **The formatter is `'%(message)s'`.** `print(x)` wrote `x\n`; any level, logger name or timestamp
+  prefix would be a console change, and the console is the contract. Pinned by
+  `test_console_formats_a_record_as_the_bare_message`.
+
+### The widened ratchet
+
+`dev/probes/verdict_parity_runner.py` compares `verify` at the library level over nine gate
+fixtures. `dev/probes/cli_parity_runner.py` is new and compares the **CLIs themselves**, as
+subprocesses, over a job it builds: twelve invocations covering all eleven scripts plus
+`pipeline review`. It normalises the only two things that legitimately differ between two runs —
+elapsed times and absolute paths — and nothing else.
+
+It takes `--font`, and that is not a convenience: `tests/fonts/` is fetched and never committed, so
+a fresh worktree has none and every font-dependent CLI fails there for a reason unrelated to the
+change under test. The first comparison run hit exactly that and looked like a catastrophic console
+break until the cause was read.
+
+### Both ratchets, green
+
+Against a worktree of `feat/terminology-loop` (v57) at `abc4767`, same fixtures, same font:
+
+```
+verdict_parity_runner.py  (verify, 9 gate fixtures)   IDENTICAL
+cli_parity_runner.py      (12 CLI invocations)        IDENTICAL
+```
+
+```
+Ran 472 tests in 176.155s      (pdf-translate/tests)
+OK                             — and not one existing test was edited
+```
+
+Seventy `print` sites moved to the logger and the console did not shift a byte.
+
 ## Review
 
 _(the whole-branch reviewer's verdict goes here)_

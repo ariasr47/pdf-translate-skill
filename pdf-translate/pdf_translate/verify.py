@@ -164,8 +164,8 @@ Usage:
       [--translations translations.json] [--segments segments.json] \
       [--report verify_report.json] [--fail-on-review]
 """
-import io
 import json
+import logging
 import os
 import re
 import stat
@@ -173,13 +173,18 @@ import sys
 import tempfile
 import time
 import unicodedata
-from contextlib import redirect_stdout
 from dataclasses import dataclass
 
 import pymupdf
 
+from ._console import console
 from .extract_segments import write_find_say_hits
 from .strip_text import choice_exports, invisible_text_pages
+
+# Every gate line goes through here. `verify()` attaches the console handler
+# and the bytes are what `print` wrote; `run_verify()` attaches nothing and is
+# silent without touching the process's stdout.
+log = logging.getLogger(__name__)
 from . import cjk_tell, han_forms, shaping_probe
 
 # Unicode letter ranges per script (goal 15). A range table, not an ICU
@@ -1636,16 +1641,16 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     j_text = '\n'.join(p.get_text() or '' for p in j)
     src_script = dominant_script(o_text) or 'Latin'
     out_script = target_script(j_text, o_text)
-    print(f'leak scan: source script {src_script}; output script {out_script or "none"}')
+    log.info(f'leak scan: source script {src_script}; output script {out_script or "none"}')
     same_spaceless = src_script in SPACELESS_SCRIPTS and out_script == src_script
     source_words = None
     src_re = None
     if source_words_from:
         source_words = source_words_from_segments(source_words_from, allow, src_script)
-        print(f'leak scan: {len(source_words)} source words from {source_words_from}')
+        log.info(f'leak scan: {len(source_words)} source words from {source_words_from}')
     elif out_script == src_script and not same_spaceless:
         source_words = source_words_from_text(o_text, allow, src_script)
-        print(f'leak scan: same script on both sides; using {len(source_words)} '
+        log.info(f'leak scan: same script on both sides; using {len(source_words)} '
               f'document words from the original')
     if not source_words:
         source_words = None
@@ -1658,16 +1663,16 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     mismatch = [k for k in onames if k in jnames and onames[k] != jnames[k]]
     extra = {k for k in set(jnames) - set(onames)
              if not (allow_extra_prefix and k.startswith(allow_extra_prefix))}
-    print(f'fields: {len(onames)} original / {len(jnames)} translated')
+    log.info(f'fields: {len(onames)} original / {len(jnames)} translated')
     parity = []
     for label, bad in [('missing', missing), ('type-mismatch', mismatch),
                        ('unexpected-extra', extra)]:
         if bad:
-            print(f'FAIL field {label}:', sorted(bad)[:10])
+            log.info(f'FAIL field {label}:', sorted(bad)[:10])
             fail = 1
             parity.extend(Finding(None, label, name) for name in sorted(bad))
     if not (missing or mismatch or extra):
-        print('PASS field parity')
+        log.info('PASS field parity')
         record('field-parity', 'PASS')
     else:
         record('field-parity', 'FAIL', findings=parity)
@@ -1679,16 +1684,16 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     drifted = sorted(name for name in set(oopt) | set(jopt)
                      if oopt.get(name) != jopt.get(name))
     if drifted:
-        print(f'FAIL /Opt export values changed ({len(drifted)}):')
+        log.info(f'FAIL /Opt export values changed ({len(drifted)}):')
         for name in drifted[:10]:
-            print(f'   {name}: {oopt.get(name)} -> {jopt.get(name)}')
+            log.info(f'   {name}: {oopt.get(name)} -> {jopt.get(name)}')
         fail = 1
         record('opt-export-parity', 'FAIL',
                f'{len(drifted)} choice field(s) changed',
                findings=[Finding(None, name, f'{oopt.get(name)} -> {jopt.get(name)}')
                          for name in drifted])
     elif oopt:
-        print(f'PASS /Opt export parity ({len(oopt)} choice field(s))')
+        log.info(f'PASS /Opt export parity ({len(oopt)} choice field(s))')
         record('opt-export-parity', 'PASS',
                f'{len(oopt)} choice field(s)')
 
@@ -1720,7 +1725,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
                 if w.field_name == cbtarget)
             t.close()
             ok = got_t and got_cb
-            print(('PASS' if ok else 'FAIL') + ' fill round-trip')
+            log.info(('PASS' if ok else 'FAIL') + ' fill round-trip')
             fail |= (0 if ok else 1)
             broken = []
             if not got_t:
@@ -1734,7 +1739,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             except OSError:
                 pass
     else:
-        print('SKIP fill round-trip (no fields)')
+        log.info('SKIP fill round-trip (no fields)')
         record('fill-roundtrip', 'SKIP', 'no fields')
 
     jc = pymupdf.open(trans)
@@ -1746,7 +1751,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         if page_unextractable(o[i]):
             nimg = len(o[i].get_images())
             page_ink = ink(o[i])
-            print(f'FAIL page {i+1} no extractable text with visible content '
+            log.info(f'FAIL page {i+1} no extractable text with visible content '
                   f'(images={nimg}, ink={page_ink}). '
                   f'This looks scanned — scans are out of scope with or without an OCR layer; do not ship.')
             fail = 1
@@ -1755,14 +1760,14 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             continue
         do, dj = ink(o[i]), ink(jc[i])
         if do < INK_SKIP:
-            print(f'SKIP page {i+1} ink ratio (original negligible ink: {do} px)')
+            log.info(f'SKIP page {i+1} ink ratio (original negligible ink: {do} px)')
             if ink_status is None:
                 ink_status = 'SKIP'
             inks.append(Finding(i + 1, 'page', f'negligible ink: {do} px'))
             continue
         ratio = dj / max(do, 1)
         ok = min_ink <= ratio <= 3.0
-        print(f'{"PASS" if ok else "FAIL"} page {i+1} ink ratio: {ratio:.2f}')
+        log.info(f'{"PASS" if ok else "FAIL"} page {i+1} ink ratio: {ratio:.2f}')
         fail |= (0 if ok else 1)
         if not ok:
             ink_status = 'FAIL'
@@ -1776,12 +1781,12 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
 
     invisible = invisible_text_pages(orig)
     for pno, fraction in invisible:
-        print(f'FAIL page {pno+1} invisible text layer: stripping the text changes '
+        log.info(f'FAIL page {pno+1} invisible text layer: stripping the text changes '
               f'{fraction:.1%} of its span area. This looks like an OCR\'d scan; the '
               f'words the reader sees are pixels. Do not ship.')
         fail = 1
     if not invisible:
-        print('PASS text layer is visible')
+        log.info('PASS text layer is visible')
         record('visible-text', 'PASS')
     else:
         record('visible-text', 'FAIL', findings=[
@@ -1799,22 +1804,22 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     drift = drifted_characters(
         '\n'.join(page_search_text(jc[i]) for i in range(len(jc))), authored)
     if drift:
-        print(f'FAIL text layer is not canonical ({len(drift)} character(s) '
+        log.info(f'FAIL text layer is not canonical ({len(drift)} character(s) '
               f'nobody authored — ToUnicode drift; the page looks right but '
               f'the words cannot be searched or copied):')
         for ch, n in drift[:10]:
-            print(f'   U+{ord(ch):04X} {unicodedata.name(ch, "?")} x{n}')
+            log.info(f'   U+{ord(ch):04X} {unicodedata.name(ch, "?")} x{n}')
         fail = 1
         record('canonical-text', 'FAIL', f'{len(drift)} character(s)', findings=[
             Finding(None, f'U+{ord(ch):04X}', f'{unicodedata.name(ch, "?")} x{n}')
             for ch, n in drift])
     else:
-        print('PASS canonical text layer')
+        log.info('PASS canonical text layer')
         record('canonical-text', 'PASS')
 
     unshaped, saw_arabic = unshaped_arabic_pages(jc)
     for pno, n in unshaped:
-        print(f'FAIL page {pno+1} Arabic drawn unshaped: {n} joining letters in isolated '
+        log.info(f'FAIL page {pno+1} Arabic drawn unshaped: {n} joining letters in isolated '
               f'form and none connected. The run bypassed the Story engine; do not ship.')
         fail = 1
     if unshaped:
@@ -1822,12 +1827,12 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             Finding(pno + 1, 'page', f'{n} joining letters in isolated form, none connected')
             for pno, n in unshaped])
     elif saw_arabic:
-        print('PASS Arabic letterforms joined')
+        log.info('PASS Arabic letterforms joined')
         record('arabic-letterforms', 'PASS')
 
     shaping_lines, shaping_status, shaping_findings = conjunct_shaping_report(jc)
     for line in shaping_lines:
-        print(line)
+        log.info(line)
     if shaping_status == 'FAIL':
         fail = 1
     if shaping_status:
@@ -1835,7 +1840,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
 
     kinsoku_lines, kinsoku_status, kinsoku_findings = kinsoku_report(jc)
     for line in kinsoku_lines:
-        print(line)
+        log.info(line)
     if kinsoku_status:
         record('kinsoku', kinsoku_status,
                f'{len(kinsoku_findings)} line(s)' if kinsoku_status == 'REVIEW' else '',
@@ -1852,7 +1857,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     han_lines, han_status, han_findings = han_forms_report(jc, mapping_lang, output_lang,
                                                            reference_fonts)
     for line in han_lines:
-        print(line)
+        log.info(line)
     if han_status == 'FAIL':
         fail = 1
     if han_status:
@@ -1892,21 +1897,21 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             tell_lines, tell_status, tell_findings = cjk_tell_report(jc, target_conv, keep, kept, allow,
                                                                      source=source_conv)
             for line in tell_lines:
-                print(line)
+                log.info(line)
             if tell_status == 'FAIL':
                 fail = 1
             record('leak-cjk', tell_status, f'{len(tell_findings)} line(s)' if tell_findings else '',
                    findings=tell_findings)
-            print(f'SKIP leak scan: source and output share the spaceless {src_script} family; '
+            log.info(f'SKIP leak scan: source and output share the spaceless {src_script} family; '
                   f'judged by the CJK tell (leak-cjk) — a line of Han both languages share is '
                   f'invisible to the tell; lean on --translations and the visual pass')
             record('leak-scan', 'SKIP', 'judged by leak-cjk')
             tell_ran = True
         else:
-            print(f'REVIEW leak scan: source and output share the spaceless {src_script} '
+            log.info(f'REVIEW leak scan: source and output share the spaceless {src_script} '
                   f'family; the scan cannot tell them apart. Rely on --translations and '
                   f'the visual pass.')
-            print(f'   (CJK tell not applied: {why})')
+            log.info(f'   (CJK tell not applied: {why})')
             record('leak-scan', 'REVIEW',
                    f'source and output share the spaceless {src_script} family',
                    findings=[Finding(None, 'script', src_script)])
@@ -1920,29 +1925,29 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
 
     if kept:
         uniq = sorted(set(kept))
-        print(f'note: {len(kept)} source-language run(s) kept as the original '
+        log.info(f'note: {len(kept)} source-language run(s) kept as the original '
               f'/Title or an allowlisted phrase: ' + '; '.join(uniq[:5]))
     if not tell_ran:
         if running:
-            print(f'FAIL untranslated running text ({len(running)}):')
+            log.info(f'FAIL untranslated running text ({len(running)}):')
             for pg, ph in running[:10]:
-                print(f'   p{pg}: {ph}')
+                log.info(f'   p{pg}: {ph}')
             fail = 1
             record('leak-running', 'FAIL', f'{len(running)}',
                    findings=[Finding(pg, 'run', ph) for pg, ph in running])
         else:
-            print('PASS no untranslated running text')
+            log.info('PASS no untranslated running text')
             record('leak-running', 'PASS')
 
         if isolated:
             uniq = sorted({w for _, w in isolated})
-            print(f'REVIEW isolated source-script tokens ({len(uniq)}) - expected for '
+            log.info(f'REVIEW isolated source-script tokens ({len(uniq)}) - expected for '
                   f'form names, statutes and proper nouns; confirm each is deliberate:')
-            print('   ' + ', '.join(uniq[:20]))
+            log.info('   ' + ', '.join(uniq[:20]))
             record('leak-isolated', 'REVIEW', f'{len(uniq)}',
                    findings=[Finding(pg, 'token', w) for pg, w in sorted(set(isolated))])
         else:
-            print('PASS isolated source-script tokens: none')
+            log.info('PASS isolated source-script tokens: none')
             record('leak-isolated', 'PASS', 'none')
 
     if translations:
@@ -1953,44 +1958,44 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         hay = '\n'.join(page_search_text(jc[i]) for i in range(len(jc)))
         blanks = empty_translation_targets(conf)
         if blanks:
-            print(f'FAIL empty translation targets ({len(blanks)}):')
+            log.info(f'FAIL empty translation targets ({len(blanks)}):')
             for t in blanks[:30]:
-                print(f'   {t.replace(chr(10), " ")[:80]}')
+                log.info(f'   {t.replace(chr(10), " ")[:80]}')
             fail = 1
             record('empty-targets', 'FAIL', f'{len(blanks)}',
                    findings=[Finding(None, 'target', t) for t in blanks])
         else:
-            print('PASS no empty translation targets')
+            log.info('PASS no empty translation targets')
             record('empty-targets', 'PASS')
         # /Title and outline titles are cores but not page text; the
         # document-metadata gate is what checks those landed.
         targets = collect_translation_targets(conf, exclude_cores=meta_cores)
         missing = missing_translation_targets(hay, targets)
         if missing:
-            print(f'FAIL missing translation targets ({len(missing)}):')
+            log.info(f'FAIL missing translation targets ({len(missing)}):')
             for t in missing[:30]:
-                print(f'   {t.replace(chr(10), " ")[:80]}')
+                log.info(f'   {t.replace(chr(10), " ")[:80]}')
             fail = 1
             record('placement', 'FAIL', f'{len(missing)}',
                    findings=[Finding(None, 'target', t) for t in missing])
         else:
-            print('PASS authored translations present')
+            log.info('PASS authored translations present')
             record('placement', 'PASS')
 
         marks = [ '\n'.join(extract_actualtext(jc[i])) for i in range(len(jc))]
         unmarked = unmarked_shaped_targets(marks, targets)
         if unmarked:
-            print(f'FAIL shaped-script targets not drawn by the Story engine '
+            log.info(f'FAIL shaped-script targets not drawn by the Story engine '
                   f'({len(unmarked)}): no /ActualText span carries them, so '
                   f'they were placed glyph by glyph — joining and conjuncts '
                   f'are broken:')
             for t in unmarked[:20]:
-                print(f'   {t.replace(chr(10), " ")[:80]}')
+                log.info(f'   {t.replace(chr(10), " ")[:80]}')
             fail = 1
             record('shaped-actualtext', 'FAIL', f'{len(unmarked)}',
                    findings=[Finding(None, 'target', t) for t in unmarked])
         elif any(needs_shaping(t) for t in targets):
-            print('PASS shaped-script targets carry /ActualText')
+            log.info('PASS shaped-script targets carry /ActualText')
             record('shaped-actualtext', 'PASS')
 
         leftover = leftover_button_captions(
@@ -2001,60 +2006,60 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             hidden=hidden_pushbuttons(jc),
         )
         if leftover:
-            print(f'FAIL untranslated button captions ({len(leftover)}):')
+            log.info(f'FAIL untranslated button captions ({len(leftover)}):')
             for name, cap in leftover[:20]:
-                print(f'   {cap} ({name})')
+                log.info(f'   {cap} ({name})')
             fail = 1
             record('button-captions', 'FAIL', f'{len(leftover)}',
                    findings=[Finding(None, name, cap) for name, cap in leftover])
         else:
-            print('PASS button captions')
+            log.info('PASS button captions')
             record('button-captions', 'PASS')
 
         clipped = overflowing_button_captions(jc)
         if clipped:
-            print(f'FAIL caption wider than widget ({len(clipped)}):')
+            log.info(f'FAIL caption wider than widget ({len(clipped)}):')
             for name, cap in clipped[:20]:
-                print(f'   {cap} ({name})')
+                log.info(f'   {cap} ({name})')
             fail = 1
             record('caption-width', 'FAIL', f'{len(clipped)}',
                    findings=[Finding(None, name, cap) for name, cap in clipped])
         else:
-            print('PASS caption width')
+            log.info('PASS caption width')
             record('caption-width', 'PASS')
 
         segs = (segfile.get('segments')
                 if isinstance(segfile, dict) else segfile)
         if segs is None:
-            print('SKIP override marker gate (no segments.json beside the mapping; '
+            log.info('SKIP override marker gate (no segments.json beside the mapping; '
                   'pass --segments)')
             record('override-markers', 'SKIP', 'no segments.json')
         else:
             misses = override_marker_misses(conf, segs)
             if misses:
-                print(f'FAIL override drops source marker or tail ({len(misses)}):')
+                log.info(f'FAIL override drops source marker or tail ({len(misses)}):')
                 for contains, token in misses[:20]:
-                    print(f'   "{contains}" is missing "{token}"')
+                    log.info(f'   "{contains}" is missing "{token}"')
                 fail = 1
                 record('override-markers', 'FAIL', f'{len(misses)}',
                        findings=[Finding(None, contains, token) for contains, token in misses])
             elif conf.get('overrides'):
-                print('PASS override parts keep markers and tails')
+                log.info('PASS override parts keep markers and tails')
                 record('override-markers', 'PASS')
 
         meta_misses = document_metadata_misses(o, jc, conf)
         if meta_misses:
-            print(f'FAIL document metadata ({len(meta_misses)}):')
+            log.info(f'FAIL document metadata ({len(meta_misses)}):')
             for what, detail in meta_misses[:10]:
-                print(f'   [{what}] {detail}')
+                log.info(f'   [{what}] {detail}')
             fail = 1
             record('metadata', 'FAIL', ', '.join(what for what, _ in meta_misses),
                    findings=[Finding(None, what, detail) for what, detail in meta_misses])
         else:
-            print('PASS document metadata')
+            log.info('PASS document metadata')
             record('metadata', 'PASS')
         if not (conf.get('lang') or '').strip():
-            print('REVIEW document metadata: translations.json has no "lang"; '
+            log.info('REVIEW document metadata: translations.json has no "lang"; '
                   'the output still declares the source language to screen '
                   'readers and hyphenation')
             record('metadata-lang', 'REVIEW', 'translations.json has no "lang"',
@@ -2062,11 +2067,11 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
 
         report = scale_report_for(trans)
         if report is None:
-            print(f'SKIP scaled runs: no {SCALE_REPORT} beside the output '
+            log.info(f'SKIP scaled runs: no {SCALE_REPORT} beside the output '
                   f'(a build from before it was written)')
             record('scaled-runs', 'SKIP', f'no {SCALE_REPORT}')
         elif report:
-            print(f'REVIEW scaled runs ({len(report)}) — ship them or reword '
+            log.info(f'REVIEW scaled runs ({len(report)}) — ship them or reword '
                   f'them, and name them in the delivery:')
             # Computed once, tolerantly, so a malformed sidecar entry (a
             # non-numeric ratio, a missing/non-integer page) cannot crash
@@ -2081,27 +2086,27 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
                 scaled.append(Finding(p + 1 if isinstance(p, int) else None, ratio,
                                       str(r.get('key') or '')))
             for r, finding in zip(report[:20], scaled[:20]):
-                print(f'   p{r.get("page")} {finding.where}: '
+                log.info(f'   p{r.get("page")} {finding.where}: '
                       f'{str(r.get("key") or "")[:60]}')
             if len(report) > 20:
-                print(f'   ... {len(report) - 20} more in {SCALE_REPORT}')
+                log.info(f'   ... {len(report) - 20} more in {SCALE_REPORT}')
             record('scaled-runs', 'REVIEW', f'{len(report)}', findings=scaled)
         else:
-            print('PASS scaled runs: none, everything ships at source size')
+            log.info('PASS scaled runs: none, everything ships at source size')
             record('scaled-runs', 'PASS')
 
         spans = collect_identifier_spans(o)
         missing_ids = missing_identifier_spans(
             hay, spans, allow_translate=conf.get('allow_translate') or [])
         if missing_ids:
-            print(f'FAIL missing write/find/say identifiers ({len(missing_ids)}):')
+            log.info(f'FAIL missing write/find/say identifiers ({len(missing_ids)}):')
             for t in missing_ids[:30]:
-                print(f'   {t.replace(chr(10), " ")[:80]}')
+                log.info(f'   {t.replace(chr(10), " ")[:80]}')
             fail = 1
             record('identifiers', 'FAIL', f'{len(missing_ids)}',
                    findings=[Finding(None, 'identifier', t) for t in missing_ids])
         else:
-            print('PASS write/find/say identifiers')
+            log.info('PASS write/find/say identifiers')
             record('identifiers', 'PASS')
 
     o.close()
@@ -2111,7 +2116,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     if fail_on_review and rc == 0:
         reviews = sum(1 for g in gates if g.status == 'REVIEW')
         if reviews:
-            print(f'FAIL: {reviews} REVIEW line(s) with --fail-on-review')
+            log.info(f'FAIL: {reviews} REVIEW line(s) with --fail-on-review')
             rc = 1
     return rc, gates
 
@@ -2120,14 +2125,20 @@ def run_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
                source_regex=None, source_words_from=None, allow_extra_prefix=None,
                translations=None, segments=None, fail_on_review=False,
                reference_fonts=None):
-    """Run structural gates. Returns a VerifyVerdict; does not print or exit."""
-    with redirect_stdout(io.StringIO()):
-        rc, gates = _execute_verify(
-            orig, trans, fill_text=fill_text, allow=allow, min_ink=min_ink,
-            source_regex=source_regex, source_words_from=source_words_from,
-            allow_extra_prefix=allow_extra_prefix, translations=translations,
-            segments=segments, fail_on_review=fail_on_review,
-            reference_fonts=reference_fonts)
+    """Run structural gates. Returns a VerifyVerdict; does not print or exit.
+
+    Silent because the gates log and no handler is attached, not because
+    stdout is redirected. The old `redirect_stdout(io.StringIO())` silenced
+    the whole PROCESS for the duration — a service running two jobs lost the
+    other one's output entirely, which is C5's defect and is pinned by
+    `test_two_threads_running_run_verify_do_not_swallow_each_other`.
+    """
+    rc, gates = _execute_verify(
+        orig, trans, fill_text=fill_text, allow=allow, min_ink=min_ink,
+        source_regex=source_regex, source_words_from=source_words_from,
+        allow_extra_prefix=allow_extra_prefix, translations=translations,
+        segments=segments, fail_on_review=fail_on_review,
+        reference_fonts=reference_fonts)
     return _verdict(rc, gates, orig, trans, fail_on_review)
 
 
@@ -2144,13 +2155,19 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
            source_regex=None, source_words_from=None, allow_extra_prefix=None,
            translations=None, segments=None, fail_on_review=False,
            reference_fonts=None):
-    """Run structural gates. Returns 0 on pass, 1 on any failure."""
-    rc, _ = _execute_verify(
-        orig, trans, fill_text=fill_text, allow=allow, min_ink=min_ink,
-        source_regex=source_regex, source_words_from=source_words_from,
-        allow_extra_prefix=allow_extra_prefix, translations=translations,
-        segments=segments, fail_on_review=fail_on_review,
-        reference_fonts=reference_fonts)
+    """Run structural gates. Returns 0 on pass, 1 on any failure.
+
+    The loud shape, unchanged: same signature, same printed bytes, same return
+    code. It is now a thin wrapper that attaches the console handler around the
+    silent body — see `run_verify` for the one a service should call.
+    """
+    with console():
+        rc, _ = _execute_verify(
+            orig, trans, fill_text=fill_text, allow=allow, min_ink=min_ink,
+            source_regex=source_regex, source_words_from=source_words_from,
+            allow_extra_prefix=allow_extra_prefix, translations=translations,
+            segments=segments, fail_on_review=fail_on_review,
+            reference_fonts=reference_fonts)
     return rc
 
 
@@ -2173,7 +2190,7 @@ def _remove_stale_report(path):
         os.remove(path)
         return True
     except OSError as exc:
-        print(f'  (could not remove the previous report at {path}: {exc}; '
+        log.info(f'  (could not remove the previous report at {path}: {exc}; '
               f'what is there does not describe this run)')
         return False
 
@@ -2192,7 +2209,7 @@ def write_report(verdict, path):
             f.write(text)
         os.replace(tmp, path)
     except OSError as exc:
-        print(f'  (could not write {path}: {exc})')
+        log.info(f'  (could not write {path}: {exc})')
         if tmp and os.path.exists(tmp):
             try:
                 os.remove(tmp)
@@ -2202,6 +2219,11 @@ def write_report(verdict, path):
 
 
 def main(argv=None):
+    with console():
+        return _main(argv)
+
+
+def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     orig, trans = argv[0], argv[1]
     allow = [w for w in (_arg(argv, '--allow', '') or '').split(',') if w]
@@ -2224,7 +2246,7 @@ def main(argv=None):
     )
     if report:
         write_report(_verdict(rc, gates, orig, trans, '--fail-on-review' in argv), report)
-    print(f'elapsed {time.perf_counter()-t0:.2f}s')
+    log.info(f'elapsed {time.perf_counter()-t0:.2f}s')
     return rc
 
 
