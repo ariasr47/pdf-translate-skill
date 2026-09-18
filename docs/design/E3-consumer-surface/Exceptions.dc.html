@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: oklch(0.55 0.13 45); }
+    a:hover { color: oklch(0.42 0.11 45); }
+    .mono { font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+    .code { white-space: pre; font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11.5px; line-height: 1.72; }
+    .kw { color: oklch(0.72 0.11 300); }
+    .fn { color: oklch(0.78 0.11 200); }
+    .str { color: oklch(0.78 0.11 140); }
+    .cm { color: oklch(0.6 0.02 70); }
+  </style>
+</helmet>
+
+<div style="width: 900px; min-height: 760px; box-sizing: border-box; padding: 34px 34px; background: oklch(0.98 0.006 85); font-family: 'IBM Plex Sans', system-ui, sans-serif; color: oklch(0.22 0.01 60); display: flex; flex-direction: column; gap: 20px;">
+
+  <div style="display: flex; flex-direction: column; gap: 5px;">
+    <div class="mono" style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.55 0.02 60);">C1 &middot; &ldquo;raising a typed exception on refusal&rdquo;</div>
+    <div style="font-size: 24px; font-weight: 600; letter-spacing: -0.012em;">What raises, and what is only data</div>
+    <div style="font-size: 13.5px; line-height: 1.5; color: oklch(0.44 0.012 60); max-width: 760px;">One typed exception exists in the whole package today &mdash; <span class="mono" style="font-size: 12.5px;">strip_text.WidgetTextError</span>. Everything else signals refusal by return code plus a printed line, which a library caller cannot act on.</div>
+  </div>
+
+  <div style="display: flex; gap: 14px; padding: 15px 17px; background: oklch(0.985 0.012 80); border: 1px solid oklch(0.85 0.05 78); border-radius: 3px;">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="oklch(0.55 0.13 70)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+    <div style="font-size: 12.5px; line-height: 1.55; color: oklch(0.38 0.012 60);"><strong style="font-weight: 600;">The line is already drawn, by the product&rsquo;s own ruling.</strong> R5: a verify FAIL is a needs-attention notice <em>and the document is still delivered</em> &mdash; only a build refusal withholds it. So the split is not an invention: <strong style="font-weight: 600;">a refusal that withholds an output raises; an outcome that judges an output returns.</strong> Row 32 hit the same distinction from the other side.</div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start;">
+
+    <div style="display: flex; flex-direction: column; gap: 9px;">
+      <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.52 0.16 25);">Raises &mdash; no output exists</div>
+      <div style="padding: 15px 16px; background: oklch(0.175 0.008 60); border-radius: 3px; color: oklch(0.88 0.008 80);">
+<div class="code"><span class="fn">PdfTranslateError</span>          <span class="cm"># base, never raised directly</span>
+├── <span class="fn">WidgetTextError</span>       <span class="cm"># exists today</span>
+├── <span class="fn">MappingError</span>          <span class="cm"># core unauthored / null target</span>
+├── <span class="fn">GlyphError</span>            <span class="cm"># the face cannot draw a char</span>
+├── <span class="fn">PlacementError</span>        <span class="cm"># a run cannot be placed at all</span>
+└── <span class="fn">FontError</span>             <span class="cm"># the subset cannot be built</span></div>
+      </div>
+      <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);">Each carries the facts as attributes &mdash; <span class="mono" style="font-size: 12px;">page</span>, <span class="mono" style="font-size: 12px;">core</span>, <span class="mono" style="font-size: 12px;">char</span> &mdash; not only a message, so a service can render the cause without parsing English.</div>
+      <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);">The family is <em>provisional</em>: the audit that enumerates every current refusal path is task 1 of the build, and it decides the final list.</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 9px;">
+      <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.5 0.13 150);">Returns &mdash; an output exists and is judged</div>
+      <div style="padding: 15px 16px; background: oklch(0.175 0.008 60); border-radius: 3px; color: oklch(0.88 0.008 80);">
+<div class="code">verdict = <span class="fn">run_verify</span>(src, out)
+verdict.ok            <span class="cm"># False on a FAIL</span>
+verdict.gates         <span class="cm"># one per GATE_NAMES</span>
+verdict.exit_code     <span class="cm"># 1, never a raise</span>
+
+qa = <span class="fn">run_qa</span>(mapping)
+qa.error_count        <span class="cm"># data, not an exception</span>
+
+seg = <span class="fn">extract_segments</span>(…)
+seg.unextractable_pages   <span class="cm"># already data today</span>
+seg.invisible_text_pages  <span class="cm"># already data today</span></div>
+      </div>
+      <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);">These already behave correctly and are not touched. <span class="mono" style="font-size: 12px;">extract_segments</span> is the model the rest should follow: it returns its refusal reasons as data and lets <span class="mono" style="font-size: 12px;">main()</span> decide what that means for a console and an exit code.</div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 9px; padding: 15px 17px; background: oklch(0.955 0.005 85); border: 1px solid oklch(0.88 0.008 75); border-radius: 3px;">
+    <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">How the CLI stays byte-identical</div>
+    <div style="padding: 13px 15px; background: oklch(0.175 0.008 60); border-radius: 3px; color: oklch(0.88 0.008 80);">
+<div class="code"><span class="kw">def</span> <span class="fn">main</span>(argv=<span class="kw">None</span>):
+    <span class="fn">_console</span>()
+    <span class="kw">try</span>:
+        result = <span class="fn">retypeset</span>(…)
+    <span class="kw">except</span> PdfTranslateError <span class="kw">as</span> exc:
+        log.<span class="fn">info</span>(exc.console_line)   <span class="cm"># the exact string printed today</span>
+        <span class="kw">return</span> exc.exit_code        <span class="cm"># the exact code returned today</span></div>
+    </div>
+    <div style="font-size: 12.5px; line-height: 1.55; color: oklch(0.42 0.012 60);">The exception carries the console line it replaces. That is what keeps the eleven-CLI parity runner green through a change that moves every refusal from a <span class="mono" style="font-size: 12px;">print</span>-and-return into a raise &mdash; and it is why the migration can be done one stage at a time, with the runner as the ratchet.</div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,87 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1320,
+      "h": 980,
+      "title": "The surface"
+    },
+    {
+      "file": "DecideFirst.dc.html",
+      "x": 2320,
+      "y": 0,
+      "w": 780,
+      "h": 1560,
+      "title": "Decide first"
+    },
+    {
+      "file": "Logging.dc.html",
+      "x": 0,
+      "y": 1100,
+      "w": 1000,
+      "h": 900,
+      "title": "Stages log, CLI prints"
+    },
+    {
+      "file": "Results.dc.html",
+      "x": 1100,
+      "y": 1100,
+      "w": 900,
+      "h": 1120,
+      "title": "The result family"
+    },
+    {
+      "file": "ProgressCancel.dc.html",
+      "x": 0,
+      "y": 2340,
+      "w": 900,
+      "h": 780,
+      "title": "Progress & cancel"
+    },
+    {
+      "file": "Hazards.dc.html",
+      "x": 1000,
+      "y": 2340,
+      "w": 900,
+      "h": 940,
+      "title": "Four hazards"
+    },
+    {
+      "file": "Exceptions.dc.html",
+      "x": 0,
+      "y": 3400,
+      "w": 900,
+      "h": 760,
+      "title": "Raise vs return"
+    },
+    {
+      "file": "ConsumerGuide.dc.html",
+      "x": 1000,
+      "y": 3400,
+      "w": 860,
+      "h": 1060,
+      "title": "consumer-guide.md"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0,
+      "y": -290,
+      "w": 980,
+      "text": "E3 — design pass, before the plan. Nothing here is built yet.\n\nThe product's C1–C10 consumer contract, drawn as the surface an engineer actually calls. Every count, line number and signature is measured against v56, not inherited from the v54 inventory in docs/E3-surface-inventory-2026-09-17.md."
+    },
+    {
+      "id": "decide",
+      "x": 2320,
+      "y": -290,
+      "w": 780,
+      "text": "Start here. Three questions the measurement cannot settle — build order against row 32, whether to break scale_report.json now, and E3's size against the week the product accepted."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}
