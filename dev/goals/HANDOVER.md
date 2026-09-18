@@ -3,6 +3,28 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 18 September 2026 (this section wins over everything below it)
+
+**State.** `main` is at **v56**: PRs **#10** (gate 21 `leak-cjk`, v55) and **#11** (three gate gaps from the first FL-150 → ja job, v56) are **merged**, `main` at `bacc436`. Two branches are ahead and **none is pushed** — merge, push and delete are the operator's, always:
+
+- `feat/terminology-loop` — **row 32 is built and complete**, v56 → **57**. 13 commits: the design canvas and both plans, the determinism probe work, then row 32's five tasks. Suite **452 OK**, canary **15 OK**, console parity diffs empty against a `main` worktree. Evidence: `docs/reviews/2026-09-17-terminology-loop.md` (including the §4 Proof run for real).
+- `feat/consumer-surface` — **E3, Tasks 1–2 complete, Task 3 three stages of six**, still at v57. 4 commits. Suite **472 OK**, both parity runners identical. `docs/reviews/2026-09-18-consumer-surface.md` §6 lists exactly what is not done.
+
+**Do first.** Push `feat/terminology-loop` and open its PR (it carries the design canvas and both plans). Then `feat/consumer-surface` stacked on it, or finish E3 first — `docs/plans/2026-09-18-e3-consumer-surface.md` Tasks 3–7, in order, ratcheting `dev/probes/cli_parity_runner.py` before every commit.
+
+**What row 32 shipped.** A `review` stage (`pdf_translate/review.py`, silent, schema-versioned `ReviewVerdict`) that writes `review_pairs.md` and `review_prompt.md`, ingests `review.json`, and grows a per-class `glossary.csv` the existing `qa_check --glossary` gates the next job on. `finish` gains `--work DIR` and refuses while a review is missing or open; `--no-review` delivers and marks the delivery. `review_state.json` is written beside `FINAL.pdf` on **every** run — that record, not the refusal, is what honours R5 for the product. Plus `references/terminology-failure-modes.md`, a terms-of-art table as SKILL.md step 1's fifth identity fact, and a canary terminology axis (FL-150: 15.29 accepted findings per 1,000 source words, **19% reviser false-positive rate**).
+
+**Two plan defects found by measuring first** (both in `docs/reviews/2026-09-17-terminology-loop.md` §4). The plan's leading-token rule stopped at the colon, which puts `rejected on measurement` outside the enum — it needs `.split()[0]`. And the FL-150 `review.json` carries **no** `term`/`term_target` on any finding, so the measured termbase result is **0 added / 11 skipped**, not the plan's 5 and 6. Implemented the strict way (never guess a term into a file that gates the next job) and pinned. **This is the one item the operator may reasonably rule differently on** — enriching the fixture is one edit plus one test's numbers.
+
+**Determinism (C7/E8) is measured and closed as a question.** `docs/BRIEF-determinism.md`: only `/ID` element 2 varies, only with the clock, on all three shapes including a 3-widget form and a 25-core table. No `timestamp=` parameter is needed; C7 is a `doc_id=` parameter and a test. The path-does-not-leak claim is now established by a controlled tick-grouped experiment, not by a lucky pair of runs. One thing stays unmeasured and is E8's first red test: that a caller-set `doc_id` survives `ez_save`.
+
+**Open threads.**
+1. Operator: push `feat/terminology-loop`, open its PR; then `feat/consumer-surface`.
+2. Finish E3 Tasks 3–7 (`docs/reviews/2026-09-18-consumer-surface.md` §6 is the checklist).
+3. E4–E7 in the product's order (`docs/REQUESTS-from-product.md`).
+4. FL-150 job follow-ups, only if asked (unchanged, below).
+5. Operator: delete the merged branches from #1–#11; pick the PyPI name for E10.
+
 ## Start here — 17 September 2026, late (this section wins over everything below it)
 
 **State.** `main` is at v54 (gates 19 kinsoku, 20 han-forms; the product's work order transcribed in `docs/REQUESTS-from-product.md`). Two branches are ahead: `feat/cjk-leak-tell` — PR #10, gate 21 `leak-cjk`, v55, CI green, base `main` — and `fix/cjk-job-gates` on top of it (v56: three gate gaps found by the first FL-150 → Japanese job — wrapped CJK paragraphs invisible to the placement gate, Noto Sans JP `locl` digit alternates drifting in the text layer, hidden pushbuttons counted as chrome — red-first tests, suite 401 OK; pushed, **PR #11**, base `feat/cjk-leak-tell`, CI 5/5 green at `bf96f65`). A third is ahead of that: `docs/32-design-canvas` — row 32's design pass and implementation plan, docs only, **not pushed**. Merge, push and delete are the operator's, always.
