@@ -106,7 +106,7 @@ scripts/
                                 a CJK subset also gets the four Han-forms probe glyphs and can be
                                 refused for the wrong convention
   retypeset.py                  place translations; rotation; shrink-to-fit; colors; merges; canonical text layer
-  verify.py                     twenty structural gates
+  verify.py                     twenty-one structural gates
   qa_check.py                   linguistic QA on the mapping (numbers, dates, consistency, expansion)
   field_fonts.py                make typed-in target-script text render in text and choice fields
   compare.py                    self-contained side-by-side HTML

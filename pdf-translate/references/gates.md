@@ -48,8 +48,23 @@ matches that run as a unit and nothing else, and the original's `/Title`
 quoted as a unit — the compliance notice names the form — is kept, never
 counted (kept runs are printed as a note). A longer run that merely
 contains either is still a leak. When both sides share a spaceless family
-(ZH↔JA) the scan prints one REVIEW line and cannot gate; lean on
-`--translations` and the visual pass.
+(ZH↔JA) and the mapping's `lang` names a Han convention, gate 21
+`leak-cjk` judges every drawn line by the characters that cannot belong
+to the target — kana in a Chinese target, Han outside its repertoire
+(cp932 for Japanese, GB 2312 for Simplified, Big5 for Traditional
+Chinese), NFKC-folded first because a source's ToUnicode drift travels
+through an authored mapping. Six or more in a line FAIL (an echoed,
+untranslated sentence carries nine to fifty-six); one to five REVIEW (a name
+in kana, a rare character — `--allow` the name). The source's convention
+is read the same way and only measured pairs are judged; a Traditional
+Chinese source into Japanese is not separable by repertoire and keeps the
+one REVIEW line, as does a job with no `lang`. The tell cannot see a line
+of Han both languages share (住所氏名, 令和七年, 个人所得税): such a line is
+PASS for the tell and the PASS line says so — `--translations` and the
+visual pass remain the check for those, and `leak-scan` records SKIP
+`judged by leak-cjk`, never PASS, on such a job. A CJK ↔ CJK job whose tell finds nothing therefore no longer trips
+`--fail-on-review` on the old spaceless REVIEW (v54 exited 1 there); only what the tell sees can. Measured:
+`docs/BRIEF-cjk-leak-tell.md`.
 
 ## What `--translations translations.json` adds
 
@@ -147,7 +162,7 @@ CLI, prints nothing, and returns a `VerifyVerdict`: `exit_code` and
 line the CLI would print, same status, same order. Names are the closed
 list `verify.GATE_NAMES`: field-parity, opt-export-parity, fill-roundtrip,
 extractable-text, ink-ratio, visible-text, canonical-text,
-arabic-letterforms, conjunct-shaping, kinsoku, han-forms, leak-scan, leak-running,
+arabic-letterforms, conjunct-shaping, kinsoku, han-forms, leak-scan, leak-cjk, leak-running,
 leak-isolated, empty-targets, placement, shaped-actualtext,
 button-captions, caption-width, override-markers, metadata,
 metadata-lang, scaled-runs, identifiers. A gate that prints nothing for a
@@ -191,7 +206,8 @@ and never split a target by hand across source lines — declare a merge
 | conjunct-shaping | the face's PostScript name, or the script when it could not be judged | the probe line, or the reason |
 | kinsoku | `line-start` / `line-end` | the drawn line |
 | han-forms | the face's PostScript name (subset tag stripped); `lang`, `reference` or the convention code (`JP`, `SC`) when the face could not be judged | the PASS/FAIL line with the ratios, or the reason |
-| leak-scan | `script` | the spaceless family source and output share (`CJK`) |
+| leak-scan | `script` | the spaceless family source and output share (`CJK`) (REVIEW when the tell cannot run; SKIP `judged by leak-cjk` when it ran) |
+| leak-cjk | `line` | the drawn line |
 | leak-running | `run` | the phrase |
 | leak-isolated | `token` | the token |
 | empty-targets, placement, shaped-actualtext | `target` | the target string |

@@ -174,7 +174,9 @@ reversal condition was a *count* tell — this is not one, say so); Lao unmeasur
 
 Effort: half a day plus the verifier.
 
-### Task D — Hebrew with niqqud: shape it, then attest it (v53, low priority)
+### Task D — Hebrew with niqqud: shape it, then attest it (PARKED 2026-09-16)
+
+**PARKED** by the product's ruling R2 (work order of 2026-09-16): no target language in this script. Reversal: the product adds a target language in Hebrew. Everything below stays as the restore path; `dev/probes/mark_layout_tell.py` and its DECISIONS rows are the measurement to resume from.
 
 Today `retypeset` keeps Hebrew on TextWriter ("only needs direction", `retypeset.py:162`) and gate
 17's `needs_shaping` excludes it, so niqqud is never shaped and gate 18 says REVIEW. Measured:
@@ -187,14 +189,16 @@ Hebrew (שָׁלוֹם) judged by signature. Rule 1 applies: it is a rendering c
 
 Do this after C. If the product has no Hebrew-with-niqqud demand, park it with a `PARKED` note.
 
-### Task E — the eight unmeasured conjunct scripts
+### Task E — the eight unmeasured conjunct scripts (PARKED 2026-09-16)
+
+**PARKED** by the product's ruling R2 (work order of 2026-09-16): no target language in these scripts (hi is a post-launch candidate). Reversal: the product adds a target language in one of them — then measure that script's probe cluster the way gate 18's were, one script, not eight.
 
 Gujarati, Gurmukhi, Oriya, Telugu, Kannada, Malayalam, Sinhala, Tibetan print REVIEW. For each:
 fetch a Noto face, find a cluster that loses glyphs (`dev/probes/measure_shaping_tell.py`), record
 the row in `PROBES` and `AGENTS.md`'s measured table, DECISIONS row. Rule 1 applies. Only worth
 doing for scripts the product will target; ask which before fetching eight faces.
 
-### Task F — the spaceless leak scan (zh→ja): a design experiment first
+### Task F — the spaceless leak scan (zh→ja): a design experiment first (built as gate 21, v55 — see docs/BRIEF-cjk-leak-tell.md)
 
 When source and output share a spaceless family the scan cannot tell them apart and prints one
 REVIEW. With `--source-words-from segments.json` the exact source strings are known: a source

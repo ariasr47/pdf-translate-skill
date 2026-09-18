@@ -10,7 +10,7 @@ unchanged. A consumer imports from here:
     from pdf_translate import run_verify, run_qa
 """
 
-__version__ = '54'
+__version__ = '55'
 
 from .strip_text import WidgetTextError, strip_text
 from .extract_segments import extract_segments

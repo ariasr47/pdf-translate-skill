@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "54"
+  version: "55"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -425,8 +425,14 @@ Every gate — what it reads, what fails, and why — is in
   (`--source-words-from segments.json`). Allowlist false positives
   deliberately: a multi-word `--allow` entry matches that run as a unit
   and nothing else, and the original's `/Title` quoted as a unit — the
-  compliance notice names the form — is kept, never counted. ZH↔JA: one
-  REVIEW line, no gate; lean on `--translations` and the visual pass.
+  compliance notice names the form — is kept, never counted. ZH↔JA: when
+  the mapping's `lang` names the target, gate 21 scans every drawn line
+  for characters that cannot belong to it (kana in a Chinese target; Han
+  outside its repertoire) — six or more in a line FAIL, fewer REVIEW, a
+  name in kana allowlisted with `--allow`; a line of Han both languages
+  share is invisible to the tell, and the PASS line says so; without
+  `lang`, or for a Traditional Chinese source into Japanese, one REVIEW
+  line remains.
 - **`--translations`**: every authored non-passthrough target appears
   **verbatim** in the output text layer (retypeset canonicalizes
   `/ToUnicode`; NBSP, soft-hyphen and compatibility-ideograph drift
