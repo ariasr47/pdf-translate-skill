@@ -1,0 +1,114 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: oklch(0.55 0.13 45); }
+    a:hover { color: oklch(0.42 0.11 45); }
+    .mono { font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+  </style>
+</helmet>
+
+<div style="width: 840px; min-height: 1140px; box-sizing: border-box; padding: 32px 34px; background: oklch(0.98 0.006 85); font-family: 'IBM Plex Sans', system-ui, sans-serif; color: oklch(0.22 0.01 60); display: flex; flex-direction: column; gap: 20px;">
+
+  <div style="display: flex; flex-direction: column; gap: 5px;">
+    <div class="mono" style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.55 0.02 60);">Bar item 3 &middot; what the author does first</div>
+    <div style="font-size: 23px; font-weight: 600; letter-spacing: -0.01em;">Terms of art, before authoring</div>
+    <div style="font-size: 13.5px; line-height: 1.5; color: oklch(0.44 0.012 60);">Nothing today forces a per-term lookup. Step 1&rsquo;s identity record gains a slot, and the reviser reads it.</div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">SKILL.md step 1 &mdash; new table in the identity record</div>
+    <div style="border: 1px solid oklch(0.87 0.008 75); border-radius: 3px; overflow: hidden;">
+      <div style="display: grid; grid-template-columns: 1.25fr 1fr 1.35fr; gap: 0; background: oklch(0.94 0.008 80); border-bottom: 1px solid oklch(0.87 0.008 75);">
+        <div class="mono" style="padding: 8px 11px; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: oklch(0.45 0.015 60);">term</div>
+        <div class="mono" style="padding: 8px 11px; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: oklch(0.45 0.015 60);">established rendering</div>
+        <div class="mono" style="padding: 8px 11px; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: oklch(0.45 0.015 60);">source</div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1.25fr 1fr 1.35fr; gap: 0; font-size: 12px; line-height: 1.45;">
+        <div style="padding: 8px 11px; border-bottom: 1px solid oklch(0.92 0.006 80);">head of household</div>
+        <div class="mono" style="padding: 8px 11px; border-bottom: 1px solid oklch(0.92 0.006 80); font-size: 12.5px;">特定世帯主</div>
+        <div style="padding: 8px 11px; border-bottom: 1px solid oklch(0.92 0.006 80); color: oklch(0.45 0.012 60);">IRS Japanese-language filing guidance</div>
+        <div style="padding: 8px 11px; border-bottom: 1px solid oklch(0.92 0.006 80);">the other parent</div>
+        <div class="mono" style="padding: 8px 11px; border-bottom: 1px solid oklch(0.92 0.006 80); font-size: 12.5px;">他方の親</div>
+        <div style="padding: 8px 11px; border-bottom: 1px solid oklch(0.92 0.006 80); color: oklch(0.45 0.012 60);">Japanese family-law usage</div>
+        <div style="padding: 8px 11px; border-bottom: 1px solid oklch(0.92 0.006 80);">respondent</div>
+        <div class="mono" style="padding: 8px 11px; border-bottom: 1px solid oklch(0.92 0.006 80); font-size: 12.5px;">相手方</div>
+        <div style="padding: 8px 11px; border-bottom: 1px solid oklch(0.92 0.006 80); color: oklch(0.45 0.012 60);">form caption, page 1</div>
+        <div style="padding: 8px 11px;">CalFresh</div>
+        <div class="mono" style="padding: 8px 11px; font-size: 12.5px;">CalFresh</div>
+        <div style="padding: 8px 11px; color: oklch(0.45 0.012 60);">programme name &mdash; kept, the reader must say it</div>
+      </div>
+    </div>
+    <div style="font-size: 12px; line-height: 1.5; color: oklch(0.47 0.012 60);">One row for every status, role, benefit programme and verb of legal act on the page. &ldquo;No established rendering found&rdquo; is a legitimate row &mdash; and a flag for the reviser.</div>
+  </div>
+
+  <div style="height: 1px; background: oklch(0.89 0.008 78);"></div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">references/terminology-failure-modes.md &mdash; new, named in SKILL.md step 1</div>
+      <div style="font-size: 13px; line-height: 1.5; color: oklch(0.44 0.012 60);">The twin of <span class="mono" style="font-size: 12.5px;">failure-modes.md</span>. Five categories, each with its FL-150 instance and its rule. Categories, not page facts &mdash; they transfer to every pair. Step 1 names both this file and the table above, so neither is optional prose.</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 9px;">
+
+      <div style="display: flex; gap: 12px; padding: 12px 14px; background: oklch(0.955 0.005 85); border-left: 2px solid oklch(0.68 0.14 25); border-radius: 0 3px 3px 0;">
+        <div class="mono" style="font-size: 12px; font-weight: 600; color: oklch(0.55 0.14 25); flex-shrink: 0; width: 12px;">1</div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-size: 13.5px; font-weight: 600;">Legal-status homonyms</div>
+          <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);">A target word that names a <em>different</em> status in the target country. <span class="mono" style="font-size: 12.5px;">世帯主</span> is the registered head of a 住民票 household &mdash; normally a married person; US head-of-household requires the filer to be unmarried.</div>
+          <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.35 0.03 60);"><strong style="font-weight: 600;">Rule:</strong> a status the reader ticks about themselves is looked up in the target country&rsquo;s own law before it is translated.</div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; padding: 12px 14px; background: oklch(0.955 0.005 85); border-left: 2px solid oklch(0.72 0.14 70); border-radius: 0 3px 3px 0;">
+        <div class="mono" style="font-size: 12px; font-weight: 600; color: oklch(0.58 0.14 60); flex-shrink: 0; width: 12px;">2</div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-size: 13.5px; font-weight: 600;">Party-role words reused inside compounds</div>
+          <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);"><span class="mono" style="font-size: 12.5px;">相手方</span> was already the form&rsquo;s word for RESPONDENT, so <span class="mono" style="font-size: 12.5px;">相手方の親</span> grew a possessive reading &mdash; the respondent&rsquo;s own parent. <span class="mono" style="font-size: 12.5px;">他方の親</span> does not.</div>
+          <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.35 0.03 60);"><strong style="font-weight: 600;">Rule:</strong> a term already bound to a party never appears inside a compound naming someone else.</div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; padding: 12px 14px; background: oklch(0.955 0.005 85); border-left: 2px solid oklch(0.72 0.14 70); border-radius: 0 3px 3px 0;">
+        <div class="mono" style="font-size: 12px; font-weight: 600; color: oklch(0.58 0.14 60); flex-shrink: 0; width: 12px;">3</div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-size: 13.5px; font-weight: 600;">Verbs of legal acts, chosen by object</div>
+          <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);">&ldquo;Executed&rdquo; an order became <span class="mono" style="font-size: 12.5px;">締結</span>, the verb for concluding a contract.</div>
+          <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.35 0.03 60);"><strong style="font-weight: 600;">Rule:</strong> the verb follows what is being acted on &mdash; an order, a deed, a will and a contract each take their own.</div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; padding: 12px 14px; background: oklch(0.955 0.005 85); border-left: 2px solid oklch(0.78 0.08 90); border-radius: 0 3px 3px 0;">
+        <div class="mono" style="font-size: 12px; font-weight: 600; color: oklch(0.6 0.08 85); flex-shrink: 0; width: 12px;">4</div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-size: 13.5px; font-weight: 600;">Head nouns narrower than their own examples</div>
+          <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);"><span class="mono" style="font-size: 12.5px;">光熱費</span> excludes the water and trash its own parenthetical lists. <span class="mono" style="font-size: 12.5px;">水道光熱費</span> covers them.</div>
+          <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.35 0.03 60);"><strong style="font-weight: 600;">Rule:</strong> a head noun is checked against the examples in its own parenthetical.</div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; padding: 12px 14px; background: oklch(0.955 0.005 85); border-left: 2px solid oklch(0.78 0.08 90); border-radius: 0 3px 3px 0;">
+        <div class="mono" style="font-size: 12px; font-weight: 600; color: oklch(0.6 0.08 85); flex-shrink: 0; width: 12px;">5</div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-size: 13.5px; font-weight: 600;">Label sets mixing patterns</div>
+          <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);"><span class="mono" style="font-size: 12.5px;">月額／週額／時給</span> &mdash; two of one pattern and one of another. A set shares one: <span class="mono" style="font-size: 12.5px;">月給／週給／時給</span>.</div>
+          <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.35 0.03 60);"><strong style="font-weight: 600;">Rule:</strong> labels offered as a choice are authored together and read as a column, never one at a time.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

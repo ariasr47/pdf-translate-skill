@@ -41,3 +41,8 @@ dev/canary/last-score.json
 # Wild-corpus PDFs are downloaded by dev/wild (public, recorded by URL and size), never committed
 dev/wild/files/
 dev/wild/work/
+
+# The seeded design canvas is a build output: ~2.5 MB of editor payload that
+# re-seeds from the .dc.html sources and canvas.json beside it in one command.
+docs/design/*/*.html
+!docs/design/*/*.dc.html

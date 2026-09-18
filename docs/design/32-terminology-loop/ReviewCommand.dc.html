@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: oklch(0.55 0.13 45); }
+    a:hover { color: oklch(0.42 0.11 45); }
+    .ln { white-space: pre; font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12.5px; line-height: 1.75; }
+  </style>
+</helmet>
+
+<div style="width: 960px; min-height: 660px; box-sizing: border-box; padding: 34px 36px; background: oklch(0.98 0.006 85); font-family: 'IBM Plex Sans', system-ui, sans-serif; color: oklch(0.22 0.01 60); display: flex; flex-direction: column; gap: 18px;">
+
+  <div style="display: flex; flex-direction: column; gap: 5px;">
+    <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.55 0.02 60);">Bar item 1 &middot; the new subcommand</div>
+    <div style="font-size: 23px; font-weight: 600; letter-spacing: -0.01em;">review</div>
+    <div style="font-size: 13.5px; line-height: 1.5; color: oklch(0.44 0.012 60); max-width: 660px;">Same voice as every other command: lowercase, one fact per line, <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12.5px;">elapsed</span> last. Reads only.</div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 7px;">
+    <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">Generate &mdash; before the reviser reads</div>
+    <div style="padding: 16px 18px; background: oklch(0.175 0.008 60); border-radius: 3px; color: oklch(0.87 0.008 80); display: flex; flex-direction: column;">
+      <div class="ln"><span style="color: oklch(0.6 0.02 70);">$</span> python3 -m pdf_translate.pipeline review --work fl150-ja</div>
+      <div class="ln">review: 247 cores, 13 merges, 5 overrides, 1 notice</div>
+      <div class="ln">review: identity from NOTES.md &mdash; en-&gt;ja, court form, &#12391;&#12377;&#12539;&#12414;&#12377; register</div>
+      <div class="ln">review: wrote fl150-ja/review_pairs.md</div>
+      <div class="ln">review: wrote fl150-ja/review_prompt.md</div>
+      <div class="ln"><span style="color: oklch(0.75 0.13 70);">review: no review.json yet. finish will refuse.</span></div>
+      <div class="ln" style="color: oklch(0.62 0.015 70);">elapsed 0.31s</div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 7px;">
+    <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">Ingest &mdash; two findings still open, exit 1</div>
+    <div style="padding: 16px 18px; background: oklch(0.175 0.008 60); border-radius: 3px; color: oklch(0.87 0.008 80); display: flex; flex-direction: column;">
+      <div class="ln"><span style="color: oklch(0.6 0.02 70);">$</span> python3 -m pdf_translate.pipeline review --work fl150-ja --ingest review.json</div>
+      <div class="ln">review: reviewer Claude Opus (model, not qualified in pair)</div>
+      <div class="ln">review: 31 finding(s) &mdash; 1 critical, 6 major, 24 minor</div>
+      <div class="ln">review: 25 accepted, 4 rejected, <span style="color: oklch(0.75 0.13 70);">2 open</span></div>
+      <div class="ln" style="color: oklch(0.8 0.1 70);">OPEN  terminology   'head of household': &#19990;&#24111;&#20027; &rarr; &#29305;&#23450;&#19990;&#24111;&#20027; &mdash; US filing status is for the unmarried</div>
+      <div class="ln" style="color: oklch(0.8 0.1 70);">OPEN  terminology   'Cash and checking accounts, savings, credit unio': &#20449;&#29992;&#32068;&#21512; &rarr; &#12510;&#12493;&#12540;&#12510;&#12540;&#12465;&#12483;&#12488;</div>
+      <div class="ln">review: 11 accepted terminology finding(s) &rarr; fl150-ja/glossary.csv</div>
+      <div class="ln"><span style="color: oklch(0.78 0.13 40);">review: 2 open finding(s). finish will refuse until each is accepted or rejected.</span></div>
+      <div class="ln" style="color: oklch(0.62 0.015 70);">elapsed 0.09s</div>
+      <div class="ln"><span style="color: oklch(0.6 0.02 70);">$</span> echo $?</div>
+      <div class="ln">1</div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 14px; padding: 13px 15px; background: oklch(0.955 0.005 85); border: 1px solid oklch(0.88 0.008 75); border-radius: 3px;">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="oklch(0.55 0.13 70)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <div style="font-size: 12.5px; line-height: 1.55; color: oklch(0.4 0.012 60);">The finding lines borrow <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12px;">qa_check</span>&rsquo;s exact column shape &mdash; <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12px;">severity:5</span>, <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12px;">kind:13</span>, <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12px;">core[:48]!r</span>, then the detail. The second core above is a real 48-character truncation, not an ellipsis.</div>
+      <div style="font-size: 12.5px; line-height: 1.55; color: oklch(0.4 0.012 60);"><strong style="font-weight: 600;">Exit codes follow the existing split:</strong> <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12px;">1</span> when the command ran and found something to report (as <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12px;">qa_check</span> does on errors), <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12px;">2</span> when it refused to act at all (as <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12px;">cmd_qa</span> does on a missing file).</div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
