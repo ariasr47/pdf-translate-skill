@@ -105,6 +105,8 @@ references/
   fonts.md                      per-script font sourcing; the glyf-flavor rule
   review.md                     the reviewer checklist, MQM prompt, review.json schema
   compliance.md                 when a notice belongs in the document; certification template
+  terminology-failure-modes.md  five ways a term of art goes wrong while every gate passes
+  consumer-guide.md             running one document end to end from Python, no CLI
 scripts/
   strip_text.py                 remove text + XFA (nested XObjects too), keep graphics and widgets;
                                 rewrite captions and widget text; delete /Perms; fails if page text survives
@@ -122,6 +124,7 @@ scripts/
   render_pages.py               orig/out PNGs for the visual inspect loop
   pipeline.py                   init / from-cores / propose-merges / merge-mappings / qa /
                                 rebuild / render / review / finish / bilingual wrappers
+pdf_translate/results.py        the result and exception families every stage speaks
 pdf_translate/review.py         the second-reader loop: pairs file, MQM prompt,
                                 review.json ingest, per-class termbase
 tools/fetch_test_fonts.py       fetch OFL Noto faces into tests/fonts (never committed)

@@ -582,6 +582,10 @@ optional model first pass are in `references/review.md`.
 - `references/failure-modes.md` — the fourteen silent failures and their fixes.
 - `references/terminology-failure-modes.md` — the five ways a term of art goes
   wrong while every gate passes.
+- `references/consumer-guide.md` — running one document end to end **from
+  Python**, with no CLI: the six calls, what each returns, every file on disk
+  and which call wrote it, refusals as typed exceptions, progress and
+  cancellation, and what is safe to call from a thread.
   Read during recon, before touching the file.
 - `references/gates.md` — every verify gate: what it reads, what fails, and
   why. Read when a gate fails, or before promising what verify checks.
