@@ -523,8 +523,14 @@ def image_region_warnings(doc, wanted):
 log = logging.getLogger(__name__)
 
 
-def run_extract(src, outdir='.', gap=12.0, pages=None):
+def run_extract(src, outdir, *, gap=12.0, pages=None):
     """Extract geometry and unique cores. Silent. Returns an ExtractResult.
+
+    `outdir` is **required**, unlike `extract_segments`'s `outdir='.'`. The
+    default there means "wherever this process happens to be", which is the
+    same class of defect as `Archive('.')` and the one C1 forbids — a service
+    must not have its output location decided by its working directory. The
+    old default stays on the loud function, where the CLI depends on it.
 
     The thinnest of the seven twins, and the plan says so rather than leaving
     the asymmetry to be discovered: `extract_segments` never printed and

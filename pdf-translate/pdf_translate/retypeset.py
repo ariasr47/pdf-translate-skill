@@ -95,6 +95,11 @@ NOTICE_LH = 1.25
 # delivery can read what shrank without re-running retypeset. Pages are
 # 0-based, the same as translations.json's merges[].page.
 SCALE_REPORT = 'scale_report.json'
+
+# Sentinel: `scale_report=None` means WRITE NOTHING, which is a different
+# instruction from "you did not say". Only the default writes the legacy
+# fixed name beside the output.
+_DEFAULT = object()
 # Hebrew, Arabic, Syriac, Thaana, Arabic supplement/presentation forms.
 _RTL_RANGES = (
     (0x0590, 0x08FF),
@@ -643,7 +648,8 @@ def retypeset(stripped, segf, trf, out):
     return 0
 
 
-def run_retypeset(stripped, segf, trf, out):
+def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
+                  scale_report=_DEFAULT, resource_root=None):
     """Place translations onto a stripped PDF.
 
     Silent. Returns a RetypesetResult. Raises on refusal — `GlyphError` when
@@ -651,6 +657,27 @@ def run_retypeset(stripped, segf, trf, out):
     a merge that does not match, `PlacementError` for a run that will not fit
     or a notice that cannot be placed. Every one carries `.refusals`: each
     refused item, by kind, with the core untruncated.
+
+    `progress(done, total)` is called once per unit of work. The total is
+    **pages plus merge jobs**, because this runs two loops: a per-page pass and
+    then a per-merge pass. A counter of pages alone reaches 100% and keeps
+    going.
+
+    `cancel()` is checked at the top of every unit in both loops. When it
+    returns true the run stops and returns `RetypesetResult(cancelled=True,
+    output=None)`. There is exactly one save, at the very end, so a cancelled
+    run cannot leave a partial file — the absence is by construction, not by
+    cleanup.
+
+    `scale_report` is where the scaled-runs report is written. `None` means
+    write nothing and return the runs in the result; the default is today's
+    behaviour, a fixed name beside `out` — which two concurrent jobs writing
+    to one directory would race for, so a service passes its own path.
+
+    `resource_root` is the directory authored HTML resolves its resources
+    against. It defaults to the **mapping's** directory, not the process's
+    working directory: a service that runs from anywhere else was silently
+    getting a substituted face.
     """
     segd = _load_json(segf)
     conf = _load_json(trf)
@@ -923,7 +950,11 @@ def run_retypeset(stripped, segf, trf, out):
                                   for i, w in bad_notices]})
 
     widg = {p.number: [w.rect for w in p.widgets()] for p in doc}
-    arch = pymupdf.Archive('.')
+    # Authored HTML resolves its resources here. Defaulting to the
+    # mapping's directory rather than the process's cwd is what makes a
+    # service that runs from anywhere else get the face it named.
+    arch = pymupdf.Archive(resource_root or
+                           os.path.dirname(os.path.abspath(trf)) or '.')
     # CSS URLs need quoted, escaped paths: spaces otherwise cause silent
     # font substitution, and Windows separators are interpreted as escapes.
     def css_url(path):
@@ -997,7 +1028,26 @@ def run_retypeset(stripped, segf, trf, out):
             seen_glyph_miss.add(sig)
             glyph_misses.append((pno, label, ch, key))
 
+    # Two loops, one budget. `total` counts pages AND merge jobs, because a
+    # counter of pages alone reaches 100% and then keeps working.
+    _total = len(doc) + len(merge_jobs)
+    _done = 0
+
+    def _tick():
+        nonlocal _done
+        _done += 1
+        if progress is not None:
+            progress(_done, _total)
+
+    def _cancelled():
+        return cancel is not None and cancel()
+
     for pno, page in enumerate(doc):
+        if _cancelled():
+            npages = len(doc)
+            doc.close()
+            return RetypesetResult(output=None, cancelled=True,
+                                   pages=npages, placed=0)
         segs = by_page.get(pno, [])
         # One TextWriter per distinct source color. A single black writer is
         # how white-on-dark headings silently become black-on-dark: the ink
@@ -1302,9 +1352,15 @@ def run_retypeset(stripped, segf, trf, out):
             scale = place_shaped(page, sx, sy, text, bold, fsz, cint, avail,
                                  css, arch, italic=ital)
             consider_ratio(pno, key, scale)
+        _tick()
 
     for (pno, r, html, align, size, lh, color, merge_key, merge_opt,
          boxed) in merge_jobs:
+        if _cancelled():
+            npages = len(doc)
+            doc.close()
+            return RetypesetResult(output=None, cancelled=True,
+                                   pages=npages, placed=0)
         plain_html = re.sub(r'<[^>]+>', '', html or '')
         note_markup(html, merge_key)
         check_glyphs(pno, font_r, plain_html, merge_key, 'regular')
@@ -1327,6 +1383,7 @@ def run_retypeset(stripped, segf, trf, out):
         plain = re.sub(r'<[^>]+>', '', html)
         if is_rtl_text(plain) or needs_shaping(plain):
             wrap_last_stream_actualtext(doc[pno], plain)
+        _tick()
 
     # The notice compliance.md requires is the one thing the author has to
     # add that is not the translation of an existing string. Four of five
@@ -1484,13 +1541,22 @@ def run_retypeset(stripped, segf, trf, out):
             log.info(f'  p{r["page"]} {r["ratio"]:.2f}x: {r["key"][:60]}')
         if len(scaled) > 30:
             log.info(f'  … {len(scaled) - 30} more in {SCALE_REPORT}')
-    report = os.path.join(os.path.dirname(os.path.abspath(out)), SCALE_REPORT)
-    try:
-        with open(report, 'w', encoding='utf-8') as f:
-            json.dump(sorted(scaled, key=lambda r: (r['page'], r['key'])), f,
-                      ensure_ascii=False, indent=1)
-    except OSError as exc:
-        log.info(f'  (could not write {SCALE_REPORT}: {exc})')
+    # A fixed name beside `out` is what two concurrent jobs writing into one
+    # directory raced for. The default keeps that path so no CLI moves; a
+    # service passes its own, or None to write nothing and read the runs off
+    # the result instead.
+    if scale_report is _DEFAULT:
+        report = os.path.join(os.path.dirname(os.path.abspath(out)),
+                              SCALE_REPORT)
+    else:
+        report = scale_report
+    if report:
+        try:
+            with open(report, 'w', encoding='utf-8') as f:
+                json.dump(sorted(scaled, key=lambda r: (r['page'], r['key'])),
+                          f, ensure_ascii=False, indent=1)
+        except OSError as exc:
+            log.info(f'  (could not write {SCALE_REPORT}: {exc})')
 
     doc.ez_save(out)
     doc.close()
@@ -1518,8 +1584,7 @@ def run_retypeset(stripped, segf, trf, out):
         placed=len(placed),
         scaled=tuple(sorted(scaled, key=lambda r: (r['page'], r['key']))),
         cancelled=False,
-        scale_report_path=os.path.join(os.path.dirname(os.path.abspath(out)),
-                                       SCALE_REPORT))
+        scale_report_path=(report or ''))
 
 
 def main(argv=None):
