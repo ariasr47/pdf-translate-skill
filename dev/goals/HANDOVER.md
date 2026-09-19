@@ -8,9 +8,9 @@ Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **State.** `main` is at **v56**: PRs **#10** (gate 21 `leak-cjk`, v55) and **#11** (three gate gaps from the first FL-150 → ja job, v56) are **merged**, `main` at `bacc436`. Two branches are ahead and **none is pushed** — merge, push and delete are the operator's, always:
 
 - `feat/terminology-loop` — **row 32 is built and complete**, v56 → **57**. 13 commits: the design canvas and both plans, the determinism probe work, then row 32's five tasks. Suite **452 OK**, canary **15 OK**, console parity diffs empty against a `main` worktree. Evidence: `docs/reviews/2026-09-17-terminology-loop.md` (including the §4 Proof run for real).
-- `feat/consumer-surface` — **E3, Tasks 1–2 complete, Task 3 three stages of six**, still at v57. 4 commits. Suite **472 OK**, both parity runners identical. `docs/reviews/2026-09-18-consumer-surface.md` §6 lists exactly what is not done.
+- `feat/consumer-surface` — **E3 complete**, v57 → **58**. 9 commits. Every stage has a silent `run_*` twin returning a schema-versioned result and raising typed exceptions; all 172 `print` sites now log; `run_retypeset` takes `progress`, `cancel`, `scale_report` and `resource_root`; `scale_report.json` gained its envelope; `references/consumer-guide.md` is written and every code block in it was run. Suite **492 OK**, canary **15 OK**, and **both** parity runners hash-identical against a v57 worktree. Evidence `docs/reviews/2026-09-18-consumer-surface.md`. Not done: the whole-branch review on the most capable model.
 
-**Do first.** Push `feat/terminology-loop` and open its PR (it carries the design canvas and both plans). Then `feat/consumer-surface` stacked on it, or finish E3 first — `docs/plans/2026-09-18-e3-consumer-surface.md` Tasks 3–7, in order, ratcheting `dev/probes/cli_parity_runner.py` before every commit.
+**Do first.** Push `feat/terminology-loop` and open its PR (it carries the design canvas and both plans), then `feat/consumer-surface` stacked on it. Both are built and green; nothing is half-done. After that, the five items the product bubbled on 2026-09-18 are the queue — B1 (the library never breaks a line, so there is no kinsoku and a long translation shrinks instead of wrapping) is the coverage lever and needs a design pass before any build; B2 and B3 are **already answered** by E3's structured refusals (`exc.refusals` carries every refused core in full); B4 (widget text untranslated) is contained; B5 is row 32's terminology loop, which is built. See the end of `docs/reviews/2026-09-18-consumer-surface.md` and the session's closing notes.
 
 **What row 32 shipped.** A `review` stage (`pdf_translate/review.py`, silent, schema-versioned `ReviewVerdict`) that writes `review_pairs.md` and `review_prompt.md`, ingests `review.json`, and grows a per-class `glossary.csv` the existing `qa_check --glossary` gates the next job on. `finish` gains `--work DIR` and refuses while a review is missing or open; `--no-review` delivers and marks the delivery. `review_state.json` is written beside `FINAL.pdf` on **every** run — that record, not the refusal, is what honours R5 for the product. Plus `references/terminology-failure-modes.md`, a terms-of-art table as SKILL.md step 1's fifth identity fact, and a canary terminology axis (FL-150: 15.29 accepted findings per 1,000 source words, **19% reviser false-positive rate**).
 
@@ -20,7 +20,7 @@ Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 
 **Open threads.**
 1. Operator: push `feat/terminology-loop`, open its PR; then `feat/consumer-surface`.
-2. Finish E3 Tasks 3–7 (`docs/reviews/2026-09-18-consumer-surface.md` §6 is the checklist).
+2. B1 — line breaking and kinsoku. Measured by the product: zero `insert_htmlbox` calls on a 4-page form, 518 drawn lines, each one `TextWriter.append` at its source baseline. No design exists; do the design pass first.
 3. E4–E7 in the product's order (`docs/REQUESTS-from-product.md`).
 4. FL-150 job follow-ups, only if asked (unchanged, below).
 5. Operator: delete the merged branches from #1–#11; pick the PyPI name for E10.
