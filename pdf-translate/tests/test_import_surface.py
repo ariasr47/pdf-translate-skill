@@ -666,7 +666,9 @@ class LoggerCallShapeTests(unittest.TestCase):
         import ast
         converted = ('verify.py', 'retypeset.py', 'strip_text.py',
                      'extract_segments.py', 'prepare_font.py',
-                     'field_fonts.py', 'qa_check.py', 'review.py')
+                     'field_fonts.py', 'qa_check.py', 'review.py',
+                     'compare.py', 'render_pages.py', 'bilingual.py',
+                     'pipeline.py')
         offenders = []
         for name in converted:
             path = SKILL / 'pdf_translate' / name

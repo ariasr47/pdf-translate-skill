@@ -8,11 +8,17 @@ pages as base64 and is for delivery only.
 Usage:
   python3 render_pages.py ORIGINAL.pdf TRANSLATED.pdf renders/ [--dpi 110]
 """
+import logging
 import os
 import sys
 import time
 
 import pymupdf
+
+
+from ._console import console
+
+log = logging.getLogger(__name__)
 
 
 def render_pages(orig, trans, outdir, dpi=110):
@@ -27,17 +33,22 @@ def render_pages(orig, trans, outdir, dpi=110):
             written.append(path)
     o.close()
     j.close()
-    print(f'rendered {n} page pair(s) -> {outdir} ({dpi} dpi)')
+    log.info(f'rendered {n} page pair(s) -> {outdir} ({dpi} dpi)')
     return written
 
 
 def main(argv=None):
+    with console():
+        return _main(argv)
+
+
+def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     orig, trans, outdir = argv[0], argv[1], argv[2]
     dpi = int(argv[argv.index('--dpi') + 1]) if '--dpi' in argv else 110
     t0 = time.perf_counter()
     render_pages(orig, trans, outdir, dpi=dpi)
-    print(f'elapsed {time.perf_counter()-t0:.2f}s')
+    log.info(f'elapsed {time.perf_counter()-t0:.2f}s')
     return 0
 
 

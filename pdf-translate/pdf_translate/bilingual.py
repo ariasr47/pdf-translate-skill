@@ -18,10 +18,16 @@ Usage:
   python3 bilingual.py ORIGINAL.pdf TRANSLATED.pdf OUT.pdf
                        [--target-first] [--reading-copy]
 """
+import logging
 import os
 import sys
 
 import pymupdf
+
+
+from ._console import console
+
+log = logging.getLogger(__name__)
 
 
 def has_fields(path):
@@ -58,14 +64,19 @@ def interleave(original, translated, out, target_first=False):
 
 
 def main(argv=None):
+    with console():
+        return _main(argv)
+
+
+def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if len(argv) < 3:
-        print(__doc__)
+        log.info(__doc__)
         return 2
     original, translated, out = argv[0], argv[1], argv[2]
     fillable = [p for p in (original, translated) if has_fields(p)]
     if fillable and '--reading-copy' not in argv:
-        print('FAIL: ' + ', '.join(os.path.basename(p) for p in fillable) +
+        log.info('FAIL: ' + ', '.join(os.path.basename(p) for p in fillable) +
               ' has form fields. Interleaving would put two widgets with the '
               'same name in one file: they fill together and the submitted '
               'data is ambiguous. Deliver the translated form for filling '
@@ -74,9 +85,9 @@ def main(argv=None):
         return 1
     n = interleave(original, translated, out,
                    target_first='--target-first' in argv)
-    print(f'bilingual: {n} pages -> {out}')
+    log.info(f'bilingual: {n} pages -> {out}')
     if fillable:
-        print('NOTE: reading copy only — its form fields are duplicated and '
+        log.info('NOTE: reading copy only — its form fields are duplicated and '
               'must not be filed.')
     return 0
 

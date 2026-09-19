@@ -116,24 +116,24 @@ def cmd_init(argv):
                             widget_text=widget_text,
                             keep_encryption='--keep-encryption' in argv)
     except WidgetTextError as exc:
-        print(f'FAIL widget text: {exc}')
+        log.info(f'FAIL widget text: {exc}')
         return 2
-    print(f'strip: xfa_removed={report.get("xfa_removed")} '
+    log.info(f'strip: xfa_removed={report.get("xfa_removed")} '
           f'dead_buttons={len(report.get("dead_buttons") or [])}')
     if report.get('perms_removed'):
-        print(f'strip: deleted /Perms {report["perms_removed"]}')
+        log.info(f'strip: deleted /Perms {report["perms_removed"]}')
     if report.get('certified'):
-        print('WARNING: the source was CERTIFIED (/Perms /DocMDP); the '
+        log.info('WARNING: the source was CERTIFIED (/Perms /DocMDP); the '
               'translation is not. Say so when you deliver it.')
     if report.get('encryption', {}).get('encrypted') and not report.get('reencrypted'):
-        print('NOTE: the source was encrypted; the output is not '
+        log.info('NOTE: the source was encrypted; the output is not '
               '(--keep-encryption re-applies its permission bits).')
     leftover = report.get('leftover_text') or []
     if leftover:
-        print(f'FAIL: page text survived strip on {len(leftover)} page(s); '
+        log.info(f'FAIL: page text survived strip on {len(leftover)} page(s); '
               f'{stripped} was not written:')
         for item in leftover:
-            print(f"  p{item['page']}: {item['text']}")
+            log.info(f"  p{item['page']}: {item['text']}")
         return 1
     extract_args = [src, '--outdir', work]
     if '--max-per-kind' in argv:
@@ -141,17 +141,28 @@ def cmd_init(argv):
     if '--pages' in argv:
         extract_args += ['--pages', argv[argv.index('--pages') + 1]]
     rc = extract_main(extract_args)
-    print(f'elapsed {time.perf_counter()-t0:.2f}s -> {work}')
+    log.info(f'elapsed {time.perf_counter()-t0:.2f}s -> {work}')
     return rc
 
 
 def scaffold_from_cores(to_translate_path, out_path, force=False):
+    """See `_scaffold_from_cores`. Loud: prints and returns an int.
+
+    A library-level entry point — tests/test_pipeline.py captures stdout
+    around a direct call to it, so it keeps printing. The envelope is
+    re-entrant, so calling it from `main` does not double a line.
+    """
+    with console():
+        return _scaffold_from_cores(to_translate_path, out_path, force=force)
+
+
+def _scaffold_from_cores(to_translate_path, out_path, force=False):
     """Write translations.json with a null for every core. Returns 0, or 2."""
     if not os.path.isfile(to_translate_path):
-        print(f'from-cores: missing {to_translate_path}')
+        log.info(f'from-cores: missing {to_translate_path}')
         return 2
     if os.path.isfile(out_path) and not force:
-        print(f'from-cores: {out_path} exists (pass --force to overwrite)')
+        log.info(f'from-cores: {out_path} exists (pass --force to overwrite)')
         return 2
     with open(to_translate_path, encoding='utf-8') as f:
         data = json.load(f)
@@ -180,7 +191,7 @@ def scaffold_from_cores(to_translate_path, out_path, force=False):
     with open(out_path, 'w', encoding='utf-8') as f:
         json.dump(conf, f, ensure_ascii=False, indent=1)
         f.write('\n')
-    print(f'from-cores: {len(translations)} cores -> {out_path} '
+    log.info(f'from-cores: {len(translations)} cores -> {out_path} '
           f'(values are null — author them; do not ship)')
     return 0
 
@@ -194,6 +205,17 @@ def cmd_from_cores(argv):
 
 
 def propose_merges(work, accept=False, min_lines=2):
+    """See `_propose_merges`. Loud: prints and returns an int.
+
+    A library-level entry point — tests/test_pipeline.py captures stdout
+    around a direct call to it, so it keeps printing. The envelope is
+    re-entrant, so calling it from `main` does not double a line.
+    """
+    with console():
+        return _propose_merges(work, accept=accept, min_lines=min_lines)
+
+
+def _propose_merges(work, accept=False, min_lines=2):
     """Shape the extractor's merge candidates as editable merges entries.
 
     A wrapped paragraph must be translated as one unit and re-flowed;
@@ -205,7 +227,7 @@ def propose_merges(work, accept=False, min_lines=2):
     """
     seg_path = os.path.join(work, 'segments.json')
     if not os.path.isfile(seg_path):
-        print(f'propose-merges: missing {seg_path}')
+        log.info(f'propose-merges: missing {seg_path}')
         return 2
     with open(seg_path, encoding='utf-8') as f:
         data = json.load(f)
@@ -237,17 +259,17 @@ def propose_merges(work, accept=False, min_lines=2):
     out_path = os.path.join(work, 'merges_proposed.json')
     with open(out_path, 'w', encoding='utf-8') as f:
         json.dump({'merges': proposals}, f, ensure_ascii=False, indent=1)
-    print(f'propose-merges: {len(proposals)} candidate(s) -> {out_path} '
+    log.info(f'propose-merges: {len(proposals)} candidate(s) -> {out_path} '
           f'(html is null — author each, or delete the entry; box is null '
           f'— set one only if you looked at the page)')
     if not accept:
-        print('propose-merges: nothing changed. Re-run with --accept to fold '
+        log.info('propose-merges: nothing changed. Re-run with --accept to fold '
               'these into translations.json.')
         return 0
 
     tr_path = os.path.join(work, 'translations.json')
     if not os.path.isfile(tr_path):
-        print(f'propose-merges: missing {tr_path} (run from-cores first)')
+        log.info(f'propose-merges: missing {tr_path} (run from-cores first)')
         return 2
     with open(tr_path, encoding='utf-8') as f:
         conf = json.load(f)
@@ -265,7 +287,7 @@ def propose_merges(work, accept=False, min_lines=2):
     with open(tr_path, 'w', encoding='utf-8') as f:
         json.dump(conf, f, ensure_ascii=False, indent=1)
         f.write('\n')
-    print(f'propose-merges: added {added} merge(s) to {tr_path}; author every '
+    log.info(f'propose-merges: added {added} merge(s) to {tr_path}; author every '
           f'html (null still FAILs retypeset)')
     return 0
 
@@ -279,6 +301,17 @@ def cmd_propose_merges(argv):
 
 
 def merge_mappings(out_path, paths, last_wins=False):
+    """See `_merge_mappings`. Loud: prints and returns an int.
+
+    A library-level entry point — tests/test_pipeline.py captures stdout
+    around a direct call to it, so it keeps printing. The envelope is
+    re-entrant, so calling it from `main` does not double a line.
+    """
+    with console():
+        return _merge_mappings(out_path, paths, last_wins=last_wins)
+
+
+def _merge_mappings(out_path, paths, last_wins=False):
     """Combine per-page-range mappings into one. Conflicts stop the write."""
     merged = None
     conflicts = []
@@ -306,26 +339,26 @@ def merge_mappings(out_path, paths, last_wins=False):
                 merged[key] = sorted(set(merged.get(key) or [])
                                      | set(conf[key]))
     if merged is None:
-        print('merge-mappings: no inputs')
+        log.info('merge-mappings: no inputs')
         return 2
     if conflicts:
-        print(f'merge-mappings: {len(conflicts)} conflicting core(s); '
+        log.info(f'merge-mappings: {len(conflicts)} conflicting core(s); '
               f'nothing written (pass --last-wins to take the later file):')
         for core, a, b, path in conflicts[:20]:
-            print(f'  {core[:50]!r}: {a!r} vs {b!r} (from {path})')
+            log.info(f'  {core[:50]!r}: {a!r} vs {b!r} (from {path})')
         return 1
     with open(out_path, 'w', encoding='utf-8') as f:
         json.dump(merged, f, ensure_ascii=False, indent=1)
         f.write('\n')
     total = len(merged.get('translations') or {})
-    print(f'merge-mappings: {total} cores -> {out_path}')
+    log.info(f'merge-mappings: {total} cores -> {out_path}')
     return 0
 
 
 def cmd_merge_mappings(argv):
     rest = [a for a in argv if a != '--last-wins']
     if len(rest) < 2:
-        print('merge-mappings: OUT.json IN.json [IN.json ...]')
+        log.info('merge-mappings: OUT.json IN.json [IN.json ...]')
         return 2
     return merge_mappings(rest[0], rest[1:], last_wins='--last-wins' in argv)
 
@@ -336,7 +369,7 @@ def cmd_qa(argv):
     tr = os.path.join(work, 'translations.json')
     segs = os.path.join(work, 'segments.json')
     if not os.path.isfile(tr):
-        print(f'qa: missing {tr}')
+        log.info(f'qa: missing {tr}')
         return 2
     args = [tr]
     if os.path.isfile(segs):
@@ -359,13 +392,13 @@ def cmd_qa(argv):
 
 def cmd_rebuild(argv):
     if '--work' not in argv:
-        print('rebuild requires --work DIR')
+        log.info('rebuild requires --work DIR')
         return 2
     wi = argv.index('--work')
     work = argv[wi + 1]
     rest = argv[:wi] + argv[wi + 2:]
     if len(rest) < 2:
-        print('rebuild: ORIGINAL.pdf OUT.pdf [verify flags...]')
+        log.info('rebuild: ORIGINAL.pdf OUT.pdf [verify flags...]')
         return 2
     orig, out, extra = rest[0], rest[1], rest[2:]
     orig = os.path.abspath(orig)
@@ -377,14 +410,14 @@ def cmd_rebuild(argv):
     t0 = time.perf_counter()
     rc = retypeset(stripped, segs, tr, out)
     if rc != 0:
-        print(f'elapsed {time.perf_counter()-t0:.2f}s (retypeset failed)')
+        log.info(f'elapsed {time.perf_counter()-t0:.2f}s (retypeset failed)')
         return rc
     # Retypeset resolves font paths beside the mapping. Leave the caller's
     # directory intact so all command-line verification paths keep meaning.
     if '--report' not in extra:
         extra = extra + ['--report', os.path.join(work, 'verify_report.json')]
     rc = verify_main([orig, out] + extra)
-    print(f'elapsed {time.perf_counter()-t0:.2f}s')
+    log.info(f'elapsed {time.perf_counter()-t0:.2f}s')
     return rc
 
 
@@ -393,7 +426,7 @@ def cmd_render(argv):
     orig, trans, outdir = argv[0], argv[1], argv[2]
     t0 = time.perf_counter()
     render_pages(orig, trans, outdir, dpi=dpi)
-    print(f'elapsed {time.perf_counter()-t0:.2f}s')
+    log.info(f'elapsed {time.perf_counter()-t0:.2f}s')
     return 0
 
 
@@ -554,7 +587,7 @@ def main(argv=None):
 def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv:
-        print(__doc__)
+        log.info(__doc__)
         return 2
     cmd, rest = argv[0], argv[1:]
     if cmd == 'review':
@@ -577,8 +610,8 @@ def _main(argv=None):
         return cmd_finish(rest)
     if cmd == 'bilingual':
         return bilingual_main(rest)
-    print('unknown command', cmd)
-    print(__doc__)
+    log.info(f'unknown command {cmd}')
+    log.info(__doc__)
     return 2
 
 
