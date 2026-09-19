@@ -3,7 +3,17 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 18 September 2026 (this section wins over everything below it)
+## Start here — 19 September 2026 (this section wins over everything below it)
+
+**Both branches are pushed and both PRs are open: [#12](https://github.com/ariasr47/pdf-translate-skill/pull/12) (row 32, v57, base `main`) and [#13](https://github.com/ariasr47/pdf-translate-skill/pull/13) (E3, v58, stacked on #12). Merge #12 first; GitHub retargets #13.** Both MERGEABLE. **CI has not run on either** — every job failed in 1–5 seconds with *"The job was not started because recent account payments have failed or your spending limit needs to be increased"*. That is GitHub account billing, not the code; the only workflow change is three test-module names on one `run:` line. After billing is fixed: `gh run rerun 35432185828 && gh run rerun 35432191241`. Do not merge on a red that never ran — both suites are green locally (Windows / Python 3.14, 492 and 15), but the Ubuntu and 3.10 legs are unverified.
+
+**Next work is B1** — the library never breaks a line, so a long translation shrinks or goes untranslated. It is the coverage lever and it needs a design pass first: canvas → ruling → corpus probe to size it → plan. `docs/BRIEF-product-bubble-2026-09-18.md` has the reasoning and the other four bubbled items (B2, B3 answered by v58; B5 by v57; B4 contained).
+
+**Starting in Codex / GPT-6?** Read `dev/goals/HANDOVER-codex-2026-09-19.md` first — it is written for that harness (no superpowers skills, `AGENTS.md` is yours, the venv-vs-system-Python trap, the two parity ratchets and the four traps this repo has actually fallen into).
+
+## 18 September 2026 — superseded by the section above
+
+*Kept for the record. Where it and the 19 September section differ, the one above is right: both branches ARE pushed now, both PRs are open, and `feat/consumer-surface` is 12 commits, not 9.*
 
 **State.** `main` is at **v56**: PRs **#10** (gate 21 `leak-cjk`, v55) and **#11** (three gate gaps from the first FL-150 → ja job, v56) are **merged**, `main` at `bacc436`. Two branches are ahead and **none is pushed** — merge, push and delete are the operator's, always:
 
@@ -25,7 +35,7 @@ Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 4. FL-150 job follow-ups, only if asked (unchanged, below).
 5. Operator: delete the merged branches from #1–#11; pick the PyPI name for E10.
 
-## Start here — 17 September 2026, late (this section wins over everything below it)
+## 17 September 2026 — superseded by the sections above
 
 **State.** `main` is at v54 (gates 19 kinsoku, 20 han-forms; the product's work order transcribed in `docs/REQUESTS-from-product.md`). Two branches are ahead: `feat/cjk-leak-tell` — PR #10, gate 21 `leak-cjk`, v55, CI green, base `main` — and `fix/cjk-job-gates` on top of it (v56: three gate gaps found by the first FL-150 → Japanese job — wrapped CJK paragraphs invisible to the placement gate, Noto Sans JP `locl` digit alternates drifting in the text layer, hidden pushbuttons counted as chrome — red-first tests, suite 401 OK; pushed, **PR #11**, base `feat/cjk-leak-tell`, CI 5/5 green at `bf96f65`). A third is ahead of that: `docs/32-design-canvas` — row 32's design pass and implementation plan, docs only, **not pushed**. Merge, push and delete are the operator's, always.
 

@@ -3,6 +3,12 @@
 *For any agent working in this repo. Read `pdf-translate/SKILL.md` first if
 you have not — this file adds three rules on top of it, nothing else.*
 
+> **Starting a new session? Read `dev/goals/HANDOVER.md` first.** Its top
+> section is the current state — what is on `main`, which branches are open,
+> which PRs are waiting and what the next piece of work is. This file is the
+> standing rules; that file is where things actually are. A handover section
+> is a claim: re-verify it against `git` and `gh` before acting on it.
+
 This repo is the upstream: an MIT-licensed, provider-neutral PDF translation
 library, published as both a Claude skill and (per
 `docs/BRIEF-core-library-step1.md`) an importable package. It has no council,
