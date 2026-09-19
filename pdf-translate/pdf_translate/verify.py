@@ -513,7 +513,15 @@ SCALE_REPORT = 'scale_report.json'
 
 
 def scale_report_for(judged):
-    """The scale report beside `judged`, [] if empty, None if absent."""
+    """The scale report beside `judged`, [] if empty, None if absent.
+
+    Reads **both** shapes. v58 and later write
+    `{"schema": 1, "version": ..., "runs": [...]}`; every build before that
+    wrote a bare list. A report written by an older build must still verify —
+    that is the same promise the SKIP status already makes for a build from
+    before the report existed at all — so the envelope is a break in what is
+    written, not in what can be read.
+    """
     path = os.path.join(os.path.dirname(os.path.abspath(judged)),
                         SCALE_REPORT)
     try:
@@ -521,6 +529,9 @@ def scale_report_for(judged):
             data = json.load(f)
     except (OSError, ValueError):
         return None
+    if isinstance(data, dict):
+        runs = data.get('runs')
+        return runs if isinstance(runs, list) else None
     return data if isinstance(data, list) else None
 
 

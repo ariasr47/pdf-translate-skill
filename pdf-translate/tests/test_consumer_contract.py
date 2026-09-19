@@ -314,6 +314,87 @@ class ConcurrencyTests(unittest.TestCase):
             self.assertIsInstance(result.scaled, tuple)
 
 
+class ScaleReportEnvelopeTests(unittest.TestCase):
+    """C3, and ruling 2 of 2026-09-18: the bare list gains an envelope."""
+
+    def _built(self, tmp, report=None):
+        src = build_source(Path(tmp) / 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        pdf_translate.run_strip(src, stripped)
+        extract = pdf_translate.run_extract(src, outdir=tmp)
+        trf = write_mapping(tmp)
+        out = os.path.join(tmp, 'out.pdf')
+        kwargs = {} if report is None else {'scale_report': report}
+        result = pdf_translate.run_retypeset(
+            stripped, extract.segments_path, trf, out, **kwargs)
+        return src, out, result
+
+    def test_scale_report_carries_schema_and_version(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _, _, result = self._built(tmp)
+            with open(result.scale_report_path, encoding='utf-8') as fh:
+                data = json.load(fh)
+        self.assertIsInstance(data, dict)
+        self.assertEqual(data['schema'], 1)
+        self.assertEqual(data['version'], pdf_translate.__version__)
+        self.assertIsInstance(data['runs'], list)
+
+    def test_scale_report_is_written_whole_or_not_at_all(self):
+        retypeset = importlib.import_module('pdf_translate.retypeset')
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, 'scale_report.json')
+            with open(path, 'w', encoding='utf-8') as fh:
+                json.dump([{'page': 0, 'ratio': 0.9, 'key': 'stale'}], fh)
+            # An unwritable directory: the old report must not survive as if
+            # it described this run.
+            target = os.path.join(tmp, 'nope', 'scale_report.json')
+            retypeset.write_scale_report([], target)
+            self.assertFalse(os.path.exists(target))
+            # No .tmp litter left behind either.
+            self.assertFalse([n for n in os.listdir(tmp)
+                              if n.startswith('.scale_report-')])
+
+    def test_a_failed_scale_report_write_does_not_change_the_return_code(self):
+        retypeset = importlib.import_module('pdf_translate.retypeset')
+        with tempfile.TemporaryDirectory() as tmp:
+            src = build_source(Path(tmp) / 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            pdf_translate.run_strip(src, stripped)
+            extract = pdf_translate.run_extract(src, outdir=tmp)
+            trf = write_mapping(tmp)
+            out = os.path.join(tmp, 'out.pdf')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(
+                    stripped, extract.segments_path, trf, out)
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.isfile(out))
+
+    def test_verify_reads_both_the_old_list_and_the_new_envelope(self):
+        # A report written by a build from before v58 must still verify.
+        verify = importlib.import_module('pdf_translate.verify')
+        runs = [{'page': 0, 'ratio': 0.85, 'key': 'Income and Expense'}]
+        for shape in (runs, {'schema': 1, 'version': '58', 'runs': runs}):
+            with tempfile.TemporaryDirectory() as tmp:
+                judged = os.path.join(tmp, 'out.pdf')
+                Path(judged).write_bytes(b'%PDF-1.4\n')
+                with open(os.path.join(tmp, 'scale_report.json'), 'w',
+                          encoding='utf-8') as fh:
+                    json.dump(shape, fh)
+                self.assertEqual(verify.scale_report_for(judged), runs,
+                                 f'could not read {type(shape).__name__}')
+
+    def test_a_report_that_is_neither_shape_reads_as_absent(self):
+        verify = importlib.import_module('pdf_translate.verify')
+        with tempfile.TemporaryDirectory() as tmp:
+            judged = os.path.join(tmp, 'out.pdf')
+            Path(judged).write_bytes(b'%PDF-1.4\n')
+            with open(os.path.join(tmp, 'scale_report.json'), 'w',
+                      encoding='utf-8') as fh:
+                json.dump({'schema': 1, 'version': '58'}, fh)   # no runs
+            self.assertIsNone(verify.scale_report_for(judged))
+
+
 class WorkingDirectoryTests(unittest.TestCase):
     """C1's last clause: no dependence on the process's working directory."""
 

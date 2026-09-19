@@ -74,6 +74,7 @@ import math
 import os
 import re
 import sys
+import tempfile
 import time
 import unicodedata
 from pathlib import PurePath
@@ -629,6 +630,51 @@ def canonicalize_text_layer(path, fontfiles, texts):
 def _load_json(path):
     with open(path, encoding='utf-8') as f:
         return json.load(f)
+
+
+SCALE_REPORT_SCHEMA = 1
+
+
+def write_scale_report(runs, path):
+    """The scaled-runs report, schema-versioned and written whole or not at all.
+
+    The top level was a bare list. It is now
+    `{"schema": 1, "version": ..., "runs": [...]}` — the same envelope every
+    other machine-readable output carries, so a consumer can tell which build
+    wrote a file it is holding. Broken deliberately now, before the product
+    pins a version and builds goldens on the old shape;
+    `verify.scale_report_for` reads both, because a report written by an
+    older build must still verify.
+
+    Written through a temp file and `os.replace`, like `verify.write_report`:
+    a half-written report claiming a clean build is worse than none, which is
+    the defect PR #7 exists to prevent. A failure is logged, never raised, and
+    never changes the return code.
+    """
+    from . import __version__
+    text = json.dumps({'schema': SCALE_REPORT_SCHEMA, 'version': __version__,
+                       'runs': list(runs)}, ensure_ascii=False, indent=1)
+    tmp = None
+    try:
+        fd, tmp = tempfile.mkstemp(prefix='.scale_report-', suffix='.tmp',
+                                   dir=os.path.dirname(os.path.abspath(path)))
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            f.write(text)
+        os.replace(tmp, path)
+    except OSError as exc:
+        log.info(f'  (could not write {SCALE_REPORT}: {exc})')
+        if tmp and os.path.exists(tmp):
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+        # A stale report from an earlier build must not survive a failed
+        # write and be read as this one's.
+        try:
+            if os.path.exists(path):
+                os.remove(path)
+        except OSError:
+            pass
 
 
 def retypeset(stripped, segf, trf, out):
@@ -1551,12 +1597,8 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
     else:
         report = scale_report
     if report:
-        try:
-            with open(report, 'w', encoding='utf-8') as f:
-                json.dump(sorted(scaled, key=lambda r: (r['page'], r['key'])),
-                          f, ensure_ascii=False, indent=1)
-        except OSError as exc:
-            log.info(f'  (could not write {SCALE_REPORT}: {exc})')
+        write_scale_report(sorted(scaled, key=lambda r: (r['page'], r['key'])),
+                           report)
 
     doc.ez_save(out)
     doc.close()
