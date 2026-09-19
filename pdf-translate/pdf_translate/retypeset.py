@@ -69,6 +69,7 @@ Usage:
 """
 import html as htmlmod
 import json
+import logging
 import math
 import os
 import re
@@ -78,6 +79,12 @@ import unicodedata
 from pathlib import PurePath
 
 import pymupdf
+
+from ._console import console
+from .results import (GlyphError, MappingError, PdfTranslateError,
+                      PlacementError, RetypesetResult)
+
+log = logging.getLogger(__name__)
 
 SCALE_MIN = 0.7
 # A notice the author did not size. Small enough for a footer line, big
@@ -620,7 +627,31 @@ def _load_json(path):
 
 
 def retypeset(stripped, segf, trf, out):
-    """Place translations onto a stripped PDF. Returns 0, or 1 if cores/overflow."""
+    """Place translations onto a stripped PDF. Returns 0, or 1 if cores/overflow.
+
+    The loud shape, unchanged: same signature, same printed bytes, same return
+    code. `run_retypeset` is the one a service calls — it returns a
+    `RetypesetResult` and raises, and its exceptions carry every refused core
+    in full through `.refusals`, not the console's 40-character abbreviation.
+    """
+    with console():
+        try:
+            run_retypeset(stripped, segf, trf, out)
+        except PdfTranslateError as exc:
+            log.info(exc.console_line)
+            return exc.exit_code
+    return 0
+
+
+def run_retypeset(stripped, segf, trf, out):
+    """Place translations onto a stripped PDF.
+
+    Silent. Returns a RetypesetResult. Raises on refusal — `GlyphError` when
+    the face cannot draw a character, `MappingError` for an unauthored core or
+    a merge that does not match, `PlacementError` for a run that will not fit
+    or a notice that cannot be placed. Every one carries `.refusals`: each
+    refused item, by kind, with the core untruncated.
+    """
     segd = _load_json(segf)
     conf = _load_json(trf)
     T = conf['translations']
@@ -639,7 +670,7 @@ def retypeset(stripped, segf, trf, out):
         if path and not os.path.isabs(path):
             local = os.path.join(font_dir, path)
             if not os.path.isfile(local) and os.path.isfile(path):
-                print(f'NOTE font {role_name}: legacy caller-relative path {path}; '
+                log.info(f'NOTE font {role_name}: legacy caller-relative path {path}; '
                       'prefer a path relative to translations.json')
                 local = os.path.abspath(path)
             path = local
@@ -663,7 +694,7 @@ def retypeset(stripped, segf, trf, out):
             return
         shown = (key or '')[:50]
         if opted or key in allow_scale:
-            print(f'  note: p{pno} scaled to {ratio:.2f}x (allow_scale): {shown}')
+            log.info(f'  note: p{pno} scaled to {ratio:.2f}x (allow_scale): {shown}')
             return
         overflow.append((pno, ratio, key))
 
@@ -688,9 +719,15 @@ def retypeset(stripped, segf, trf, out):
                 idxs.append(i)
                 li += 1
         if li != len(m['lines']):
-            print(f"!! merge not matched p{m['page']}: {m['lines'][0][:60]} "
-                  f"({li}/{len(m['lines'])})")
-            return 1
+            raise MappingError(
+                'a declared merge does not match the page',
+                console_line=(f"!! merge not matched p{m['page']}: "
+                              f"{m['lines'][0][:60]} "
+                              f"({li}/{len(m['lines'])})"),
+                exit_code=1, core=m['lines'][0],
+                refusals={'merges': [{'page': m['page'],
+                                      'lines': list(m['lines']),
+                                      'matched': li}]})
         r = pymupdf.Rect(min(page_segs[i]['bbox'][0] for i in idxs),
                          min(page_segs[i]['bbox'][1] for i in idxs),
                          max(page_segs[i]['bbox'][2] for i in idxs),
@@ -706,13 +743,23 @@ def retypeset(stripped, segf, trf, out):
             try:
                 bx0, by0, bx1, by1 = (float(v) for v in m['box'])
             except (TypeError, ValueError):
-                print(f"!! merge box p{m['page']} is not four numbers "
-                      f"[x0, y0, x1, y1]: {m['box']!r}")
-                return 1
+                raise MappingError(
+                    'a merge box is not four numbers',
+                    console_line=(f"!! merge box p{m['page']} is not four "
+                                  f"numbers [x0, y0, x1, y1]: {m['box']!r}"),
+                    exit_code=1, core=m['lines'][0],
+                    refusals={'merges': [{'page': m['page'],
+                                          'box': m['box'],
+                                          'why': 'not four numbers'}]})
             if bx1 <= bx0 or by1 <= by0:
-                print(f"!! merge box p{m['page']} is empty or inverted: "
-                      f"{m['box']!r}")
-                return 1
+                raise MappingError(
+                    'a merge box is empty or inverted',
+                    console_line=(f"!! merge box p{m['page']} is empty or "
+                                  f"inverted: {m['box']!r}"),
+                    exit_code=1, core=m['lines'][0],
+                    refusals={'merges': [{'page': m['page'],
+                                          'box': m['box'],
+                                          'why': 'empty or inverted'}]})
             r = pymupdf.Rect(bx0, by0, bx1, by1)
         size = max(page_segs[i]['size'] for i in idxs)
         # Derive leading from the ORIGINAL baselines rather than assuming a
@@ -753,18 +800,31 @@ def retypeset(stripped, segf, trf, out):
                 if override_for(pno, text):
                     continue
                 missing.append((pno, seg['core']))
+    # Accumulated rather than printed: the loud wrapper prints this block
+    # verbatim, and a consumer gets the same refusals as data through the
+    # exception's `refusals` — untruncated, unlike the console's summary.
+    block = []
     if unauthored_merges:
-        print(f'FAIL: {len(unauthored_merges)} merges with html null '
-              f'(accepted as proposals; author the paragraph or delete the '
-              f'entry):')
+        block.append(f'FAIL: {len(unauthored_merges)} merges with html null '
+                     f'(accepted as proposals; author the paragraph or delete '
+                     f'the entry):')
         for p, first in unauthored_merges[:30]:
-            print(f'  p{p}: {first[:70]}')
+            block.append(f'  p{p}: {first[:70]}')
     if missing:
-        print(f'FAIL: {len(missing)} untranslated segments:')
+        block.append(f'FAIL: {len(missing)} untranslated segments:')
         for p, c in missing[:30]:
-            print(f'  p{p}: {c}')
+            block.append(f'  p{p}: {c}')
     if missing or unauthored_merges:
-        return 1
+        raise MappingError(
+            f'{len(missing)} untranslated segment(s), '
+            f'{len(unauthored_merges)} unauthored merge(s)',
+            console_line='\n'.join(block), exit_code=1,
+            core=(missing[0][1] if missing else None),
+            refusals={
+                'untranslated': [{'page': p, 'core': c} for p, c in missing],
+                'unauthored_merges': [{'page': p, 'first_line': f}
+                                      for p, f in unauthored_merges],
+            })
 
     # Four roles, each falling back to the nearest one the mapping named.
     # A document set in Times Italic used to come back upright Arial: the
@@ -852,11 +912,15 @@ def retypeset(stripped, segf, trf, out):
             bad_notices.append((i, f'box is empty or inverted: '
                                    f'{n.get("box")!r}'))
     if bad_notices:
-        print(f'FAIL: {len(bad_notices)} notice(s) this file cannot place:')
+        block = [f'FAIL: {len(bad_notices)} notice(s) this file cannot place:']
         for i, why in bad_notices[:30]:
-            print(f'  notices[{i}]: {why}')
+            block.append(f'  notices[{i}]: {why}')
         doc.close()
-        return 1
+        raise PlacementError(
+            f'{len(bad_notices)} notice(s) cannot be placed',
+            console_line='\n'.join(block), exit_code=1,
+            refusals={'notices': [{'index': i, 'why': w}
+                                  for i, w in bad_notices]})
 
     widg = {p.number: [w.rect for w in p.widgets()] for p in doc}
     arch = pymupdf.Archive('.')
@@ -1299,37 +1363,81 @@ def retypeset(stripped, segf, trf, out):
         if is_rtl_text(plain) or needs_shaping(plain):
             wrap_last_stream_actualtext(doc[pno], plain)
     if notices:
-        print(f'notices: placed {len(notices)} on '
+        log.info(f'notices: placed {len(notices)} on '
               f'{len({n["page"] for n in notices})} page(s); look at the '
               f'render — no gate judges where a notice sits')
 
+    # One build can fail for several reasons at once. The console prints them
+    # all, in this order, exactly as it always has; the exception carries all
+    # of them as data so a consumer fixes the mapping in one pass instead of
+    # rebuilding to discover the next reason.
+    block = []
     if missing:
-        print(f'FAIL: {len(missing)} untranslated segments:')
+        block.append(f'FAIL: {len(missing)} untranslated segments:')
         for p, c in missing[:30]:
-            print(f'  p{p}: {c}')
+            block.append(f'  p{p}: {c}')
     if overflow:
-        print(f'FAIL: {len(overflow)} segments scaled below {SCALE_MIN}x '
-              f'(shorten the translation or add allow_scale):')
+        block.append(f'FAIL: {len(overflow)} segments scaled below '
+                     f'{SCALE_MIN}x (shorten the translation or add '
+                     f'allow_scale):')
         for p, ratio, c in overflow[:30]:
-            print(f'  p{p} {ratio:.2f}x: {c}')
+            block.append(f'  p{p} {ratio:.2f}x: {c}')
     if glyph_misses:
-        print(f'FAIL: {len(glyph_misses)} character(s) the chosen font cannot '
-              f'draw. MuPDF substitutes a fallback face mid-string or draws a '
-              f'box and reports nothing; pick a font that covers the target '
-              f'script (references/fonts.md):')
+        block.append(f'FAIL: {len(glyph_misses)} character(s) the chosen font '
+                     f'cannot draw. MuPDF substitutes a fallback face '
+                     f'mid-string or draws a box and reports nothing; pick a '
+                     f'font that covers the target script '
+                     f'(references/fonts.md):')
         for pno, label, ch, key in glyph_misses[:30]:
             name = unicodedata.name(ch, '?')
-            print(f'  p{pno} [{label}] U+{ord(ch):04X} {name} ({ch}) in: '
-                  f'{(key or "")[:40]}')
+            # The console keeps its 40-character abbreviation — this line is
+            # read by a person and the whole core would drown it. The
+            # structured refusal below carries the key in full, because a
+            # consumer matches it against its own translation map and two
+            # cores can share a 40-character prefix.
+            block.append(f'  p{pno} [{label}] U+{ord(ch):04X} {name} ({ch}) '
+                         f'in: {(key or "")[:40]}')
     if rotated_shaped:
-        print(f'FAIL: {len(rotated_shaped)} rotated segments whose target needs '
-              f'shaping. The Story engine places shaped runs upright; drawing '
-              f'them flat on a rotated label would ship confidently wrong text:')
+        block.append(f'FAIL: {len(rotated_shaped)} rotated segments whose '
+                     f'target needs shaping. The Story engine places shaped '
+                     f'runs upright; drawing them flat on a rotated label '
+                     f'would ship confidently wrong text:')
         for p, c in rotated_shaped[:30]:
-            print(f'  p{p}: {c}')
+            block.append(f'  p{p}: {c}')
     if missing or overflow or rotated_shaped or glyph_misses:
         doc.close()
-        return 1
+        refusals = {
+            'untranslated': [{'page': p, 'core': c} for p, c in missing],
+            'overflow': [{'page': p, 'scale': r, 'core': c}
+                         for p, r, c in overflow],
+            'glyph_misses': [{'page': p, 'role': label, 'char': ch,
+                              'codepoint': f'U+{ord(ch):04X}',
+                              'name': unicodedata.name(ch, '?'),
+                              'core': key or ''}
+                             for p, label, ch, key in glyph_misses],
+            'rotated_shaped': [{'page': p, 'core': c}
+                               for p, c in rotated_shaped],
+        }
+        summary = ', '.join(
+            f'{len(v)} {k.replace("_", " ")}' for k, v in refusals.items() if v)
+        # Precedence names the exception; `refusals` carries every kind. A
+        # glyph the face cannot draw is first because it is the one a
+        # consumer cannot fix by editing wording.
+        if glyph_misses:
+            pno, label, ch, key = glyph_misses[0]
+            raise GlyphError(summary, console_line='\n'.join(block),
+                             exit_code=1, page=pno, char=ch, face=label,
+                             refusals=refusals)
+        if missing:
+            raise MappingError(summary, console_line='\n'.join(block),
+                               exit_code=1, core=missing[0][1],
+                               refusals=refusals)
+        first = (overflow[0] if overflow else None)
+        raise PlacementError(
+            summary, console_line='\n'.join(block), exit_code=1,
+            page=(first[0] if first else rotated_shaped[0][0]),
+            key=(first[2] if first else rotated_shaped[0][1]),
+            scale=(first[1] if first else None), refusals=refusals)
 
     if mirror:
         for page in doc:
@@ -1348,14 +1456,14 @@ def retypeset(stripped, segf, trf, out):
     meta_report = apply_document_metadata(
         doc, segd.get('document'), T, conf.get('lang'))
     if meta_report['title']:
-        print(f'metadata: /Title -> {meta_report["title"][:60]}')
+        log.info(f'metadata: /Title -> {meta_report["title"][:60]}')
     if meta_report['outline']:
-        print(f'metadata: {meta_report["outline"]} outline title(s) translated')
+        log.info(f'metadata: {meta_report["outline"]} outline title(s) translated')
     if meta_report['lang']:
-        print(f'metadata: /Lang -> {meta_report["lang"]}'
+        log.info(f'metadata: /Lang -> {meta_report["lang"]}'
               + (' (and dc:language)' if meta_report['xmp'] else ''))
     if meta_report['struct_tree_removed']:
-        print('metadata: removed the orphaned /StructTreeRoot and set '
+        log.info('metadata: removed the orphaned /StructTreeRoot and set '
               '/MarkInfo /Marked false — the tags described text that no '
               'longer exists. Tell the user the file is no longer tagged.')
 
@@ -1364,25 +1472,25 @@ def retypeset(stripped, segf, trf, out):
         if not asks:
             continue
         shown = ', '.join(dict.fromkeys(asks))
-        print(f'font roles: "{name}" resolved to the regular face; '
+        log.info(f'font roles: "{name}" resolved to the regular face; '
               f'{len(asks)} run(s) asked for it ({shown[:100]}'
               f'{"…" if len(shown) > 100 else ""}). Name it in the delivery '
               f'or give the role its own file.')
 
     if scaled:
-        print(f'scaled runs ({len(scaled)}) — reword them or name them in '
+        log.info(f'scaled runs ({len(scaled)}) — reword them or name them in '
               f'the delivery:')
         for r in sorted(scaled, key=lambda r: (r['page'], r['ratio']))[:30]:
-            print(f'  p{r["page"]} {r["ratio"]:.2f}x: {r["key"][:60]}')
+            log.info(f'  p{r["page"]} {r["ratio"]:.2f}x: {r["key"][:60]}')
         if len(scaled) > 30:
-            print(f'  … {len(scaled) - 30} more in {SCALE_REPORT}')
+            log.info(f'  … {len(scaled) - 30} more in {SCALE_REPORT}')
     report = os.path.join(os.path.dirname(os.path.abspath(out)), SCALE_REPORT)
     try:
         with open(report, 'w', encoding='utf-8') as f:
             json.dump(sorted(scaled, key=lambda r: (r['page'], r['key'])), f,
                       ensure_ascii=False, indent=1)
     except OSError as exc:
-        print(f'  (could not write {SCALE_REPORT}: {exc})')
+        log.info(f'  (could not write {SCALE_REPORT}: {exc})')
 
     doc.ez_save(out)
     doc.close()
@@ -1402,18 +1510,33 @@ def retypeset(stripped, segf, trf, out):
     fontfiles = [fonts['regular'], fonts.get('bold', fonts['regular'])]
     n = canonicalize_text_layer(out, fontfiles, placed)
     if n:
-        print(f'canonical text layer: rewrote /ToUnicode on {n} font object(s)')
+        log.info(f'canonical text layer: rewrote /ToUnicode on {n} font object(s)')
 
-    print('saved', out)
-    return 0
+    log.info(f'saved {out}')
+    return RetypesetResult(
+        output=out, pages=len(segd.get('pages') or []) or len(by_page),
+        placed=len(placed),
+        scaled=tuple(sorted(scaled, key=lambda r: (r['page'], r['key']))),
+        cancelled=False,
+        scale_report_path=os.path.join(os.path.dirname(os.path.abspath(out)),
+                                       SCALE_REPORT))
 
 
 def main(argv=None):
+    # The envelope is needed here even though `retypeset()` opens its own:
+    # the `elapsed` line is emitted AFTER that one closes, and without this it
+    # is silently dropped. `console()` is re-entrant, so the nested use costs
+    # nothing and the inner lines are not doubled.
+    with console():
+        return _main(argv)
+
+
+def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     stripped, segf, trf, out = argv[0], argv[1], argv[2], argv[3]
     t0 = time.perf_counter()
     rc = retypeset(stripped, segf, trf, out)
-    print(f'elapsed {time.perf_counter()-t0:.2f}s')
+    log.info(f'elapsed {time.perf_counter()-t0:.2f}s')
     return rc
 
 

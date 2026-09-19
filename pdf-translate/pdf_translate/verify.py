@@ -1668,7 +1668,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     for label, bad in [('missing', missing), ('type-mismatch', mismatch),
                        ('unexpected-extra', extra)]:
         if bad:
-            log.info(f'FAIL field {label}:', sorted(bad)[:10])
+            log.info(f'FAIL field {label}: {sorted(bad)[:10]}')
             fail = 1
             parity.extend(Finding(None, label, name) for name in sorted(bad))
     if not (missing or mismatch or extra):

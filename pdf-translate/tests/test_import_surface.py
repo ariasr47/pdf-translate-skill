@@ -630,6 +630,55 @@ class ConsoleHandlerTests(unittest.TestCase):
                          'run_verify swallowed the host thread\'s output')
 
 
+class LoggerCallShapeTests(unittest.TestCase):
+    """Every `log.info` takes exactly one already-formatted argument.
+
+    `print(a, b)` writes "a b". `log.info(a, b)` treats `b` as a %-format
+    argument, and when `a` carries no placeholder logging swallows the record
+    and writes a traceback to stderr instead — **the line disappears**. The
+    mechanical print→log conversion produced exactly this twice, in
+    `verify.py` (the field-parity FAIL) and `retypeset.py` (the `saved` line),
+    and neither was caught by the suite or by the parity runner because
+    neither fires on a job that succeeds.
+
+    This is a structural check rather than a behavioural one for that precise
+    reason: the sites it protects are the ones only a failing job reaches.
+    """
+
+    def test_no_log_info_call_takes_more_than_one_argument(self):
+        import ast
+        offenders = []
+        for path in sorted((SKILL / 'pdf_translate').glob('*.py')):
+            tree = ast.parse(path.read_text(encoding='utf-8'))
+            for node in ast.walk(tree):
+                if (isinstance(node, ast.Call)
+                        and isinstance(node.func, ast.Attribute)
+                        and node.func.attr in ('info', 'warning', 'error')
+                        and isinstance(node.func.value, ast.Name)
+                        and node.func.value.id == 'log'):
+                    if len(node.args) != 1 or node.keywords:
+                        offenders.append(f'{path.name}:{node.lineno}')
+        self.assertEqual(offenders, [], f'log call with != 1 argument: {offenders}')
+
+    def test_no_stage_module_prints(self):
+        # C10: through the logging module on the package's own logger, never
+        # `print`. Listed explicitly so adding a module is a deliberate act.
+        import ast
+        converted = ('verify.py', 'retypeset.py', 'strip_text.py',
+                     'extract_segments.py', 'prepare_font.py',
+                     'field_fonts.py', 'qa_check.py', 'review.py')
+        offenders = []
+        for name in converted:
+            path = SKILL / 'pdf_translate' / name
+            tree = ast.parse(path.read_text(encoding='utf-8'))
+            for node in ast.walk(tree):
+                if (isinstance(node, ast.Call)
+                        and isinstance(node.func, ast.Name)
+                        and node.func.id == 'print'):
+                    offenders.append(f'{name}:{node.lineno}')
+        self.assertEqual(offenders, [], f'print() survives in: {offenders}')
+
+
 def _one_page_pdf(path, text='Income and Expense Declaration'):
     doc = pymupdf.open()
     doc.new_page().insert_text((72, 72), text)

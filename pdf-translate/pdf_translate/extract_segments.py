@@ -90,12 +90,15 @@ Usage:
                                            [--pages 1-10] [--max-per-kind 10]
 """
 import json
+import logging
 import os
 import re
 import sys
 
 import pymupdf
 
+from ._console import console
+from .results import ExtractResult
 from .strip_text import (
     invisible_text_pages, page_textdict_without_annots,
     page_rawdict_without_annots, widget_text_scaffold)
@@ -517,6 +520,34 @@ def image_region_warnings(doc, wanted):
     return warnings
 
 
+log = logging.getLogger(__name__)
+
+
+def run_extract(src, outdir='.', gap=12.0, pages=None):
+    """Extract geometry and unique cores. Silent. Returns an ExtractResult.
+
+    The thinnest of the seven twins, and the plan says so rather than leaving
+    the asymmetry to be discovered: `extract_segments` never printed and
+    already returned its refusal reasons as data (`unextractable_pages`,
+    `invisible_text_pages`). This is a shape adapter so a consumer learns one
+    result type instead of one dict schema per stage. The dict is not going
+    anywhere — `extract_segments` keeps returning it.
+    """
+    result = extract_segments(src, outdir=outdir, gap=gap, pages=pages)
+    return ExtractResult(
+        segments=tuple(result.get('segments') or ()),
+        cores=tuple(result.get('cores') or ()),
+        warnings=tuple(result.get('warnings') or ()),
+        document=result.get('document') or {},
+        pages=len(result.get('pages') or ()),
+        unextractable_pages=tuple(result.get('unextractable_pages') or ()),
+        invisible_text_pages=tuple(result.get('invisible_text_pages') or ()),
+        segments_path=result.get('segments_path') or '',
+        to_translate_path=result.get('to_translate_path') or '',
+        widget_text_path=result.get('widget_text_path') or '',
+    )
+
+
 def extract_segments(src, outdir='.', gap=12.0, pages=None):
     """Extract geometry + unique cores. Writes segments.json and to_translate.json."""
     os.makedirs(outdir, exist_ok=True)
@@ -748,24 +779,29 @@ def print_warning_digest(warnings, max_per_kind=DEFAULT_MAX_PER_KIND):
     asks = dict(WARNING_ASKS)
     order = [k for k, _ in WARNING_ASKS if k in by_kind]
     order += sorted(k for k in by_kind if k not in asks)
-    print(f'WARNINGS: {len(warnings)} in {len(by_kind)} kind(s); every one is in '
+    log.info(f'WARNINGS: {len(warnings)} in {len(by_kind)} kind(s); every one is in '
           f'segments.json under "warnings" (--max-per-kind N lists more here):')
     width = max(len(k) for k in order)
     for k in order:
-        print(f'  {k:{width}s} {len(by_kind[k]):5d}  {asks.get(k, "review")}')
+        log.info(f'  {k:{width}s} {len(by_kind[k]):5d}  {asks.get(k, "review")}')
     for k in order:
         items = by_kind[k]
-        print(f'{k}:')
+        log.info(f'{k}:')
         for w in items[:max_per_kind]:
             preview = (w.get('text') or (w.get('lines') or [''])[0]
                        or w.get('why') or '')
             pid = w.get('id', ','.join(str(i) for i in w.get('ids', [])))
-            print(f"  p{w['page']} seg {pid} [{k}]: {preview}")
+            log.info(f"  p{w['page']} seg {pid} [{k}]: {preview}")
         if len(items) > max_per_kind:
-            print(f'  … {len(items) - max_per_kind} more {k} in segments.json')
+            log.info(f'  … {len(items) - max_per_kind} more {k} in segments.json')
 
 
 def main(argv=None):
+    with console():
+        return _main(argv)
+
+
+def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     src = argv[0]
     gap = float(argv[argv.index('--gap') + 1]) if '--gap' in argv else 12.0
@@ -778,10 +814,10 @@ def main(argv=None):
     nuniq = len(result['cores'])
     nw = len(result['warnings'])
     nwidget = len(result['widget_text'])
-    print(f'{nseg} segments, {nuniq} unique strings to translate, '
+    log.info(f'{nseg} segments, {nuniq} unique strings to translate, '
           f'{nw} warnings -> segments.json / to_translate.json')
     if nwidget:
-        print(f'{nwidget} field(s) carry widget text (tooltips, dropdown '
+        log.info(f'{nwidget} field(s) carry widget text (tooltips, dropdown '
               f'labels, defaults) -> widget_text.json; author each "target" '
               f'and pass it to strip_text.py --widget-text')
     if result['warnings']:
@@ -789,15 +825,15 @@ def main(argv=None):
     rc = 0
     if result.get('unextractable_pages'):
         pages = ', '.join(str(p) for p in result['unextractable_pages'])
-        print(f'FAIL: pages with visible content but no extractable text: {pages}')
-        print('  This looks scanned. The pipeline cannot translate images, and an '
+        log.info(f'FAIL: pages with visible content but no extractable text: {pages}')
+        log.info('  This looks scanned. The pipeline cannot translate images, and an '
               'OCR layer would not help (it is refused too); say so.')
         rc = 1
     if result.get('invisible_text_pages'):
         pages = ', '.join(f'{p} ({f:.1%} of text area changes)'
                           for p, f in result['invisible_text_pages'])
-        print(f'FAIL: pages whose text layer is invisible: {pages}')
-        print('  This looks like an OCR\'d scan (image + invisible OCR text layer). '
+        log.info(f'FAIL: pages whose text layer is invisible: {pages}')
+        log.info('  This looks like an OCR\'d scan (image + invisible OCR text layer). '
               'The words the reader sees are pixels; strip-and-retypeset would print '
               'the translation over them. This pipeline has no masking mode; do not ship.')
         rc = 1

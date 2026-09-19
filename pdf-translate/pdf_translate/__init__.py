@@ -27,9 +27,9 @@ from .results import (
     StripResult, WidgetTextError,
 )
 from .strip_text import run_strip, strip_text
-from .extract_segments import extract_segments
-from .retypeset import retypeset
-from .prepare_font import prepare_font
+from .extract_segments import extract_segments, run_extract
+from .retypeset import retypeset, run_retypeset
+from .prepare_font import prepare_font, run_prepare_font
 from .field_fonts import field_fonts, run_field_fonts
 from .render_pages import render_pages
 from .compare import compare
@@ -68,8 +68,11 @@ __all__ = (
     'qa_check',
     'render_pages',
     'retypeset',
+    'run_extract',
     'run_field_fonts',
+    'run_prepare_font',
     'run_qa',
+    'run_retypeset',
     'run_review',
     'run_strip',
     'run_verify',

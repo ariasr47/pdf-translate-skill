@@ -371,7 +371,7 @@ def main(argv=None):
 def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv:
-        print(__doc__)
+        log.info(__doc__)
         return 2
     translations = argv[0]
     segments = _arg(argv, '--segments')

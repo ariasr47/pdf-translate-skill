@@ -36,20 +36,34 @@ class PdfTranslateError(Exception):
     """
     exit_code = 1
 
-    def __init__(self, message, *, console_line=None, exit_code=None):
+    def __init__(self, message, *, console_line=None, exit_code=None,
+                 refusals=None):
         super().__init__(message)
         self.message = message
         self.console_line = (console_line if console_line is not None
                              else message)
         if exit_code is not None:
             self.exit_code = exit_code
+        # Every refused item, in full, keyed by kind — not the console's
+        # summary of them. A stage can refuse for several reasons at once
+        # (untranslated cores AND a glyph the face lacks AND a run that
+        # scaled too far); the exception type names the first by precedence,
+        # and this carries all of them so a consumer fixes the mapping in one
+        # pass instead of rebuilding to discover the next one.
+        #
+        # Values here are NOT truncated. The console abbreviates a core to 40
+        # characters to stay readable; a consumer matching against its own
+        # translation map needs the whole key, and two cores can share a
+        # 40-character prefix.
+        self.refusals = dict(refusals or {})
 
     def to_dict(self):
         from . import __version__
         out = {'schema': SCHEMA, 'version': __version__,
                'error': type(self).__name__, 'message': self.message,
                'console_line': self.console_line,
-               'exit_code': self.exit_code}
+               'exit_code': self.exit_code,
+               'refusals': {k: list(v) for k, v in self.refusals.items()}}
         out.update(self.details())
         return out
 
