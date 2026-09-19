@@ -173,28 +173,90 @@ Ran 472 tests in 166.209s      OK      — still no existing test edited
 cli_parity_runner.py           IDENTICAL against feat/terminology-loop @ abc4767
 ```
 
-## 6. What is NOT done on this branch
+## 6. Tasks 3–7
 
-Stated plainly so no one reads the branch as finished. E3 Tasks 1 and 2 are complete; Task 3 is
-three stages of six.
+**Task 3 — the remaining twins.** All six stages, in the plan's order.
 
-| item | state |
-| --- | --- |
-| Task 3 — `prepare_font` (12 prints, 5 capture blocks) | **not started** |
-| Task 3 — `extract_segments` (11 prints) | **not started** |
-| Task 3 — `retypeset` (32 prints, 55 capture blocks) | **not started** — the largest, and Task 4 builds on it |
-| `compare` (1), `render_pages` (2), `bilingual` (4), `pipeline` (31) | **not converted** — C10 is not finished until these are |
-| Task 4 — progress, cancellation, `resource_root`, `scale_report` path | **not started** |
-| Task 5 — `scale_report.json` envelope (ruling 2) | **not started** |
-| Task 6 — `references/consumer-guide.md` | **not started** |
-| Task 7 — contract test, DECISIONS row, version 58, CI | **not started** |
+| stage | prints | capture blocks | shape |
+| --- | --- | --- | --- |
+| `strip_text` | 2 | 1 | `run_strip` adapts the report dict; `strip_text` already never printed |
+| `field_fonts` | 4 | 2 | body becomes `run_field_fonts`; bare name is the loud wrapper |
+| `qa_check` | 3 | 0 | `_say` routes through the logger; `run_qa` already existed |
+| `prepare_font` | 12 | 5 | five refusal sites become `FontError`, each carrying its exact console line |
+| `extract_segments` | 11 | 0 | `run_extract` adapts the dict, and **requires `outdir`** |
+| `retypeset` | 32 | 55 | six refusal sites; the four-kind block becomes one exception with `refusals` |
 
-The version is still **57**. `.claude-plugin/plugin.json`, `pyproject.toml`, `SKILL.md`,
-`__init__.py` and the lockstep literal in `tests/test_verify_report.py` all still read 57, and they
-agree — the lockstep test passes. Nothing on this branch is half-versioned.
+`say(log, line)` moved into `_console.py`: `strip_text._say` and `qa_check._say` carried the same
+`UnicodeEncodeError` guard, and a Japanese finding on a cp1252 terminal must not take the run down.
 
-Every commit here is independently green: full suite plus both parity runners before each one. The
-branch is a safe place to stop and a safe place to resume.
+**Two defects the mechanical conversion introduced, and how they were caught.**
+
+`sed`-converting `print(` to `log.info(` silently broke two **multi-argument** calls —
+`print('saved', out)` in `retypeset` and `print(f'FAIL field {label}:', sorted(bad)[:10])` in
+`verify`. `log.info(a, b)` treats `b` as a %-format argument; with no placeholder in `a`, logging
+swallows the record and the line **disappears**. Neither was caught by the suite or by either parity
+runner, because both sites only fire on a *failing* job. They are now pinned structurally by
+`LoggerCallShapeTests` — no `log` call takes more than one argument, and no converted module calls
+`print`.
+
+A third was caught by the CLI parity runner rather than by any test: `retypeset.main`'s `elapsed`
+line is emitted *after* `retypeset()`'s own console closes, so it was dropped until `main` got its
+own (re-entrant) envelope. That is precisely what the ratchet is for.
+
+**Task 4 — progress, cancellation, and the two paths that collide.**
+`run_retypeset(progress=, cancel=, scale_report=, resource_root=)`. `total` is pages **plus merge
+jobs**, because there are two loops; `cancel()` is checked at the top of every unit in both; there
+is one `ez_save`, at the end, so a cancelled run cannot leave a partial file. `resource_root`
+defaults to the *mapping's* directory, killing `Archive('.')` in `retypeset` and in
+`shaping_probe`; `run_extract` requires `outdir` rather than defaulting to the process's cwd.
+
+**Task 5 — the `scale_report.json` envelope.** `{"schema": 1, "version": …, "runs": [...]}`, written
+through a temp file and `os.replace` with stale removal on failure, logged and never raised.
+`verify.scale_report_for` reads **both** shapes, so a report written by a pre-v58 build still
+verifies — the break is in what is written, not in what can be read. That kept the edit to four
+existing assertions, all in `test_pipeline.py`, which is what the plan budgeted.
+
+**Task 6 — the consumer guide.** `references/consumer-guide.md`. Every code block in it was run
+against a real job before it was committed, and the run found a signature error in the guide's own
+`run_qa` example (`segments=` rather than `segments_path=`).
+
+**Task 7 — version 58, CI, docs.** Four version sources plus the lockstep literal, red first.
+`tests.test_results` and `tests.test_consumer_contract` join the CI suite line. `references/gates.md`
+states that E3 added no gate. C1, C3, C4, C5 and C10 move to **done** in
+`docs/REQUESTS-from-product.md`, and C3's stale "printed, not returned" note is corrected there.
+
+## 7. The acceptance, run for real
+
+Both ratchets against a worktree of `feat/terminology-loop` (v57) at `abc4767` — same fixtures, same
+font, same job:
+
+```
+                                                    sha256 (first 16)
+cli_parity_runner.py    v57   12 invocations        d415ce345bfc6bc
+cli_parity_runner.py    v58   12 invocations        d415ce345bfc6bc     IDENTICAL
+verdict_parity_runner.py v57  9 gate fixtures       95a6c471e9501fd
+verdict_parity_runner.py v58  9 gate fixtures       95a6c471e9501fd     IDENTICAL
+```
+
+172 print sites moved to the logger, seven stages grew a silent twin, and the console did not shift
+a byte.
+
+```
+Ran 492 tests in 145.627s      (pdf-translate/tests)
+OK
+Ran 15 tests in 0.578s         (dev/canary)
+OK
+```
+
+Existing assertions edited on this branch: **four**, all reading `scale_report.json` as a bare list,
+all named in that commit's message.
+
+## 8. Still open
+
+- The whole-branch review on the most capable model (`scripts/review-package`) has not been run.
+- `docs/E3-surface-inventory-2026-09-17.md` is against v54 and now carries stale counts; it is
+  superseded by this document but not annotated.
+- Push and PR are the operator's.
 
 ## Review
 
