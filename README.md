@@ -79,6 +79,12 @@ audit roadmap closed, so it is no longer a row number — just an ordering.
 Re-sync any installed copy when it moves; a copy showing an older number is
 running old scripts.
 
+A consumer should not read that number to decide what it can do. Ask the
+engine instead: `pdf_translate.MAPPING_FORMATS` is a tuple of the mapping
+formats the installed build can read — `legacy` always, and `typography-1`
+where the source's serif/sans class and within-line bold/italic are preserved
+(`pdf-translate/references/typography.md`).
+
 ## Licence
 
 MIT — see `LICENSE`. The corpus PDFs and eval fixtures are generated; no

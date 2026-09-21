@@ -307,7 +307,7 @@ GATE_NAMES = (
     'leak-scan', 'leak-cjk', 'leak-running', 'leak-isolated',
     'empty-targets', 'placement', 'shaped-actualtext',
     'button-captions', 'caption-width', 'override-markers',
-    'metadata', 'metadata-lang', 'scaled-runs', 'identifiers',
+    'metadata', 'metadata-lang', 'scaled-runs', 'identifiers', 'typography',
 )
 
 
@@ -530,6 +530,8 @@ def scale_report_for(judged):
     except (OSError, ValueError):
         return None
     if isinstance(data, dict):
+        if type(data.get('schema')) is not int or data['schema'] not in (1, 2):
+            return None
         runs = data.get('runs')
         return runs if isinstance(runs, list) else None
     return data if isinstance(data, list) else None
@@ -550,6 +552,11 @@ def collect_translation_targets(conf, exclude_cores=None):
     retypeset weight split, not a glyph, so each side is searched separately.
     Merges and overrides are also placed text.
     """
+    from .mapping import MappingDocument
+    if isinstance(conf, MappingDocument):
+        if conf.format == 'typography-1':
+            return [''.join(run.text for run in target.runs) for target in conf.targets]
+        conf = conf.legacy
     skip = set(conf.get('skip') or [])
     exclude = set(exclude_cores or [])
     targets = []
@@ -585,6 +592,21 @@ def document_metadata_misses(odoc, jdoc, conf):
     strip-and-retypeset path touches them. They are what the window
     caption, the bookmarks pane and every screen reader read.
     """
+    from .mapping import MappingDocument
+    if isinstance(conf, MappingDocument) and conf.format == 'typography-1':
+        misses = []
+        if (jdoc.language or '').lower() != conf.lang.lower():
+            misses.append(('lang', f'expected {conf.lang}; output declares {jdoc.language or "nothing"}'))
+        title = (odoc.metadata or {}).get('title') or ''
+        if title in conf.document_targets and (jdoc.metadata or {}).get('title') != conf.document_targets[title]:
+            misses.append(('title', 'document title does not match its authored target'))
+        wanted = [[entry[0], conf.document_targets.get(entry[1], entry[1]), entry[2]]
+                  for entry in odoc.get_toc(simple=True)]
+        if jdoc.get_toc(simple=True) != wanted:
+            misses.append(('outline', 'bookmarks do not match their authored targets'))
+        if jdoc.xref_get_key(jdoc.pdf_catalog(), 'StructTreeRoot')[0] != 'null':
+            misses.append(('struct-tree', 'orphaned source structure tree remains'))
+        return misses
     T = conf.get('translations') or {}
     misses = []
 
@@ -1623,8 +1645,25 @@ def ink(page):
 def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
                     source_regex=None, source_words_from=None, allow_extra_prefix=None,
                     translations=None, segments=None, fail_on_review=False,
-                    reference_fonts=None):
+                    reference_fonts=None, typography=False):
     """Run structural gates. Returns (exit_code, gates). Prints as it goes."""
+    from .mapping import FORMAT, load_mapping
+    from .results import MappingError
+    document, typography_check = None, None
+    if translations:
+        try:
+            document = load_mapping(translations, segments)
+        except MappingError as exc:
+            detail = (exc.refusals.get('typography') or [{}])[0]
+            if detail.get('reason') == 'stale-extraction' and detail.get('detail', '').startswith('cannot read extraction:'):
+                typography = True
+            else:
+                raise
+    is_typography = document is not None and document.format == FORMAT
+    if typography or is_typography:
+        from .typography_verify import inspect_output
+        typography_check = inspect_output(orig, trans, document if is_typography else None)
+    conf = (document.legacy if document is not None and not is_typography else {})
     # A multi-word --allow entry is a phrase: it matches a whole run and
     # nothing else (row 20). Single words behave as before. Until now a
     # phrase was accepted and silently matched nothing.
@@ -1808,10 +1847,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     # deliberate; so does anything already in the original, whose own
     # drift we cannot rewrite.
     authored = o_text
-    if translations:
-        with open(translations, encoding='utf-8') as f:
-            _conf = json.load(f)
-        authored += '\n' + '\n'.join(collect_translation_targets(_conf))
+    if document is not None:
+        authored += '\n' + '\n'.join(collect_translation_targets(document))
     drift = drifted_characters(
         '\n'.join(page_search_text(jc[i]) for i in range(len(jc))), authored)
     if drift:
@@ -1857,10 +1894,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
                f'{len(kinsoku_findings)} line(s)' if kinsoku_status == 'REVIEW' else '',
                findings=kinsoku_findings)
 
-    mapping_lang = ''
-    if translations:
-        with open(translations, encoding='utf-8') as f:
-            mapping_lang = (json.load(f).get('lang') or '').strip()
+    mapping_lang = (document.lang or '').strip() if document is not None else ''
     try:
         output_lang = (jc.language or '').strip()
     except Exception:
@@ -1961,10 +1995,8 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             log.info('PASS isolated source-script tokens: none')
             record('leak-isolated', 'PASS', 'none')
 
-    if translations:
-        with open(translations, encoding='utf-8') as f:
-            conf = json.load(f)
-        segfile = load_segments_file(translations, segments)
+    if document is not None:
+        segfile = document.extraction if is_typography else load_segments_file(translations, segments)
         meta_cores = document_only_cores(segfile)
         hay = '\n'.join(page_search_text(jc[i]) for i in range(len(jc)))
         blanks = empty_translation_targets(conf)
@@ -1980,9 +2012,14 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             record('empty-targets', 'PASS')
         # /Title and outline titles are cores but not page text; the
         # document-metadata gate is what checks those landed.
-        targets = collect_translation_targets(conf, exclude_cores=meta_cores)
-        missing = missing_translation_targets(hay, targets)
-        if missing:
+        targets = collect_translation_targets(document, exclude_cores=meta_cores)
+        missing = [] if is_typography else missing_translation_targets(hay, targets)
+        if is_typography:
+            log.info(f'{typography_check.status} authored occurrence placement: {typography_check.message}')
+            record('placement', typography_check.status, typography_check.message, typography_check.findings)
+            if typography_check.status == 'FAIL':
+                fail = 1
+        elif missing:
             log.info(f'FAIL missing translation targets ({len(missing)}):')
             for t in missing[:30]:
                 log.info(f'   {t.replace(chr(10), " ")[:80]}')
@@ -2058,7 +2095,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
                 log.info('PASS override parts keep markers and tails')
                 record('override-markers', 'PASS')
 
-        meta_misses = document_metadata_misses(o, jc, conf)
+        meta_misses = document_metadata_misses(o, jc, document if is_typography else conf)
         if meta_misses:
             log.info(f'FAIL document metadata ({len(meta_misses)}):')
             for what, detail in meta_misses[:10]:
@@ -2069,7 +2106,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         else:
             log.info('PASS document metadata')
             record('metadata', 'PASS')
-        if not (conf.get('lang') or '').strip():
+        if not mapping_lang:
             log.info('REVIEW document metadata: translations.json has no "lang"; '
                   'the output still declares the source language to screen '
                   'readers and hyphenation')
@@ -2120,6 +2157,11 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             log.info('PASS write/find/say identifiers')
             record('identifiers', 'PASS')
 
+    if typography_check is not None:
+        log.info(f'{typography_check.status} typography: {typography_check.message}')
+        record('typography', typography_check.status, typography_check.message, typography_check.findings)
+        if typography_check.status == 'FAIL':
+            fail = 1
     o.close()
     j.close()
     jc.close()
@@ -2135,7 +2177,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
 def run_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
                source_regex=None, source_words_from=None, allow_extra_prefix=None,
                translations=None, segments=None, fail_on_review=False,
-               reference_fonts=None):
+               reference_fonts=None, typography=False):
     """Run structural gates. Returns a VerifyVerdict; does not print or exit.
 
     Silent because the gates log and no handler is attached, not because
@@ -2149,7 +2191,7 @@ def run_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
         source_regex=source_regex, source_words_from=source_words_from,
         allow_extra_prefix=allow_extra_prefix, translations=translations,
         segments=segments, fail_on_review=fail_on_review,
-        reference_fonts=reference_fonts)
+        reference_fonts=reference_fonts, typography=typography)
     return _verdict(rc, gates, orig, trans, fail_on_review)
 
 
@@ -2165,7 +2207,7 @@ def _verdict(rc, gates, orig, trans, fail_on_review):
 def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
            source_regex=None, source_words_from=None, allow_extra_prefix=None,
            translations=None, segments=None, fail_on_review=False,
-           reference_fonts=None):
+           reference_fonts=None, typography=False):
     """Run structural gates. Returns 0 on pass, 1 on any failure.
 
     The loud shape, unchanged: same signature, same printed bytes, same return
@@ -2178,7 +2220,7 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
             source_regex=source_regex, source_words_from=source_words_from,
             allow_extra_prefix=allow_extra_prefix, translations=translations,
             segments=segments, fail_on_review=fail_on_review,
-            reference_fonts=reference_fonts)
+            reference_fonts=reference_fonts, typography=typography)
     return rc
 
 
@@ -2231,11 +2273,22 @@ def write_report(verdict, path):
 
 def main(argv=None):
     with console():
-        return _main(argv)
+        from .results import PdfTranslateError
+        try:
+            return _main(argv)
+        except PdfTranslateError as exc:
+            log.info(exc.console_line)
+            return exc.exit_code
 
 
 def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    from ._console import missing_option_value
+    missing = missing_option_value(argv, ('--allow', '--report', '--fill-text', '--min-ink', '--source-regex',
+        '--source-words-from', '--allow-extra-prefix', '--translations', '--segments', '--reference-fonts'))
+    if missing:
+        log.info(f'usage: {missing} requires a value')
+        return 2
     orig, trans = argv[0], argv[1]
     allow = [w for w in (_arg(argv, '--allow', '') or '').split(',') if w]
     t0 = time.perf_counter()
@@ -2254,6 +2307,7 @@ def _main(argv=None):
         segments=_arg(argv, '--segments', None),
         fail_on_review='--fail-on-review' in argv,
         reference_fonts=_arg(argv, '--reference-fonts', None),
+        typography='--typography' in argv,
     )
     if report:
         write_report(_verdict(rc, gates, orig, trans, '--fail-on-review' in argv), report)

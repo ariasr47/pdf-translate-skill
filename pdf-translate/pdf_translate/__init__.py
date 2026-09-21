@@ -10,7 +10,20 @@ unchanged. A consumer imports from here:
     from pdf_translate import run_verify, run_qa
 """
 
-__version__ = '58'
+__version__ = '59'
+
+# The mapping formats this engine can READ, so a consumer can ask before it
+# authors rather than after. `legacy` is translations.json as it has always
+# been; `typography-1` adds the opt-in occurrence/style records described in
+# references/typography.md, and is present because the supported matrix was
+# verified end to end on real files, not because the format was written down.
+#
+# This describes implemented format support. It is not a claim that the skill
+# is ready for public release (A01 and the other blockers stay open), nor that
+# any given document will succeed: unsupported source constructs still refuse,
+# and the CJK italic and bold-italic roles have no measured positive cases
+# because no suitable real face was available to measure them with.
+MAPPING_FORMATS = ('legacy', 'typography-1')
 
 import logging as _logging
 
@@ -48,6 +61,7 @@ __all__ = (
     'GATE_NAMES',
     'GateResult',
     'GlyphError',
+    'MAPPING_FORMATS',
     'MappingError',
     'PdfTranslateError',
     'PlacementError',

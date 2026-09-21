@@ -7,9 +7,9 @@ happens to ship (Arial on macOS/Windows, Nirmala UI on Windows) and SKIP
 everywhere else — which means the shaping gates were never exercised on
 Linux, where CI runs.
 
-Nothing is committed: the fonts are downloaded on demand from pinned
-commits of Google's notofonts repositories, which are SIL Open Font
-License 1.1. Run it once locally, or let CI run it.
+No font binaries are committed. Fonts are downloaded on demand from
+Google/notofonts repositories under SIL Open Font License 1.1. New typography
+fixtures use verified commit pins; older shaping fixtures retain their URLs. Run it once locally, or let CI run it.
 
   python3 tools/fetch_test_fonts.py [--dest tests/fonts] [--check]
 
@@ -23,7 +23,8 @@ import urllib.request
 
 # Candidate URLs per face, tried in order. All SIL Open Font License 1.1.
 #
-# These are branch-tip URLs, not commit pins: pinning needs a SHA somebody
+# The original fixtures use branch-tip URLs; new typography faces below are
+# pinned. Pinning needs a SHA somebody
 # has actually verified, and inventing one produces a 404 that looks like a
 # network problem. If you want reproducible bytes, replace "main" with a
 # commit you checked and note the sha256 the fetcher prints. A fetch failure
@@ -111,6 +112,35 @@ FONTS = {
         'NotoSansSC%5Bwght%5D.ttf',
         'https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/Variable/'
         'TTF/Subset/NotoSansSC-VF.ttf',
+    ),
+    # Typography fixtures, verified 2026-09-20. Commit pins and measured hashes
+    # are recorded in tests/fonts/README.md; each font carries OFL 1.1 metadata.
+    'NotoSans-Bold.ttf': (
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/d9b11dadb3d9d5cb562d753b0cb59b19ce805afb/fonts/NotoSans/hinted/ttf/NotoSans-Bold.ttf',
+    ),
+    'NotoSans-Italic.ttf': (
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/d9b11dadb3d9d5cb562d753b0cb59b19ce805afb/fonts/NotoSans/hinted/ttf/NotoSans-Italic.ttf',
+    ),
+    'NotoSans-BoldItalic.ttf': (
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/d9b11dadb3d9d5cb562d753b0cb59b19ce805afb/fonts/NotoSans/hinted/ttf/NotoSans-BoldItalic.ttf',
+    ),
+    'NotoSerif-Regular.ttf': (
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/d9b11dadb3d9d5cb562d753b0cb59b19ce805afb/fonts/NotoSerif/hinted/ttf/NotoSerif-Regular.ttf',
+    ),
+    'NotoSerif-Bold.ttf': (
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/d9b11dadb3d9d5cb562d753b0cb59b19ce805afb/fonts/NotoSerif/hinted/ttf/NotoSerif-Bold.ttf',
+    ),
+    'NotoSerif-Italic.ttf': (
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/d9b11dadb3d9d5cb562d753b0cb59b19ce805afb/fonts/NotoSerif/hinted/ttf/NotoSerif-Italic.ttf',
+    ),
+    'NotoSerif-BoldItalic.ttf': (
+        'https://raw.githubusercontent.com/notofonts/notofonts.github.io/d9b11dadb3d9d5cb562d753b0cb59b19ce805afb/fonts/NotoSerif/hinted/ttf/NotoSerif-BoldItalic.ttf',
+    ),
+    'NotoSerifJP-VF.ttf': (
+        'https://raw.githubusercontent.com/google/fonts/e44c4b011a820c2cbe2fd2cfa8052037d7edb571/ofl/notoserifjp/NotoSerifJP%5Bwght%5D.ttf',
+    ),
+    'NotoSerifSC-VF.ttf': (
+        'https://raw.githubusercontent.com/google/fonts/e44c4b011a820c2cbe2fd2cfa8052037d7edb571/ofl/notoserifsc/NotoSerifSC%5Bwght%5D.ttf',
     ),
 }
 HERE = os.path.dirname(os.path.abspath(__file__))

@@ -523,7 +523,7 @@ def image_region_warnings(doc, wanted):
 log = logging.getLogger(__name__)
 
 
-def run_extract(src, outdir, *, gap=12.0, pages=None):
+def run_extract(src, outdir, *, typography=False, gap=12.0, pages=None):
     """Extract geometry and unique cores. Silent. Returns an ExtractResult.
 
     `outdir` is **required**, unlike `extract_segments`'s `outdir='.'`. The
@@ -539,7 +539,8 @@ def run_extract(src, outdir, *, gap=12.0, pages=None):
     result type instead of one dict schema per stage. The dict is not going
     anywhere — `extract_segments` keeps returning it.
     """
-    result = extract_segments(src, outdir=outdir, gap=gap, pages=pages)
+    result = extract_segments(src, outdir=outdir, gap=gap, pages=pages,
+                              typography=typography)
     return ExtractResult(
         segments=tuple(result.get('segments') or ()),
         cores=tuple(result.get('cores') or ()),
@@ -551,14 +552,23 @@ def run_extract(src, outdir, *, gap=12.0, pages=None):
         segments_path=result.get('segments_path') or '',
         to_translate_path=result.get('to_translate_path') or '',
         widget_text_path=result.get('widget_text_path') or '',
+        typography=result.get('typography'),
     )
 
 
-def extract_segments(src, outdir='.', gap=12.0, pages=None):
+def extract_segments(src, outdir='.', gap=12.0, pages=None, *, typography=False):
     """Extract geometry + unique cores. Writes segments.json and to_translate.json."""
     os.makedirs(outdir, exist_ok=True)
     doc = pymupdf.open(src)
     wanted = parse_pages(pages, len(doc))
+    if typography:
+        from . import typography as typo
+        font_observations = typo.observe_fonts(doc)
+        typography_data = {'schema': 1, 'source_sha256': typo.source_digest(src),
+                           'options': {'gap': float(gap), 'pages': sorted(wanted)},
+                           'page_geometry': typo.page_geometry(doc),
+                           'fields': typo.field_identities(doc),
+                           'fonts': font_observations['fonts']}
     segments, warnings = [], []
     obstacles = {}
     raw_lines = {}   # page -> character lines, read only where a marker needs one
@@ -581,7 +591,7 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None):
                 rotated = abs(ldir[0] - 1.0) > 1e-6 or abs(ldir[1]) > 1e-6
                 groups = []
                 for s in line['spans']:
-                    if not s['text'].strip() and not groups:
+                    if not typography and not s['text'].strip() and not groups:
                         continue
                     if groups and (rotated
                                    or s['bbox'][0] - groups[-1]['bbox'][2] < gap):
@@ -594,6 +604,8 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None):
                         g['bold'] = g['bold'] or ('Bold' in s['font'])
                         g['italic'] = g['italic'] or (
                             'Italic' in s['font'] or 'Oblique' in s['font'])
+                        if typography:
+                            g['spans'].append(s)
                     else:
                         groups.append({
                             'text': s['text'],
@@ -605,6 +617,7 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None):
                             'italic': ('Italic' in s['font']
                                        or 'Oblique' in s['font']),
                             'dir': [round(ldir[0], 4), round(ldir[1], 4)],
+                            **({'spans': [s]} if typography else {}),
                         })
                 for g in groups:
                     if not g['text'].strip():
@@ -656,6 +669,18 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None):
                         'dots': dots or '', 'tail': tail,
                         'passthrough': bool(not core or PASS.match(core)),
                     }
+                    if typography:
+                        occurrence_id = f's{sid}'
+                        candidates = {font_id: font_observations['fonts'][font_id]
+                                      for font_id in font_observations['pages'][pno]}
+                        runs = typo.source_runs(g['spans'], occurrence_id, candidates)
+                        seg.update({'occurrence_id': occurrence_id, 'style_runs': runs})
+                        for run in runs:
+                            if run['unresolved']:
+                                warnings.append({'kind': 'typography', 'id': sid,
+                                                 'page': pno, 'text': g['text'],
+                                                 'run_id': run['run_id'],
+                                                 'why': ', '.join(run['unresolved'])})
                     if INNER_GAP.search(g['text']):
                         warnings.append({
                             'id': sid, 'page': pno,
@@ -732,16 +757,23 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None):
     to_path = os.path.join(outdir, 'to_translate.json')
     widget_path = os.path.join(outdir, 'widget_text.json')
     widget_text = widget_text_scaffold(src)
+    segment_data = {'source': src, 'segments': segments, 'warnings': warnings,
+                    'document': document, 'pages': sorted(wanted)}
+    if typography:
+        segment_data['typography'] = typography_data
+        typography_data = typo.bind_extraction(segment_data)
+        segment_data['typography'] = typography_data
     with open(widget_path, 'w', encoding='utf-8') as f:
         json.dump(widget_text, f, ensure_ascii=False, indent=1)
     with open(seg_path, 'w', encoding='utf-8') as f:
-        json.dump({'source': src, 'segments': segments,
-                   'warnings': warnings, 'document': document,
-                   'pages': sorted(wanted)},
-                  f, ensure_ascii=False, indent=1)
+        json.dump(segment_data, f, ensure_ascii=False, indent=1)
     cores = [{'text': k, 'count': v} for k, v in uniq.items()]
+    to_data = {'cores': cores}
+    if typography:
+        to_data.update(format='typography-1', segments='segments.json',
+                       extraction_id=typography_data['extraction_id'])
     with open(to_path, 'w', encoding='utf-8') as f:
-        json.dump({'cores': cores}, f, ensure_ascii=False, indent=1)
+        json.dump(to_data, f, ensure_ascii=False, indent=1)
     return {
         'segments': segments,
         'warnings': warnings,
@@ -754,6 +786,7 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None):
         'to_translate_path': to_path,
         'widget_text': widget_text,
         'widget_text_path': widget_path,
+        **({'typography': typography_data} if typography else {}),
     }
 
 
@@ -809,13 +842,19 @@ def main(argv=None):
 
 def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    from ._console import missing_option_value
+    missing = missing_option_value(argv, ('--gap', '--outdir', '--pages', '--max-per-kind'))
+    if missing:
+        log.info(f'usage: {missing} requires a value')
+        return 2
     src = argv[0]
     gap = float(argv[argv.index('--gap') + 1]) if '--gap' in argv else 12.0
     outdir = argv[argv.index('--outdir') + 1] if '--outdir' in argv else '.'
     pages = argv[argv.index('--pages') + 1] if '--pages' in argv else None
     max_per_kind = (int(argv[argv.index('--max-per-kind') + 1])
                     if '--max-per-kind' in argv else DEFAULT_MAX_PER_KIND)
-    result = extract_segments(src, outdir=outdir, gap=gap, pages=pages)
+    result = extract_segments(src, outdir=outdir, gap=gap, pages=pages,
+                              typography='--typography' in argv)
     nseg = len(result['segments'])
     nuniq = len(result['cores'])
     nw = len(result['warnings'])

@@ -68,6 +68,7 @@ Usage:
   python3 retypeset.py STRIPPED.pdf segments.json translations.json OUT.pdf
 """
 import html as htmlmod
+from dataclasses import dataclass
 import json
 import logging
 import math
@@ -77,13 +78,15 @@ import sys
 import tempfile
 import time
 import unicodedata
-from pathlib import PurePath
+from pathlib import Path, PurePath
 
 import pymupdf
 
 from ._console import console
-from .results import (GlyphError, MappingError, PdfTranslateError,
+from .results import (FontError, GlyphError, MappingError, PdfTranslateError,
                       PlacementError, RetypesetResult)
+from .mapping import FORMAT, charset_for, load_mapping, refuse
+from .typography import field_identities, page_geometry, source_digest, validate_font
 
 log = logging.getLogger(__name__)
 
@@ -607,7 +610,8 @@ def canonicalize_text_layer(path, fontfiles, texts):
 
     maps = {}
     for fontfile in fontfiles:
-        gidmap, name = authored_gid_map(fontfile, texts)
+        face_texts = texts.get(fontfile, []) if isinstance(texts, dict) else texts
+        gidmap, name = authored_gid_map(fontfile, face_texts)
         if not gidmap or not name:
             continue
         maps.setdefault(_font_key(name), {}).update(gidmap)
@@ -653,7 +657,7 @@ def _load_json(path):
 SCALE_REPORT_SCHEMA = 1
 
 
-def write_scale_report(runs, path):
+def write_scale_report(runs, path, *, typography=None):
     """The scaled-runs report, schema-versioned and written whole or not at all.
 
     The top level was a bare list. It is now
@@ -670,8 +674,10 @@ def write_scale_report(runs, path):
     never changes the return code.
     """
     from . import __version__
-    text = json.dumps({'schema': SCALE_REPORT_SCHEMA, 'version': __version__,
-                       'runs': list(runs)}, ensure_ascii=False, indent=1)
+    data = {'schema': SCALE_REPORT_SCHEMA, 'version': __version__, 'runs': list(runs)}
+    if typography is not None:
+        data.update(schema=2, typography=typography)
+    text = json.dumps(data, ensure_ascii=False, indent=1)
     tmp = None
     try:
         fd, tmp = tempfile.mkstemp(prefix='.scale_report-', suffix='.tmp',
@@ -679,6 +685,7 @@ def write_scale_report(runs, path):
         with os.fdopen(fd, 'w', encoding='utf-8') as f:
             f.write(text)
         os.replace(tmp, path)
+        return True
     except OSError as exc:
         log.info(f'  (could not write {SCALE_REPORT}: {exc})')
         if tmp and os.path.exists(tmp):
@@ -693,9 +700,304 @@ def write_scale_report(runs, path):
                 os.remove(path)
         except OSError:
             pass
+        return False
 
 
-def retypeset(stripped, segf, trf, out):
+def _same_path(first, second):
+    try:
+        return os.path.samefile(first, second)
+    except OSError:
+        return os.path.normcase(os.path.realpath(first)) == os.path.normcase(os.path.realpath(second))
+
+
+def _right_limit(page_rect, seg, segs, widgets):
+    """The existing horizontal budget, shared without changing legacy arithmetic."""
+    x0 = seg['origin'][0]
+    y0, y1 = seg['bbox'][1], seg['bbox'][3]
+    lim = page_rect.width - 32
+    for other in segs:
+        if other is seg:
+            continue
+        if other['bbox'][0] > seg['bbox'][2] - 1 and not (
+                other['bbox'][3] < y0 + 1 or other['bbox'][1] > y1 - 1):
+            lim = min(lim, other['bbox'][0])
+    for rect in widgets:
+        if rect.x0 > x0 + 1 and not (rect.y1 < y0 + 1 or rect.y0 > y1 - 1):
+            if rect.x0 > seg['bbox'][2] - 2:
+                lim = min(lim, rect.x0)
+    return lim - 1.5
+
+
+def _typography_failure(reason, detail, segment=None, run_id=None, error=MappingError, **attributes):
+    segment = segment or {}
+    item = {'reason': reason, 'detail': detail, 'occurrence_id': segment.get('occurrence_id'),
+            'run_id': run_id, 'page': segment.get('page'), 'source_text': segment.get('text')}
+    if error is FontError:
+        attributes['reason'] = reason
+    raise error(detail, refusals={'typography': [item]}, **attributes)
+
+
+def _source_typography_supported(segment):
+    first = segment['style_runs'][0]
+    if (segment['dir'] != [1, 0] or segment.get('marker') or segment.get('dots') or
+            segment.get('tail') or re.search(r'\s{6,}', segment['text']) or
+            any(abs(run['size'] - first['size']) > 0.0001 or
+                run['color'] != first['color'] or
+                abs(run['origin'][1] - first['origin'][1]) > 0.0001
+                for run in segment['style_runs'])):
+        _typography_failure('unsupported-typography-construct',
+                            'requires one horizontal baseline, size and color without synthesized chrome', segment)
+    return first['origin'], first['size'], first['color']
+
+
+def _glyph_inks(path, font, chars):
+    """Actual selected glyph outlines in em units, with PDF downward-positive Y.
+
+    MuPDF 1.28.2 glyph_bbox returned the whole-font bbox for f, j, A and space
+    in both measured faces. BoundsPen measures each actual selected glyph.
+    """
+    from fontTools.ttLib import TTFont
+    from fontTools.pens.boundsPen import BoundsPen
+    inks, codes = {}, {}
+    with TTFont(path) as face:
+        glyphs, order = face.getGlyphSet(), face.getGlyphOrder()
+        units = face['head'].unitsPerEm
+        for char in sorted(chars):
+            gid = font.has_glyph(ord(char), fallback=False)
+            if gid in codes and codes[gid] != char:
+                _typography_failure('unsupported-typography-construct',
+                                    'distinct authored characters share a glyph; exact text cannot be attested')
+            codes[gid] = char
+            pen = BoundsPen(glyphs)
+            glyphs[order[gid]].draw(pen)
+            if pen.bounds is None:
+                if not char.isspace():
+                    _typography_failure('unsafe-typography-geometry', 'selected visible glyph has no measurable outline')
+                inks[char] = None
+            else:
+                x0, y0, x1, y1 = pen.bounds
+                inks[char] = (x0 / units, -y1 / units, x1 / units, -y0 / units)
+    return inks
+
+
+def _stroke_obstacles(page):
+    """Conservative bounds of stroked edges; filled backgrounds are not barriers."""
+    edges = []
+    for drawing in page.get_drawings():
+        if 's' not in drawing.get('type', '') or drawing.get('color') is None:
+            continue
+        half = max(float(drawing.get('width') or 0) / 2, 0.05)
+        for item in drawing['items']:
+            kind = item[0]
+            if kind == 'l':
+                points = [item[1], item[2]]
+                pairs = [(points[0], points[1])]
+            elif kind == 're':
+                rect = item[1]
+                pairs = [(rect.tl, rect.tr), (rect.tr, rect.br), (rect.br, rect.bl), (rect.bl, rect.tl)]
+            else:
+                # Curves/quad edges may enter a glyph box anywhere in their bounds.
+                rect = pymupdf.Rect(drawing['rect'])
+                edges.append(rect + (-half, -half, half, half))
+                continue
+            for start, end in pairs:
+                rect = pymupdf.Rect(min(start.x, end.x), min(start.y, end.y),
+                                    max(start.x, end.x), max(start.y, end.y))
+                edges.append(rect + (-half, -half, half, half))
+    return edges
+
+
+@dataclass(frozen=True)
+class _TypographyPlacement:
+    widths: tuple
+    scale: float
+    origin: tuple
+    size: float
+    color: int
+    glyph_boxes: tuple
+
+
+def _measure_typography(page, segment, target, font_for, inks_for, neighbors, widgets, strokes, allow_scale):
+    (ox, baseline), size, color = _source_typography_supported(segment)
+    widths, boxes, x = [], [], 0.0
+    for run in target.runs:
+        key = (run.font_class, run.font_role)
+        font, inks = font_for[key], inks_for[key]
+        widths.append(font.text_length(run.text, fontsize=size))
+        for char in run.text:
+            ink = inks[char]
+            if ink is not None:
+                boxes.append((x + ink[0] * size, ink[1] * size,
+                              x + ink[2] * size, ink[3] * size))
+            x += font.glyph_advance(ord(char)) * size
+    if not boxes:
+        _typography_failure('unsafe-typography-geometry', 'occurrence has no measurable visible glyphs', segment)
+    left, top = min(b[0] for b in boxes), min(b[1] for b in boxes)
+    right, bottom = max(b[2] for b in boxes), max(b[3] for b in boxes)
+    available = _right_limit(page.rect, segment, neighbors, widgets) - ox
+    ratio = min(1.0, available / max(sum(widths), right))
+    left_edge = page.rect.x0
+    source_box = pymupdf.Rect(segment['bbox'])
+    for rect in [pymupdf.Rect(s['bbox']) for s in neighbors if s is not segment] + list(widgets):
+        if rect.x1 <= source_box.x0 and rect.y0 < source_box.y1 and rect.y1 > source_box.y0:
+            left_edge = max(left_edge, rect.x1 + 1.5)
+    if left < 0:
+        ratio = min(ratio, (ox - left_edge) / -left)
+    if top < 0:
+        ratio = min(ratio, (baseline - page.rect.y0) / -top)
+    if bottom > 0:
+        ratio = min(ratio, (page.rect.y1 - baseline) / bottom)
+    if not math.isfinite(ratio) or ratio <= 0:
+        _typography_failure('unsafe-typography-geometry', 'glyphs cannot fit at the source baseline',
+                            segment, error=PlacementError, page=segment['page'], key=target.occurrence_id)
+    if ratio < SCALE_MIN and target.occurrence_id not in allow_scale:
+        _typography_failure('below-scale-floor', f'occurrence needs {ratio:.4f} scale, below {SCALE_MIN}',
+                            segment, error=PlacementError, page=segment['page'],
+                            key=target.occurrence_id, scale=ratio)
+    obstacles = [pymupdf.Rect(s['bbox']) for s in neighbors if s is not segment] + list(widgets) + strokes
+    drawn_boxes = []
+    for box in boxes:
+        drawn = pymupdf.Rect(ox + box[0] * ratio, baseline + box[1] * ratio,
+                             ox + box[2] * ratio, baseline + box[3] * ratio)
+        drawn_boxes.append(drawn)
+        if any(drawn.intersects(obstacle) for obstacle in obstacles):
+            _typography_failure('unsafe-typography-geometry', 'glyph outline bounds intersect another source object',
+                                segment, error=PlacementError, page=segment['page'], key=target.occurrence_id)
+    return _TypographyPlacement(tuple(widths), ratio, (ox, baseline), size, color, tuple(drawn_boxes))
+
+
+def _run_typography(stripped, document, out, *, original, progress, cancel, scale_report, resource_root):
+    """Preflight every occurrence, then use the existing one-line TextWriter path."""
+    data, expected = document.extraction, document.extraction['typography']
+    try:
+        current_digest = source_digest(original) if original else None
+    except OSError:
+        current_digest = None
+    if current_digest != expected['source_sha256']:
+        refuse('stale-extraction', 'original PDF is required and must match the extraction digest')
+    from .typography_content import inspect_content
+    for issue in inspect_content(original, source=True).issues:
+        segment = next((s for s in data['segments'] if s['page'] == issue.page), {})
+        refuse('unsupported-typography-construct', issue.detail, segment)
+    if data['pages'] != list(range(len(expected['page_geometry']))):
+        refuse('unsupported-typography-construct', 'a whole-document build requires every source page')
+    if any(w.get('kind') in ('no-text-layer', 'invisible-text') for w in data.get('warnings', [])):
+        refuse('unsupported-typography-construct', 'source has unextractable or invisible page text')
+    segments = {s['occurrence_id']: s for s in data['segments']}
+    by_page = {}
+    for segment in segments.values():
+        _source_typography_supported(segment)
+        by_page.setdefault(segment['page'], []).append(segment)
+    with pymupdf.open(original) as source, pymupdf.open(stripped) as doc:
+        if (page_geometry(source) != expected['page_geometry'] or
+                page_geometry(doc) != expected['page_geometry'] or
+                field_identities(source) != expected['fields'] or field_identities(doc) != expected['fields']):
+            refuse('stale-extraction', 'source/stripped page geometry or field identities disagree')
+        if any(p.rotation for p in source):
+            refuse('unsupported-typography-construct', 'rotated source pages are outside the first scope')
+        font_for, inks_for, observations, face_texts, names = {}, {}, {}, {}, {}
+        for target in document.targets:
+            segment = segments[target.occurrence_id]
+            for run in target.runs:
+                key = (run.font_class, run.font_role)
+                if key in font_for:
+                    continue
+                path = document.font_sets[run.font_class][run.font_role]
+                chars = charset_for(document, *key)
+                try:
+                    observed = validate_font(path, *key, chars)
+                except FontError as exc:
+                    kind = GlyphError if exc.reason == 'missing-glyph' else FontError
+                    _typography_failure(exc.reason, exc.message, segment, run.source_runs[0],
+                                        error=kind, face=path)
+                font = pymupdf.Font(fontfile=path)
+                name = _font_key(font.name)
+                if name in names and names[name] != observed['sha256']:
+                    _typography_failure('unresolved-target-font', 'selected font names identify different programs', segment)
+                names[name] = observed['sha256']
+                font_for[key] = font
+                try:
+                    inks_for[key] = _glyph_inks(path, font, chars)
+                except MappingError as exc:
+                    _typography_failure(exc.refusals['typography'][0]['reason'], exc.message,
+                                        segment, run.source_runs[0])
+                observations[key] = dict(observed, id='/'.join(key), path=path)
+                face_texts[path] = [r.text for t in document.targets for r in t.runs
+                                    if (r.font_class, r.font_role) == key]
+        widgets = {p.number: [w.rect for w in p.widgets() or ()] for p in doc}
+        strokes = {p.number: _stroke_obstacles(p) for p in doc}
+        measurements, proposed = {}, {}
+        for target in document.targets:
+            segment = segments[target.occurrence_id]
+            measurements[target.occurrence_id] = _measure_typography(
+                doc[target.page], segment, target, font_for, inks_for, by_page[target.page],
+                widgets[target.page], strokes[target.page], document.allow_scale)
+            boxes = measurements[target.occurrence_id].glyph_boxes
+            bounds = pymupdf.Rect(min(b.x0 for b in boxes), min(b.y0 for b in boxes),
+                                  max(b.x1 for b in boxes), max(b.y1 for b in boxes))
+            for other_id, other_bounds, other_boxes in proposed.get(target.page, []):
+                if bounds.intersects(other_bounds) and any(a.intersects(b) for a in boxes for b in other_boxes):
+                    _typography_failure('unsafe-typography-geometry',
+                                        f'translated glyph bounds intersect occurrence {other_id}',
+                                        segment, error=PlacementError, page=target.page, key=target.occurrence_id)
+            proposed.setdefault(target.page, []).append((target.occurrence_id, bounds, boxes))
+        record = {'schema': 1, 'source_sha256': current_digest, 'extraction_id': document.extraction_id,
+                  'mapping_sha256': document.mapping_sha256, 'fonts': list(observations.values()),
+                  'source_font_resolutions': list(document.source_font_resolutions), 'occurrences': []}
+        scaled = []
+        for page in doc:
+            if cancel is not None and cancel():
+                return RetypesetResult(output=None, pages=doc.page_count, cancelled=True)
+            for target in (t for t in document.targets if t.page == page.number):
+                segment = segments[target.occurrence_id]
+                measured = measurements[target.occurrence_id]
+                widths, ratio, origin = measured.widths, measured.scale, measured.origin
+                size, color = measured.size, measured.color
+                x, baseline = origin
+                writer = pymupdf.TextWriter(page.rect)
+                runs = []
+                for run, width in zip(target.runs, widths):
+                    key = (run.font_class, run.font_role)
+                    writer.append((x, baseline), run.text, font=font_for[key], fontsize=size * ratio)
+                    runs.append({'text': run.text, 'source_runs': list(run.source_runs),
+                                 'class': run.font_class, 'role': run.font_role, 'font_id': '/'.join(key),
+                                 'origin': [x, baseline], 'size': size * ratio, 'advance': width * ratio})
+                    x += width * ratio
+                writer.write_text(page, color=tuple(((color >> shift) & 255) / 255 for shift in (16, 8, 0)))
+                record['occurrences'].append({'occurrence_id': target.occurrence_id, 'page': target.page,
+                    'source_text': target.source_text, 'source_origin': list(origin), 'source_size': size,
+                    'source_bbox': segment['bbox'], 'color': color, 'scale': ratio,
+                    'scale_exception_applied': ratio < SCALE_MIN and target.occurrence_id in document.allow_scale,
+                    'scale_reason': document.allow_scale.get(target.occurrence_id, ''), 'runs': runs})
+                if ratio < 1:
+                    scaled.append({'page': target.page, 'key': target.source_text,
+                                   'occurrence_id': target.occurrence_id, 'ratio': round(ratio, 4)})
+            if progress is not None:
+                progress(page.number + 1, doc.page_count)
+        apply_document_metadata(doc, data['document'], document.document_targets, document.lang)
+        if cancel is not None and cancel():
+            return RetypesetResult(output=None, pages=doc.page_count, cancelled=True)
+        # Canonicalize a private new file; failed publication never overwrites a prior success.
+        fd, temporary = tempfile.mkstemp(prefix='.typography-', suffix='.pdf', dir=Path(out).resolve().parent)
+        os.close(fd)
+        try:
+            doc.ez_save(temporary)
+            canonicalize_text_layer(temporary, list(face_texts), face_texts)
+            record['output_sha256'] = source_digest(temporary)
+            os.replace(temporary, out)
+        finally:
+            if os.path.exists(temporary):
+                os.remove(temporary)
+        pages = doc.page_count
+    report = str(Path(out).resolve().parent / SCALE_REPORT) if scale_report is _DEFAULT else scale_report
+    if report and not write_scale_report(scaled, report, typography=record):
+        report = ''
+    log.info(f'saved {out}')
+    return RetypesetResult(output=str(out), pages=pages, placed=len(document.targets),
+                          scaled=tuple(scaled), scale_report_path=str(report or ''), typography=record)
+
+
+def retypeset(stripped, segf, trf, out, *, original=None):
     """Place translations onto a stripped PDF. Returns 0, or 1 if cores/overflow.
 
     The loud shape, unchanged: same signature, same printed bytes, same return
@@ -705,7 +1007,7 @@ def retypeset(stripped, segf, trf, out):
     """
     with console():
         try:
-            run_retypeset(stripped, segf, trf, out)
+            run_retypeset(stripped, segf, trf, out, original=original)
         except PdfTranslateError as exc:
             log.info(exc.console_line)
             return exc.exit_code
@@ -713,7 +1015,7 @@ def retypeset(stripped, segf, trf, out):
 
 
 def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
-                  scale_report=_DEFAULT, resource_root=None):
+                  scale_report=_DEFAULT, resource_root=None, original=None):
     """Place translations onto a stripped PDF.
 
     Silent. Returns a RetypesetResult. Raises on refusal — `GlyphError` when
@@ -743,8 +1045,22 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
     working directory: a service that runs from anywhere else was silently
     getting a substituted face.
     """
+    document = load_mapping(trf, segf)
+    if document.format == FORMAT:
+        protected = [stripped, segf, trf, original]
+        protected.extend(path for roles in document.font_sets.values() for path in roles.values())
+        report = (str(Path(out).resolve().parent / SCALE_REPORT)
+                  if scale_report is _DEFAULT else scale_report)
+        for destination in (out, report):
+            if destination is not None and any(_same_path(destination, path) for path in protected if path):
+                refuse('invalid-style-reference', 'output/report aliases a typography input')
+        if report and _same_path(out, report):
+            refuse('invalid-style-reference', 'PDF and report paths must differ')
+        return _run_typography(stripped, document, out, original=original,
+                               progress=progress, cancel=cancel, scale_report=scale_report,
+                               resource_root=resource_root)
     segd = _load_json(segf)
-    conf = _load_json(trf)
+    conf = document.legacy
     T = conf['translations']
     merges = conf.get('merges', [])
     center = set(conf.get('center', []))
@@ -1041,20 +1357,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
            "{font-family: trbi; font-weight: normal; font-style: normal;}")
 
     def right_limit(pno, seg, segs):
-        x0 = seg['origin'][0]
-        y0, y1 = seg['bbox'][1], seg['bbox'][3]
-        lim = doc[pno].rect.width - 32
-        for o in segs:
-            if o is seg:
-                continue
-            if o['bbox'][0] > seg['bbox'][2] - 1 and not (
-                    o['bbox'][3] < y0 + 1 or o['bbox'][1] > y1 - 1):
-                lim = min(lim, o['bbox'][0])
-        for wr in widg.get(pno, []):
-            if wr.x0 > x0 + 1 and not (wr.y1 < y0 + 1 or wr.y0 > y1 - 1):
-                if wr.x0 > seg['bbox'][2] - 2:
-                    lim = min(lim, wr.x0)
-        return lim - 1.5
+        return _right_limit(doc[pno].rect, seg, segs, widg.get(pno, []))
 
     def left_limit(pno, seg, segs):
         """How far back a RIGHT-anchored run may grow (row 28).
@@ -1661,9 +1964,15 @@ def main(argv=None):
 
 def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    from ._console import missing_option_value
+    missing = missing_option_value(argv, ('--original',))
+    if missing:
+        log.info(f'usage: {missing} requires a value')
+        return 2
     stripped, segf, trf, out = argv[0], argv[1], argv[2], argv[3]
     t0 = time.perf_counter()
-    rc = retypeset(stripped, segf, trf, out)
+    original = argv[argv.index('--original') + 1] if '--original' in argv else None
+    rc = retypeset(stripped, segf, trf, out, original=original)
     log.info(f'elapsed {time.perf_counter()-t0:.2f}s')
     return rc
 

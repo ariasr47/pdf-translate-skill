@@ -132,6 +132,11 @@ LATIN_SAMPLE = ('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 
 
 def find_test_font():
+    # Geometry fixtures were measured with this regular face. Adding genuine
+    # typography roles must not make alphabetical ordering select Bold instead.
+    regular = vendored('NotoSans-Regular.ttf')
+    if regular is not None and _covers(regular, *LATIN_SAMPLE):
+        return regular
     return find_font_for(LATIN_SAMPLE, what='Latin')
 
 

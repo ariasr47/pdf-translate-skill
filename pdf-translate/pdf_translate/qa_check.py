@@ -60,6 +60,7 @@ from dataclasses import dataclass
 
 from ._console import console, say
 from .extract_segments import write_find_say_hits
+from .mapping import FORMAT, load_mapping
 from .verify import SPACELESS_SCRIPTS, dominant_script, strip_inline_markup
 
 log = logging.getLogger(__name__)
@@ -150,10 +151,10 @@ def _finding(kind, severity, core, detail):
     return {'kind': kind, 'severity': severity, 'core': core, 'detail': detail}
 
 
-def check_pair(core, target, identifiers, target_script):
+def check_pair(core, target, identifiers, target_script, *, plain=False):
     """Findings for one source/target pair."""
     out = []
-    tgt = strip_inline_markup(target).replace('‖', '')
+    tgt = target if plain else strip_inline_markup(target).replace('‖', '')
 
     src_dates, tgt_dates = date_parts(core), date_parts(tgt)
     src_dparts = sorted(p for p, _ in src_dates)
@@ -233,19 +234,21 @@ def check_pair(core, target, identifiers, target_script):
 def consistency_findings(translations):
     """Source strings that differ only in case or punctuation, mapped apart."""
     groups = {}
-    for core, target in translations.items():
+    records = ((core, target, {}) for core, target in translations.items()) if isinstance(translations, dict) else translations
+    for core, target, context in records:
         if target is None:
             continue
-        groups.setdefault(normalize_key(core), []).append((core, target))
+        groups.setdefault(normalize_key(core), []).append((core, target, context))
     out = []
     for _, members in sorted(groups.items()):
-        targets = {normalize_key(t) for _, t in members}
+        targets = {normalize_key(t) for _, t, _ in members}
         if len(members) > 1 and len(targets) > 1:
-            shown = '; '.join(f'{c!r} -> {t!r}' for c, t in members[:4])
-            out.append(_finding(
-                'inconsistent', 'warn', members[0][0],
-                f'these differ only in case or punctuation but are '
-                f'translated differently: {shown}'))
+            shown = '; '.join(f'{c!r} -> {t!r}' for c, t, _ in members[:4])
+            for core, _, context in (members if members[0][2] else members[:1]):
+                out.append(dict(_finding(
+                    'inconsistent', 'warn', core,
+                    f'these differ only in case or punctuation but are '
+                    f'translated differently: {shown}'), **context))
     return out
 
 
@@ -265,13 +268,13 @@ def load_glossary(path):
     return terms
 
 
-def glossary_findings(translations, terms):
+def glossary_findings(translations, terms, *, plain=False):
     out = []
     for core, target in translations.items():
         if target is None:
             continue
         low_core = core.casefold()
-        low_tgt = strip_inline_markup(target).casefold()
+        low_tgt = (target if plain else strip_inline_markup(target)).casefold()
         for src_term, tgt_term in terms:
             if src_term.casefold() in low_core and tgt_term.casefold() not in low_tgt:
                 out.append(_finding(
@@ -296,10 +299,33 @@ def identifier_cores(conf, segments):
     return out
 
 
+def _typography_findings(document, glossary_path):
+    records = [(t.source_text, ''.join(r.text for r in t.runs),
+                {'occurrence_id': t.occurrence_id, 'page': t.page,
+                 'source_runs': list(dict.fromkeys(s for r in t.runs for s in r.source_runs))})
+               for t in document.targets]
+    records.extend((source, target, {'where': 'document-metadata', 'occurrence_id': None,
+                                     'page': None, 'source_runs': []})
+                   for source, target in document.document_targets.items())
+    script = dominant_script('\n'.join(target for _, target, _ in records)) or 'Latin'
+    terms = load_glossary(glossary_path) if glossary_path else []
+    findings = []
+    for core, target, context in records:
+        identifiers = {core} if write_find_say_hits(core) else set()
+        checks = check_pair(core, target, identifiers, script, plain=True)
+        checks.extend(glossary_findings({core: target}, terms, plain=True))
+        findings.extend(dict(f, **context) for f in checks)
+    findings.extend(consistency_findings(records))
+    findings.sort(key=lambda f: (0 if f['severity'] == 'error' else 1, f['kind'], f['core'], f['occurrence_id'] or ''))
+    return findings
+
+
 def qa_check(translations_path, segments_path=None, glossary_path=None):
     """Returns a list of findings. Reads files only; changes nothing."""
-    with open(translations_path, encoding='utf-8') as f:
-        conf = json.load(f)
+    document = load_mapping(translations_path, segments_path)
+    if document.format == FORMAT:
+        return _typography_findings(document, glossary_path)
+    conf = document.legacy
     segments = None
     if segments_path and os.path.isfile(segments_path):
         with open(segments_path, encoding='utf-8') as f:
@@ -365,13 +391,23 @@ def _say(line):
 
 def main(argv=None):
     with console():
-        return _main(argv)
+        from .results import PdfTranslateError
+        try:
+            return _main(argv)
+        except PdfTranslateError as exc:
+            log.info(exc.console_line)
+            return exc.exit_code
 
 
 def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv:
         log.info(__doc__)
+        return 2
+    from ._console import missing_option_value
+    missing = missing_option_value(argv, ('--segments', '--glossary', '--json'))
+    if missing:
+        log.info(f'usage: {missing} requires a value')
         return 2
     translations = argv[0]
     segments = _arg(argv, '--segments')

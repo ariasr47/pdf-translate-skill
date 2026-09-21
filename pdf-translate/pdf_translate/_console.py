@@ -30,6 +30,12 @@ _depth = 0
 _handler = None
 
 
+def missing_option_value(argv, options):
+    """Name an option whose value is absent, without interpreting positionals."""
+    return next((value for index, value in enumerate(argv) if value in options and
+                 (index + 1 == len(argv) or argv[index + 1].startswith('--'))), None)
+
+
 @contextlib.contextmanager
 def console(stream=None):
     """Attach one stdout handler to the package logger, re-entrantly.
