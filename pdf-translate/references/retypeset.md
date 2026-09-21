@@ -87,3 +87,36 @@ not a warning that something went wrong — read the ratios, not the count. `ver
 a REVIEW line (a SKIP when the file is absent, for a build from before it
 existed). Nothing new fails; the point is that the author can name what
 shrank without re-running the build, which is what the delivery asks for.
+
+## Capturing evidence when a run refuses below the floor
+
+B1 (wrapping a translation onto a second line, instead of only shrinking or
+refusing) cannot be planned because nobody has a real failed job to measure
+recovery against — three attempts came back empty, because a refusal used to
+print a message and exit without saving anything else
+(`docs/reviews/2026-09-19-b1-recovery-probe.md`). Opt in with `capture_dir=`
+on `run_retypeset`/`retypeset`, `--capture-dir DIR` on this script, or the
+`PDF_TRANSLATE_CAPTURE_DIR` environment variable (checked only when neither
+of those is given), and a refusal caused **specifically** by a run scaling
+below `SCALE_MIN` writes a timestamped, self-contained, replayable bundle
+under that directory: a copy of the source PDF (when `original` was given)
+and the stripped PDF, the segments and the authored mapping (with its font
+paths rewritten to the copies bundled alongside it), the structured refusal
+(`exc.to_dict()`, so the command and library version travel with it), the
+affected occurrence's page and geometry, and whether a caller-authored box
+is on record for it — `null` with a note when it is not, never a guess.
+
+This is opt-in and off by default on purpose: copying a customer's source
+PDF to disk is a side effect nobody should get by surprise. **Off, nothing
+about this command changes** — same console output, same exit code, same
+files; that parity is enforced by `dev/probes/cli_parity_runner.py`. A
+problem writing the bundle (a bad path, a full disk, a permissions error)
+is logged and swallowed — it can never mask, replace, or change the
+refusal that follows it. See `pdf_translate/capture.py` for the bundle
+format, and `references/consumer-guide.md` for the Python-API shape of
+`capture_dir=`.
+
+This collects evidence only. It does not implement B1 — no line wrapping,
+no placement change, no new rendering — and it never runs unless a refusal
+is exactly a below-the-floor scale, the same condition the paragraph above
+this one already fails on.
