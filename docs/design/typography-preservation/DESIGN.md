@@ -3,9 +3,10 @@
 20 September 2026 · **written design approved by Rodrigo**
 
 Rodrigo approved the written design after reviewing its short entry point.
-The capability is not implemented. The [implementation plan](../../plans/2026-09-20-typography-preservation-brief.md)
-now awaits review and an execution-method choice; no delivery version, app
-adoption or B1 work is implied.
+Rodrigo also approved the [implementation plan](../../plans/2026-09-20-typography-preservation-brief.md)
+and native execution. Implementation is underway in an isolated checkout;
+no delivery version, app adoption or B1 work is implied. Current evidence lives
+in [the execution record](../../reviews/2026-09-20-typography-implementation.md).
 
 ## Decision in one minute
 

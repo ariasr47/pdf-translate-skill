@@ -49,6 +49,29 @@ the captured baseline. Full discovery passed: `python -m unittest discover -s te
 remain in the log; there were no failures or skips.
 Independent rendering verification remains required later in the approved plan.
 
+## Task 2: strict mapping reader
+
+The new reader retains ordered occurrence/run associations and validates their
+extraction binding. It rejects duplicate new-format keys, stale/foreign IDs,
+missing occurrences/emphasis, conflicting style resolutions, unsupported
+scripts/clusters and missing class/role selections. Metadata cannot substitute
+for visible-page coverage. Legacy duplicate-key behavior remains unchanged.
+
+RED: the initial mapping module run exercised 13 test methods with 37 failing
+subtests on the absent reader. Additional malformed-extraction cases first
+produced five failures and two errors; all now raise typed input errors.
+A common-symbol regression first rejected copyright/trademark/arrow text;
+the final parser preserves those plain symbols while refusing unsupported
+emoji and positioning-dependent clusters. This refines the planned plain-text
+scope, without normalization or a shaping claim.
+
+GREEN: `python -m unittest tests.test_typography_mapping tests.test_typography_extract`
+ran 28 tests, OK. Final `python -m unittest discover -s tests -t .` ran
+520 tests in 148.277 seconds, OK, no skips. Existing ResourceWarnings remain.
+Both CLI and verdict probes exited zero; their stdout and stderr are each
+byte-identical to the frozen baseline. Logs: `runs/typography/task2-*`.
+The new reader is not yet connected to all stages; that is later plan work.
+
 ## Rulings
 
 - Start directly from the approved plan commit: it has identical runtime files

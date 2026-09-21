@@ -3,7 +3,29 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 19 September 2026 (this section wins over everything below it)
+## Start here — 20 September 2026, typography implementation active
+
+Rodrigo approved the typography design, nine-stage plan and native execution.
+Continue all nine tasks without between-task approval questions. This managed
+checkout is `codex/typography-preservation`, based on `48dffcf` (v58 runtime).
+The original checkout's dirty v61/B1/audit work remains separate; do not import it.
+Read `docs/plans/2026-09-20-typography-preservation.md`, its approved design and
+`.superpowers/sdd/2026-09-20-typography-preservation/progress.md` before resuming.
+Task 1 is committed as `1a730e2`; Task 2 mapping validation is in progress.
+The ledger records subsequent completion commits and commands; verify against Git.
+Durable evidence: `docs/reviews/2026-09-20-typography-implementation.md`.
+
+Fresh read-only GitHub recheck: main `a5629fb`; PR #12 OPEN `abc4767`, PR #13
+OPEN `1d4f970`. No PR edits, push, merge, release, app messages or product-source
+access are authorized. Independent final rendering/font/layout verification
+remains required. No public typography capability is claimed yet.
+
+Use the original repo venv with PYTHONPATH set to this checkout's `pdf-translate/`.
+Baseline setup needed the original repo's ignored FL-150 NOTES fixture; restored
+without runtime edits. Task 1 full suite: 503 OK, no skips. Both parity outputs
+match the preserved clean baseline. New fonts/evidence stay inside this checkout.
+
+## Earlier — 19 September 2026
 
 **Both branches are pushed and both PRs are open: [#12](https://github.com/ariasr47/pdf-translate-skill/pull/12) (row 32, v57, base `main`) and [#13](https://github.com/ariasr47/pdf-translate-skill/pull/13) (E3, v58, stacked on #12). Merge #12 first; GitHub retargets #13.** Both MERGEABLE. **CI has not run on either** — every job failed in 1–5 seconds with *"The job was not started because recent account payments have failed or your spending limit needs to be increased"*. That is GitHub account billing, not the code; the only workflow change is three test-module names on one `run:` line. After billing is fixed: `gh run rerun 35432185828 && gh run rerun 35432191241`. Do not merge on a red that never ran — both suites are green locally (Windows / Python 3.14, 492 and 15), but the Ubuntu and 3.10 legs are unverified.
 

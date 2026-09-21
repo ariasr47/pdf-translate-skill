@@ -8,7 +8,7 @@
 
 **Tech Stack:** Existing Python 3.10+, PyMuPDF, fontTools, pikepdf and unittest; no new runtime dependency or renderer. The inspected local interpreter has PyMuPDF/MuPDF 1.28.2/1.28.2; the declared wider dependency range is not a new support claim.
 
-**Spec:** [Approved additive design](../design/typography-preservation/DESIGN.md), approved by Rodrigo on 20 September 2026 after design commit `ef52e5f`. This plan awaits review and an execution-method choice. No task below has been executed.
+**Spec:** [Approved additive design](../design/typography-preservation/DESIGN.md), approved by Rodrigo on 20 September 2026 after design commit `ef52e5f`. Rodrigo subsequently approved this plan and native execution. Work is underway; completed tasks and actual checks are recorded in [the execution evidence](../reviews/2026-09-20-typography-implementation.md) and the local execution ledger.
 
 ## Global constraints
 
