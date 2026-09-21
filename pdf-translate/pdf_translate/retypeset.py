@@ -1939,6 +1939,11 @@ def main(argv=None):
 
 def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    from ._console import missing_option_value
+    missing = missing_option_value(argv, ('--original',))
+    if missing:
+        log.info(f'usage: {missing} requires a value')
+        return 2
     stripped, segf, trf, out = argv[0], argv[1], argv[2], argv[3]
     t0 = time.perf_counter()
     original = argv[argv.index('--original') + 1] if '--original' in argv else None

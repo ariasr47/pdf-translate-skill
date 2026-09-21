@@ -768,8 +768,12 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None, *, typography=False)
     with open(seg_path, 'w', encoding='utf-8') as f:
         json.dump(segment_data, f, ensure_ascii=False, indent=1)
     cores = [{'text': k, 'count': v} for k, v in uniq.items()]
+    to_data = {'cores': cores}
+    if typography:
+        to_data.update(format='typography-1', segments='segments.json',
+                       extraction_id=typography_data['extraction_id'])
     with open(to_path, 'w', encoding='utf-8') as f:
-        json.dump({'cores': cores}, f, ensure_ascii=False, indent=1)
+        json.dump(to_data, f, ensure_ascii=False, indent=1)
     return {
         'segments': segments,
         'warnings': warnings,
@@ -838,6 +842,11 @@ def main(argv=None):
 
 def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    from ._console import missing_option_value
+    missing = missing_option_value(argv, ('--gap', '--outdir', '--pages', '--max-per-kind'))
+    if missing:
+        log.info(f'usage: {missing} requires a value')
+        return 2
     src = argv[0]
     gap = float(argv[argv.index('--gap') + 1]) if '--gap' in argv else 12.0
     outdir = argv[argv.index('--outdir') + 1] if '--outdir' in argv else '.'

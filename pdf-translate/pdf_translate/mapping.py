@@ -346,6 +346,10 @@ def _scales(conf, segments):
 
 def parse_mapping(text, *, extraction=None, mapping_dir=None):
     conf, format_name = _decode_mapping(text)
+    return _parse_mapping(conf, format_name, extraction=extraction, mapping_dir=mapping_dir)
+
+
+def _parse_mapping(conf, format_name, *, extraction=None, mapping_dir=None):
     if format_name == 'legacy':
         return MappingDocument(format='legacy', legacy=conf, lang=conf.get('lang', ''))
     _shape(conf, ('format', 'extraction_id', 'lang', 'font_sets', 'targets', 'document_targets'),
@@ -380,13 +384,28 @@ def parse_mapping(text, *, extraction=None, mapping_dir=None):
                            extraction=data)
 
 
-def load_mapping(path, segments_path=None):
-    path = Path(path).resolve()
+def load_mapping_data(path):
+    """Read format and JSON once, including when a helper must refuse a format."""
+    path = Path(path)
     try:
         text = path.read_text(encoding='utf-8-sig')
     except OSError as exc:
         refuse('invalid-style-reference', f'cannot read mapping: {exc}')
-    _, format_name = _decode_mapping(text)
+    return _decode_mapping(text)
+
+
+def load_extraction(path, extraction_id):
+    """Read and validate bound geometry for an unauthored scaffold."""
+    try:
+        data = _convert(_read_pairs(Path(path).read_text(encoding='utf-8-sig')), True)
+    except OSError as exc:
+        refuse('stale-extraction', f'cannot read extraction: {exc}')
+    return _index_extraction(data, extraction_id)[0]
+
+
+def load_mapping(path, segments_path=None):
+    path = Path(path).resolve()
+    conf, format_name = load_mapping_data(path)
     extraction = None
     if format_name == FORMAT:
         source = Path(segments_path) if segments_path is not None else path.parent / 'segments.json'
@@ -394,7 +413,7 @@ def load_mapping(path, segments_path=None):
             extraction = _convert(_read_pairs(source.read_text(encoding='utf-8-sig')), True)
         except OSError as exc:
             refuse('stale-extraction', f'cannot read extraction: {exc}')
-    return parse_mapping(text, extraction=extraction, mapping_dir=path.parent)
+    return _parse_mapping(conf, format_name, extraction=extraction, mapping_dir=path.parent)
 
 
 def charset_for(document, font_class, font_role):

@@ -222,3 +222,29 @@ acceptance and whole-branch review are still required.
 `python -m unittest tests.test_import_surface.QAVerdictTests tests.test_typography_review tests.test_review -v`: 66 tests, 1.677s, OK. The initial 12-case new module failed with 10 failures and one error; a separate metadata regression failed before adding title/bookmark QA and review support. Both parity runners exit0 and all four captures match baseline.
 
 QA reads plain joined text per occurrence and includes exact occurrence/run/page context. Number and glossary findings preserve both repeated labels; consistency compares wording independently of style. Literal HTML remains text. Metadata pairs retain language QA separately. Reviewer pairs show source positions and ordered class/role associations with escaped text. The prompt carries current extraction/mapping hashes; stale or missing bindings and incorrect associations accept no findings or terminology updates. Bound explicit terms still append idempotently. New optional finding IDs serialize only when present, keeping legacy keys intact. A directory snapshot confirms generate=False changes no files. General invalid-review delivery policy remains A01, outside this change.
+
+## Task 7 — CLI and pipeline context
+
+Initial new-command tests: nine tests, six failures/two errors. After integration,
+`python -m unittest tests.test_typography_pipeline tests.test_typography_mapping tests.test_pipeline -v` ran255 tests in45.552s with one new workflow-fixture failure; all228 legacy pipeline cases passed. The corrected focused run (`tests.test_typography_pipeline tests.test_typography_mapping`) ran27 tests in13.243s, OK. Both parity runners exited0 and allfour captures still match baseline.
+
+The full subprocess sequence now runs from another working directory: opt-in
+init, unauthored scaffold, refused unfilled build, explicit Spanish authoring,
+rebuild with bound original/mapping/extraction, reviewer files, field-font
+embedding and verification of that final PDF. The mapping parser retains one
+format detector shared by every mapping reader, including helper commands.
+Missing option values are named usage errors. New/mixed/unknown mappings refuse
+lossy merge helpers before any write; stale extraction/reference, conflicting
+forwarded context and report/input aliases preserve previous files.
+
+The initial short Pay NOW fixture triggered the existing Latin leak scanner:
+its three-letter words produce an empty source vocabulary, which selects the
+generic Latin heuristic even with --source-words-from. The command fixture now
+uses Payment NOW so the same existing option checks a real source word against
+Pague AHORA. No language heuristic or acceptance check was disabled. This is a
+known limitation to disclose in examples, separate from typography preservation.
+
+Mapping-reader audit: remaining direct JSON reads consume extraction geometry,
+review input, scale reports or widget/caption dictionaries. They are not an
+alternate translations mapping path. PR12/13 heads were rechecked read-only and
+remain abc4767/1d4f970; no remote changes.

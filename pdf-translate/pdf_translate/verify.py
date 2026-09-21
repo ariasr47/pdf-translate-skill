@@ -2273,11 +2273,22 @@ def write_report(verdict, path):
 
 def main(argv=None):
     with console():
-        return _main(argv)
+        from .results import PdfTranslateError
+        try:
+            return _main(argv)
+        except PdfTranslateError as exc:
+            log.info(exc.console_line)
+            return exc.exit_code
 
 
 def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    from ._console import missing_option_value
+    missing = missing_option_value(argv, ('--allow', '--report', '--fill-text', '--min-ink', '--source-regex',
+        '--source-words-from', '--allow-extra-prefix', '--translations', '--segments', '--reference-fonts'))
+    if missing:
+        log.info(f'usage: {missing} requires a value')
+        return 2
     orig, trans = argv[0], argv[1]
     allow = [w for w in (_arg(argv, '--allow', '') or '').split(',') if w]
     t0 = time.perf_counter()

@@ -368,6 +368,12 @@ def run_prepare_font(font_in, trf, font_out, instance=None, sample=None,
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    from ._console import missing_option_value
+    missing = missing_option_value(argv, ('--instance', '--sample', '--reference-fonts', '--font-class', '--font-role'))
+    if missing:
+        with console():
+            log.info(f'usage: {missing} requires a value')
+        return 2
     font_in, trf, font_out = argv[0], argv[1], argv[2]
     instance = (argv[argv.index('--instance') + 1]
                 if '--instance' in argv else None)

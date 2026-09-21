@@ -8,13 +8,13 @@ import pymupdf
 from pdf_translate import run_extract, run_strip
 
 
-def make_source(path):
+def make_source(path, prefix_text='Pay '):
     path = Path(path)
     with pymupdf.open() as doc:
         page = doc.new_page(width=400, height=240)
         for y, prefix, tail in [(60, 'helv', 'hebo'), (120, 'tiro', 'tibi')]:
-            page.insert_text((30, y), 'Pay ', fontname=prefix, fontsize=12)
-            x = 30 + pymupdf.get_text_length('Pay ', fontname=prefix, fontsize=12)
+            page.insert_text((30, y), prefix_text, fontname=prefix, fontsize=12)
+            x = 30 + pymupdf.get_text_length(prefix_text, fontname=prefix, fontsize=12)
             page.insert_text((x, y), 'NOW', fontname=tail, fontsize=12)
         doc.save(path)
     return path
@@ -61,10 +61,10 @@ def latin_font_sets():
     return fonts
 
 
-def make_job(work, font_sets=None):
+def make_job(work, font_sets=None, prefix_text='Pay '):
     work = Path(work)
     work.mkdir(parents=True, exist_ok=True)
-    source = make_source(work / 'original.pdf')
+    source = make_source(work / 'original.pdf', prefix_text=prefix_text)
     stripped = work / 'stripped.pdf'
     run_strip(str(source), str(stripped))
     extracted = run_extract(str(source), str(work), typography=True)

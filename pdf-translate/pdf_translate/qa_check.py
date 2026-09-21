@@ -391,13 +391,23 @@ def _say(line):
 
 def main(argv=None):
     with console():
-        return _main(argv)
+        from .results import PdfTranslateError
+        try:
+            return _main(argv)
+        except PdfTranslateError as exc:
+            log.info(exc.console_line)
+            return exc.exit_code
 
 
 def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv:
         log.info(__doc__)
+        return 2
+    from ._console import missing_option_value
+    missing = missing_option_value(argv, ('--segments', '--glossary', '--json'))
+    if missing:
+        log.info(f'usage: {missing} requires a value')
         return 2
     translations = argv[0]
     segments = _arg(argv, '--segments')

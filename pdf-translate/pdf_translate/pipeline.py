@@ -83,6 +83,8 @@ from .bilingual import main as bilingual_main
 from .qa_check import main as qa_main
 from ._console import console
 from .review import run_review
+from .mapping import FORMAT, load_extraction, load_mapping, load_mapping_data, refuse
+from .results import MappingError, PdfTranslateError
 from .verify import verify, main as verify_main
 
 log = logging.getLogger(__name__)
@@ -136,6 +138,8 @@ def cmd_init(argv):
             log.info(f"  p{item['page']}: {item['text']}")
         return 1
     extract_args = [src, '--outdir', work]
+    if '--typography' in argv:
+        extract_args.append('--typography')
     if '--max-per-kind' in argv:
         extract_args += ['--max-per-kind', argv[argv.index('--max-per-kind') + 1]]
     if '--pages' in argv:
@@ -153,7 +157,11 @@ def scaffold_from_cores(to_translate_path, out_path, force=False):
     re-entrant, so calling it from `main` does not double a line.
     """
     with console():
-        return _scaffold_from_cores(to_translate_path, out_path, force=force)
+        try:
+            return _scaffold_from_cores(to_translate_path, out_path, force=force)
+        except MappingError as exc:
+            log.info(exc.console_line)
+            return 2
 
 
 def _scaffold_from_cores(to_translate_path, out_path, force=False):
@@ -164,8 +172,28 @@ def _scaffold_from_cores(to_translate_path, out_path, force=False):
     if os.path.isfile(out_path) and not force:
         log.info(f'from-cores: {out_path} exists (pass --force to overwrite)')
         return 2
-    with open(to_translate_path, encoding='utf-8') as f:
-        data = json.load(f)
+    data, format_name = load_mapping_data(to_translate_path)
+    seg_path = os.path.join(os.path.dirname(os.path.abspath(to_translate_path)), 'segments.json')
+    if format_name == FORMAT:
+        if set(data) != {'format', 'segments', 'extraction_id', 'cores'} or data['segments'] != 'segments.json':
+            refuse('stale-extraction', 'from-cores requires the adjacent bound segments.json reference')
+        extraction = load_extraction(seg_path, data['extraction_id'])
+        document = extraction['document']
+        metadata = [document.get('title', '')] + list(document.get('outline') or [])
+        conf = {'format': FORMAT, 'extraction_id': data['extraction_id'], 'lang': '', 'font_sets': {},
+                'source_font_resolutions': [], 'allow_scale': [],
+                'document_targets': {text: None for text in metadata if text},
+                'targets': [{'occurrence_id': s['occurrence_id'], 'runs': []} for s in extraction['segments']]}
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(conf, f, ensure_ascii=False, indent=1)
+            f.write('\n')
+        log.info(f'from-cores: {len(conf["targets"])} occurrences -> {out_path} (unauthored typography template)')
+        return 0
+    if os.path.isfile(seg_path):
+        with open(seg_path, encoding='utf-8') as f:
+            extraction = json.load(f)
+        if isinstance(extraction, dict) and 'typography' in extraction:
+            refuse('stale-extraction', 'from-cores: typography extraction reference is missing')
     cores = data.get('cores') or []
     translations = {}
     for c in cores:
@@ -212,7 +240,11 @@ def propose_merges(work, accept=False, min_lines=2):
     re-entrant, so calling it from `main` does not double a line.
     """
     with console():
-        return _propose_merges(work, accept=accept, min_lines=min_lines)
+        try:
+            return _propose_merges(work, accept=accept, min_lines=min_lines)
+        except MappingError as exc:
+            log.info(exc.console_line)
+            return 2
 
 
 def _propose_merges(work, accept=False, min_lines=2):
@@ -231,6 +263,14 @@ def _propose_merges(work, accept=False, min_lines=2):
         return 2
     with open(seg_path, encoding='utf-8') as f:
         data = json.load(f)
+    tr_path = os.path.join(work, 'translations.json')
+    conf = None
+    if os.path.isfile(tr_path):
+        conf, format_name = load_mapping_data(tr_path)
+        if format_name != 'legacy':
+            refuse('unsupported-typography-construct', 'propose-merges cannot preserve typography occurrences')
+    if 'typography' in data:
+        refuse('unsupported-typography-construct', 'propose-merges cannot preserve typography occurrences')
     by_id = {s['id']: s for s in data.get('segments') or []}
     proposals = []
     for w in data.get('warnings') or []:
@@ -271,8 +311,6 @@ def _propose_merges(work, accept=False, min_lines=2):
     if not os.path.isfile(tr_path):
         log.info(f'propose-merges: missing {tr_path} (run from-cores first)')
         return 2
-    with open(tr_path, encoding='utf-8') as f:
-        conf = json.load(f)
     existing = {tuple(m.get('lines') or []) for m in conf.get('merges') or []}
     merges = list(conf.get('merges') or [])
     added = 0
@@ -308,7 +346,11 @@ def merge_mappings(out_path, paths, last_wins=False):
     re-entrant, so calling it from `main` does not double a line.
     """
     with console():
-        return _merge_mappings(out_path, paths, last_wins=last_wins)
+        try:
+            return _merge_mappings(out_path, paths, last_wins=last_wins)
+        except MappingError as exc:
+            log.info(exc.console_line)
+            return 2
 
 
 def _merge_mappings(out_path, paths, last_wins=False):
@@ -316,8 +358,9 @@ def _merge_mappings(out_path, paths, last_wins=False):
     merged = None
     conflicts = []
     for path in paths:
-        with open(path, encoding='utf-8') as f:
-            conf = json.load(f)
+        conf, format_name = load_mapping_data(path)
+        if format_name != 'legacy':
+            refuse('unsupported-typography-construct', 'merge-mappings cannot preserve typography occurrences')
         if merged is None:
             merged = json.loads(json.dumps(conf))
             continue
@@ -408,7 +451,23 @@ def cmd_rebuild(argv):
     segs = os.path.join(work, 'segments.json')
     tr = os.path.join(work, 'translations.json')
     t0 = time.perf_counter()
-    rc = retypeset(stripped, segs, tr, out)
+    mapping = load_mapping(tr, segs)
+    typography = mapping.format == FORMAT
+    if typography:
+        for arg in extra:
+            if any(arg == flag or arg.startswith(flag + '=') for flag in ('--translations', '--segments', '--original')):
+                log.info('rebuild: typography source/mapping/segments are fixed; conflicting forwarded flags are not allowed')
+                return 2
+        if '--report' in extra:
+            from .retypeset import _same_path
+            report = extra[extra.index('--report') + 1]
+            protected = [orig, out, stripped, segs, tr]
+            protected.extend(p for roles in mapping.font_sets.values() for p in roles.values())
+            if any(_same_path(report, p) for p in protected):
+                log.info('rebuild: --report must not overwrite an input or output PDF')
+                return 2
+        extra += ['--translations', tr, '--segments', segs]
+    rc = retypeset(stripped, segs, tr, out, **({'original': orig} if typography else {}))
     if rc != 0:
         log.info(f'elapsed {time.perf_counter()-t0:.2f}s (retypeset failed)')
         return rc
@@ -454,10 +513,13 @@ def cmd_review(argv):
 
     tr_path = os.path.join(work, 'translations.json')
     if os.path.isfile(tr_path):
-        with open(tr_path, encoding='utf-8-sig') as f:
-            tr = json.load(f)
+        mapping = load_mapping(tr_path)
+        tr = mapping.legacy or {}
         notices = len(tr.get('notices') or [])
-        log.info(f'review: {len(tr.get("translations") or {})} cores, '
+        if mapping.format == FORMAT:
+            log.info(f'review: {len(mapping.targets)} occurrences')
+        else:
+            log.info(f'review: {len(tr.get("translations") or {})} cores, '
                  f'{len(tr.get("merges") or [])} merges, '
                  f'{len(tr.get("overrides") or [])} overrides, '
                  f'{notices} notice{"" if notices == 1 else "s"}')
@@ -581,13 +643,24 @@ def _write_review_state(final, verdict):
 
 def main(argv=None):
     with console():
-        return _main(argv)
+        try:
+            return _main(argv)
+        except PdfTranslateError as exc:
+            log.info(exc.console_line)
+            return exc.exit_code
 
 
 def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv:
         log.info(__doc__)
+        return 2
+    from ._console import missing_option_value
+    missing = missing_option_value(argv, ('--work', '--captions', '--widget-text', '--pages', '--max-per-kind',
+        '--min-lines', '--glossary', '--ingest', '--notes', '--dpi', '--report', '--fill-text', '--translations',
+        '--segments', '--allow', '--min-ink', '--source-regex', '--source-words-from', '--allow-extra-prefix', '--reference-fonts'))
+    if missing:
+        log.info(f'usage: {missing} requires a value')
         return 2
     cmd, rest = argv[0], argv[1:]
     if cmd == 'review':
