@@ -6382,6 +6382,110 @@ class OverridePlainValueTests(unittest.TestCase):
 # compliance.md §1's wording, in the target language, quoting the source
 # title as one unit. The bold lead-in is the half before the weight split.
 NOTICE_LEAD = 'Traduccion solo informativa.'
+def build_many_core_pdf(path, n=45):
+    """One page carrying `n` distinct one-line cores."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=460, height=40 + 14 * n)
+    for i in range(n):
+        page.insert_text((30, 30 + 14 * i), f'Numbered source line {i:02d}.',
+                         fontsize=9)
+    doc.save(path)
+    doc.close()
+
+
+class RefusalTruncationTests(unittest.TestCase):
+    """A refusal that hides entries has to say how many it hid.
+
+    The success path a hundred lines below already does this: it prints
+    thirty scaled runs and then `… N more in scale_report.json`. The refusal
+    lists never got the same courtesy, so a caller with 247 cores saw thirty
+    and had nothing telling them the other 217 existed. Measured on a
+    consumer: it read ~30 per round and looped `cores / 30` times.
+    """
+
+    def _refuse(self, tmp, n=45):
+        font = find_test_font()
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        build_many_core_pdf(src, n)
+        extract_segments.extract_segments(src, outdir=tmp)
+        strip_text.strip_text(src, stripped)
+        Path(tr).write_text(json.dumps({
+            'fonts': {'regular': str(font), 'bold': str(font)},
+            'translations': {}, 'merges': [], 'overrides': [],
+            'center': [], 'skip': [],
+        }, ensure_ascii=False), encoding='utf-8')
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(
+                stripped, os.path.join(tmp, 'segments.json'), tr, out)
+        return rc, buf.getvalue(), out
+
+    def test_a_truncated_refusal_list_says_how_many_it_hid(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, log, out = self._refuse(tmp, n=45)
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn('FAIL: 45 untranslated segments', log)
+            # Thirty shown, fifteen hidden, and the line says so.
+            self.assertEqual(log.count('Numbered source line'), 30, msg=log)
+            self.assertIn('15 more', log)
+
+    def test_a_list_that_fits_says_nothing_extra(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, log, out = self._refuse(tmp, n=30)
+            self.assertEqual(rc, 1, msg=log)
+            self.assertEqual(log.count('Numbered source line'), 30, msg=log)
+            self.assertNotIn('more', log.split('untranslated segments')[1])
+
+    def test_the_notice_promises_no_file_because_none_is_written(self):
+        """The success path can point at scale_report.json; this cannot.
+
+        `write_scale_report` is only reached after the raise, and verify's
+        own rule is that a report outliving a refused write is worse than
+        none — a stale one no consumer can detect. So the refusal notice
+        must not name a file, and no report may appear.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, log, out = self._refuse(tmp, n=45)
+            self.assertEqual(rc, 1, msg=log)
+            self.assertNotIn(retypeset.SCALE_REPORT, log)
+            self.assertFalse(
+                os.path.isfile(os.path.join(tmp, retypeset.SCALE_REPORT)),
+                'a refused build must not leave a scaled-runs report')
+            self.assertFalse(os.path.isfile(out))
+
+    def test_the_reader_is_told_where_the_whole_list_lives(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, log, out = self._refuse(tmp, n=45)
+            self.assertEqual(rc, 1, msg=log)
+            # Said once for the whole block, not repeated per list.
+            self.assertEqual(log.count('refusals'), 1, msg=log)
+
+    def test_the_typed_refusal_still_carries_every_entry(self):
+        from pdf_translate import run_retypeset
+        from pdf_translate.results import MappingError
+        with tempfile.TemporaryDirectory() as tmp:
+            font = find_test_font()
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_many_core_pdf(src, 45)
+            extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            Path(tr).write_text(json.dumps({
+                'fonts': {'regular': str(font), 'bold': str(font)},
+                'translations': {}, 'merges': [], 'overrides': [],
+                'center': [], 'skip': [],
+            }, ensure_ascii=False), encoding='utf-8')
+            with self.assertRaises(MappingError) as caught:
+                run_retypeset(stripped, os.path.join(tmp, 'segments.json'),
+                              tr, os.path.join(tmp, 'out.pdf'))
+            # The console truncates; the data never has.
+            self.assertEqual(len(caught.exception.refusals['untranslated']), 45)
+
+
 NOTICE_BODY = ('Esta es una traduccion no oficial de ' + NOTICE_TITLE +
                '. Debe presentar la version oficial en ingles.')
 NOTICE_BOX = [40.0, 240.0, 360.0, 285.0]
