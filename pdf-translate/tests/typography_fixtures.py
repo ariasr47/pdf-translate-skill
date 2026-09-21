@@ -1,8 +1,11 @@
 """Synthetic, explicitly font-selected sources for typography regression tests."""
 from pathlib import Path
 from copy import deepcopy
+import json
 
 import pymupdf
+
+from pdf_translate import run_extract, run_strip
 
 
 def make_source(path):
@@ -44,3 +47,31 @@ def make_mapping(extraction, font_sets=None):
             for seg in extraction['segments']
         ],
     }
+
+
+def latin_font_sets():
+    suffixes = {'regular': 'Regular', 'bold': 'Bold', 'italic': 'Italic', 'bold_italic': 'BoldItalic'}
+    fonts = {cls: {role: str(Path(__file__).parent / 'fonts' / f'{family}-{suffix}.ttf')
+                   for role, suffix in suffixes.items()}
+             for cls, family in [('sans', 'NotoSans'), ('serif', 'NotoSerif')]}
+    for roles in fonts.values():
+        for path in roles.values():
+            if not Path(path).is_file():
+                raise AssertionError(f'Required typography fixture missing: {path}')
+    return fonts
+
+
+def make_job(work, font_sets=None):
+    work = Path(work)
+    work.mkdir(parents=True, exist_ok=True)
+    source = make_source(work / 'original.pdf')
+    stripped = work / 'stripped.pdf'
+    run_strip(str(source), str(stripped))
+    extracted = run_extract(str(source), str(work), typography=True)
+    segments = Path(extracted.segments_path)
+    data = json.loads(segments.read_text(encoding='utf-8'))
+    mapping = work / 'translations.json'
+    mapping.write_text(json.dumps(make_mapping(data, font_sets or latin_font_sets()), ensure_ascii=False),
+                       encoding='utf-8')
+    return {'original': source, 'stripped': stripped, 'segments': segments,
+            'mapping': mapping, 'output': work / 'out.pdf'}

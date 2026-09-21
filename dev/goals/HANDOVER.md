@@ -11,8 +11,10 @@ checkout is `codex/typography-preservation`, based on `48dffcf` (v58 runtime).
 The original checkout's dirty v61/B1/audit work remains separate; do not import it.
 Read `docs/plans/2026-09-20-typography-preservation.md`, its approved design and
 `.superpowers/sdd/2026-09-20-typography-preservation/progress.md` before resuming.
-Task 1 is committed as `1a730e2`; Task 2 as `3bc3156`. Task 3 font preparation
-passed its 45 affected tests and parity; continue to Task 4 placement next.
+Task 1 is committed as `1a730e2`; Task 2 as `3bc3156`; Task 3 as `76d3d72`.
+Task 4 placement passed 23 focused tests, full discovery (556 OK, no skips),
+both parity comparisons and an author visual pass. Continue to Task 5: actual
+final-PDF typography verification. Independent final review remains pending.
 The ledger records subsequent completion commits and commands; verify against Git.
 Durable evidence: `docs/reviews/2026-09-20-typography-implementation.md`.
 

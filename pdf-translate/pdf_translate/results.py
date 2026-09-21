@@ -218,6 +218,7 @@ class RetypesetResult(_Result):
     scaled: tuple = ()
     cancelled: bool = False
     scale_report_path: str = ''
+    typography: dict | None = None
 
 
 @dataclass(frozen=True)

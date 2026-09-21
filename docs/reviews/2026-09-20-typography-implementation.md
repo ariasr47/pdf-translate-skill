@@ -103,6 +103,61 @@ committed. Font downloads remain outside the runtime.
 Task 3 CLI/verdict exits are zero; all four stdout/stderr captures are
 byte-identical to baseline. Logs: `runs/typography/task3-*`.
 
+## Task 4: complete occurrences on one baseline
+
+The new branch validates original/extraction binding and complete page selection,
+source/stripped boxes/rotation/field identities, source scope, selected fonts,
+actual glyph bounds and both source/proposed neighbor collisions before saving.
+Every translated occurrence advances ordered runs from the original baseline;
+any shrink applies uniformly. Below-floor permission addresses one occurrence
+and never permits a collision. Input/report aliases are refused. Cancellation
+or an input refusal preserves prior artifacts and reports no new output.
+
+The existing horizontal width-budget arithmetic is shared unchanged with legacy
+placement. FontTools BoundsPen supplies actual selected outline bounds: the
+backend's glyph_bbox returned whole-font boxes in a measured probe, even for
+space. Stroked edges are conservative obstacles; filled backgrounds are retained.
+Unmeasurable text or distinct codepoints sharing a glyph refuse explicitly.
+Text is canonicalized per selected face on a private PDF before publication.
+The successful result and schema-2 scale report carry source/mapping digests,
+selected font evidence, occurrence/run positions, scale reasons and output hash.
+
+RED: 16 tests produced 25 errors on the absent original argument/new path.
+Two initial fixture mistakes used a zero-based page list where the existing API
+expects a one-based string, and a tuple where Widget.rect expects Rect; correcting
+the fixtures gave 16 passing tests without altering either API. A new translated-
+neighbor collision test then failed because the build succeeded; checking proposed
+glyphs against each other fixed it. An assumed space/NBSP collision was not real
+in Noto (glyph IDs 3/98); the negative fixture now modifies its own copied cmap
+and asserts equal IDs before testing the refusal. Genuine distinct glyphs retain
+both Unicode choices without normalization.
+
+Focused GREEN: `python -m unittest tests.test_typography_retypeset -v` — 23 tests
+in 4.011 seconds, OK. Coverage includes eight Latin class/role faces, full repeated
+label association, all source pages including a trailing blank, baseline/color,
+metadata/graphics/fields, explicit scale exceptions, wrong/stale inputs, glyph
+refusals, unsupported constructs, input aliases and cancellation between pages.
+Task 4 CLI and verdict probes exit zero; all four captured streams match baseline.
+Initial full discovery ran 556 tests in 324.272 seconds with one old merge-test
+failure. The expanded fixture directory changed alphabetical Latin selection
+from Noto Sans Regular to Noto Sans Bold; the paragraph then needed 0.67 scale.
+Running that same real case with the original regular face passed. The existing
+Latin fixture helper now prefers that explicit face, retaining its old fallback
+only when unavailable. No renderer or scale floor was changed for this failure.
+ShrinkBandTests plus the typography placement module then passed 28 tests in
+4.961 seconds. Final full discovery ran 556 tests in 291.451 seconds, OK,
+no failures or skips; existing ResourceWarnings remain in the log.
+
+`python ../runs/typography/task4-render.py` built two retained visual fixtures:
+two repeated mixed-style labels and all eight class/role combinations, each one
+page. Direct `scripts/retypeset.py ... --original ...` also exited zero.
+The source/rebuilt repeated-label rasters and eight-role output were inspected at
+150 dpi: visible serif/sans/emphasis are retained, the reordered bold word leads
+its line, no wrapping or baseline movement is visible. Graphics are additionally
+asserted pixel-identical in a fixed non-text crop. Artifacts are under
+`runs/typography/task4-visual/`. These are author checks; independent final review
+is still required by the plan and AGENTS.md.
+
 ## Rulings
 
 - Start directly from the approved plan commit: it has identical runtime files
@@ -120,6 +175,12 @@ byte-identical to baseline. Logs: `runs/typography/task3-*`.
 - Typography instancing uses fontTools' STAT-based `updateFontNames=True`
   alongside actual outline instancing. Legacy instancing is unchanged;
   regular bits on old 700-weight instances cannot attest a new bold role.
+- Use measured glyph outlines, compare proposed translated neighbors, and keep
+  exact per-face Unicode choices; an ambiguous glyph-to-text mapping refuses.
+- Publish a new typography PDF only after private-file canonicalization. This
+  does not change the separate A03 legacy artifact-lifecycle work.
+- Keep older Latin geometry fixtures on Noto Sans Regular; adding style assets
+  cannot silently switch their measured font to the alphabetically earlier Bold.
 
 Every item above is local implementation evidence or an explicit limit.
 No typography delivery, product adoption or full Claude/Codex host acceptance
