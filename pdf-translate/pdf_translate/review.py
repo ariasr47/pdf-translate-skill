@@ -21,9 +21,13 @@ Nothing here calls a model. The reviser is a person, or a model the operator
 runs — outside this pipeline, in a session of their own.
 """
 import csv
+import html
 import json
 import os
 from dataclasses import dataclass, field
+
+from .mapping import FORMAT, MappingDocument, load_mapping
+from .results import MappingError
 
 SCHEMA = 1
 
@@ -89,9 +93,11 @@ class ReviewFinding:
     term: str | None = None
     term_target: str | None = None
     migrated: bool = False
+    occurrence_id: str | None = None
+    source_runs: tuple | None = None
 
     def to_dict(self):
-        return {'core': self.core, 'target': self.target,
+        result = {'core': self.core, 'target': self.target,
                 'category': self.category, 'subtype': self.subtype,
                 'severity': self.severity, 'detail': self.detail,
                 'suggestion': self.suggestion,
@@ -99,6 +105,11 @@ class ReviewFinding:
                 'resolution_note': self.resolution_note,
                 'term': self.term, 'term_target': self.term_target,
                 'migrated': self.migrated}
+        if self.occurrence_id is not None:
+            result['occurrence_id'] = self.occurrence_id
+        if self.source_runs is not None:
+            result['source_runs'] = list(self.source_runs)
+        return result
 
 
 @dataclass(frozen=True)
@@ -186,7 +197,7 @@ def load_review(path):
     return doc, []
 
 
-def validate(doc):
+def validate(doc, mapping=None):
     """([ReviewFinding], [error]) — enforces the enums, migrates prose.
 
     A violation produces an error and drops that finding. Nothing is guessed:
@@ -194,6 +205,10 @@ def validate(doc):
     a wrong guess here decides whether a document is delivered.
     """
     errors = []
+    if mapping is not None and mapping.format == FORMAT:
+        expected = {'extraction_id': mapping.extraction_id, 'mapping_sha256': mapping.mapping_sha256}
+        if doc.get('typography') != expected:
+            return [], ['review typography binding is missing or differs from the current extraction/mapping']
     if not isinstance(doc.get('reviewer'), dict):
         errors.append('review.json has no "reviewer" block; a review with no '
                       'named reviewer is not a review')
@@ -211,6 +226,28 @@ def validate(doc):
         if missing:
             errors.append(f'finding {i} is missing {", ".join(missing)}')
             continue
+        occurrence = item.get('occurrence_id')
+        source_runs = item.get('source_runs')
+        if (('occurrence_id' in item and (not isinstance(occurrence, str) or not occurrence)) or
+                ('source_runs' in item and (not isinstance(source_runs, list) or not source_runs or
+                 not all(isinstance(s, str) and s for s in source_runs) or len(set(source_runs)) != len(source_runs)))):
+            errors.append(f'finding {i}: invalid occurrence_id or source_runs')
+            continue
+        if mapping is not None and mapping.format == FORMAT:
+            candidates = [t for t in mapping.targets if t.source_text == item['core']]
+            metadata = (not candidates and occurrence is None and source_runs is None and
+                        isinstance(item['core'], str) and item['core'] in mapping.document_targets and
+                        item['target'] == mapping.document_targets[item['core']])
+            if len(candidates) > 1 and (occurrence is None or source_runs is None):
+                errors.append(f'finding {i}: repeated core requires occurrence_id and source_runs')
+                continue
+            if occurrence is not None:
+                candidates = [t for t in candidates if t.occurrence_id == occurrence]
+            if not metadata and (len(candidates) != 1 or item['target'] != ''.join(r.text for r in candidates[0].runs) or
+                    (source_runs is not None and not set(source_runs).issubset(
+                        {s for r in candidates[0].runs for s in r.source_runs}))):
+                errors.append(f'finding {i}: core, target or source_runs do not match the named occurrence')
+                continue
         if item['category'] not in CATEGORIES:
             errors.append(f'finding {i}: category {item["category"]!r} is not '
                           f'one of {"|".join(CATEGORIES)}')
@@ -244,7 +281,8 @@ def validate(doc):
             resolution=resolution, resolution_note=note,
             term=item.get('term') or None,
             term_target=item.get('term_target') or None,
-            migrated=migrated))
+            migrated=migrated, occurrence_id=occurrence,
+            source_runs=tuple(source_runs) if source_runs is not None else None))
     return findings, errors
 
 
@@ -255,6 +293,8 @@ def _pages_one_based(n):
 
 def review_pairs_md(translations, segments, notes):
     """The file a second reader actually reads: every pair, in one place."""
+    if isinstance(translations, MappingDocument):
+        return _typography_pairs_md(translations, notes)
     mapping = translations.get('translations') or {}
     merges = translations.get('merges') or []
     overrides = translations.get('overrides') or []
@@ -344,6 +384,43 @@ def review_pairs_md(translations, segments, notes):
     return '\n'.join(out) + '\n'
 
 
+def _plain_cell(value):
+    # Entity escaping preserves literal markup; Markdown punctuation must not
+    # acquire formatting or split a table. Never change the authored mapping.
+    value = html.escape(str(value), quote=False).replace('\n', ' ')
+    for char in ('\\', '|', '`', '*', '_', '[', ']'):
+        value = value.replace(char, '\\' + char)
+    return value
+
+
+def _typography_pairs_md(mapping, notes):
+    segments = {s['occurrence_id']: s for s in mapping.extraction['segments']}
+    out = ['# Review pairs', '', f'Target language: `{mapping.lang}`.', '',
+           f'{len(mapping.targets)} occurrences. Page numbers below are 1-based.',
+           'Each numbered run is literal text followed by its class/role and source-run references.',
+           'Report the exact occurrence_id, source_runs, full source and full target. HTML is literal text.', '',
+           f'Extraction: `{mapping.extraction_id}`', f'Mapping: `{mapping.mapping_sha256}`', '']
+    if notes:
+        out.extend(['## Identity', '', _plain_cell(notes), ''])
+    out.extend(['| occurrence | page; origin | source | target | ordered runs |',
+                '| --- | --- | --- | --- | --- |'])
+    for target in mapping.targets:
+        origin = segments[target.occurrence_id]['style_runs'][0]['origin']
+        runs = '; '.join(f'{i + 1}: {_plain_cell(r.text)} ({r.font_class}/{r.font_role}; '
+                         f'{", ".join(r.source_runs)})' for i, r in enumerate(target.runs))
+        out.append(f'| {target.occurrence_id} | {target.page + 1}; {origin} | {_plain_cell(target.source_text)} | '
+                   f'{_plain_cell("".join(r.text for r in target.runs))} | {runs} |')
+    if mapping.document_targets:
+        out.extend(['', '## Document metadata', '',
+                    'Metadata-only findings use their exact source/target without page occurrence IDs.', '',
+                    '| source | target |', '| --- | --- |'])
+        out.extend(f'| {_plain_cell(s)} | {_plain_cell(t)} |' for s, t in mapping.document_targets.items())
+    if mapping.source_font_resolutions:
+        out.extend(['', '## Caller-authored source font resolutions', ''])
+        out.extend(f'- {r["font_id"]}: {_plain_cell(r["reason"])}' for r in mapping.source_font_resolutions)
+    return '\n'.join(out) + '\n'
+
+
 def _cell(value):
     """A markdown table cell that cannot break the table.
 
@@ -417,7 +494,7 @@ def _pair_languages(pair):
     return str(pair), str(pair)
 
 
-def review_prompt_md(document, pairs_path):
+def review_prompt_md(document, pairs_path, mapping=None):
     """The prompt a first-pass model reviser is handed, slots filled."""
     document = document or {}
     source, target = _pair_languages(document.get('pair') or '?->?')
@@ -426,13 +503,18 @@ def review_prompt_md(document, pairs_path):
         parallel_text = 'does not exist, or was not searched'
     else:
         parallel_text = f'exists: {parallel}'
+    schema = SCHEMA_BLOCK
+    if mapping is not None and mapping.format == FORMAT:
+        binding = json.dumps({'extraction_id': mapping.extraction_id, 'mapping_sha256': mapping.mapping_sha256})
+        schema = schema.replace('{\n', '{\n  "typography": ' + binding + ',\n', 1)
+        schema = schema.replace('{"core":', '{"occurrence_id": "s0", "source_runs": ["s0/r0"],\n     "core":')
     return PROMPT.format(
         document_class=document.get('class') or '(class not stated)',
         issuer=document.get('issuer') or '(issuer not stated)',
         source_language=source, target_language=target,
         register=document.get('register') or '(register not stated)',
         parallel=parallel_text, pairs=pairs_path,
-        schema=SCHEMA_BLOCK)
+        schema=schema)
 
 
 def termbase_rows(findings):
@@ -512,11 +594,13 @@ def run_review(work, ingest=None, notes=None, generate=True):
                              errors=(f'no such work directory: {work}',))
 
     tr_path = os.path.join(work, 'translations.json')
-    translations = {}
+    translations, mapping = {}, None
     if os.path.isfile(tr_path):
         try:
-            with open(tr_path, encoding='utf-8-sig') as fh:
-                translations = json.load(fh)
+            mapping = load_mapping(tr_path)
+            translations = mapping.legacy if mapping.format != FORMAT else mapping
+        except MappingError as exc:
+            return ReviewVerdict(work=work, errors=(str(exc),))
         except (OSError, ValueError) as exc:
             errors.append(f'translations.json is not readable JSON: {exc}')
     else:
@@ -555,8 +639,10 @@ def run_review(work, ingest=None, notes=None, generate=True):
             present = True
             reviewer = doc.get('reviewer')
             document = doc.get('document')
-            findings, validation_errors = validate(doc)
+            findings, validation_errors = validate(doc, mapping)
             errors.extend(validation_errors)
+            if mapping is not None and mapping.format == FORMAT and validation_errors:
+                findings = []
             migrations = [(f.core, f.resolution_note, f.resolution)
                           for f in findings if f.migrated]
             rows, skipped = termbase_rows(findings)
@@ -567,11 +653,10 @@ def run_review(work, ingest=None, notes=None, generate=True):
                     wrote.append(glossary)
 
     if generate:
-        prompt_doc = (document or
-                      (translations.get('document') if translations else None))
+        prompt_doc = (document or (translations.get('document') if isinstance(translations, dict) else None))
         prompt_path = os.path.join(work, 'review_prompt.md')
         with open(prompt_path, 'w', encoding='utf-8', newline='\n') as fh:
-            fh.write(review_prompt_md(prompt_doc, 'review_pairs.md'))
+            fh.write(review_prompt_md(prompt_doc, 'review_pairs.md', mapping))
         wrote.append(prompt_path)
 
     return ReviewVerdict(

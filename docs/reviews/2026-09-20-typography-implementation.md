@@ -216,3 +216,9 @@ while leaving the delivered PDF and untouched successful report in place.
 Correct independent drawings, coalesced equal-style spans, actual subsets and
 final field-font embedding pass. This remains author testing; independent
 acceptance and whole-branch review are still required.
+
+## Task 6 — occurrence QA and reviewer input
+
+`python -m unittest tests.test_import_surface.QAVerdictTests tests.test_typography_review tests.test_review -v`: 66 tests, 1.677s, OK. The initial 12-case new module failed with 10 failures and one error; a separate metadata regression failed before adding title/bookmark QA and review support. Both parity runners exit0 and all four captures match baseline.
+
+QA reads plain joined text per occurrence and includes exact occurrence/run/page context. Number and glossary findings preserve both repeated labels; consistency compares wording independently of style. Literal HTML remains text. Metadata pairs retain language QA separately. Reviewer pairs show source positions and ordered class/role associations with escaped text. The prompt carries current extraction/mapping hashes; stale or missing bindings and incorrect associations accept no findings or terminology updates. Bound explicit terms still append idempotently. New optional finding IDs serialize only when present, keeping legacy keys intact. A directory snapshot confirms generate=False changes no files. General invalid-review delivery policy remains A01, outside this change.
