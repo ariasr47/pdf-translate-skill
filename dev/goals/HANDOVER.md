@@ -13,8 +13,9 @@ Read `docs/plans/2026-09-20-typography-preservation.md`, its approved design and
 `.superpowers/sdd/2026-09-20-typography-preservation/progress.md` before resuming.
 Task 1 is committed as `1a730e2`; Task 2 as `3bc3156`; Task 3 as `76d3d72`.
 Task 4 placement passed 23 focused tests, full discovery (556 OK, no skips),
-both parity comparisons and an author visual pass. Continue to Task 5: actual
-final-PDF typography verification. Independent final review remains pending.
+both parity comparisons and an author visual pass. Task 5 final-PDF verification
+passes 21 focused and 67 affected tests plus both parity comparisons. Continue
+to Task 6: occurrence-aware QA/review. Independent final review remains pending.
 The ledger records subsequent completion commits and commands; verify against Git.
 Durable evidence: `docs/reviews/2026-09-20-typography-implementation.md`.
 

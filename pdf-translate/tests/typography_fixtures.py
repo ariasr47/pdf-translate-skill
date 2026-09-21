@@ -75,3 +75,35 @@ def make_job(work, font_sets=None):
                        encoding='utf-8')
     return {'original': source, 'stripped': stripped, 'segments': segments,
             'mapping': mapping, 'output': work / 'out.pdf'}
+
+
+def independent_rows():
+    """Known expected rows, calculated without the renderer or its report."""
+    fonts = latin_font_sets()
+    rows = []
+    for cls, tail_role, baseline in [('sans', 'bold', 60), ('serif', 'bold_italic', 120)]:
+        prefix = pymupdf.Font(fontfile=fonts[cls]['regular'])
+        x = 30 + prefix.text_length('Pay ', fontsize=12)
+        rows.extend([
+            {'page': 0, 'origin': (30, baseline), 'text': 'Pay ', 'size': 12, 'class': cls, 'role': 'regular'},
+            {'page': 0, 'origin': (x, baseline), 'text': 'NOW', 'size': 12, 'class': cls, 'role': tail_role},
+        ])
+    return rows
+
+
+def draw_independently(path, rows, pages=1):
+    """Explicit real font programs/positions; never consult build records."""
+    fonts = latin_font_sets()
+    with pymupdf.open() as doc:
+        for _ in range(pages):
+            doc.new_page(width=400, height=240)
+        for row in rows:
+            page = doc[row['page']]
+            path_for_font = row.get('font') or fonts[row['class']][row['role']]
+            font = pymupdf.Font(fontfile=str(path_for_font))
+            if not all(font.has_glyph(ord(ch), fallback=False) for ch in row['text']):
+                raise AssertionError('Independent fixture would use a fallback glyph')
+            writer = pymupdf.TextWriter(page.rect)
+            writer.append(row['origin'], row['text'], font=font, fontsize=row['size'])
+            writer.write_text(page, color=row.get('color', (0, 0, 0)))
+        doc.ez_save(path)

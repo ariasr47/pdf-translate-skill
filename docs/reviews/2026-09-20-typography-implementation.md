@@ -185,3 +185,34 @@ is still required by the plan and AGENTS.md.
 Every item above is local implementation evidence or an explicit limit.
 No typography delivery, product adoption or full Claude/Codex host acceptance
 is claimed while later tasks remain pending.
+
+## Task 5 — actual final typography
+
+The verifier reads final text traces, page geometry, glyph outlines and embedded
+font programs independently of scale_report.json. Repeated labels are located
+by page, source baseline and ordered advances, with exclusive glyph ownership.
+
+Actual commands from pdf-translate/ (the interpreter and PYTHONPATH above):
+- `python -m unittest tests.test_typography_verify tests.test_verify_report tests.test_consumer_contract -v`: 67 tests, 16.165s, OK.
+- Expanded `python -m unittest tests.test_typography_verify -v`: 21 tests, 10.516s, OK.
+- Both parity runners exited 0; all four stdout/stderr captures match the frozen clean baseline byte for byte.
+
+The initial 19-test run had 17 failures and two errors before the check existed.
+The first implementation left three failures. Real embedded-font inspection
+showed MuPDF subsets retain OS/2 and head but omit post, and field embedding
+adds a second resource containing identical program bytes. The subset path now
+requires exact surviving class/weight/slant evidence plus matching used-glyph
+outlines and advances. Byte-identical resources can share that evidence;
+different programs with ambiguous names remain cannot-attest. Unknown complete
+font metadata still produces REVIEW. Two added regressions ensure missing post
+cannot hide changed outlines or inconsistent surviving metadata.
+
+The original altered-font fixture moved every P point together; the glyph-set
+reader compensates using the unchanged side bearing, leaving the drawn shape
+unchanged. Moving one outline point creates a real distortion and now FAILs.
+Wrong class/role, wrong repeated occurrence/page, shifted baseline, nonuniform
+size, color changes, missing/extra pages and clipped italic glyphs also fail
+while leaving the delivered PDF and untouched successful report in place.
+Correct independent drawings, coalesced equal-style spans, actual subsets and
+final field-font embedding pass. This remains author testing; independent
+acceptance and whole-branch review are still required.
