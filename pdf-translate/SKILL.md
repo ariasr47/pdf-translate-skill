@@ -12,7 +12,7 @@ description: >-
   that a translated PDF broke its layout or its form fields.
 license: MIT
 compatibility: >-
-  Python 3.10+ with pymupdf, pikepdf and fonttools (see requirements.txt for
+  Python 3.14+ with pymupdf, pikepdf and fonttools (see requirements.txt for
   the tested ranges). Needs a harness that can view images, because the
   visual pass is part of the workflow. Network access is optional but
   strongly preferred: fonts for the target script (the Noto family) and the
