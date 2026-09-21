@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
@@ -129,6 +130,72 @@ class MappingFormatsTests(unittest.TestCase):
         formats = getattr(OldEngine(), 'MAPPING_FORMATS', ())
         self.assertEqual(formats, ())
         self.assertNotIn('typography-1', formats)
+
+
+class RequirementsPreflightTests(unittest.TestCase):
+    """A machine without the three packages should be told which ones.
+
+    Installing the plugin needs no Python, so the first thing a new user runs
+    is also the first thing that can fail. Before this, it failed with
+    `ModuleNotFoundError: No module named 'pikepdf'` - one name, from a
+    traceback, with no mention of the other two or of how to fix it.
+    """
+
+    def test_nothing_is_missing_in_a_working_install(self):
+        from pdf_translate import _requirements
+        self.assertEqual(_requirements.missing_requirements(), ())
+
+    def test_every_missing_package_is_named_by_its_pip_name(self):
+        from pdf_translate import _requirements
+        absent = {'pikepdf', 'fontTools'}
+        real = _requirements.importlib.util.find_spec
+
+        def fake(name, *a, **k):
+            return None if name in absent else real(name, *a, **k)
+
+        with mock.patch.object(_requirements.importlib.util, 'find_spec', fake):
+            # fontTools is imported under that name but installed as fonttools;
+            # the message has to say the one you can type into pip.
+            self.assertEqual(_requirements.missing_requirements(),
+                             ('pikepdf', 'fonttools'))
+
+    def test_the_message_names_them_and_the_interpreter_to_install_into(self):
+        from pdf_translate import _requirements
+        text = _requirements.requirements_message(('pikepdf', 'fonttools'))
+        self.assertIn('pikepdf', text)
+        self.assertIn('fonttools', text)
+        self.assertIn('-m pip install', text)
+        # The usual cause is packages sitting in a different interpreter, so
+        # the message has to say which one is actually running.
+        self.assertIn(sys.executable, text)
+        self.assertNotIn('pymupdf', text, 'do not name what is not missing')
+
+    def test_the_cli_guard_prints_the_message_and_exits_two(self):
+        from pdf_translate import _requirements
+        buf = io.StringIO()
+        with mock.patch.object(_requirements, 'missing_requirements',
+                               lambda: ('pikepdf',)), redirect_stderr(buf):
+            with self.assertRaises(SystemExit) as caught:
+                _requirements.guard_cli()
+        self.assertEqual(caught.exception.code, 2)
+        self.assertIn('pikepdf', buf.getvalue())
+        self.assertNotIn('Traceback', buf.getvalue())
+
+    def test_the_guard_is_silent_and_returns_when_nothing_is_missing(self):
+        from pdf_translate import _requirements
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            _requirements.guard_cli()
+        self.assertEqual(out.getvalue(), '')
+        self.assertEqual(err.getvalue(), '')
+
+    def test_the_preflight_module_imports_nothing_it_is_checking_for(self):
+        # It has to be importable on the machine that has none of them, which
+        # is the only machine where it matters.
+        source = (SKILL / 'pdf_translate' / '_requirements.py').read_text(encoding='utf-8')
+        for forbidden in ('import pymupdf', 'import pikepdf', 'import fontTools',
+                          'from pymupdf', 'from pikepdf', 'from fontTools'):
+            self.assertNotIn(forbidden, source)
 
 
 class VerifyVerdictTests(unittest.TestCase):
