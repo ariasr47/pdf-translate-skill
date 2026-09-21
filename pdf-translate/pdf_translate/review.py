@@ -234,12 +234,16 @@ def validate(doc, mapping=None):
             errors.append(f'finding {i}: invalid occurrence_id or source_runs')
             continue
         if mapping is not None and mapping.format == FORMAT:
+            if not isinstance(item['core'], str) or not isinstance(item['target'], str):
+                errors.append(f'finding {i}: core and target must be plain strings')
+                continue
             candidates = [t for t in mapping.targets if t.source_text == item['core']]
-            metadata = (not candidates and occurrence is None and source_runs is None and
+            metadata = (occurrence is None and source_runs is None and
                         isinstance(item['core'], str) and item['core'] in mapping.document_targets and
                         item['target'] == mapping.document_targets[item['core']])
-            if len(candidates) > 1 and (occurrence is None or source_runs is None):
-                errors.append(f'finding {i}: repeated core requires occurrence_id and source_runs')
+            if (not metadata and (len(candidates) > 1 or item['core'] in mapping.document_targets) and
+                    (occurrence is None or source_runs is None)):
+                errors.append(f'finding {i}: shared core requires occurrence_id and source_runs for page text')
                 continue
             if occurrence is not None:
                 candidates = [t for t in candidates if t.occurrence_id == occurrence]
@@ -412,7 +416,8 @@ def _typography_pairs_md(mapping, notes):
                    f'{_plain_cell("".join(r.text for r in target.runs))} | {runs} |')
     if mapping.document_targets:
         out.extend(['', '## Document metadata', '',
-                    'Metadata-only findings use their exact source/target without page occurrence IDs.', '',
+                    'Metadata findings use their exact source/target without page occurrence IDs. '
+                    'Page findings sharing that source must include occurrence_id and source_runs.', '',
                     '| source | target |', '| --- | --- |'])
         out.extend(f'| {_plain_cell(s)} | {_plain_cell(t)} |' for s, t in mapping.document_targets.items())
     if mapping.source_font_resolutions:

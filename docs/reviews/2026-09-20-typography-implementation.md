@@ -248,3 +248,124 @@ Mapping-reader audit: remaining direct JSON reads consume extraction geometry,
 review input, scale reports or widget/caption dictionaries. They are not an
 alternate translations mapping path. PR12/13 heads were rechecked read-only and
 remain abc4767/1d4f970; no remote changes.
+
+## Task 8 — independent acceptance and adversarial corrections
+
+Candidate base: `95886f67022a569cfd48daf159a5bc8f5cf2f84d` plus the Task 8
+working changes. Independent evidence is retained under
+`runs/typography/independent-review/`; the reviewer did not implement the runtime.
+The committed probe and regression tests reproduce the supported cases.
+
+The independent six-case command was:
+`python ../dev/probes/typography_acceptance.py --work ../runs/typography/independent-review/official-final-probe --fonts tests/fonts`.
+It exited 0: repeated/reordered emphasis, eight Latin class/role combinations,
+italic overhang, horizontal Japanese, horizontal Simplified Chinese and an
+original blank trailing page all returned typography PASS and verify exit 0.
+Page geometry remained equal, including the two-page blank-page case. The
+reviewer inspected source/final rasters at 150 dpi, actual font programs and
+baselines. Full field-font embedding left all seven final rasters byte-identical
+to the previously inspected versions. Actual embedded field-font cmaps contain
+2,965 Latin, 16,732 Japanese and 30,890 Simplified Chinese entries, with no fvar
+and weight 400. Those are supplied-face coverage counts, not universal typing
+or language-quality guarantees.
+
+Independent adversarial runs found and reproduced seven feature defects:
+
+| Defect | Correction and observed outcome |
+| --- | --- |
+| Source transparency, stroke or affine transform silently flattened | Parse actual PDF text drawing state; unsupported source paint refuses before replacing an existing PDF or report. |
+| Final shear could retain normal-looking text traces | Inspect text/graphics transforms; distortion fails. |
+| Clipped glyphs retained their complete text trace | Arbitrary clip paths and text in clipped Form XObjects remain REVIEW/cannot-attest. |
+| Later page/annotation paint could conceal glyphs | Inspect ordered paint bounds; possible occlusion remains REVIEW. |
+| A metadata title sharing page wording could not receive its own review | Exact document source/target pairs without page IDs use the metadata channel; page findings require occurrence/run IDs where ambiguous. |
+| UserUnit doubled physical pages behind unchanged raw boxes | Bind effective page rectangles as well as raw boxes/rotation. Changed final physical size fails; nondefault source UserUnit refuses in this first scope. |
+| Filled widget values were treated as unassigned page text | Read page-only glyphs separately from widget/comment appearances; retain annotation paint for occlusion and restore the in-memory document before returning. |
+
+Full field fonts also exposed ambiguous aliases beside page subsets. Actual
+text-selected PDF font resources now determine which program can attest page
+glyphs; an unused field font cannot stand in for the drawn page font. Complete
+unknown font metadata remains REVIEW. Full fonts are used for fields; page
+subsets cannot prove coverage of future user input.
+
+Source clipping, text-containing Forms, nonuniform transforms, stroke,
+transparency, soft masks, unusual blending, possible occlusion and nondefault
+page units are explicit first-scope refusals. This is conservative support,
+not preservation of those constructs. The effective-page field changes the
+unreleased extraction binding: regenerate old development extractions/mappings.
+
+Actual regression commands and results:
+
+- `python -m unittest discover -s tests -t . -v`: 610 tests, 337.429s, OK,
+  before the final filled-widget correction; final rerun recorded below.
+- `python -m unittest tests.test_typography_verify -v`: 26 tests, 12.998s, OK
+  after that correction. Both new filled-widget/comment cases failed beforehand.
+- `python -m unittest discover -s ../dev/canary -p test_score.py`: 15 tests,
+  0.631s, OK. Both parity runners exited 0 after the final correction; all four
+  stdout/stderr captures match the original baseline byte for byte.
+
+### Final rerun after an interrupted session
+
+The session running Task 8 stopped on a provider usage limit before it recorded
+its final full rerun. A new session re-ran the gates on the same working tree
+rather than adopting an unrecorded claim:
+
+- `python -m unittest discover -s tests -t . -v`: **611 tests, 441.631s, OK**,
+  no failures, errors or skips. This is the complete run after the filled-widget
+  correction. Existing font/review ResourceWarnings remain in the log, unchanged.
+  The interrupted session's own final log, `runs/typography/task8-final-full.log`,
+  had in fact reached 611 tests in 442.695s, OK; the two runs name an identical
+  set of 598 test methods, compared with `diff`. Both are recorded because the
+  first was found on disk, not inherited from a claim.
+- `python -m unittest discover -s ../dev/canary -p test_score.py`: 15 tests,
+  0.657s, OK.
+- Both parity runners re-run from this tree: `cli_parity_runner.py` and
+  `verdict_parity_runner.py` each exited 0, and all four stdout/stderr captures
+  are byte-identical to `runs/typography/baseline-*` — verified with `diff`, not
+  by inspection.
+- The six-case acceptance probe re-run exited 0 with `typography=PASS`,
+  `verify=0` and equal source/final page counts in every case, including the
+  two-page blank-page case. `candidate_base` recorded
+  `95886f67022a569cfd48daf159a5bc8f5cf2f84d`.
+
+Measured interpreter: Python 3.14.0, PyMuPDF/MuPDF 1.28.2, pikepdf
+10.13.0.post1, fontTools 4.64.0; package resolved inside this managed checkout
+at version 58.
+
+### Probe reproducibility correction
+
+Reproducing the probe exposed a defect in its own documented command. The
+docstring said to run it from `pdf-translate/`, which is true only when the
+ambient interpreter already imports the checkout under test. `sys.path[0]` is
+the probe's own directory, so with an editable venv installed from a *different*
+checkout the documented command imported that other package and died on
+`ModuleNotFoundError: No module named 'pdf_translate.mapping'`. An independent
+verifier following the written instruction would either fail outright or, on a
+checkout where the import happened to resolve, measure the wrong code.
+
+The probe now documents the explicit `PYTHONPATH=<checkout>/pdf-translate` form
+the existing parity runners already use, and records `pdf_translate.__file__`
+and its version in `summary.json`, so each artifact names the package it
+actually measured. No probe case, threshold or runtime behavior changed; the
+rerun above used the corrected command.
+- Earlier focused correction runs: 51 paint tests OK; 65 metadata/review tests
+  OK; 80 field-font/physical-page tests OK. Independent affected run: 83 tests,
+  21.413s, OK before the final filled-widget correction.
+- Actual v54 and v56 Git archives refuse new-format build without creating a
+  PDF; the installed-style capability guard exits 2 before old QA/review.
+- Eight genuine CJK slanted-role positive cells remain unmeasured. Supplying
+  their upright regular faces instead produces typed wrong-role refusal in
+  all eight negative cells; none is silently relabeled or synthesized.
+
+The italic stress source is 90 italic f glyphs and the target is 110: measured
+uniform scale 0.797794, size 9.57353, baseline 60. This isolates overhang without
+turning a normal phrase into an unrelated huge ink-ratio change. It is a glyph
+stress fixture, not a translation example. Qualified language/emphasis semantics
+remain unjudged. Other OS/Python combinations and host installations are separate
+acceptance work. No public-ready or app-adopted claim follows from these tests.
+
+Read-only GitHub recheck on 20 September: main run 35475768236 succeeded at
+`a5629fbd6bc084f9ab849ae3db74992c15807fcc`; PR 13's last listed run 35433169821
+failed. Earlier billing failure is historical, not a claim about all current
+CI. This local candidate has no remote run, so its Windows/Linux 3.10/3.13
+matrix remains unverified. The existing ignored NOTES fixture requirement and
+old ResourceWarnings remain the baseline limitations described above.

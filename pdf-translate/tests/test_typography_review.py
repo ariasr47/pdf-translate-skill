@@ -110,7 +110,7 @@ class TypographyReviewTests(unittest.TestCase):
     def test_foreign_duplicate_or_incorrect_associations_are_rejected(self):
         for mutation in ({'occurrence_id': 'foreign'}, {'source_runs': ['s1/r0']},
                          {'source_runs': ['s0/r0', 's0/r0']}, {'source_runs': 's0/r0'},
-                         {'occurrence_id': 1}, {'target': 'wrong'}, {'core': 'wrong'}):
+                         {'occurrence_id': 1}, {'target': 'wrong'}, {'core': 'wrong'}, {'core': {}}, {'target': []}):
             doc = self.review_doc()
             doc['findings'][0].update(mutation)
             result = self.ingest(doc)
@@ -178,6 +178,22 @@ class TypographyReviewTests(unittest.TestCase):
         result = self.ingest(doc)
         self.assertFalse(result.errors, result.errors)
         self.assertNotIn('occurrence_id', result.findings[0].to_dict())
+
+    def test_metadata_and_page_can_share_source_without_losing_review_channel(self):
+        self.change(lambda c: c.update(document_targets={'Pay NOW': 'Título de pago'}))
+        doc = self.review_doc()
+        finding = doc['findings'][0]
+        finding['target'] = 'Título de pago'
+        del finding['occurrence_id'], finding['source_runs']
+        result = self.ingest(doc)
+        self.assertFalse(result.errors, result.errors)
+        self.assertNotIn('occurrence_id', result.findings[0].to_dict())
+        page_doc = self.review_doc()
+        result = self.ingest(page_doc)
+        self.assertFalse(result.errors, result.errors)
+        self.assertEqual(result.findings[0].occurrence_id, 's0')
+        del page_doc['findings'][0]['occurrence_id'], page_doc['findings'][0]['source_runs']
+        self.assertTrue(self.ingest(page_doc).errors)
 
 
 if __name__ == '__main__':

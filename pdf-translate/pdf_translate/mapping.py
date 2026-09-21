@@ -166,6 +166,7 @@ def _index_extraction(extraction, expected):
         if (not isinstance(page, dict) or type(page.get('page')) is not int or page['page'] != index or
                 not _geometry(page.get('media_box'), 4) or
                 not _geometry(page.get('crop_box'), 4) or
+                not _geometry(page.get('effective_box'), 4) or
                 type(page.get('rotation')) is not int):
             refuse('invalid-style-reference', 'invalid source page geometry')
     selected = _list(data.get('pages'), 'selected pages')

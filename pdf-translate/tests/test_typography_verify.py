@@ -8,7 +8,8 @@ import unittest
 from fontTools.ttLib import TTFont
 import pymupdf
 
-from pdf_translate import run_extract, run_field_fonts, run_retypeset, run_strip, run_verify
+from pdf_translate import run_extract, run_field_fonts, run_prepare_font, run_retypeset, run_strip, run_verify
+from pdf_translate.mapping import load_mapping
 from pdf_translate.results import MappingError
 from tests.typography_fixtures import (draw_independently, independent_rows,
                                        latin_font_sets, make_job, make_mapping)
@@ -233,16 +234,40 @@ class TypographyVerifyTests(unittest.TestCase):
             widget = pymupdf.Widget()
             widget.field_name, widget.field_type = 'answer', pymupdf.PDF_WIDGET_TYPE_TEXT
             widget.rect = pymupdf.Rect(200, 180, 290, 210)
+            widget.field_value = 'User123'
+            widget.text_font = 'Helv'
+            widget.text_fontsize = 12
             doc[0].add_widget(widget)
             data = doc.tobytes()
         self.job['original'].write_bytes(data)
         self.reextract()
+        mapping = load_mapping(self.job['mapping'])
+        conf = json.loads(self.job['mapping'].read_text(encoding='utf-8'))
+        for cls, role in {(r.font_class, r.font_role) for t in mapping.targets for r in t.runs}:
+            subset = self.work / f'{cls}-{role}.ttf'
+            run_prepare_font(mapping.font_sets[cls][role], str(self.job['mapping']), str(subset),
+                             font_class=cls, font_role=role)
+            conf['font_sets'][cls][role] = str(subset)
+        self.job['mapping'].write_text(json.dumps(conf), encoding='utf-8')
         self.build()
         final = self.work / 'final.pdf'
         run_field_fonts(str(self.job['output']), latin_font_sets()['sans']['regular'], str(final))
         self.job['output'] = final
+        with pymupdf.open(final) as doc:
+            self.assertEqual(next(doc[0].widgets()).field_value, 'User123')
         _, check = self.verify()
         self.assertEqual(check.status, 'PASS', check.to_dict())
+
+    def test_annotation_text_is_separate_but_annotation_occlusion_cannot_attest(self):
+        original = self.job['output'].read_bytes()
+        for rect, status in ((pymupdf.Rect(200, 180, 290, 210), 'PASS'),
+                             (pymupdf.Rect(30, 48, 110, 68), 'REVIEW')):
+            with pymupdf.open(stream=original, filetype='pdf') as doc:
+                doc[0].add_freetext_annot(rect, 'A comment', fontsize=12)
+                data = doc.tobytes()
+            self.job['output'].write_bytes(data)
+            _, check = self.verify()
+            self.assertEqual(check.status, status, check.to_dict())
 
     def test_unknown_scale_report_schema_is_not_silently_accepted(self):
         module = importlib.import_module('pdf_translate.verify')
@@ -250,6 +275,52 @@ class TypographyVerifyTests(unittest.TestCase):
         for schema, expected in [(1, []), (2, []), (99, None), (True, None)]:
             report.write_text(json.dumps({'schema': schema, 'runs': []}), encoding='utf-8')
             self.assertEqual(module.scale_report_for(str(self.job['output'])), expected)
+
+    def test_clipping_or_shear_cannot_pass_with_unchanged_font_programs(self):
+        original = self.job['output'].read_bytes()
+        for prefix in (b'q 0 0 45 240 re W n\n', b'q 1 0 .5 1 -90 0 cm\n',
+                       b'q 1 0 0 1 0 0 cm 80 Tz\n'):
+            with pymupdf.open(stream=original, filetype='pdf') as doc:
+                page = doc[0]
+                page.clean_contents()
+                xref = page.get_contents()[0]
+                doc.update_stream(xref, prefix + doc.xref_stream(xref) + b'\nQ')
+                data = doc.tobytes()
+            self.job['output'].write_bytes(data)
+            _, check = self.verify()
+            self.assertIn(check.status, ('FAIL', 'REVIEW'), check.to_dict())
+            self.assertTrue(check.findings)
+
+    def test_restored_graphics_clip_does_not_taint_later_text(self):
+        with pymupdf.open(self.job['output']) as doc:
+            page = doc[0]
+            page.clean_contents()
+            xref = page.get_contents()[0]
+            doc.update_stream(xref, b'q 0 0 10 10 re W n Q\n' + doc.xref_stream(xref))
+            data = doc.tobytes()
+        self.job['output'].write_bytes(data)
+        _, check = self.verify()
+        self.assertEqual(check.status, 'PASS', check.to_dict())
+
+    def test_later_opaque_paint_over_glyphs_cannot_attest(self):
+        with pymupdf.open(self.job['output']) as doc:
+            doc[0].draw_rect(pymupdf.Rect(45, 48, 80, 65), fill=(1, 1, 1), color=None, overlay=True)
+            data = doc.tobytes()
+        self.job['output'].write_bytes(data)
+        _, check = self.verify()
+        self.assertIn(check.status, ('FAIL', 'REVIEW'), check.to_dict())
+
+    def test_user_unit_cannot_change_physical_page_size_behind_equal_raw_boxes(self):
+        with pymupdf.open(self.job['output']) as doc:
+            page = doc[0]
+            page.clean_contents()
+            xref = page.get_contents()[0]
+            doc.xref_set_key(page.xref, 'UserUnit', '2')
+            doc.update_stream(xref, b'q .5 0 0 .5 0 120 cm\n' + doc.xref_stream(xref) + b'\nQ')
+            data = doc.tobytes()
+        self.job['output'].write_bytes(data)
+        _, check = self.verify()
+        self.assertEqual(check.status, 'FAIL', check.to_dict())
 
 
 if __name__ == '__main__':

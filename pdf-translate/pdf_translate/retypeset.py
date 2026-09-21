@@ -857,6 +857,10 @@ def _run_typography(stripped, document, out, *, original, progress, cancel, scal
         current_digest = None
     if current_digest != expected['source_sha256']:
         refuse('stale-extraction', 'original PDF is required and must match the extraction digest')
+    from .typography_content import inspect_content
+    for issue in inspect_content(original, source=True).issues:
+        segment = next((s for s in data['segments'] if s['page'] == issue.page), {})
+        refuse('unsupported-typography-construct', issue.detail, segment)
     if data['pages'] != list(range(len(expected['page_geometry']))):
         refuse('unsupported-typography-construct', 'a whole-document build requires every source page')
     if any(w.get('kind') in ('no-text-layer', 'invisible-text') for w in data.get('warnings', [])):

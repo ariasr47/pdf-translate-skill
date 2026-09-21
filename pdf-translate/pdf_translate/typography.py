@@ -202,6 +202,7 @@ def source_runs(group_spans, occurrence_id, font_observations):
             'class': obs.get('class', 'unknown'), 'bold': obs.get('bold'),
             'italic': obs.get('italic'),
             'evidence': {'span_font': span['font'], 'span_flags': span.get('flags'),
+                         'span_alpha': span.get('alpha'), 'span_char_flags': span.get('char_flags'),
                          'font_observation': font_id},
             'unresolved': list(obs.get('unresolved', [])) if font_id else
                           ['ambiguous-font-resource' if candidates else 'missing-font-resource'],
@@ -213,7 +214,7 @@ def source_runs(group_spans, occurrence_id, font_observations):
 
 def page_geometry(doc):
     return [{'page': page.number, 'media_box': list(page.mediabox),
-             'crop_box': list(page.cropbox), 'rotation': page.rotation}
+             'crop_box': list(page.cropbox), 'rotation': page.rotation, 'effective_box': list(page.rect)}
             for page in doc]
 
 

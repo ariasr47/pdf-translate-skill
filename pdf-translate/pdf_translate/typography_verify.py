@@ -13,6 +13,7 @@ from .mapping import refuse, role_name
 from .typography import (_program_observation, _unsubset, field_identities,
                          observe_fonts, page_geometry, source_digest)
 from .verify import Finding, GateResult
+from .typography_content import inspect_content, later_paint_intersects, page_drawing
 
 
 TOLERANCE = 0.05
@@ -63,9 +64,9 @@ def _rgb(span):
     return None
 
 
-def _characters(page):
+def _characters(traces):
     result = []
-    for index, span in enumerate(page.get_texttrace()):
+    for index, span in enumerate(traces):
         if span['type'] == 3 or span.get('opacity', 1) <= 0:
             continue
         for offset, (cp, gid, origin, bbox) in enumerate(span['chars']):
@@ -97,6 +98,13 @@ def inspect_output(original, final, document):
     if source_digest(original) != expected['source_sha256']:
         refuse('stale-extraction', 'original PDF does not match the bound typography extraction')
     failures, reviews, owned, actual_boxes = [], [], {}, {}
+    for issue in inspect_content(original, source=True).issues:
+        reviews.append(Finding(issue.page + 1, 'source-paint', 'cannot attest source: ' + issue.detail))
+    content = inspect_content(final)
+    for issue in content.issues:
+        collection = failures if issue.kind == 'transformed-text' else reviews
+        collection.append(Finding(issue.page + 1, 'final-paint',
+                                  ('' if collection is failures else 'cannot attest: ') + issue.detail))
     def finding(target, detail, uncertain=False):
         collection = reviews if uncertain else failures
         collection.append(Finding(target.page + 1, target.occurrence_id, detail))
@@ -113,7 +121,11 @@ def inspect_output(original, final, document):
         if field_identities(output) != expected['fields']:
             failures.append(Finding(None, 'fields', 'Final field identities or geometry differ from the source.'))
         observations = observe_fonts(output)
-        traces = {p.number: _characters(p) for p in output}
+        try:
+            drawings = {index: page_drawing(output, index) for index in range(output.page_count)}
+        except (ValueError, RuntimeError):
+            return GateResult('typography', 'REVIEW', 'cannot attest: unresolved page and annotation drawing order')
+        traces = {index: _characters(drawing[0]) for index, drawing in drawings.items()}
         source_segments = {s['occurrence_id']: s for s in document.extraction['segments']}
         selected, embedded = {}, {}
         for target in document.targets:
@@ -183,7 +195,8 @@ def inspect_output(original, final, document):
                     if span['type'] != 0 or span.get('opacity', 1) != 1:
                         finding(target, f'Run {run_index} uses unsupported stroke or opacity.')
                     font_ids = [font_id for font_id in observations['pages'][target.page]
-                                if _unsubset(span['font']) in
+                                if observations['fonts'][font_id]['xref'] in content.drawn_fonts.get(target.page, set()) and
+                                _unsubset(span['font']) in
                                 {_unsubset(name) for name in observations['fonts'][font_id]['aliases']}]
                     # Field-font embedding may add another resource for identical
                     # bytes. The actual glyph ID has the same meaning in each.
@@ -221,6 +234,9 @@ def inspect_output(original, final, document):
                                 box = pymupdf.Rect(x + ink[0] * span['size'], y + ink[1] * span['size'],
                                                    x + ink[2] * span['size'], y + ink[3] * span['size'])
                                 drawn.append(box)
+                                if later_paint_intersects(drawings[target.page][1], span.get('seqno'), box,
+                                                          drawings[target.page][2]):
+                                    finding(target, f'cannot attest run {run_index}: later page paint may cover glyph outlines', True)
                                 page_rect = output[target.page].rect + (-TOLERANCE, -TOLERANCE, TOLERANCE, TOLERANCE)
                                 if not page_rect.contains(box):
                                     finding(target, f'Run {run_index}: glyph outline extends outside the page crop.')
