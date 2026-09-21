@@ -150,6 +150,8 @@ class _Result:
         from . import __version__
         out = {'schema': SCHEMA, 'version': __version__}
         for key, value in asdict(self).items():
+            if key == 'typography' and value is None:
+                continue
             out[key] = list(value) if isinstance(value, tuple) else value
         return out
 
@@ -188,6 +190,7 @@ class ExtractResult(_Result):
     segments_path: str = ''
     to_translate_path: str = ''
     widget_text_path: str = ''
+    typography: dict | None = None
 
 
 @dataclass(frozen=True)
