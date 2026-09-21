@@ -128,8 +128,14 @@ class TypographyAcceptanceTests(unittest.TestCase):
         command = [sys.executable, str(ROOT / 'dev' / 'probes' / 'typography_acceptance.py'),
                    '--work', str(probe), '--fonts', str(ROOT / 'pdf-translate' / 'tests' / 'fonts')]
         env = dict(os.environ, PYTHONPATH=str(ROOT / 'pdf-translate'), PYTHONUTF8='1')
+        # The six cases instance and subset real CJK variable faces, so this is
+        # the most expensive test in the suite. Measured: 82 s on a developer
+        # machine, and a CI runner has been seen at 3.2x that machine over the
+        # whole suite. 300 s left no headroom and timed out on windows/py3.10.
+        # 900 s is about 11x the measured cost: generous enough that only a
+        # hang reaches it, short enough that a hang still ends the job.
         result = subprocess.run(command, cwd=ROOT / 'pdf-translate', env=env,
-                                capture_output=True, encoding='utf-8', timeout=300)
+                                capture_output=True, encoding='utf-8', timeout=900)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         summary = json.loads((probe / 'summary.json').read_text(encoding='utf-8'))
         self.assertEqual(len(summary['cases']), 6)
