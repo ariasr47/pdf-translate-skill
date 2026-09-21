@@ -1,10 +1,11 @@
 # Typography preservation — additive API design
 
-20 September 2026 · **written design for operator review**
+20 September 2026 · **written design approved by Rodrigo**
 
-Rodrigo approved the additive approach. This document proposes its details;
-they are not implemented or approved merely by being written here. No delivery
-version, app adoption, B1 work or implementation plan is implied.
+Rodrigo approved the written design after reviewing its short entry point.
+The capability is not implemented. The [implementation plan](../../plans/2026-09-20-typography-preservation-brief.md)
+now awaits review and an execution-method choice; no delivery version, app
+adoption or B1 work is implied.
 
 ## Decision in one minute
 
@@ -49,7 +50,7 @@ Legacy functionality remains available with its existing, narrower assurances.
 
 ## 1. Public surface and compatibility
 
-Proposed additions:
+Planned additions:
 
 | Surface | Proposed behavior |
 | --- | --- |
@@ -61,7 +62,7 @@ Proposed additions:
 | `run_verify(..., typography=False)` / verify `--typography` | Explicitly request typography attestation even when context is missing. A `typography-1` mapping also selects the check automatically. |
 | `pipeline from-cores` | For opt-in extraction, scaffold occurrence entries with unauthored targets in `translations.json`; never flatten to a core-only map or overwrite an authored file implicitly. |
 
-These names are proposals, not callable additions today. A plain mapping with
+These approved API names are not callable additions today. A plain mapping with
 no `format` remains legacy. A new mapping has `format: "typography-1"` and uses
 the distinct root shape below. An unknown format, malformed new-format field or
 mixed legacy/new root is an input error, never a request to try legacy behavior.
@@ -247,7 +248,7 @@ Rules:
 The renderer consumes the normalized run sequence and exact occurrence geometry.
 Retain the source page, baseline, direction, segment color and size. Baseline
 comparison permits at most 0.05 pt of numeric/extraction rounding, not a planned
-vertical shift. This tolerance is a proposed acceptance threshold, not a measured
+vertical shift. This tolerance is an approved acceptance threshold, not a measured
 result. Measure the
 whole sequence with the actual selected fonts, advance runs together and shrink
 the **whole occurrence uniformly** only under the existing 0.7 floor. Preserve
