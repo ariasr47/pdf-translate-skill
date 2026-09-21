@@ -18,7 +18,13 @@ class MappingTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.work = Path(self.temp.name)
+        # Resolved, because the reader resolves too and the comparison is
+        # between the two. On Windows the temp directory comes back in 8.3
+        # short form when the user name is long enough to need one
+        # (RUNNER~1 for runneradmin on CI), so an unresolved expectation
+        # names the same file by a different string and the test fails for
+        # a reason that has nothing to do with the mapping.
+        self.work = Path(self.temp.name).resolve()
         source = make_source(self.work / 'original.pdf')
         result = run_extract(str(source), str(self.work), typography=True)
         self.extraction = json.loads(Path(result.segments_path).read_text(encoding='utf-8'))
@@ -184,6 +190,29 @@ class MappingTests(unittest.TestCase):
         self.assertEqual(doc.font_sets['sans']['bold'], str(self.work/'fonts/sans-bold.ttf'))
         reordered=dict(reversed(list(self.conf.items())))
         self.assertEqual(doc.mapping_sha256,self.parse(reordered).mapping_sha256)
+
+    def test_a_noncanonical_mapping_dir_resolves_to_the_same_font_path(self):
+        """Two spellings of one directory must give one resolved font path.
+
+        The reader resolves `mapping_dir`, so how the caller spelled it must
+        not reach `font_sets`. Windows CI found this with an 8.3 short name
+        (RUNNER~1 for runneradmin); `fonts/..` reproduces the same class
+        anywhere. It has to be `..` and not `.`, because pathlib drops a
+        single dot on construction and the test would pass even if the
+        reader stopped resolving.
+        """
+        detour=self.work/'fonts'/'..'
+        self.assertNotEqual(str(detour),str(self.work),
+                            'the detour collapsed, so this proves nothing')
+        path=self.work/'translations.json'
+        path.write_text(json.dumps(self.conf),encoding='utf-8')
+        straight=self.reader().load_mapping(path)
+        noncanonical=self.reader().parse_mapping(
+            json.dumps(self.conf,ensure_ascii=False),extraction=self.extraction,
+            mapping_dir=detour)
+        self.assertEqual(noncanonical.font_sets,straight.font_sets)
+        self.assertEqual(noncanonical.font_sets['sans']['bold'],
+                         str(self.work/'fonts/sans-bold.ttf'))
 
     def test_nonfinite_and_unexpected_nested_fields_are_invalid(self):
         conf=copy.deepcopy(self.conf)
