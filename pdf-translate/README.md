@@ -23,6 +23,12 @@ This uses **strip-and-retypeset**: delete the text at the content-stream level
 (which leaves graphics, images, and field widgets untouched), then re-insert
 translated text at the original baselines.
 
+A job can opt in to preserving the source's serif/sans class and its
+within-line bold/italic, addressing repeated occurrences by ID rather than by
+text: `references/typography.md`. Ask the installed engine with
+`pdf_translate.MAPPING_FORMATS` before authoring for it. The default `legacy`
+mapping is unchanged.
+
 `SKILL.md` carries `metadata.version` in its frontmatter: a monotonic
 integer, bumped whenever the scripts or the workflow change. It began as the
 number of the last closed program gate (`../dev/goals/PROGRAM.md`, outside

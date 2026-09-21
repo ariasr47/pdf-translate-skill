@@ -29,6 +29,19 @@ re-derive.
    each case.
 3. **There is no network access at runtime.** Fonts, reference faces and any
    lookup are files you provide. Nothing here fetches anything, ever.
+4. **Ask what the installed engine can read before you author for it.**
+   `pdf_translate.MAPPING_FORMATS` is a tuple of the mapping formats this build
+   understands. The six calls below all use `legacy`, which every version has
+   read. If you need the source's serif/sans class and its within-line
+   bold/italic preserved, check for `typography-1` first and follow
+   `references/typography.md` — an older engine refuses at build time, after
+   the authoring is already done:
+
+   ```python
+   formats = getattr(pdf_translate, 'MAPPING_FORMATS', ())
+   if 'typography-1' not in formats:
+       raise RuntimeError('This installed engine does not support typography-1')
+   ```
 
 ## The six calls
 

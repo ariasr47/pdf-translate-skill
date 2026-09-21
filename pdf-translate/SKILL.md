@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "58"
+  version: "59"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -599,6 +599,12 @@ optional model first pass are in `references/review.md`.
 - `references/translations-format.md` — the translations.json contract
   (translations, merges, overrides, center, skip, fonts) and the expansion
   band. Read before authoring translations.
+- `references/typography.md` — the opt-in `typography-1` mapping format:
+  keeping the source's serif/sans class and within-line bold/italic, addressing
+  repeated occurrences by ID instead of by text, class/role fonts, and what
+  refuses. Ask `pdf_translate.MAPPING_FORMATS` before authoring for it. Read
+  only if a job needs the source's emphasis preserved; `legacy` is unchanged
+  and remains the default.
 - `references/fonts.md` — per-script font sourcing (CJK, Arabic, Devanagari,
   Thai, Latin/Cyrillic/Greek), the glyf-flavor rule, and what shaping and
   right-to-left do in this pipeline. Read at step 4, and at recon when the

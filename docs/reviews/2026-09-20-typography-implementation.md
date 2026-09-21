@@ -369,3 +369,75 @@ failed. Earlier billing failure is historical, not a claim about all current
 CI. This local candidate has no remote run, so its Windows/Linux 3.10/3.13
 matrix remains unverified. The existing ignored NOTES fixture requirement and
 old ResourceWarnings remain the baseline limitations described above.
+
+## Task 9 - publishing the capability
+
+Candidate `328bcb5` plus the Task 9 working changes. Version **59** in all four
+sources, chosen by the operator on 21 September once v57 and v58 landed on main
+as PRs #12 and #13. The uncommitted v61 metadata in the original checkout keeps
+its own numbering question; nothing here overwrites it.
+
+`MAPPING_FORMATS` is exported as `('legacy', 'typography-1')`, immutable and in
+`__all__`. It went in only after Task 8's supported matrix was verified, which
+is what the plan's interface note required. Four tests cover it, written RED
+first: three errored on the missing attribute, and the old-engine control passed
+before the export existed, as it must.
+
+New reference `references/typography.md`. Every example in it is copied from a
+verified probe artifact, not written from memory: the extraction fragment, the
+repeated-core reordered mapping and the PASS gate are the real
+`repeated-reordered` case. `SKILL.md`, both READMEs,
+`references/translations-format.md`, `references/consumer-guide.md` and
+`references/gates.md` point at it. The typography gate had been recorded in
+`verify.py` since Task 5 but was never documented; `gates.md` now carries it and
+its findings row.
+
+A drafting error was caught before it shipped: the implementation notes were
+read as "the typography report is schema 2". The artifacts say otherwise. The
+verify report and the extraction's own typography record are both schema 1; it
+is `scale_report.json` that becomes schema 2, and only for a typography build
+(`retypeset.py`). The reference states that.
+
+### Installed-artifact acceptance, Claude host
+
+The package was copied to a task-local tree outside the checkout and run from a
+neutral working directory, because the working directory otherwise shadows the
+install and measures the checkout instead. The first attempt did exactly that
+and was discarded.
+
+- The documented capability snippet, run verbatim against the installed copy:
+  package resolved at `...scratchpad/hostcheck1/site/pdf_translate/__init__.py`,
+  version `59`, formats `('legacy', 'typography-1')`.
+- `dev/probes/typography_acceptance.py` against that installed copy: exit 0, all
+  six cases `typography=PASS` with `verify=0` and equal source/final page
+  counts, including the two-page blank-page case.
+- The probe's own `summary.json` records `pdf_translate` as the task-local path
+  and `version` as 59, so the artifact names the copy it measured rather than
+  leaving it to be inferred. `candidate_base` is `328bcb5`.
+
+### Codex host: unverified, and not for the reason assumed
+
+Dual-host acceptance is **not** complete. The Codex leg did not run, and the
+cause is not the account usage limit that prompted moving this work to Claude.
+`codex-cli 0.147.0` is installed and authenticated, and a bounded
+`codex exec` returned:
+
+    The 'gpt-6-astra' model requires a newer version of Codex.
+    Please upgrade to the latest app or CLI and try again.
+
+That is a host/CLI version mismatch. Upgrading the operator's Codex install is
+outside this task, so the Codex half stays explicitly unverified. Per the plan,
+dual-host acceptance is not claimed.
+
+### Final regression
+
+- `python -m unittest discover -s tests -t .`: **617 tests OK** in 389.117s, no
+  failures, errors or skips. That is the branch's 613 after merging main, plus
+  the four new capability tests.
+- Both parity runners exit 0 and their stdout is byte-identical to the frozen
+  `runs/typography/baseline-*` captures, at version 59. The version string does
+  not reach the console.
+- `tests.test_verify_report.VersionLockstepTests` passes at 59.
+
+A01 and the other public-readiness blockers remain open. `MAPPING_FORMATS`
+describes implemented format support and nothing more.

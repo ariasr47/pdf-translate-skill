@@ -90,6 +90,47 @@ class PackageImportTests(unittest.TestCase):
             self.assertTrue(callable(fn))
 
 
+class MappingFormatsTests(unittest.TestCase):
+    """What an installed engine says it can read, before a caller authors for it.
+
+    A consumer that writes a typography-1 mapping against an engine too old to
+    read it gets a refusal at build time, after the authoring is done. The
+    tuple lets it ask first, and it describes implemented format support - not
+    public-release readiness, and not that any given document will succeed.
+    """
+
+    def test_the_tuple_names_both_readable_formats(self):
+        import pdf_translate
+        self.assertEqual(pdf_translate.MAPPING_FORMATS, ('legacy', 'typography-1'))
+        self.assertIn('MAPPING_FORMATS', pdf_translate.__all__)
+
+    def test_the_tuple_cannot_be_mutated_by_a_consumer(self):
+        import pdf_translate
+        self.assertIsInstance(pdf_translate.MAPPING_FORMATS, tuple)
+        with self.assertRaises(AttributeError):
+            pdf_translate.MAPPING_FORMATS.append('typography-2')
+
+    def test_the_documented_capability_check_passes_on_this_engine(self):
+        # Copied verbatim from references/typography.md. If this stops being
+        # the example a consumer reads, the example is what is wrong.
+        import pdf_translate
+
+        formats = getattr(pdf_translate, 'MAPPING_FORMATS', ())
+        if 'typography-1' not in formats:
+            raise RuntimeError('This installed engine does not support typography-1')
+
+    def test_an_older_engine_without_the_attribute_fails_the_same_check(self):
+        # getattr's default is the whole point: an engine from before the
+        # export raises AttributeError otherwise, which a consumer cannot
+        # distinguish from a broken install.
+        class OldEngine:
+            pass
+
+        formats = getattr(OldEngine(), 'MAPPING_FORMATS', ())
+        self.assertEqual(formats, ())
+        self.assertNotIn('typography-1', formats)
+
+
 class VerifyVerdictTests(unittest.TestCase):
     def test_run_verify_returns_a_verdict_and_does_not_print(self):
         from pdf_translate.verify import VerifyVerdict, run_verify, verify

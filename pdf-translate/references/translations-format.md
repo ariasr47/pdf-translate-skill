@@ -3,6 +3,12 @@
 One JSON file carries every language decision. The scripts handle geometry;
 this file is where your judgment lives.
 
+> This page describes the `legacy` format, which is the default and is
+> unchanged. A job that needs the source's serif/sans class and its within-line
+> bold/italic preserved uses the opt-in `typography-1` format instead — see
+> `references/typography.md`. Ask the engine first:
+> `'typography-1' in getattr(pdf_translate, 'MAPPING_FORMATS', ())`.
+
 ```jsonc
 {
   "fonts": {

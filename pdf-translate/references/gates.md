@@ -147,6 +147,22 @@ check. Conjunct scripts with no measured probe (Gujarati, Telugu, …) are
 REVIEW until `shaping_probe.PROBES` gains a measured row. Arabic stays
 with the unshaped-Arabic gate; there, shaping *adds* glyphs.
 
+## Typography
+
+Only on a `typography-1` job, and only when `verify` is given `typography=True`
+with both the mapping and the extraction. It reads the **delivered file's own
+glyphs and font programs** — not the build's intentions — and confirms, per
+occurrence, that the class and emphasis the mapping authored are what the page
+actually draws. PASS names how many occurrences it checked.
+
+REVIEW is "cannot attest", and it is never promoted to PASS: an unresolved
+source font resource, a subset whose coverage of the drawn glyphs cannot be
+proven, a clip or a later paint that might conceal a glyph. FAIL is the file
+contradicting the mapping — a distorted transform, a changed physical page
+size, a lost page, or field identities and geometry that no longer match the
+source. Unsupported source constructs never reach this gate; they refuse at
+build time, listed in `references/typography.md`.
+
 ## `/Opt` export parity
 
 Checked always, like field parity: the export half of every dropdown entry
@@ -217,6 +233,7 @@ and never split a target by hand across source lines — declare a merge
 | metadata-lang | `lang` | `translations.json has no "lang"` |
 | scaled-runs | the ratio, `0.85x` | the run's key |
 | identifiers | `identifier` | the span |
+| typography | the occurrence ID; or `source-paint` / `final-paint` / `pages` / `fields` when no one occurrence owns it | what could not be attested, or what contradicts the mapping |
 
 `page` is 1-based where the gate knows the page and `None` otherwise.
 
