@@ -72,7 +72,18 @@ Every run the fit or the Story engine shrank — a line, a dot-leader label,
 a shaped run, a merge, an override part — is printed after the build as
 `scaled runs (N)` with its ratio and key, and written to
 `scale_report.json` beside the output: `[{page, key, ratio}]`, page 0-based
-as in the mapping. `verify --translations` reads that file back and prints
+as in the mapping.
+
+The ratio is **source-relative**: it is the size the page actually shows
+divided by the source's size, so you can measure it off the delivered PDF.
+For a merge that means two things multiplied. A merge is always drawn at a
+fit allowance of `0.98` of source size, rounded to the one decimal the CSS
+carries, so the Story engine rarely has to shrink a paragraph that already
+fits; whatever the engine then takes is applied on top. A 9.0 pt source
+prints at 8.8 pt and reports `0.9778` even when the engine never touched it,
+so **every merge appears in the report** and `verify --translations` REVIEWs
+any job that has one. That is the honest floor for a re-flowed paragraph,
+not a warning that something went wrong — read the ratios, not the count. `verify --translations` reads that file back and prints
 a REVIEW line (a SKIP when the file is absent, for a build from before it
 existed). Nothing new fails; the point is that the author can name what
 shrank without re-running the build, which is what the delivery asks for.

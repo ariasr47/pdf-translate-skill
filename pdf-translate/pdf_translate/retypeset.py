@@ -101,6 +101,24 @@ SCALE_REPORT = 'scale_report.json'
 # instruction from "you did not say". Only the default writes the legacy
 # fixed name beside the output.
 _DEFAULT = object()
+# A merge is drawn a hair under source size so the Story engine rarely has to
+# shrink a paragraph that already fits its box. It is a fit allowance, not a
+# free ride: it makes the delivered text smaller than the source, so it is
+# part of the ratio the report carries (see merge_css_size).
+MERGE_FIT = 0.98
+
+
+def merge_css_size(size):
+    """The size a merge is really drawn at, and its ratio to the source.
+
+    The CSS carries one decimal, so the rounding is part of what the page
+    shows: 9.0 becomes 8.8, not 8.82. Returning both keeps the string that
+    is drawn and the ratio that is reported derived from one number.
+    """
+    css = round(size * MERGE_FIT, 1)
+    return css, (css / size if size else 1.0)
+
+
 # Hebrew, Arabic, Syriac, Thaana, Arabic supplement/presentation forms.
 _RTL_RANGES = (
     (0x0590, 0x08FF),
@@ -1422,10 +1440,13 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
         rect = (r if boxed
                 else pymupdf.Rect(r.x0, r.y0 - 0.5, r.x1 + 1.5, r.y1 + 1.5))
         hexcol = f'#{color:06x}'
-        h = (f'<div style="font-size:{size*0.98:.1f}px; line-height:{lh}; '
+        css_size, fit_ratio = merge_css_size(size)
+        h = (f'<div style="font-size:{css_size:.1f}px; line-height:{lh}; '
              f'color:{hexcol}; text-align:{align};">{html}</div>')
         _, scale = doc[pno].insert_htmlbox(rect, h, css=css, archive=arch, scale_low=0)
-        consider_ratio(pno, merge_key, scale, opted=merge_opt)
+        # Both shrinks land on the page, so both belong in the ratio: the fit
+        # allowance above and whatever the engine took on top of it.
+        consider_ratio(pno, merge_key, scale * fit_ratio, opted=merge_opt)
         plain = re.sub(r'<[^>]+>', '', html)
         if is_rtl_text(plain) or needs_shaping(plain):
             wrap_last_stream_actualtext(doc[pno], plain)

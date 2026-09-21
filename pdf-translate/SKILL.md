@@ -387,7 +387,11 @@ lines — are in `references/retypeset.md`. The rules in one line each:
   tiny.
 - Runs between 0.7× and 1.0× are **listed**, not failed: `scaled runs (N)`
   and `scale_report.json` beside the output, which verify reads back.
-  Reword them, or name every one in the delivery.
+  Reword them, or name every one in the delivery. The ratio is what the page
+  shows divided by the source size. A **merge is always listed at about
+  0.98×**: it is drawn at that fit allowance before the engine ever shrinks
+  it, so a job with a re-flowed paragraph always REVIEWs on `scaled-runs`.
+  Read the ratios, not the count.
 
 ### 5b. QA the mapping (before you build)
 
