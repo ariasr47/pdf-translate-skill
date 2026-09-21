@@ -72,6 +72,37 @@ Both CLI and verdict probes exited zero; their stdout and stderr are each
 byte-identical to the frozen baseline. Logs: `runs/typography/task2-*`.
 The new reader is not yet connected to all stages; that is later plan work.
 
+## Task 3: selected font preparation
+
+Preparation accepts explicit class/role selectors, collects only that face's
+target characters and checks the current font file before and after subsetting.
+Wrong/unresolved classes or emphasis, uninstantiated variables and missing glyphs
+raise FontError. Relative source paths resolve beside the mapping. Preparation
+does not modify the mapping or require its eventual output font path to exist.
+The CLI exposes the same selectors. Legacy console/results remain unchanged.
+
+RED: `python -m unittest tests.test_typography_fonts -v` ran 11 tests with
+nine failures and 13 errors on the absent charset, inspection and selectors.
+First GREEN: 11 tests, 71.672 seconds. Expanded GREEN: that module plus
+`tests.test_pipeline.PrepareFontAndCompareTests`, `tests.test_pipeline.JobCharsetTests`,
+`tests.test_han_forms.PrepareFontTests` and `tests.test_consumer_contract` ran
+45 tests in 146.984 seconds, OK. No skipped typography cases.
+
+Real static Latin serif/sans regular, bold, italic and bold-italic were prepared
+and inspected. Japanese and Simplified Chinese serif/sans regular/bold were
+instantiated and subset; 400/700 glyph-outline hashes differ. CJK italic and
+bold-italic requests using upright faces refuse: their positive acceptance
+cells remain unmeasured, with no synthesized replacement. Corrupted metadata,
+file replacement, missing glyphs, separate charsets, a read-only mapping and a
+different working directory are covered. A newly added CLI case also passed.
+
+Nine additional open font fixtures were downloaded from verified commit pins;
+observed hashes and licence references are in `pdf-translate/tests/fonts/README.md`.
+The fetcher's presence check passes all twenty configured files. No binary is
+committed. Font downloads remain outside the runtime.
+Task 3 CLI/verdict exits are zero; all four stdout/stderr captures are
+byte-identical to baseline. Logs: `runs/typography/task3-*`.
+
 ## Rulings
 
 - Start directly from the approved plan commit: it has identical runtime files
@@ -84,6 +115,11 @@ The new reader is not yet connected to all stages; that is later plan work.
   aliases are extracted from the font program; no fuzzy family-name matching.
 - Preserve execution evidence until durable records are saved; ignored scratch
   cleanup cannot erase the independent run evidence required by AGENTS.md.
+- Prepare the explicitly supplied source face even when the mapping's subset
+  path does not yet exist; placement will independently inspect that path.
+- Typography instancing uses fontTools' STAT-based `updateFontNames=True`
+  alongside actual outline instancing. Legacy instancing is unchanged;
+  regular bits on old 700-weight instances cannot attest a new bold role.
 
 Every item above is local implementation evidence or an explicit limit.
 No typography delivery, product adoption or full Claude/Codex host acceptance

@@ -7,9 +7,12 @@ from copy import deepcopy
 import hashlib
 import io
 import json
+from pathlib import Path
 import re
 
 from fontTools.ttLib import TTFont, TTLibError
+
+from .results import FontError
 
 
 _STANDARD = {
@@ -135,6 +138,49 @@ def observe_fonts(doc):
             fonts[font_id] = observation
         pages[page.number] = tuple(dict.fromkeys(resource_ids))
     return {'fonts': fonts, 'pages': pages}
+
+
+def inspect_font(path):
+    """Inspect current bytes on every call; a pathname is not a font identity."""
+    try:
+        data = Path(path).read_bytes()
+    except OSError as exc:
+        raise FontError(f'cannot read target font: {exc}', face=str(path),
+                        reason='unreadable-font') from exc
+    observed = _program_observation(data)
+    observed['sha256'] = hashlib.sha256(data).hexdigest()
+    return observed
+
+
+def validate_font(path, font_class, font_role, chars=()):
+    """Require concrete, consistent font evidence and glyphs without fallback."""
+    observed = inspect_font(path)
+    reason = None
+    if observed['evidence'].get('variable'):
+        reason = 'uninstantiated-font'
+    elif observed['unresolved']:
+        reason = 'unresolved-target-font'
+    elif observed['class'] != font_class:
+        reason = 'wrong-font-class'
+    elif (observed['bold'], observed['italic']) != (
+            font_role in ('bold', 'bold_italic'), font_role in ('italic', 'bold_italic')):
+        reason = 'wrong-font-role'
+    if reason:
+        raise FontError(f'{path}: {reason} for {font_class}/{font_role}',
+                        face=str(path), reason=reason)
+    if chars:
+        import pymupdf
+        try:
+            font = pymupdf.Font(fontfile=str(path))
+        except (RuntimeError, ValueError) as exc:
+            raise FontError(f'cannot load target font: {exc}', face=str(path),
+                            reason='unreadable-font') from exc
+        missing = sorted(ord(ch) for ch in chars if not font.has_glyph(ord(ch), fallback=False))
+        if missing:
+            codes = ', '.join(f'U+{cp:04X}' for cp in missing)
+            raise FontError(f'{path}: missing target glyphs {codes}', face=str(path),
+                            reason='missing-glyph')
+    return observed
 
 
 def source_runs(group_spans, occurrence_id, font_observations):

@@ -395,3 +395,10 @@ def load_mapping(path, segments_path=None):
         except OSError as exc:
             refuse('stale-extraction', f'cannot read extraction: {exc}')
     return parse_mapping(text, extraction=extraction, mapping_dir=path.parent)
+
+
+def charset_for(document, font_class, font_role):
+    """Plain visible target characters belonging to exactly one selected face."""
+    return {ch for target in document.targets for run in target.runs
+            if (run.font_class, run.font_role) == (font_class, font_role)
+            for ch in run.text}

@@ -32,7 +32,6 @@ Skip subsetting entirely (use the font as-is) when the font is already small,
 or when it will also serve form-field input (users type characters outside
 your translations — see field_fonts.py).
 """
-import json
 import logging
 import os
 import shutil
@@ -46,6 +45,8 @@ import pymupdf
 from . import han_forms, shaping_probe
 from ._console import console
 from .results import FontError, FontResult, PdfTranslateError
+from .mapping import CLASSES, FORMAT, ROLES, charset_for, load_mapping
+from .typography import validate_font
 
 log = logging.getLogger(__name__)
 
@@ -129,13 +130,14 @@ def job_charset(conf):
 
 
 def prepare_font(font_in, trf, font_out, instance=None, sample=None,
-                 allow_restricted=False, reference_fonts=None):
+                 allow_restricted=False, reference_fonts=None, *,
+                 font_class=None, font_role=None):
     """Subset (and optionally instance) a font; rasterization-assert the result.
 
     Returns 0 on success, 1 if the font does not rasterize the sample.
 
-    The loud shape, unchanged: same signature, same printed bytes, same return
-    code. `run_prepare_font` is the one a service calls — it returns a
+    Legacy positional arguments, printed bytes and return codes stay unchanged.
+    `run_prepare_font` is the one a service calls — it returns a
     `FontResult` and raises `FontError` instead of printing and returning 1.
     """
     with console():
@@ -143,7 +145,8 @@ def prepare_font(font_in, trf, font_out, instance=None, sample=None,
             run_prepare_font(font_in, trf, font_out, instance=instance,
                              sample=sample,
                              allow_restricted=allow_restricted,
-                             reference_fonts=reference_fonts)
+                             reference_fonts=reference_fonts,
+                             font_class=font_class, font_role=font_role)
         except PdfTranslateError as exc:
             log.info(exc.console_line)
             return exc.exit_code
@@ -151,7 +154,8 @@ def prepare_font(font_in, trf, font_out, instance=None, sample=None,
 
 
 def run_prepare_font(font_in, trf, font_out, instance=None, sample=None,
-                     allow_restricted=False, reference_fonts=None):
+                     allow_restricted=False, reference_fonts=None, *,
+                     font_class=None, font_role=None):
     """Subset (and optionally instance) a font; rasterization-assert the result.
 
     Silent. Returns a FontResult. Raises FontError on every refusal, each one
@@ -159,6 +163,27 @@ def run_prepare_font(font_in, trf, font_out, instance=None, sample=None,
     keeps `prepare_font.py`'s console byte-identical while the refusals become
     data a consumer can branch on.
     """
+    document = load_mapping(trf)
+    typography = document.format == FORMAT
+    if typography:
+        if font_class not in CLASSES or font_role not in ROLES:
+            raise FontError('typography preparation requires font_class and font_role',
+                            face=str(font_in), reason='missing-font-role')
+        selected = Path(font_in)
+        font_in = str(selected if selected.is_absolute() else Path(trf).resolve().parent / selected)
+        font_out = str(font_out)
+        chars = charset_for(document, font_class, font_role)
+        if not chars:
+            raise FontError(f'no targets require {font_class}/{font_role}',
+                            face=font_in, reason='missing-font-role')
+        conf = {'lang': document.lang}
+    else:
+        if font_class is not None or font_role is not None:
+            raise FontError('class/role selectors require a typography mapping',
+                            face=str(font_in), reason='missing-font-role')
+        conf = document.legacy
+        chars = job_charset(conf)
+
     fs, reason = embedding_permission(font_in)
     if reason and fs is not None:
         if allow_restricted:
@@ -179,9 +204,6 @@ def run_prepare_font(font_in, trf, font_out, instance=None, sample=None,
     elif reason:
         log.info(f'NOTE: {reason}; embedding permission not checked.')
 
-    with open(trf, encoding='utf-8') as f:
-        conf = json.load(f)
-    chars = job_charset(conf)
     cjk_job = han_forms.has_cjk(''.join(chars))
     # A conjunct-forming script gets its probe cluster added to the subset
     # (a dozen glyphs at most), so the face this job embeds can be attested
@@ -198,7 +220,22 @@ def run_prepare_font(font_in, trf, font_out, instance=None, sample=None,
         chars.update(han_forms.HAN_CHARS)
 
     src = font_in
-    if instance:
+    if instance and typography:
+        from fontTools.ttLib import TTFont
+        from fontTools.varLib.instancer import instantiateVariableFont
+        try:
+            tag, value = instance.split('=')
+            with TTFont(font_in) as font:
+                # STAT-driven names/style bits accompany real variation outlines.
+                # This must not become a metadata-only emphasis substitution.
+                instantiateVariableFont(font, {tag: float(value)}, inplace=True,
+                                        updateFontNames=True)
+                src = font_out + '.instanced.ttf'
+                font.save(src)
+        except (OSError, ValueError, KeyError) as exc:
+            raise FontError(f'cannot instantiate target font: {exc}', face=font_in,
+                            reason='uninstantiated-font') from exc
+    elif instance:
         tag, val = instance.split('=')
         from fontTools import ttLib
         from fontTools.varLib.instancer import instantiateVariableFont
@@ -230,6 +267,9 @@ def run_prepare_font(font_in, trf, font_out, instance=None, sample=None,
         src = font_out + '.instanced.ttf'
         font.save(src)
 
+    if typography:
+        validate_font(src, font_class, font_role, chars)
+
     charfile = font_out + '.chars.txt'
     with open(charfile, 'w', encoding='utf-8') as f:
         f.write(''.join(sorted(chars)))
@@ -243,6 +283,12 @@ def run_prepare_font(font_in, trf, font_out, instance=None, sample=None,
             console_line=('FAIL: pyftsubset not found. Install fonttools '
                           '(used as: python -m fontTools.subset) and retry.'),
             exit_code=1, face=font_in, reason='no-pyftsubset')
+
+    if typography:
+        validate_font(font_out, font_class, font_role, chars)
+        if not sample:
+            sample = ''.join(sorted(ch for ch in chars if not ch.isspace())[:12])
+        validate_font(font_out, font_class, font_role, set(sample))
 
     if not sample:
         non_ascii = [c for c in chars if ord(c) > 0x2000]
@@ -315,7 +361,7 @@ def run_prepare_font(font_in, trf, font_out, instance=None, sample=None,
     log.info(f'OK: {font_out} ({subset_bytes//1024} KB, '
              f'{len(chars)} chars, render check {dark} px)')
     return FontResult(output=font_out, face=font_in,
-                      roles=tuple(sorted((conf.get('fonts') or {}).keys())),
+                      roles=(font_role,) if typography else tuple(sorted((conf.get('fonts') or {}).keys())),
                       glyphs_added=len(chars), subset_bytes=subset_bytes,
                       instance=instance or '')
 
@@ -329,10 +375,15 @@ def main(argv=None):
               if '--sample' in argv else None)
     reference_fonts = (argv[argv.index('--reference-fonts') + 1]
                        if '--reference-fonts' in argv else None)
+    font_class = (argv[argv.index('--font-class') + 1]
+                  if '--font-class' in argv else None)
+    font_role = (argv[argv.index('--font-role') + 1]
+                 if '--font-role' in argv else None)
     return prepare_font(font_in, trf, font_out, instance=instance,
                         sample=sample,
                         allow_restricted='--allow-restricted' in argv,
-                        reference_fonts=reference_fonts)
+                        reference_fonts=reference_fonts,
+                        font_class=font_class, font_role=font_role)
 
 
 if __name__ == '__main__':
