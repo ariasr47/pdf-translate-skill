@@ -106,6 +106,28 @@ paths rewritten to the copies bundled alongside it), the structured refusal
 affected occurrence's page and geometry, and whether a caller-authored box
 is on record for it — `null` with a note when it is not, never a guess.
 
+### When your floor is not our floor
+
+`SCALE_MIN` is 0.7, and only a run under it refuses. A consumer holding a
+higher floor — say 0.75, applied in its own code — watches a build **succeed**
+at 0.72, reverts that core itself, and ships the paragraph in the source
+language. Nothing refused, so a hook keyed to a refusal never sees the case
+that actually cost them.
+
+`capture_below=RATIO` (or `--capture-below RATIO`, or
+`PDF_TRANSLATE_CAPTURE_BELOW`) names that band. With it set, a build that
+succeeds still writes **one** bundle for the job when any run landed at or
+under the ratio, listing every such core. Unset — the default — only a
+refusal captures, which is the behaviour described above and the only
+behaviour before this existed.
+
+One bundle per job, keyed by core, not one per run: a core can be scaled
+more than once in a pass, and the fact worth keeping is whether it could be
+made to fit at all, so the worst ratio it reached is the one recorded. The
+manifest's `kind` says which sort of bundle you are holding (`refusal` or
+`near-floor`), and `refusal` is `null` on the latter because nothing was
+refused.
+
 This is opt-in and off by default on purpose: copying a customer's source
 PDF to disk is a side effect nobody should get by surprise. **Off, nothing
 about this command changes** — same console output, same exit code, same

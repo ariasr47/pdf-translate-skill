@@ -48,7 +48,62 @@ log = logging.getLogger(__name__)
 #: wins over it.
 ENV_VAR = 'PDF_TRANSLATE_CAPTURE_DIR'
 
+#: The same switch for the threshold. A consumer that cannot thread a
+#: keyword through — ``pipeline.py`` calls the loud ``retypeset()`` — sets
+#: this instead.
+BELOW_ENV_VAR = 'PDF_TRANSLATE_CAPTURE_BELOW'
+
 SCHEMA = 1
+
+
+def resolve_capture_below(capture_below, environ=None):
+    """The ratio at or under which a SUCCESSFUL build still captures.
+
+    ``None`` — the default — means capture only on our own refusal, which is
+    today's behaviour and the only behaviour before this existed.
+
+    It exists because our floor is not everyone's. A consumer holding 0.75
+    app-side watches a build succeed at 0.72, reverts the core itself, and
+    ships that paragraph in the source language; nothing refused, so a hook
+    keyed to a refusal never saw the case that cost them. The band between
+    their floor and ours is invisible from here unless they name it.
+
+    Unreadable text in the environment is ignored rather than raised: this
+    switches on evidence collection, and failing a build over a malformed
+    evidence setting would be worse than not collecting.
+    """
+    if capture_below is not None:
+        return float(capture_below)
+    raw = (environ if environ is not None else os.environ).get(BELOW_ENV_VAR)
+    if not raw:
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def near_floor_runs(runs, threshold):
+    """Every scaled run at or under `threshold`, one per core, worst kept.
+
+    One bundle per job, keyed by core. A core can be scaled more than once
+    within a single pass, and the intermediate attempts are the caller's
+    business; the fact worth keeping is whether that core could be made to
+    fit at all, which is the worst ratio it reached.
+    """
+    worst = {}
+    for run in runs:
+        try:
+            ratio = float(run.get('ratio'))
+        except (TypeError, ValueError):
+            continue
+        if ratio > threshold:
+            continue
+        key = (run.get('page'), run.get('key'))
+        if key not in worst or ratio < worst[key]['ratio']:
+            worst[key] = {'page': run.get('page'), 'key': run.get('key'),
+                          'ratio': ratio}
+    return [worst[k] for k in sorted(worst, key=lambda k: (k[0] is None, k))]
 
 
 def resolve_capture_dir(capture_dir):
@@ -114,6 +169,36 @@ def capture_refusal(capture_dir, exc, *, stripped, segf, trf, out,
         return None
 
 
+def capture_near_floor(capture_dir, runs, threshold, *, stripped, segf, trf,
+                       out, original=None, fonts=None, mapping_format=None,
+                       legacy_conf=None, scale_report=None, resource_root=None):
+    """Best-effort: one bundle for a SUCCESSFUL build that scaled near the floor.
+
+    Same guarantees as :func:`capture_refusal` and for the same reason: this
+    writes evidence, and evidence collection must never decide whether a
+    build succeeds. Never raises; returns the bundle directory or ``None``.
+
+    Returns ``None`` without writing when nothing reached the threshold, so
+    a caller can leave it switched on permanently and pay nothing on the
+    jobs that fit.
+    """
+    try:
+        near = near_floor_runs(runs, threshold)
+        if not near:
+            return None
+        return _write_bundle(
+            capture_dir, None, stripped=stripped, segf=segf, trf=trf, out=out,
+            original=original, fonts=fonts, mapping_format=mapping_format,
+            legacy_conf=legacy_conf, scale_report=scale_report,
+            resource_root=resource_root, near=near, threshold=threshold)
+    except Exception:
+        import traceback
+        log.warning(f'capture: could not write a near-floor bundle to '
+                   f'{capture_dir!r} (the build itself is unaffected): '
+                   f'{traceback.format_exc()}')
+        return None
+
+
 def _case_id():
     stamp = time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())
     return f'{stamp}-{uuid.uuid4().hex[:8]}'
@@ -121,7 +206,13 @@ def _case_id():
 
 def _write_bundle(capture_dir, exc, *, stripped, segf, trf, out, original,
                   fonts, mapping_format, legacy_conf, scale_report,
-                  resource_root):
+                  resource_root, near=None, threshold=None):
+    """One bundle. `exc` is a refusal; `near` is a successful build's runs.
+
+    Exactly one of the two is given. Everything else - the copied inputs,
+    the rewritten mapping, the fonts - is identical, because what makes a
+    bundle replayable does not depend on which side of our floor it fell.
+    """
     from . import __version__
 
     root = Path(capture_dir)
@@ -145,12 +236,23 @@ def _write_bundle(capture_dir, exc, *, stripped, segf, trf, out, original,
     mapping_rel = _copy_mapping(case_dir, trf, font_map)
     files['mapping_json'] = mapping_rel
 
-    page = getattr(exc, 'page', None)
-    key = getattr(exc, 'key', None)
-    scale = getattr(exc, 'scale', None)
-    position, position_note = _locate_position(segf, page, key)
-    box_permitted, box_note = _locate_box_permission(
-        mapping_format, legacy_conf, page, key)
+    def described(page, key, scale):
+        position, position_note = _locate_position(segf, page, key)
+        box_permitted, box_note = _locate_box_permission(
+            mapping_format, legacy_conf, page, key)
+        return {'page': page, 'key': key, 'scale': scale,
+                'position': position, 'position_note': position_note,
+                'box_permitted': box_permitted,
+                'box_permitted_note': box_note}
+
+    if near is None:
+        occurrence = described(getattr(exc, 'page', None),
+                               getattr(exc, 'key', None),
+                               getattr(exc, 'scale', None))
+        occurrences = None
+    else:
+        occurrence = None
+        occurrences = [described(r['page'], r['key'], r['ratio']) for r in near]
 
     manifest = {
         'schema': SCHEMA,
@@ -170,23 +272,21 @@ def _write_bundle(capture_dir, exc, *, stripped, segf, trf, out, original,
                                   if resource_root is not None else None),
             },
         },
-        'refusal': exc.to_dict(),
-        'occurrence': {
-            'page': page,
-            'key': key,
-            'scale': scale,
-            'position': position,
-            'position_note': position_note,
-            'box_permitted': box_permitted,
-            'box_permitted_note': box_note,
-        },
+        'kind': 'refusal' if near is None else 'near-floor',
+        'refusal': exc.to_dict() if exc is not None else None,
+        'capture_below': threshold,
+        'occurrence': occurrence,
+        'occurrences': occurrences,
         'files': files,
         'replay': (
             "run_retypeset(case_dir / files['stripped_pdf'], "
             "case_dir / files['segments_json'], "
             "case_dir / files['mapping_json'], <a fresh out.pdf>, "
             "original=(case_dir / files['source_pdf']) if files['source_pdf'] "
-            "else None) should raise the same refusal."
+            "else None) reproduces this job. A 'refusal' bundle raises the "
+            "same refusal; a 'near-floor' bundle succeeds and reports the "
+            "same ratios, which is the point - nothing refused, and the "
+            "caller's own floor is what the core fell under."
         ),
     }
     (case_dir / 'manifest.json').write_text(

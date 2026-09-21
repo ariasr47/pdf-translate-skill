@@ -1001,7 +1001,8 @@ def _run_typography(stripped, document, out, *, original, progress, cancel, scal
                           scaled=tuple(scaled), scale_report_path=str(report or ''), typography=record)
 
 
-def retypeset(stripped, segf, trf, out, *, original=None, capture_dir=None):
+def retypeset(stripped, segf, trf, out, *, original=None, capture_dir=None,
+              capture_below=None):
     """Place translations onto a stripped PDF. Returns 0, or 1 if cores/overflow.
 
     The loud shape, unchanged: same signature, same printed bytes, same return
@@ -1017,7 +1018,7 @@ def retypeset(stripped, segf, trf, out, *, original=None, capture_dir=None):
     with console():
         try:
             run_retypeset(stripped, segf, trf, out, original=original,
-                          capture_dir=capture_dir)
+                          capture_dir=capture_dir, capture_below=capture_below)
         except PdfTranslateError as exc:
             log.info(exc.console_line)
             return exc.exit_code
@@ -1026,7 +1027,7 @@ def retypeset(stripped, segf, trf, out, *, original=None, capture_dir=None):
 
 def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                   scale_report=_DEFAULT, resource_root=None, original=None,
-                  capture_dir=None):
+                  capture_dir=None, capture_below=None):
     """Place translations onto a stripped PDF.
 
     Silent. Returns a RetypesetResult. Raises on refusal — `GlyphError` when
@@ -1067,6 +1068,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
     getting a substituted face.
     """
     resolved_capture = capture.resolve_capture_dir(capture_dir)
+    resolved_below = capture.resolve_capture_below(capture_below)
     document = load_mapping(trf, segf)
     if document.format == FORMAT:
         protected = [stripped, segf, trf, original]
@@ -1967,6 +1969,15 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
     if report:
         write_scale_report(sorted(scaled, key=lambda r: (r['page'], r['key'])),
                            report)
+    if resolved_capture and resolved_below is not None:
+        # Nothing refused: this build is about to succeed. A consumer whose
+        # floor sits above SCALE_MIN reverts these cores itself afterwards,
+        # so the case that costs them never reaches the refusal path.
+        capture.capture_near_floor(
+            resolved_capture, scaled, resolved_below, stripped=stripped,
+            segf=segf, trf=trf, out=out, original=original, fonts=fonts,
+            mapping_format='legacy', legacy_conf=conf, scale_report=report,
+            resource_root=resource_root)
 
     doc.ez_save(out)
     doc.close()
@@ -2009,7 +2020,8 @@ def main(argv=None):
 def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     from ._console import missing_option_value
-    missing = missing_option_value(argv, ('--original', '--capture-dir'))
+    missing = missing_option_value(
+        argv, ('--original', '--capture-dir', '--capture-below'))
     if missing:
         log.info(f'usage: {missing} requires a value')
         return 2
@@ -2022,7 +2034,13 @@ def _main(argv=None):
     # environment variable itself when this stays None.
     capture_dir = (argv[argv.index('--capture-dir') + 1]
                    if '--capture-dir' in argv else None)
-    rc = retypeset(stripped, segf, trf, out, original=original, capture_dir=capture_dir)
+    # `--capture-below RATIO` widens it to a build that SUCCEEDS: a caller
+    # whose own floor sits above SCALE_MIN reverts those cores itself, so
+    # the case that costs them never reaches the refusal path at all.
+    capture_below = (argv[argv.index('--capture-below') + 1]
+                     if '--capture-below' in argv else None)
+    rc = retypeset(stripped, segf, trf, out, original=original,
+                   capture_dir=capture_dir, capture_below=capture_below)
     log.info(f'elapsed {time.perf_counter()-t0:.2f}s')
     return rc
 

@@ -205,6 +205,121 @@ class TypographyCaptureTests(unittest.TestCase):
         self.assertEqual(blocked.read_bytes(), b'not a directory')
 
 
+#: Long enough to shrink, short enough to clear our 0.7x floor. Measured at
+#: 0.766x, so the build succeeds and only a caller holding a higher floor
+#: cares - which is exactly the case this class exists for.
+MODEST_TARGET = ('Pague ahora mismo sin falta y con toda urgencia posible hoy '
+                 'Pague ahora mismo sin falta y con toda urgencia pos')
+
+
+def make_modest_job(work, font, source_text='Please pay now.',
+                    target=MODEST_TARGET):
+    """A legacy job whose translation shrinks but stays above the 0.7x floor.
+
+    This is the shape the hook was blind to: the build SUCCEEDS, so no
+    refusal is ever raised, and a consumer holding a floor above ours
+    reverts the core itself afterwards.
+    """
+    work = Path(work)
+    work.mkdir(parents=True, exist_ok=True)
+    src = work / 'orig.pdf'
+    doc = pymupdf.open()
+    doc.new_page().insert_text((72, 72), source_text, fontsize=12)
+    doc.save(src)
+    doc.close()
+    stripped = work / 'stripped.pdf'
+    run_strip(str(src), str(stripped))
+    run_extract(str(src), str(work))
+    mapping = work / 'translations.json'
+    mapping.write_text(json.dumps({
+        'fonts': {'regular': font, 'bold': font, 'italic': font, 'bold_italic': font},
+        'translations': {source_text: target},
+        'merges': [], 'overrides': [], 'center': [], 'skip': [],
+    }, ensure_ascii=False), encoding='utf-8')
+    return {'original': src, 'stripped': stripped, 'segments': work / 'segments.json',
+            'mapping': mapping, 'output': work / 'out.pdf'}, source_text
+
+
+class CaptureThresholdTests(unittest.TestCase):
+    """A consumer whose floor sits above ours needs the band between them.
+
+    Our floor is 0.7 and only a run under it refuses. A consumer applying
+    0.75 app-side sees a build SUCCEED at 0.72 and reverts the core itself,
+    so a hook keyed to our refusal never fires on the case that actually
+    costs them. `capture_below` is that band.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.font = latin_font_sets()['sans']['regular']
+        self.captures = Path(self.tmp.name) / 'captures'
+
+    def build(self, **kwargs):
+        job, source_text = make_modest_job(Path(self.tmp.name) / 'job', self.font)
+        result = run_retypeset(str(job['stripped']), str(job['segments']),
+                               str(job['mapping']), str(job['output']), **kwargs)
+        return result, source_text
+
+    def test_the_fixture_shrinks_without_refusing(self):
+        # Without this the rest of the class could pass vacuously.
+        result, _ = self.build()
+        self.assertTrue(result.scaled, 'fixture did not shrink at all')
+        worst = min(r['ratio'] for r in result.scaled)
+        self.assertGreater(worst, 0.7, 'fixture refused; it must succeed')
+        self.assertLess(worst, 1.0)
+
+    def test_a_successful_build_above_our_floor_captures_at_the_callers_ratio(self):
+        result, source_text = self.build(capture_dir=str(self.captures),
+                                         capture_below=0.8)
+        self.assertIsNotNone(result.output, 'the build must still succeed')
+        cases = list(self.captures.iterdir())
+        self.assertEqual(len(cases), 1, cases)
+        manifest = json.loads((cases[0] / 'manifest.json').read_text(encoding='utf-8'))
+        self.assertEqual(manifest['kind'], 'near-floor')
+        self.assertIsNone(manifest['refusal'], 'nothing was refused')
+        self.assertEqual(manifest['capture_below'], 0.8)
+        keys = [o['key'] for o in manifest['occurrences']]
+        self.assertIn(source_text, keys)
+
+    def test_the_default_threshold_keeps_todays_behaviour(self):
+        result, _ = self.build(capture_dir=str(self.captures))
+        self.assertIsNotNone(result.output)
+        self.assertFalse(self.captures.exists(),
+                         'a successful build must not capture by default')
+
+    def test_one_bundle_per_job_not_one_per_run(self):
+        result, _ = self.build(capture_dir=str(self.captures), capture_below=0.8)
+        self.assertEqual(len(list(self.captures.iterdir())), 1)
+
+    def test_a_core_scaled_twice_in_one_pass_is_recorded_once(self):
+        runs = [{'page': 0, 'key': 'same core', 'ratio': 0.80},
+                {'page': 0, 'key': 'same core', 'ratio': 0.72},
+                {'page': 1, 'key': 'other', 'ratio': 0.74}]
+        kept = capture.near_floor_runs(runs, 0.75)
+        self.assertEqual(len(kept), 2)
+        same = [r for r in kept if r['key'] == 'same core'][0]
+        # The worst attempt is the one that says whether it could ever fit.
+        self.assertEqual(same['ratio'], 0.72)
+
+    def test_runs_above_the_threshold_are_not_recorded(self):
+        runs = [{'page': 0, 'key': 'fits', 'ratio': 0.90},
+                {'page': 0, 'key': 'tight', 'ratio': 0.75}]
+        kept = capture.near_floor_runs(runs, 0.75)
+        self.assertEqual([r['key'] for r in kept], ['tight'])
+
+    def test_the_threshold_has_its_own_environment_switch(self):
+        self.assertIsNone(capture.resolve_capture_below(None, {}))
+        self.assertEqual(
+            capture.resolve_capture_below(None, {capture.BELOW_ENV_VAR: '0.75'}), 0.75)
+        # An explicit argument wins, and unreadable text is ignored rather
+        # than crashing a build over an evidence setting.
+        self.assertEqual(
+            capture.resolve_capture_below(0.8, {capture.BELOW_ENV_VAR: '0.75'}), 0.8)
+        self.assertIsNone(
+            capture.resolve_capture_below(None, {capture.BELOW_ENV_VAR: 'nonsense'}))
+
+
 class LegacyCaptureTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
