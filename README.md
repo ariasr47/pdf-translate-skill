@@ -59,12 +59,12 @@ the characters it needs — no single Noto face carries both Arabic and
 Hebrew, which is why these tests used to run only on macOS and Windows.
 Without the fetch they fall back to system fonts and skip where there are
 none. GitHub Actions runs the whole thing on Linux and Windows, Python
-3.10 and 3.13.
+3.14.
 
 ## The skill's own metadata
 
 `SKILL.md` frontmatter carries `license: MIT`, a `compatibility:` line
-(Python 3.10+, the three libraries, an image-viewing harness, network
+(Python 3.14+, the three libraries, an image-viewing harness, network
 preferred for fonts and issuer lookups) and `metadata.version`. That YAML
 block is optional metadata for systems that auto-load skills; the document
 below it is self-contained and works as plain instructions for any agent or

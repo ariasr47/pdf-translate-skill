@@ -8,7 +8,7 @@ version = "59.0.0"
 description = "Layout-faithful PDF translation with working form fields"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 authors = [{name = "Rodrigo Arias"}]
 dependencies = [
     "pymupdf>=1.24,<1.30",
