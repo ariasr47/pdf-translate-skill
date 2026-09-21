@@ -9,11 +9,17 @@ Usage:
   python3 compare.py original.pdf translated.pdf comparison.html \
       [--labels "Original|Translated"] [--lang en]
 """
+import logging
 import base64
 import html as htmlmod
 import sys
 
 import pymupdf
+
+
+from ._console import console
+
+log = logging.getLogger(__name__)
 
 
 def compare(orig, trans, html_path, labels=None, lang='en'):
@@ -60,11 +66,16 @@ img.zoomed{{position:fixed;inset:0;width:auto;height:100vh;margin:auto;max-width
 </body></html>"""
     with open(html_path, 'w', encoding='utf-8') as f:
         f.write(page)
-    print('wrote', html_path)
+    log.info(f'wrote {html_path}')
     return 0
 
 
 def main(argv=None):
+    with console():
+        return _main(argv)
+
+
+def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     orig = argv[0] if len(argv) > 0 else 'original.pdf'
     trans = argv[1] if len(argv) > 1 else 'translated.pdf'

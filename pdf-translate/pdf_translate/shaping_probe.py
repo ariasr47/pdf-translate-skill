@@ -224,7 +224,9 @@ def shaped_glyphs(fontfile, text, fontsize=PROBE_FONTSIZE):
         body = (f'<p style="font-family: probe; font-size: {fontsize}pt; '
                 f'margin: 0; padding: 0">{text}</p>')
         page.insert_htmlbox(pymupdf.Rect(40, 40, 560, 140), body, css=css,
-                            archive=pymupdf.Archive('.'), scale_low=0)
+                            archive=pymupdf.Archive(
+                                os.path.dirname(os.path.abspath(fontfile))
+                                or '.'), scale_low=0)
         count, fonts = _texttrace_glyphs(page)
     finally:
         doc.close()

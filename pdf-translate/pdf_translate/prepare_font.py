@@ -33,6 +33,7 @@ or when it will also serve form-field input (users type characters outside
 your translations — see field_fonts.py).
 """
 import json
+import logging
 import os
 import shutil
 import string
@@ -43,6 +44,10 @@ from pathlib import Path
 import pymupdf
 
 from . import han_forms, shaping_probe
+from ._console import console
+from .results import FontError, FontResult, PdfTranslateError
+
+log = logging.getLogger(__name__)
 
 
 def find_pyftsubset():
@@ -128,23 +133,51 @@ def prepare_font(font_in, trf, font_out, instance=None, sample=None,
     """Subset (and optionally instance) a font; rasterization-assert the result.
 
     Returns 0 on success, 1 if the font does not rasterize the sample.
+
+    The loud shape, unchanged: same signature, same printed bytes, same return
+    code. `run_prepare_font` is the one a service calls — it returns a
+    `FontResult` and raises `FontError` instead of printing and returning 1.
+    """
+    with console():
+        try:
+            run_prepare_font(font_in, trf, font_out, instance=instance,
+                             sample=sample,
+                             allow_restricted=allow_restricted,
+                             reference_fonts=reference_fonts)
+        except PdfTranslateError as exc:
+            log.info(exc.console_line)
+            return exc.exit_code
+    return 0
+
+
+def run_prepare_font(font_in, trf, font_out, instance=None, sample=None,
+                     allow_restricted=False, reference_fonts=None):
+    """Subset (and optionally instance) a font; rasterization-assert the result.
+
+    Silent. Returns a FontResult. Raises FontError on every refusal, each one
+    carrying the exact console line the loud wrapper prints — which is what
+    keeps `prepare_font.py`'s console byte-identical while the refusals become
+    data a consumer can branch on.
     """
     fs, reason = embedding_permission(font_in)
     if reason and fs is not None:
         if allow_restricted:
-            print(f'WARNING: {reason} (fsType {fs}). Continuing because '
+            log.info(f'WARNING: {reason} (fsType {fs}). Continuing because '
                   f'--allow-restricted was passed; the licence is yours to '
                   f'clear. The renderer may still refuse the font: FreeType '
                   f'declines to load a restricted-licence face at all, so '
                   f'the rasterization assert below can fail anyway.')
         else:
-            print(f'FAIL: {reason} (OS/2.fsType {fs}). Pick a font licensed '
-                  f'for embedding — the Noto family is OFL and always is '
-                  f'(references/fonts.md). --allow-restricted overrides this '
-                  f'if you hold a licence that permits it.')
-            return 1
+            raise FontError(
+                'the face is not licensed for embedding',
+                console_line=(
+                    f'FAIL: {reason} (OS/2.fsType {fs}). Pick a font licensed '
+                    f'for embedding — the Noto family is OFL and always is '
+                    f'(references/fonts.md). --allow-restricted overrides this '
+                    f'if you hold a licence that permits it.'),
+                exit_code=1, face=font_in, reason='fstype')
     elif reason:
-        print(f'NOTE: {reason}; embedding permission not checked.')
+        log.info(f'NOTE: {reason}; embedding permission not checked.')
 
     with open(trf, encoding='utf-8') as f:
         conf = json.load(f)
@@ -193,7 +226,7 @@ def prepare_font(font_in, trf, font_out, instance=None, sample=None,
                     rec.string = (full if rec.nameID == 4
                                   else full.replace(' ', ''))
         except Exception as e:
-            print(f'  (name-table touch-up skipped: {e})')
+            log.info(f'  (name-table touch-up skipped: {e})')
         src = font_out + '.instanced.ttf'
         font.save(src)
 
@@ -205,9 +238,11 @@ def prepare_font(font_in, trf, font_out, instance=None, sample=None,
     try:
         subprocess.run(cmd, check=True)
     except FileNotFoundError:
-        print('FAIL: pyftsubset not found. Install fonttools '
-              '(used as: python -m fontTools.subset) and retry.')
-        return 1
+        raise FontError(
+            'pyftsubset not found',
+            console_line=('FAIL: pyftsubset not found. Install fonttools '
+                          '(used as: python -m fontTools.subset) and retry.'),
+            exit_code=1, face=font_in, reason='no-pyftsubset')
 
     if not sample:
         non_ascii = [c for c in chars if ord(c) > 0x2000]
@@ -227,46 +262,62 @@ def prepare_font(font_in, trf, font_out, instance=None, sample=None,
         # face for the sample. That is the same answer as "draws nothing":
         # report it, do not traceback.
         doc.close()
-        print(f'FAIL: the subset font cannot draw the sample '
-              f'"{sample[:30]}" ({exc}). Use a glyf-flavored TTF that '
-              f'covers the target script, or pass --sample text the font '
-              f'actually has.')
-        return 1
+        raise FontError(
+            'the subset cannot draw the sample',
+            console_line=(f'FAIL: the subset font cannot draw the sample '
+                          f'"{sample[:30]}" ({exc}). Use a glyf-flavored TTF '
+                          f'that covers the target script, or pass --sample '
+                          f'text the font actually has.'),
+            exit_code=1, face=font_out, reason='no-raster')
     per_char = dark / max(len(sample.strip()), 1)
     doc.close()
     if per_char < 15:
-        print(f'FAIL: font does not rasterize sample "{sample[:30]}" '
-              f'({dark} dark px). Use a glyf-flavored TTF source.')
-        return 1
+        raise FontError(
+            'the face does not rasterize the sample',
+            console_line=(f'FAIL: font does not rasterize sample '
+                          f'"{sample[:30]}" ({dark} dark px). Use a '
+                          f'glyf-flavored TTF source.'),
+            exit_code=1, face=font_out, reason='no-raster')
     if job_scripts:
         # Rasterizing proves the glyphs exist; it does not prove they join.
         # Ask the subset directly (gate 18): the probe cluster must lose
         # glyphs through the Story engine, or every conjunct is broken.
         probes = shaping_probe.probe_font(font_out, scripts=job_scripts)
         for r in probes:
-            print(r.line())
+            log.info(r.line())
         if any(r.status == 'FAIL' for r in probes):
-            print(f'FAIL: {font_out} does not shape the conjuncts this job draws; a '
-                  f'page built with it shows consonant+halant where a conjunct '
-                  f'belongs. Use a glyf TTF that carries the script\'s GSUB tables '
-                  f'(references/fonts.md).')
-            return 1
+            raise FontError(
+                'the face does not shape this job\'s conjuncts',
+                console_line=(
+                    f'FAIL: {font_out} does not shape the conjuncts this job '
+                    f'draws; a page built with it shows consonant+halant '
+                    f'where a conjunct belongs. Use a glyf TTF that carries '
+                    f'the script\'s GSUB tables (references/fonts.md).'),
+                exit_code=1, face=font_out, reason='no-conjuncts')
     if cjk_job:
         # Ask the subset now what verify will ask the embedded program later
         # (gate 20), so a job set with the wrong region's face stops here.
         convention = han_forms.convention_for_lang(conf.get('lang'))
         if convention and han_forms.reference_status(convention, reference_fonts)[0]:
             result = han_forms.judge_file(font_out, convention, reference_fonts)
-            print(result.line())
+            log.info(result.line())
             if result.status == 'FAIL':
                 want = han_forms.CONVENTIONS[convention][0]
-                print(f'FAIL: {font_out} draws the other region\'s Han forms; a {want} reader '
-                      f'sees the wrong shapes for {han_forms.HAN_PROBES}. Use a {want} face '
-                      f'(references/fonts.md).')
-                return 1
-    print(f'OK: {font_out} ({os.path.getsize(font_out)//1024} KB, '
-          f'{len(chars)} chars, render check {dark} px)')
-    return 0
+                raise FontError(
+                    'the face draws the other region\'s Han forms',
+                    console_line=(
+                        f'FAIL: {font_out} draws the other region\'s Han '
+                        f'forms; a {want} reader sees the wrong shapes for '
+                        f'{han_forms.HAN_PROBES}. Use a {want} face '
+                        f'(references/fonts.md).'),
+                    exit_code=1, face=font_out, reason='wrong-han-convention')
+    subset_bytes = os.path.getsize(font_out)
+    log.info(f'OK: {font_out} ({subset_bytes//1024} KB, '
+             f'{len(chars)} chars, render check {dark} px)')
+    return FontResult(output=font_out, face=font_in,
+                      roles=tuple(sorted((conf.get('fonts') or {}).keys())),
+                      glyphs_added=len(chars), subset_bytes=subset_bytes,
+                      instance=instance or '')
 
 
 def main(argv=None):

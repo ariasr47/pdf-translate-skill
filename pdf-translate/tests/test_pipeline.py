@@ -5770,7 +5770,13 @@ class ShrinkBandTests(unittest.TestCase):
         path = os.path.join(os.path.dirname(out), retypeset.SCALE_REPORT)
         self.assertTrue(os.path.isfile(path), msg='no scale report written')
         with open(path, encoding='utf-8') as f:
-            return json.load(f)
+            data = json.load(f)
+        # v58 wrapped the bare list in the envelope every other
+        # machine-readable output carries (E3 ruling 2). The runs are what
+        # these tests are about.
+        self.assertEqual(data['schema'], 1)
+        self.assertIn('version', data)
+        return data['runs']
 
     def _verify_log(self, src, out, tr, segs):
         buf = io.StringIO()
@@ -6172,7 +6178,8 @@ class MergeBoxTests(unittest.TestCase):
             css_size, fit_ratio = retypeset.merge_css_size(9.0)
             with open(os.path.join(work, retypeset.SCALE_REPORT),
                       encoding='utf-8') as f:
-                report = json.load(f)
+                # The envelope (E3 ruling 2); `runs` is the old bare list.
+                report = json.load(f)['runs']
             self.assertEqual([r['ratio'] for r in report],
                              [round(fit_ratio, 4)],
                              msg=f'the engine shrank it too: {report}')

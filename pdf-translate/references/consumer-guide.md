@@ -1,0 +1,216 @@
+# Consumer guide — one document, end to end, from Python
+
+Contents: before you start · the six calls · what each returns · the files on
+disk · refusals · progress and cancellation · threads · what this library never
+does.
+
+This is for an engineer with zero context who has to run one document through
+the pipeline from Python and read every output file. Nothing here uses a CLI.
+
+The rule that shapes everything below: **`run_*` is the surface a service
+calls.** It is silent, it returns a schema-versioned result, and it raises a
+typed exception on refusal. The bare names (`verify`, `retypeset`, …) are the
+older shape — they print and return an `int`, and they exist because the CLIs
+and the test suite are built on them. Both are supported. Only one is for you.
+
+## Before you start
+
+Three things, each documented elsewhere. This guide points; it does not
+re-derive.
+
+1. **`lang` is a BCP 47 tag, not a display name.** `ja`, not `Japanese` or
+   `日本語`. `references/translations-format.md` has the rule and the example.
+   A value that is not a tag does not fail — it produces a REVIEW, so a
+   wrong-format value never yields a clean verdict from a gate that did not run.
+2. **A CJK job wants the two reference faces.** `NotoSansJP-VF.ttf` and
+   `NotoSansSC-VF.ttf`, passed as `reference_fonts=`. Without them the
+   Han-forms gate (20) returns REVIEW rather than PASS, because it cannot
+   attest what it cannot compare. `references/fonts.md` says what it does in
+   each case.
+3. **There is no network access at runtime.** Fonts, reference faces and any
+   lookup are files you provide. Nothing here fetches anything, ever.
+
+## The six calls
+
+Every path is explicit. Nothing resolves against the process's working
+directory.
+
+```python
+import pdf_translate
+
+work = '/tmp/job'                      # a directory you own
+
+strip = pdf_translate.run_strip('source.pdf', f'{work}/stripped.pdf')
+extract = pdf_translate.run_extract('source.pdf', work)
+#   ... author work/translations.json from extract.cores ...
+font = pdf_translate.run_prepare_font('NotoSans.ttf',
+                                      f'{work}/translations.json',
+                                      f'{work}/font-sub.ttf')
+built = pdf_translate.run_retypeset(f'{work}/stripped.pdf',
+                                    extract.segments_path,
+                                    f'{work}/translations.json',
+                                    f'{work}/out.pdf')
+verdict = pdf_translate.run_verify('source.pdf', f'{work}/out.pdf')
+final = pdf_translate.run_field_fonts(f'{work}/out.pdf', 'NotoSans.ttf',
+                                      f'{work}/final.pdf')
+```
+
+Two more are advisory rather than structural:
+
+```python
+qa = pdf_translate.run_qa(f'{work}/translations.json',
+                          segments_path=extract.segments_path)
+review = pdf_translate.run_review(work, ingest='review.json')
+```
+
+`run_qa` also takes `glossary_path=`; pass it only when that file exists,
+which after a `run_review --ingest` it will.
+
+`run_qa` checks mechanics — numbers that moved, punctuation parity, the
+expansion band. `run_review` is the second-reader loop: it writes the pairs
+file and the MQM prompt, reads the reviser's verdict back, and grows a
+per-class termbase. Neither judges whether the wording is right. No script
+can; see `references/terminology-failure-modes.md` for the five ways a term of
+art goes wrong while every gate passes.
+
+## What each returns
+
+Every result is a frozen dataclass whose `to_dict()` carries `schema` and
+`version`, and is JSON-serialisable as it stands.
+
+| call | returns | the fields you will actually use |
+| --- | --- | --- |
+| `run_strip` | `StripResult` | `ok`, `leftover_text`, `xfa_removed`, `certified`, `encrypted`, `dead_buttons` |
+| `run_extract` | `ExtractResult` | `cores`, `segments_path`, `warnings`, `unextractable_pages`, `invisible_text_pages` |
+| `run_prepare_font` | `FontResult` | `output`, `glyphs_added`, `subset_bytes` |
+| `run_retypeset` | `RetypesetResult` | `output`, `cancelled`, `scaled`, `scale_report_path` |
+| `run_verify` | `VerifyVerdict` | `exit_code`, `gates` (each a `GateResult` with `status` and `findings`) |
+| `run_field_fonts` | `FieldFontsResult` | `output`, `fields`, `acroform` |
+| `run_qa` | `QAVerdict` | `findings`, `exit_code` |
+| `run_review` | `ReviewVerdict` | `present`, `blocks_delivery`, `open_findings`, `review_line`, `counts` |
+
+`run_verify` returning `exit_code == 1` is a **needs-attention notice, not a
+withholding.** The document is built and on disk. Only a build refusal
+(`run_retypeset` raising) means there is no document — see `docs/DECISIONS.md`
+and the product's ruling R5.
+
+## The files on disk, and which call wrote them
+
+| file | written by | what it is |
+| --- | --- | --- |
+| `stripped.pdf` | `run_strip` | the source with every page text run deleted |
+| `segments.json` | `run_extract` | geometry, one entry per placeable segment |
+| `to_translate.json` | `run_extract` | the unique cores, with counts |
+| `widget_text.json` | `run_extract` | the tooltip / dropdown / default scaffold |
+| `translations.json` | **you** | the mapping. The library never writes it |
+| `font-sub.ttf` | `run_prepare_font` | the subset face |
+| `out.pdf` | `run_retypeset` | the translated document |
+| `scale_report.json` | `run_retypeset` | `{"schema": 1, "version": …, "runs": [...]}` — every run below source size. Pass `scale_report=` to move it, or `None` to write nothing and read `result.scaled` instead |
+| `final.pdf` | `run_field_fonts` | the delivery copy, fields able to render typed text |
+| `review_pairs.md`, `review_prompt.md`, `glossary.csv` | `run_review` | the second reader's inputs, and the termbase their verdict grows |
+
+## Refusals
+
+A refusal is an exception, not a printed line and not a return code.
+
+```python
+from pdf_translate import PdfTranslateError, GlyphError
+
+try:
+    built = pdf_translate.run_retypeset(stripped, segments, mapping, out)
+except GlyphError as exc:
+    # The face cannot draw a character the target needs. R1: refusal wins —
+    # no placeholder glyph, no borrowed face.
+    print(exc.page, exc.char, exc.face)
+except PdfTranslateError as exc:
+    for kind, items in exc.refusals.items():
+        for item in items:
+            print(kind, item['core'])        # the FULL core, never truncated
+```
+
+Every exception carries:
+
+- `console_line` — exactly what the loud function would have printed. You do
+  not need it; it exists so the CLIs stay byte-identical.
+- `exit_code` — what the loud function would have returned.
+- `refusals` — **every refused item, by kind, with the core in full.** One
+  build can fail for several reasons at once; the exception type names the
+  first by precedence and `refusals` carries all of them, so you fix the
+  mapping in one pass instead of rebuilding to discover the next reason.
+- `to_dict()` — all of the above plus `schema` and `version`.
+
+The types are `MappingError` (an unauthored core, a merge that does not
+match), `GlyphError` (`page`, `char`, `face`), `PlacementError` (`page`,
+`key`, `scale`), `FontError` (`face`, `reason`), `WidgetTextError`. All
+descend from `PdfTranslateError`, so one `except` catches every refusal.
+
+**Do not parse the console.** A printed format is an undeclared API: it
+changes without a version bump, and a consumer whose regex stops matching
+fails silently, which is the worst way to fail.
+
+## Progress and cancellation
+
+```python
+def on_progress(done, total):
+    print(f'{done}/{total}')
+
+result = pdf_translate.run_retypeset(
+    stripped, segments, mapping, out,
+    progress=on_progress,
+    cancel=lambda: user_pressed_stop)
+
+if result.cancelled:
+    assert result.output is None          # and no file at `out`
+```
+
+`total` is **pages plus merge jobs**, because `run_retypeset` runs two loops —
+a per-page pass and then a per-merge pass. A counter of pages alone reaches
+100% and keeps going.
+
+`cancel()` is checked at the top of every unit in both loops. There is exactly
+one save, at the very end, so **a cancelled run cannot leave a partial file**.
+The absence is by construction, not by cleanup.
+
+## Threads
+
+The `run_*` twins are the thread-safe surface. They do not touch
+`sys.stdout`, they hold no module-level mutable state for a job, and two of
+them can run in different threads without either losing the other's output.
+
+Two things are **not** thread-safe and are not for you:
+
+- **`console()`** (`pdf_translate._console`) mutates process-global logging
+  state. It exists for CLI entry points. A service attaches its own handler to
+  the `pdf_translate` logger and never calls it.
+- **The loud names** (`verify`, `retypeset`, …) open `console()` themselves,
+  so calling them from several threads has the same problem.
+
+To see the library's output in your own logs:
+
+```python
+import logging
+logging.getLogger('pdf_translate').setLevel(logging.INFO)
+logging.getLogger('pdf_translate').addHandler(your_handler)
+```
+
+Importing `pdf_translate` attaches a `NullHandler` and nothing else. It sets
+no level on the root logger and configures nothing for its host.
+
+Give each concurrent job its own `work` directory, or at least its own
+`scale_report=` path — the default is a fixed name beside the output, which
+two jobs writing to one directory would race for.
+
+## What this library never does
+
+- **Never reaches the network.** Not for fonts, not for lookups, not ever.
+- **Never invents a glyph.** A character the face cannot draw is a refusal
+  (R1), not a box and not a borrowed face.
+- **Never writes `translations.json`.** The mapping is authored by a person or
+  a model you run. No model is called from inside this package.
+- **Never ships a glossary.** A termbase is a job input and a job output, never
+  repository content.
+- **Never withholds a document it built.** A verify FAIL is advisory; only a
+  build refusal means there is no file.
+- **Never configures logging for you.**
+- **Never judges whether the wording is right.** Nothing can. That is what
+  `run_review` and a second human reader are for.

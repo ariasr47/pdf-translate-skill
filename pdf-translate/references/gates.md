@@ -251,3 +251,14 @@ The one place a gate does carry terminology forward is `qa_check --glossary`,
 which has read a two-column termbase since long before this loop existed.
 `review --ingest` now fills that file from accepted terminology findings, so the
 next job of the same class is gated on what this one learned.
+
+## E3 added no gate
+
+The consumer surface (v58) changed how every stage is *called* — a silent
+`run_*` twin returning a schema-versioned result, typed exceptions instead of
+printed refusals, output through the package logger — and changed nothing about
+what is checked. There are still twenty-one gates, with the same names, the
+same statuses and the same console lines; `dev/probes/cli_parity_runner.py` and
+`dev/probes/verdict_parity_runner.py` both diff empty across the change.
+
+`references/consumer-guide.md` is the document for calling them from Python.
