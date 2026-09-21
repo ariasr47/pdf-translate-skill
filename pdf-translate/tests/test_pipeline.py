@@ -2613,6 +2613,88 @@ class MergePlacementGateTests(unittest.TestCase):
             self.assertIn('FAIL missing translation targets', log)
 
 
+def drawn_span_sizes(pdf_path, needle):
+    """Actual font sizes of the spans on page 1 that carry `needle`.
+
+    What the reader can measure off the page, which is the only thing a
+    source-relative ratio can honestly be compared against.
+    """
+    doc = pymupdf.open(pdf_path)
+    try:
+        return [round(sp['size'], 4)
+                for b in doc[0].get_text('dict')['blocks']
+                for line in b.get('lines', [])
+                for sp in line['spans'] if needle in sp['text']]
+    finally:
+        doc.close()
+
+
+class MergeScaleReportTests(unittest.TestCase):
+    """The recorded ratio is source-relative, not the engine's half of it.
+
+    The merge path draws at `size * 0.98` rounded to one decimal and then lets
+    the Story engine shrink further to fit. Both factors make the delivered
+    text smaller than the source; only the engine's was ever recorded, so a
+    paragraph that printed at 0.91x of source reported 0.93x, and one the
+    engine never touched reported nothing at all while printing at 0.98x.
+    Row 25's promise is that the author can name every scaled run, which
+    requires the ratio to mean what the reader can measure off the page.
+    """
+
+    def _merge_job(self, tmp, html, source_size=9.0):
+        """Build, place and return (recorded runs, actual drawn sizes)."""
+        font = find_test_font()
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        doc = pymupdf.open()
+        page = doc.new_page(width=420, height=300)
+        for i, line in enumerate(PARA_LINES):
+            page.insert_text((40, 60 + 14 * i), line, fontsize=source_size)
+        doc.save(src)
+        doc.close()
+        extract_segments.extract_segments(src, outdir=tmp)
+        strip_text.strip_text(src, stripped)
+        Path(tr).write_text(json.dumps({
+            'fonts': {'regular': str(font), 'bold': str(font)},
+            'translations': {},
+            'merges': [{'page': 0, 'lines': PARA_LINES, 'html': html,
+                        'align': 'left'}],
+            'overrides': [], 'center': [], 'skip': [],
+        }, ensure_ascii=False), encoding='utf-8')
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(
+                stripped, os.path.join(tmp, 'segments.json'), tr, out)
+        self.assertEqual(rc, 0, msg=buf.getvalue())
+        report = json.loads(Path(tmp, 'scale_report.json').read_text('utf-8'))
+        runs = report['runs'] if isinstance(report, dict) else report
+        return runs, drawn_span_sizes(out, html.split()[1])
+
+    def test_the_recorded_ratio_is_what_the_page_actually_shows(self):
+        long_html = ('El secretario revisara todas las declaraciones '
+                     'presentadas antes de la fecha de la audiencia y '
+                     'enviara por correo una copia conformada a cada parte '
+                     'nombrada en el encabezado de este procedimiento.')
+        with tempfile.TemporaryDirectory() as tmp:
+            runs, sizes = self._merge_job(tmp, long_html)
+            self.assertTrue(runs, msg='fixture did not shrink; lengthen it')
+            self.assertTrue(sizes, msg='paragraph not found in the output')
+            self.assertAlmostEqual(runs[0]['ratio'], sizes[0] / 9.0, places=3,
+                                   msg=f'recorded {runs[0]} vs drawn {sizes}')
+
+    def test_a_merge_the_engine_never_shrank_still_reports_its_css_shrink(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runs, sizes = self._merge_job(tmp, 'El secretario reviso todo.')
+            self.assertTrue(sizes, msg='paragraph not found in the output')
+            self.assertLess(sizes[0], 9.0,
+                            msg='fixture did not shrink at all; nothing to report')
+            self.assertTrue(runs, msg='the page shrank but the report is empty')
+            self.assertAlmostEqual(runs[0]['ratio'], sizes[0] / 9.0, places=3,
+                                   msg=f'recorded {runs[0]} vs drawn {sizes}')
+
+
 class QaCheckTests(unittest.TestCase):
     """The linguistic layer: what a reviser looks for first."""
 
@@ -6086,16 +6168,29 @@ class MergeBoxTests(unittest.TestCase):
             self.assertIn('scaled below', log)
             self.assertFalse(os.path.isfile(out))
 
-    def test_a_box_one_line_taller_places_at_full_size(self):
+    def test_a_box_one_line_taller_needs_no_shrink_beyond_the_fit_allowance(self):
+        """The box buys the third line; the engine never has to shrink.
+
+        This asserted an empty report and called that "full size", which the
+        page never showed: every merge is drawn at the `MERGE_FIT` allowance,
+        so a 9.0 source prints at 8.8 whether or not the engine shrinks. The
+        report is one entry at exactly that allowance and nothing more, which
+        is what "the engine did not have to shrink it" actually looks like.
+        """
         with tempfile.TemporaryDirectory() as tmp:
             rc, out, work, log = self._run(tmp, box=BOX_RECT)
             self.assertEqual(rc, 0, msg=log)
+            css_size, fit_ratio = retypeset.merge_css_size(9.0)
             with open(os.path.join(work, retypeset.SCALE_REPORT),
                       encoding='utf-8') as f:
                 # The envelope (E3 ruling 2); `runs` is the old bare list.
-                self.assertEqual(json.load(f)['runs'], [],
-                                 msg='it should not shrink')
+                report = json.load(f)['runs']
+            self.assertEqual([r['ratio'] for r in report],
+                             [round(fit_ratio, 4)],
+                             msg=f'the engine shrank it too: {report}')
             lines = [l for l in self._lines(out) if l[1] < 140]
+            self.assertEqual({l[0] for l in lines}, {css_size},
+                             msg=f'drawn size is not the fit allowance: {lines}')
             self.assertEqual(len(lines), 3, msg=f'{lines}')
             # The third line lands below the source's last line and inside
             # the box the author drew.
