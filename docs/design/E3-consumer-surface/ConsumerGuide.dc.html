@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: oklch(0.55 0.13 45); }
+    a:hover { color: oklch(0.42 0.11 45); }
+    .mono { font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+    .md { white-space: pre-wrap; font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11.5px; line-height: 1.72; color: oklch(0.3 0.01 60); }
+    .h { color: oklch(0.42 0.13 45); font-weight: 600; }
+    .dim { color: oklch(0.58 0.012 60); }
+    .hi { background: oklch(0.93 0.055 80); border-radius: 2px; padding: 0 2px; }
+  </style>
+</helmet>
+
+<div style="width: 860px; min-height: 1060px; box-sizing: border-box; background: oklch(0.98 0.006 85); font-family: 'IBM Plex Sans', system-ui, sans-serif; color: oklch(0.22 0.01 60); display: flex; flex-direction: column;">
+
+  <div style="display: flex; align-items: center; gap: 11px; padding: 14px 22px; background: oklch(0.94 0.008 80); border-bottom: 1px solid oklch(0.87 0.008 75);">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(0.5 0.02 60)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+    <div class="mono" style="font-size: 12.5px; font-weight: 500;">references/consumer-guide.md</div>
+    <div style="flex-grow: 1;"></div>
+    <div class="mono" style="font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: oklch(0.55 0.02 60);">new &mdash; the E3 deliverable</div>
+  </div>
+
+  <div style="padding: 20px 26px; display: flex; flex-direction: column;">
+<div class="md"><span class="h"># Running one document from Python</span>
+
+<span class="dim">Contents: before you start · the six calls · what each returns · the
+files on disk · refusals · progress and cancellation · threads ·
+what this library never does</span>
+
+<span class="dim">For an engineer with no context. Every code block runs as written against
+the corpus fixture. The CLI paths in README.md do the same things; this
+document is for calling the stages directly.</span>
+
+<span class="h">## Before you start — three things that cost hours</span>
+
+1. <span class="hi">`lang` is a BCP 47 tag</span>: `"ja"`, never `"Japanese"` or `"日本語"`.
+   ISO 639-2 (`"jpn"`) is accepted. A value that is not a tag makes the
+   metadata gate REVIEW rather than silently passing. Full rules and the
+   whole mapping format: `references/translations-format.md`.
+
+2. <span class="hi">The Han-forms gate needs two reference faces</span> — `NotoSansJP-VF.ttf`
+   and `NotoSansSC-VF.ttf`, under one directory you pass as
+   `reference_fonts=`. Absent, the gate reports REVIEW and cannot reach
+   PASS. Exact names, where to get them, and what the gate does without
+   them: `references/fonts.md`.
+
+3. <span class="hi">Nothing here reaches the network.</span> Fonts, reference faces and any
+   terminology lookup are files you provide. Issuer lookup belongs to
+   whoever authors the mapping, never to this library.
+
+<span class="h">## The six calls</span>
+
+<span class="dim">run_strip → run_extract → [you author the mapping] → run_prepare_font →
+run_retypeset → run_verify → run_field_fonts. Each takes explicit paths,
+returns a result object, and raises a typed exception when it refuses.
+The bare names (retypeset, verify, …) are the older, printing shape and
+still work unchanged.</span>
+
+<span class="dim">    [ the runnable end-to-end block ]</span>
+
+<span class="h">## What each returns</span>
+
+<span class="dim">    [ the result-family table: type, fields, to_dict() schema ]</span>
+
+<span class="h">## The files on disk, and which call wrote them</span>
+
+<span class="dim">    [ stripped.pdf, segments.json, to_translate.json, out.pdf,
+      verify_report.json, scale_report.json, final.pdf ]</span>
+
+<span class="h">## Refusals</span>
+
+<span class="dim">    [ the exception family; what raises vs. what is returned as a verdict;
+      why a verify FAIL is not an exception ]</span>
+
+<span class="h">## Progress and cancellation</span>
+
+<span class="dim">    [ progress(done, total); cancel.is_set(); why a cancelled run leaves
+      no file at the output path ]</span>
+
+<span class="h">## Threads</span>
+
+<span class="dim">    [ what is safe to share, what is per-job, the two paths that take an
+      explicit root or path so concurrent jobs do not collide ]</span>
+
+<span class="h">## What this library never does</span>
+
+<span class="dim">No network. No `os.chdir`. No `sys.exit`. No `print` — it logs on
+`pdf_translate`, and attaches a NullHandler, so it is silent until you
+attach a handler. No model calls: this library does not translate. It
+strips, extracts, places, and judges.</span>
+</div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

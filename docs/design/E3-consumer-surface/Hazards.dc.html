@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: oklch(0.55 0.13 45); }
+    a:hover { color: oklch(0.42 0.11 45); }
+    .mono { font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+    .code { white-space: pre; font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11.5px; line-height: 1.68; }
+    .hz { padding: 15px 17px; background: oklch(0.955 0.005 85); border-radius: 3px; display: flex; flex-direction: column; gap: 8px; }
+    .sig { white-space: pre; font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11.5px; line-height: 1.6; color: oklch(0.78 0.06 75); padding: 9px 11px; background: oklch(0.2 0.01 58); border-radius: 2px; }
+  </style>
+</helmet>
+
+<div style="width: 900px; min-height: 940px; box-sizing: border-box; padding: 34px 34px; background: oklch(0.98 0.006 85); font-family: 'IBM Plex Sans', system-ui, sans-serif; color: oklch(0.22 0.01 60); display: flex; flex-direction: column; gap: 18px;">
+
+  <div style="display: flex; flex-direction: column; gap: 5px;">
+    <div class="mono" style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.55 0.02 60);">C5 and C7 &middot; measured at v56, not inherited from the inventory</div>
+    <div style="font-size: 24px; font-weight: 600; letter-spacing: -0.012em;">Four hazards, in severity order</div>
+    <div style="font-size: 13.5px; line-height: 1.5; color: oklch(0.44 0.012 60);">C5&rsquo;s status note says &ldquo;no <span class="mono" style="font-size: 12.5px;">os.chdir</span> anywhere&rdquo;, which is true and not the whole story. These are what a thread pool actually hits.</div>
+  </div>
+
+  <div class="hz" style="border-left: 2px solid oklch(0.60 0.16 25);">
+    <div style="display: flex; align-items: baseline; gap: 10px;">
+      <div class="mono" style="font-size: 11.5px; font-weight: 600; color: oklch(0.52 0.16 25);">1</div>
+      <div style="font-size: 14px; font-weight: 600;">A process-wide <span class="mono" style="font-size: 13px; font-weight: 500;">sys.stdout</span> swap, inside a library call</div>
+      <div class="mono" style="font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: oklch(0.52 0.16 25); font-weight: 600;">breaks under threads</div>
+    </div>
+    <div class="sig">verify.py:2124    with redirect_stdout(io.StringIO()):</div>
+    <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);"><span class="mono" style="font-size: 12px;">run_verify</span> is silent by replacing <span class="mono" style="font-size: 12px;">sys.stdout</span> for the duration of the call &mdash; not by the gates being print-free. <span class="mono" style="font-size: 12px;">sys.stdout</span> is global, so while one thread is inside <span class="mono" style="font-size: 12px;">run_verify</span>, <em>every other thread&rsquo;s</em> output is swallowed into that buffer. Two concurrent jobs and the second job&rsquo;s console vanishes.</div>
+    <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.3 0.03 60);"><strong style="font-weight: 600;">Fix:</strong> free. The logging move deletes the wrapper &mdash; silence becomes &ldquo;no handler attached&rdquo;, which is per-logger, not per-process.</div>
+  </div>
+
+  <div class="hz" style="border-left: 2px solid oklch(0.68 0.14 45);">
+    <div style="display: flex; align-items: baseline; gap: 10px;">
+      <div class="mono" style="font-size: 11.5px; font-weight: 600; color: oklch(0.55 0.14 45);">2</div>
+      <div style="font-size: 14px; font-weight: 600;">A live working-directory dependency</div>
+      <div class="mono" style="font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: oklch(0.55 0.14 45); font-weight: 600;">C1 violation</div>
+    </div>
+    <div class="sig">retypeset.py:862   arch = pymupdf.Archive('.')</div>
+    <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);">That archive is handed to every <span class="mono" style="font-size: 12px;">insert_htmlbox</span> call in both loops. Any relative resource reference inside authored HTML resolves against the <em>process&rsquo;s</em> cwd &mdash; not the mapping&rsquo;s directory, not a caller-supplied root. C1 says &ldquo;no dependence on the working directory&rdquo;, and <span class="mono" style="font-size: 12px;">grep</span> confirms there is no <span class="mono" style="font-size: 12px;">os.chdir</span> to blame. Two more cwd-relative defaults sit beside it: <span class="mono" style="font-size: 12px;">shaping_probe.py:227</span> builds its own <span class="mono" style="font-size: 12px;">Archive(&#39;.&#39;)</span>, and <span class="mono" style="font-size: 12px;">extract_segments.py:520</span> defaults <span class="mono" style="font-size: 12px;">outdir=&#39;.&#39;</span>. All three are the same fix.</div>
+    <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.3 0.03 60);"><strong style="font-weight: 600;">Fix:</strong> anchor the archive to the mapping&rsquo;s directory, with a keyword-only <span class="mono" style="font-size: 12px;">resource_root=</span> to override. Behaviour is unchanged for every job whose cwd is already the work dir &mdash; which is every job the CLI runs.</div>
+  </div>
+
+  <div class="hz" style="border-left: 2px solid oklch(0.68 0.14 45);">
+    <div style="display: flex; align-items: baseline; gap: 10px;">
+      <div class="mono" style="font-size: 11.5px; font-weight: 600; color: oklch(0.55 0.14 45);">3</div>
+      <div style="font-size: 14px; font-weight: 600;">Two jobs, one <span class="mono" style="font-size: 13px; font-weight: 500;">scale_report.json</span></div>
+      <div class="mono" style="font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: oklch(0.55 0.14 45); font-weight: 600;">silent data loss</div>
+    </div>
+    <div class="sig">retypeset.py:1379  os.path.join(os.path.dirname(os.path.abspath(out)), SCALE_REPORT)</div>
+    <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);">A fixed filename beside the output. Two jobs writing their outputs into one directory &mdash; the obvious thing a service does &mdash; overwrite each other&rsquo;s report with no error and no warning. The report is also written non-atomically, without the temp-and-replace and stale-removal that <span class="mono" style="font-size: 12px;">write_report</span> gained in v53 after PR #7.</div>
+    <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.3 0.03 60);"><strong style="font-weight: 600;">Fix:</strong> the library returns the runs in <span class="mono" style="font-size: 12px;">RetypesetResult</span> and writes a file only when given an explicit <span class="mono" style="font-size: 12px;">scale_report=</span> path; the CLI passes today&rsquo;s path, so the console and the file both stay identical.</div>
+  </div>
+
+  <div class="hz" style="border-left: 2px solid oklch(0.72 0.14 70);">
+    <div style="display: flex; align-items: baseline; gap: 10px;">
+      <div class="mono" style="font-size: 11.5px; font-weight: 600; color: oklch(0.58 0.14 60);">4</div>
+      <div style="font-size: 14px; font-weight: 600;">Determinism is unmeasured, not known-broken</div>
+      <div class="mono" style="font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: oklch(0.58 0.14 60); font-weight: 600;">measure first</div>
+    </div>
+    <div class="sig">retypeset.py:1387  doc.ez_save(out)          # no arguments
+retypeset.py:354   apply_document_metadata   # set_metadata() rewrites /Info; /ID untouched</div>
+    <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);">No timestamp parameter exists. The metadata pass copies the source&rsquo;s <span class="mono" style="font-size: 12px;">doc.metadata</span>, pops only <span class="mono" style="font-size: 12px;">format</span> and <span class="mono" style="font-size: 12px;">encryption</span>, and calls <span class="mono" style="font-size: 12px;">set_metadata()</span> &mdash; which rewrites the whole <span class="mono" style="font-size: 12px;">/Info</span> dictionary, carrying the source&rsquo;s <span class="mono" style="font-size: 12px;">/CreationDate</span>, <span class="mono" style="font-size: 12px;">/ModDate</span> and <span class="mono" style="font-size: 12px;">/Producer</span> through unchanged. Only <span class="mono" style="font-size: 12px;">/ID</span> is genuinely untouched, which makes it the likeliest variable byte. Whether two runs differ at all is <strong style="font-weight: 600;">not known</strong>: it has never been probed here.</div>
+    <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.3 0.03 60);"><strong style="font-weight: 600;">Fix:</strong> a probe before a design &mdash; the same order task F and the Han-forms gate used. Run one fixture twice, diff the bytes, and name every differing offset. Only then decide whether <span class="mono" style="font-size: 12px;">timestamp=</span> plus a content-derived <span class="mono" style="font-size: 12px;">/ID</span> is sufficient, or whether the save call itself has to change. <strong style="font-weight: 600;">Do not write the C7 code from this artboard.</strong></div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

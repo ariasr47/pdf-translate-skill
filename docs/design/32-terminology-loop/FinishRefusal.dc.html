@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: oklch(0.55 0.13 45); }
+    a:hover { color: oklch(0.42 0.11 45); }
+    .ln { white-space: pre; font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12.5px; line-height: 1.75; }
+  </style>
+</helmet>
+
+<div style="width: 960px; min-height: 660px; box-sizing: border-box; padding: 34px 36px; background: oklch(0.98 0.006 85); font-family: 'IBM Plex Sans', system-ui, sans-serif; color: oklch(0.22 0.01 60); display: flex; flex-direction: column; gap: 17px;">
+
+  <div style="display: flex; flex-direction: column; gap: 5px;">
+    <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.55 0.02 60);">Bar item 2 &middot; the sharp edge</div>
+    <div style="font-size: 23px; font-weight: 600; letter-spacing: -0.01em;">finish refuses</div>
+    <div style="font-size: 13.5px; line-height: 1.5; color: oklch(0.44 0.012 60); max-width: 680px;">A refusal names what is missing, the one command that fixes it, and the escape. Never more than three lines before <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12.5px;">elapsed</span>.</div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 6px;">
+    <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">A &mdash; no one has reviewed it</div>
+    <div style="padding: 15px 17px; background: oklch(0.175 0.008 60); border-radius: 3px; border-left: 2px solid oklch(0.68 0.14 25); color: oklch(0.87 0.008 80); display: flex; flex-direction: column;">
+      <div class="ln"><span style="color: oklch(0.6 0.02 70);">$</span> python3 -m pdf_translate.pipeline finish original.pdf out.pdf font.ttf final.pdf compare.html --work fl150-ja</div>
+      <div class="ln" style="color: oklch(0.8 0.11 35);">finish: fl150-ja/review.json is absent. No second reader has judged this mapping.</div>
+      <div class="ln">finish: run `pipeline review --work fl150-ja`, get it reviewed, then --ingest the result.</div>
+      <div class="ln">finish: --no-review delivers anyway and records that no one read it.</div>
+      <div class="ln" style="color: oklch(0.62 0.015 70);">elapsed 0.00s</div>
+      <div class="ln"><span style="color: oklch(0.6 0.02 70);">$</span> echo $?</div>
+      <div class="ln">2</div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 6px;">
+    <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">B &mdash; reviewed, but findings still open</div>
+    <div style="padding: 15px 17px; background: oklch(0.175 0.008 60); border-radius: 3px; border-left: 2px solid oklch(0.68 0.14 25); color: oklch(0.87 0.008 80); display: flex; flex-direction: column;">
+      <div class="ln" style="color: oklch(0.8 0.11 35);">finish: 2 finding(s) in fl150-ja/review.json are still open.</div>
+      <div class="ln" style="color: oklch(0.8 0.1 70);">OPEN  terminology   'head of household': &#19990;&#24111;&#20027; &rarr; &#29305;&#23450;&#19990;&#24111;&#20027; &mdash; US filing status is for the unmarried</div>
+      <div class="ln" style="color: oklch(0.8 0.1 70);">OPEN  terminology   'Cash and checking accounts, savings, credit unio': &#20449;&#29992;&#32068;&#21512; &rarr; &#12510;&#12493;&#12540;&#12510;&#12540;&#12465;&#12483;&#12488;</div>
+      <div class="ln">finish: mark each accepted or rejected in review.json, or pass --no-review.</div>
+      <div class="ln" style="color: oklch(0.62 0.015 70);">elapsed 0.01s</div>
+      <div class="ln"><span style="color: oklch(0.6 0.02 70);">$</span> echo $?</div>
+      <div class="ln">2</div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 6px;">
+    <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">C &mdash; the only way past, and it leaves a mark</div>
+    <div style="padding: 15px 17px; background: oklch(0.175 0.008 60); border-radius: 3px; border-left: 2px solid oklch(0.72 0.14 70); color: oklch(0.87 0.008 80); display: flex; flex-direction: column;">
+      <div class="ln"><span style="color: oklch(0.6 0.02 70);">$</span> python3 -m pdf_translate.pipeline finish &hellip; --work fl150-ja --no-review</div>
+      <div class="ln" style="color: oklch(0.82 0.12 70);">REVIEW no reviser: no second reader judged this mapping; the delivery says so</div>
+      <div class="ln">finish: wrote final.pdf</div>
+      <div class="ln">finish: wrote compare.html</div>
+      <div class="ln" style="color: oklch(0.62 0.015 70);">elapsed 3.42s</div>
+      <div class="ln"><span style="color: oklch(0.6 0.02 70);">$</span> echo $?</div>
+      <div class="ln">0</div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 14px; padding: 13px 15px; background: oklch(0.985 0.012 80); border: 1px solid oklch(0.82 0.06 75); border-radius: 3px;">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="oklch(0.55 0.13 70)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+    <div style="font-size: 12.5px; line-height: 1.55; color: oklch(0.38 0.012 60);"><strong style="font-weight: 600;">The REVIEW line is not only console output.</strong> The bar says the delivery must carry it &mdash; so <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12px;">--no-review</span> also writes it into the reviewer checklist in the delivery, where the person accepting the work reads it. A delivery that quietly implies review happened is worse than one that admits it did not (<span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12px;">references/review.md</span> &sect;2).</div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

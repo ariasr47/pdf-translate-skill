@@ -1,0 +1,117 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: oklch(0.55 0.13 45); }
+    a:hover { color: oklch(0.42 0.11 45); }
+    .mono { font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+    .opt { padding: 13px 15px; background: oklch(0.21 0.01 58); border: 1px solid oklch(0.34 0.012 60); border-radius: 3px; display: flex; flex-direction: column; gap: 6px; }
+    .optrec { padding: 13px 15px; background: oklch(0.24 0.02 80); border: 1.5px solid oklch(0.72 0.14 70); border-radius: 3px; display: flex; flex-direction: column; gap: 6px; }
+    .lbl { font-size: 12px; font-weight: 600; color: oklch(0.65 0.015 70); flex-shrink: 0; width: 12px; }
+    .lblrec { font-size: 12px; font-weight: 600; color: oklch(0.82 0.13 70); flex-shrink: 0; width: 12px; }
+    .ttl { font-size: 13.5px; font-weight: 600; }
+    .body { font-size: 12.5px; line-height: 1.5; color: oklch(0.8 0.008 80); }
+    .cost { font-size: 12.5px; line-height: 1.5; color: oklch(0.68 0.012 75); }
+    .rec { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.8 0.12 70); font-weight: 600; }
+    .qh { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; }
+    .qn { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.72 0.13 70); }
+    .ev { padding: 11px 13px; background: oklch(0.2 0.01 58); border-radius: 2px; white-space: pre-wrap; font-size: 11.5px; line-height: 1.6; color: oklch(0.78 0.06 75); }
+  </style>
+</helmet>
+
+<div style="width: 760px; min-height: 1760px; box-sizing: border-box; padding: 32px 32px; background: oklch(0.175 0.008 60); font-family: 'IBM Plex Sans', system-ui, sans-serif; color: oklch(0.89 0.008 80); display: flex; flex-direction: column; gap: 24px;">
+
+  <div style="display: flex; flex-direction: column; gap: 5px;">
+    <div class="mono" style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.72 0.13 70);">Decide before the plan</div>
+    <div style="font-size: 24px; font-weight: 600; letter-spacing: -0.012em;">Three questions the brief does not answer</div>
+    <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.7 0.012 75);">Each one came out of measuring the real job and the real source, not out of reading the brief.</div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <div class="mono qn">Question 1</div>
+      <div class="qh">Where does <span class="mono" style="font-weight: 500;">finish</span> find <span class="mono" style="font-weight: 500;">review.json</span>?</div>
+    </div>
+    <div class="body">Every other command that knows about a job takes <span class="mono" style="font-size: 12px;">--work DIR</span>. <span class="mono" style="font-size: 12px;">finish</span> does not &mdash; five bare positionals, and it never sees the work directory:</div>
+    <div class="mono ev">def cmd_finish(argv):
+    orig, out, font, final, html = argv[0], argv[1], argv[2], argv[3], argv[4]</div>
+    <div class="cost">pdf_translate/pipeline.py:359 &mdash; unchanged since the command existed.</div>
+
+    <div class="optrec">
+      <div style="display: flex; align-items: baseline; gap: 9px;"><div class="mono lblrec">A</div><div class="ttl">Add <span class="mono" style="font-size: 13px; font-weight: 500;">--work DIR</span> to finish</div><div class="mono rec">recommended</div></div>
+      <div class="body">Explicit, and the vocabulary <span class="mono" style="font-size: 12px;">qa</span>, <span class="mono" style="font-size: 12px;">rebuild</span>, <span class="mono" style="font-size: 12px;">init</span> and the new <span class="mono" style="font-size: 12px;">review</span> already use.</div>
+      <div class="cost"><strong style="font-weight: 600; color: oklch(0.8 0.008 80);">Cost:</strong> every existing caller adds it, and the no-flag case must refuse too, naming the missing flag.</div>
+    </div>
+    <div class="opt">
+      <div style="display: flex; align-items: baseline; gap: 9px;"><div class="mono lbl">B</div><div class="ttl">Look beside <span class="mono" style="font-size: 13px; font-weight: 500;">FINAL.pdf</span></div></div>
+      <div class="body">No new flag, nothing for a caller to learn.</div>
+      <div class="cost"><strong style="font-weight: 600; color: oklch(0.78 0.008 80);">Cost:</strong> wrong in the normal case &mdash; the FL-150 delivery went to <span class="mono" style="font-size: 12px;">Downloads/</span> while the job lived elsewhere. The gate would refuse a reviewed job, then get switched off.</div>
+    </div>
+    <div class="opt">
+      <div style="display: flex; align-items: baseline; gap: 9px;"><div class="mono lbl">C</div><div class="ttl">A sidecar written by <span class="mono" style="font-size: 13px; font-weight: 500;">rebuild</span></div></div>
+      <div class="body">The command that does know the work directory records it next to <span class="mono" style="font-size: 12px;">OUT.pdf</span>.</div>
+      <div class="cost"><strong style="font-weight: 600; color: oklch(0.78 0.008 80);">Cost:</strong> a new stale-file problem of exactly the kind PR #7 was opened to fix, and it breaks whenever someone runs <span class="mono" style="font-size: 12px;">retypeset</span> directly.</div>
+    </div>
+  </div>
+
+  <div style="height: 1px; background: oklch(0.32 0.012 60);"></div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <div class="mono qn">Question 2</div>
+      <div class="qh">The gate needs an enum. The one real <span class="mono" style="font-weight: 500;">review.json</span> holds prose.</div>
+    </div>
+    <div class="body">&sect;4 of <span class="mono" style="font-size: 12px;">references/review.md</span> specifies <span class="mono" style="font-size: 12px;">resolution: accepted|rejected|open</span>. The FL-150 job &mdash; the very file the brief&rsquo;s &sect;4 Proof re-runs &mdash; stores sentences there:</div>
+    <div class="mono ev">"resolution": "accepted, applied in v2 (2026-09-17)"
+"resolution": "rejected: both renderings are attested; Japanese legal
+               reference works use 上位裁判所, the press 上級; kept 上位"
+"resolution": "accepted with a different fix"</div>
+    <div class="cost">Nothing read it before, so nothing enforced it. A strict parser refuses all 31 findings on the only job that exists.</div>
+
+    <div class="optrec">
+      <div style="display: flex; align-items: baseline; gap: 9px;"><div class="mono lblrec">A</div><div class="ttl">Enum in <span class="mono" style="font-size: 13px; font-weight: 500;">resolution</span>, prose moves to <span class="mono" style="font-size: 13px; font-weight: 500;">resolution_note</span></div><div class="mono rec">recommended</div></div>
+      <div class="body">Strict field, and the rationale keeps a home &mdash; it is the most valuable part of a rejection. <span class="mono" style="font-size: 12px;">--ingest</span> still accepts a legacy prose value by its leading token and prints one migration line per finding.</div>
+    </div>
+    <div class="opt">
+      <div style="display: flex; align-items: baseline; gap: 9px;"><div class="mono lbl">B</div><div class="ttl">Parse the leading token, keep the prose</div></div>
+      <div class="body">No schema change, no migration.</div>
+      <div class="cost"><strong style="font-weight: 600; color: oklch(0.78 0.008 80);">Cost:</strong> &ldquo;accepted with a different fix&rdquo; parses as <span class="mono" style="font-size: 12px;">accepted</span> and its qualification is invisible to every later reader.</div>
+    </div>
+  </div>
+
+  <div style="height: 1px; background: oklch(0.32 0.012 60);"></div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <div class="mono qn">Question 3</div>
+      <div class="qh">A termbase holds terms. Findings are keyed by whole sentences.</div>
+    </div>
+    <div class="body">Bar item 4 says <span class="mono" style="font-size: 12px;">--ingest</span> appends each accepted terminology finding as <span class="mono" style="font-size: 12px;">(source term, target term)</span>. But <span class="mono" style="font-size: 12px;">core</span> is the mapping key, and six of the FL-150&rsquo;s eleven accepted terminology findings are keyed to a sentence:</div>
+    <div class="mono ev">core:       "Utilities (gas, electric, water, trash)"
+target:     光熱費（ガス、電気、水道、ごみ）
+suggestion: 水道光熱費（ガス、電気、水道、ごみ）</div>
+    <div class="cost">The term is <span class="mono" style="font-size: 12px;">Utilities &rarr; 水道光熱費</span>. Nothing in the finding says so.</div>
+
+    <div class="optrec">
+      <div style="display: flex; align-items: baseline; gap: 9px;"><div class="mono lblrec">A</div><div class="ttl">The reviser names the term</div><div class="mono rec">recommended</div></div>
+      <div class="body">Two optional fields on a terminology finding, <span class="mono" style="font-size: 12px;">term</span> and <span class="mono" style="font-size: 12px;">term_target</span>, asked for by <span class="mono" style="font-size: 12px;">review_prompt.md</span>. A finding without them is reported and skipped, never guessed into the termbase.</div>
+    </div>
+    <div class="opt">
+      <div style="display: flex; align-items: baseline; gap: 9px;"><div class="mono lbl">B</div><div class="ttl">Diff <span class="mono" style="font-size: 13px; font-weight: 500;">target</span> against <span class="mono" style="font-size: 13px; font-weight: 500;">suggestion</span></div></div>
+      <div class="body">Mechanical, no schema change. The changed span gives the target side exactly: 光熱費 &rarr; 水道光熱費.</div>
+      <div class="cost"><strong style="font-weight: 600; color: oklch(0.78 0.008 80);">Cost:</strong> it cannot recover the <em>source</em> side, which is the column <span class="mono" style="font-size: 12px;">qa_check --glossary</span> actually matches on. Good as a fallback that fills the target, never alone.</div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

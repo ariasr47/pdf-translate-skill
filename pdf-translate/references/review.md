@@ -85,8 +85,14 @@ typology rather than "does this look good" — MQM (Multidimensional Quality
 Metrics) is the standard one, and its top-level categories are what the
 checklist above is organised around.
 
-Prompt template (fill the four identity facts first — a reviser who does not
-know what the document *is* cannot judge register):
+Prompt template. Fill the **six** slots it carries before `{schema}` — a
+reviser who does not know what the document *is* cannot judge register:
+`{document class}`, `{issuer}`, `{source language}`, `{target language}`,
+`{register}`, and the parallel-text clause
+`{exists at URL / does not exist / was not searched}`. `pipeline.py review
+--work DIR` fills all six from the job and writes the result to
+`review_prompt.md`, so this template is the reference, not something to
+assemble by hand.
 
 ```
 You are revising a translation of a {document class} issued by {issuer},
@@ -105,6 +111,11 @@ Do not rewrite anything you cannot justify. If a term is a form name,
 statute, case number or anything the reader must write down, hand over or
 search for, it is CORRECT for it to remain in {source language}: do not
 report it.
+
+For a terminology finding, also return `term` and `term_target`: the
+shortest source phrase that is wrong and the established rendering that
+replaces it, not the whole segment. A finding without them cannot enter a
+termbase, and will be reported as skipped rather than guessed at.
 
 Return JSON only, matching this schema:
 {schema}
@@ -139,7 +150,13 @@ Segments:
       "severity": "critical|major|minor",
       "detail": "what is wrong",
       "suggestion": "proposed target, or null",
-      "resolution": "accepted|rejected|open"
+      "resolution": "accepted|rejected|open",
+      "resolution_note": "why, in prose — optional, and the most valuable
+                          text in the file when a finding is rejected",
+      "term": "terminology findings only: the shortest wrong source phrase,
+               or null",
+      "term_target": "terminology findings only: its established rendering,
+                      or null"
     }
   ],
   "summary": {
@@ -150,6 +167,24 @@ Segments:
 }
 ```
 
-Keep `review.json` beside `translations.json`. Nothing in the pipeline reads
-it — it is for the humans who accept the work, and for the next person who
-has to touch this document.
+Keep `review.json` beside `translations.json`, in the work directory.
+
+`resolution` is a **strict enum**: `accepted`, `rejected` or `open`. The
+rationale goes in `resolution_note`, not into `resolution`. A file written
+before this was enforced — where `resolution` reads
+`"rejected on measurement: the label ends at 259.5 pt"` — is migrated by its
+leading word, with the whole original string preserved in `resolution_note`
+and one line printed per migrated finding. A leading word outside the enum is
+an **error**, not a guess.
+
+`term` and `term_target` are what make a terminology finding reusable. Without
+both, `review --ingest` reports the finding as skipped and writes nothing: the
+`core` is the mapping key and is often a whole sentence, and the source side
+is the column `qa_check --glossary` matches on, so there is nothing safe to
+infer it from. A termbase that gates the next job is never filled by
+inference.
+
+`pipeline.py review --ingest review.json` reads this file, `finish` refuses
+while any finding is `open`, and accepted terminology findings are appended to
+the job's `glossary.csv`. It is still for the humans who accept the work, and
+for the next person who has to touch this document.

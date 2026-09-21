@@ -10,7 +10,16 @@ unchanged. A consumer imports from here:
     from pdf_translate import run_verify, run_qa
 """
 
-__version__ = '56'
+__version__ = '57'
+
+import logging as _logging
+
+# A library configures no logging for its host: one NullHandler so a record
+# emitted before the caller sets anything up does not print a
+# "No handlers could be found" warning, and nothing else. No level is set on
+# this logger or on the root; `pipeline.main` attaches a real handler for the
+# CLI, and a consumer attaches its own.
+_logging.getLogger(__name__).addHandler(_logging.NullHandler())
 
 from .strip_text import WidgetTextError, strip_text
 from .extract_segments import extract_segments
@@ -22,6 +31,7 @@ from .compare import compare
 from .bilingual import interleave
 from .verify import GATE_NAMES, Finding, GateResult, VerifyVerdict, run_verify, verify
 from .qa_check import QAVerdict, qa_check, run_qa
+from .review import ReviewFinding, ReviewVerdict, run_review
 from .shaping_probe import ProbeResult, probe_font
 
 __all__ = (
@@ -30,6 +40,8 @@ __all__ = (
     'GateResult',
     'ProbeResult',
     'QAVerdict',
+    'ReviewFinding',
+    'ReviewVerdict',
     'VerifyVerdict',
     'WidgetTextError',
     'compare',
@@ -42,6 +54,7 @@ __all__ = (
     'render_pages',
     'retypeset',
     'run_qa',
+    'run_review',
     'run_verify',
     'strip_text',
     'verify',

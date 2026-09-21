@@ -45,18 +45,34 @@ Usage:
 
   python3 pipeline.py render ORIGINAL.pdf TRANSLATED.pdf renders/ [--dpi 110]
 
+  python3 pipeline.py review --work DIR [--ingest review.json] [--notes NOTES.md]
+      the second-reader step. Bare, it writes DIR/review_pairs.md (every
+      core, merge, override and notice in one place) and
+      DIR/review_prompt.md (the MQM prompt with this job's identity filled
+      in). With --ingest it reads the reviser's verdict back, reports every
+      finding, and appends the accepted terminology ones to
+      DIR/glossary.csv so the next job of this class is gated on them.
+      No model is called: the reviser is a person, or one you run yourself.
+
   python3 pipeline.py finish ORIGINAL.pdf OUT.pdf FONT.ttf FINAL.pdf HTML
-      field_fonts + compare (delivery only)
+                             --work DIR [--no-review]
+      field_fonts + compare (delivery only). Refuses while DIR/review.json
+      is absent or any finding is still open; --no-review delivers anyway
+      and marks the delivery. Writes review_state.json beside FINAL.pdf on
+      every run, refused or not.
 
   python3 pipeline.py bilingual ORIGINAL.pdf FINAL.pdf BOTH.pdf
       optional reading copy with source and target pages interleaved.
       Refuses a fillable input unless --reading-copy (duplicate field
       names fill together).
 """
+import contextlib
 import json
+import logging
 import os
 import sys
 import time
+from dataclasses import replace
 
 from .extract_segments import main as extract_main
 from .field_fonts import field_fonts
@@ -66,7 +82,47 @@ from .retypeset import retypeset
 from .strip_text import strip_text, WidgetTextError
 from .bilingual import main as bilingual_main
 from .qa_check import main as qa_main
+from .review import run_review
 from .verify import verify, main as verify_main
+
+log = logging.getLogger(__name__)
+
+# The new commands emit through the package logger rather than `print`, which
+# is the convention E3 settles for every stage: a consumer that imports the
+# library gets silence and a verdict, a consumer that runs the CLI gets the
+# same lines on stdout. `main` attaches the handler; nothing else does.
+#
+# pipeline.py's existing 31 `print` sites are deliberately NOT converted here
+# — they keep working untouched and are E3's job. The mixture is expected and
+# temporary.
+_console_depth = 0
+_console_handler = None
+
+
+@contextlib.contextmanager
+def _console():
+    """Attach one stdout handler to the package logger, re-entrantly.
+
+    Re-entrant because `main` may be called from inside another `main` (the
+    scripts/ wrappers, and the tests), and a second handler would double every
+    line. Removed on the way out so importing the library never leaves a
+    handler behind on a logger the caller owns.
+    """
+    global _console_depth, _console_handler
+    pkg = logging.getLogger('pdf_translate')
+    if _console_depth == 0:
+        _console_handler = logging.StreamHandler(sys.stdout)
+        _console_handler.setFormatter(logging.Formatter('%(message)s'))
+        pkg.addHandler(_console_handler)
+        pkg.setLevel(logging.INFO)
+    _console_depth += 1
+    try:
+        yield
+    finally:
+        _console_depth -= 1
+        if _console_depth == 0:
+            pkg.removeHandler(_console_handler)
+            _console_handler = None
 
 
 def cmd_init(argv):
@@ -313,6 +369,19 @@ def cmd_qa(argv):
     args = [tr]
     if os.path.isfile(segs):
         args += ['--segments', segs]
+    # --glossary resolved against the working directory while --segments was
+    # joined to --work: an asymmetry that made the two-command story
+    # (`review --ingest` writes work/glossary.csv, `qa --work … --glossary
+    # glossary.csv` reads it back) need a path dance. A bare name that exists
+    # under work now resolves there; an explicit path that resolves is left
+    # exactly as the caller wrote it.
+    if '--glossary' in rest:
+        gi = rest.index('--glossary')
+        if gi + 1 < len(rest):
+            value = rest[gi + 1]
+            joined = os.path.join(work, value)
+            if not os.path.exists(value) and os.path.isfile(joined):
+                rest = rest[:gi + 1] + [joined] + rest[gi + 2:]
     return qa_main(args + rest)
 
 
@@ -356,23 +425,168 @@ def cmd_render(argv):
     return 0
 
 
-def cmd_finish(argv):
-    orig, out, font, final, html = argv[0], argv[1], argv[2], argv[3], argv[4]
+def _finding_line(severity, kind, core, detail):
+    """qa_check.main's column shape (qa_check.py:386), reused verbatim so a
+    reader who knows one command can read the other."""
+    return f'{severity:5} {kind:13} {core[:48]!r}: {detail}'
+
+
+def cmd_review(argv):
+    if '--work' not in argv:
+        log.info('review requires --work DIR')
+        return 2
+    work = argv[argv.index('--work') + 1]
+    ingest = argv[argv.index('--ingest') + 1] if '--ingest' in argv else None
+    notes = argv[argv.index('--notes') + 1] if '--notes' in argv else None
+
     t0 = time.perf_counter()
+    verdict = run_review(work, ingest=ingest, notes=notes)
+    for err in verdict.errors:
+        log.info(f'review: {err}')
+    if verdict.errors and not verdict.findings:
+        log.info(f'elapsed {time.perf_counter()-t0:.2f}s')
+        return verdict.exit_code
+
+    tr_path = os.path.join(work, 'translations.json')
+    if os.path.isfile(tr_path):
+        with open(tr_path, encoding='utf-8-sig') as f:
+            tr = json.load(f)
+        notices = len(tr.get('notices') or [])
+        log.info(f'review: {len(tr.get("translations") or {})} cores, '
+                 f'{len(tr.get("merges") or [])} merges, '
+                 f'{len(tr.get("overrides") or [])} overrides, '
+                 f'{notices} notice{"" if notices == 1 else "s"}')
+    for path in verdict.wrote:
+        log.info(f'review: wrote {path}')
+
+    if not verdict.present:
+        log.info('review: no review.json yet. finish will refuse.')
+    else:
+        who = verdict.reviewer or {}
+        qualified = ('qualified in pair' if who.get('qualified_in_pair')
+                     else 'not qualified in pair')
+        log.info(f'review: reviewer {who.get("name", "?")} '
+                 f'({who.get("kind", "?")}, {qualified})')
+        counts = verdict.counts
+        log.info(f'review: {len(verdict.findings)} finding(s) — '
+                 f'{counts["critical"]} critical, {counts["major"]} major, '
+                 f'{counts["minor"]} minor')
+        log.info(f'review: {counts["accepted"]} accepted, '
+                 f'{counts["rejected"]} rejected, {counts["open"]} open')
+        for core, note, resolved in verdict.migrations:
+            log.info(f'review: migrated resolution {note[:60]!r} → '
+                     f'{resolved}; prose kept in resolution_note')
+        for f in verdict.open_findings:
+            log.info(_finding_line('OPEN', f.category, f.core, f.detail))
+        if verdict.termbase_added:
+            log.info(f'review: {len(verdict.termbase_added)} accepted '
+                     f'terminology finding(s) → '
+                     f'{os.path.join(work, "glossary.csv")}')
+        if verdict.termbase_skipped:
+            log.info(f'review: {len(verdict.termbase_skipped)} skipped — no '
+                     f'term named; add "term" and "term_target"')
+        for term, existing, new in verdict.conflicts:
+            log.info(f'review: CONFLICT {term!r} is already {existing!r}; '
+                     f'{new!r} was not written')
+        if verdict.open_findings:
+            log.info(f'review: {len(verdict.open_findings)} open finding(s). '
+                     f'finish will refuse until each is accepted or rejected.')
+    log.info(f'elapsed {time.perf_counter()-t0:.2f}s')
+    return verdict.exit_code
+
+
+def cmd_finish(argv):
+    # --work and --no-review come out of argv before the five positionals,
+    # exactly as cmd_rebuild does.
+    no_review = '--no-review' in argv
+    argv = [a for a in argv if a != '--no-review']
+    work = None
+    if '--work' in argv:
+        wi = argv.index('--work')
+        work = argv[wi + 1]
+        argv = argv[:wi] + argv[wi + 2:]
+    if len(argv) < 5:
+        log.info('finish: ORIGINAL.pdf OUT.pdf FONT.ttf FINAL.pdf HTML '
+                 '--work DIR [--no-review]')
+        return 2
+    orig, out, font, final, html = argv[0], argv[1], argv[2], argv[3], argv[4]
+
+    if work is None:
+        # Ruling 1: inferring the work directory from FINAL.pdf was rejected
+        # — the FL-150 delivery went to Downloads/ while the job lived
+        # elsewhere, so the gate would refuse a reviewed job and be switched
+        # off. The flag is explicit or there is no gate.
+        log.info('finish: --work DIR is required — it is where review.json '
+                 'lives, and finish cannot check a review it cannot find.')
+        return 2
+
+    t0 = time.perf_counter()
+    # Read-only: packaging never rewrites the reviser's inputs, and never
+    # appends to the termbase behind `review --ingest`'s back.
+    verdict = run_review(work, ingest='review.json', generate=False)
+    if no_review:
+        verdict = replace(verdict, no_review=True)
+
+    if verdict.blocks_delivery and not no_review:
+        if not verdict.present:
+            log.info(f'finish: no {os.path.join(work, "review.json")} — no '
+                     f'second reader has checked this translation.')
+            log.info(f'finish: run `pipeline.py review --work {work}`, have '
+                     f'it reviewed, then `review --work {work} --ingest '
+                     f'review.json`.')
+        else:
+            log.info(f'finish: {len(verdict.open_findings)} finding(s) are '
+                     f'still open; each must be accepted or rejected.')
+            for f in verdict.open_findings:
+                log.info(_finding_line('OPEN', f.category, f.core, f.detail))
+        log.info('finish: --no-review delivers anyway and marks the delivery.')
+        _write_review_state(final, verdict)
+        log.info(f'elapsed {time.perf_counter()-t0:.2f}s')
+        return 2
+
+    if verdict.review_line:
+        log.info(verdict.review_line)
+
     rc = field_fonts(out, font, final)
     if rc != 0:
+        _write_review_state(final, verdict)
         return rc
     compare(orig, final, html)
-    print(f'elapsed {time.perf_counter()-t0:.2f}s')
+    _write_review_state(final, verdict)
+    log.info(f'elapsed {time.perf_counter()-t0:.2f}s')
     return 0
 
 
+def _write_review_state(final, verdict):
+    """The record beside the delivery, written on EVERY run, refused or not.
+
+    R5 says a non-build stage never withholds a document, so for the product
+    the load-bearing part of this loop is the record, not the refusal: a
+    consumer that never reads stdout can still surface the REVIEW line.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(final)),
+                        'review_state.json')
+    try:
+        with open(path, 'w', encoding='utf-8', newline='\n') as f:
+            json.dump(verdict.to_dict(), f, ensure_ascii=False, indent=1)
+            f.write('\n')
+    except OSError as exc:
+        log.info(f'finish: (could not write {path}: {exc})')
+
+
 def main(argv=None):
+    with _console():
+        return _main(argv)
+
+
+def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv:
         print(__doc__)
         return 2
     cmd, rest = argv[0], argv[1:]
+    if cmd == 'review':
+        return cmd_review(rest)
     if cmd == 'init':
         return cmd_init(rest)
     if cmd == 'from-cores':

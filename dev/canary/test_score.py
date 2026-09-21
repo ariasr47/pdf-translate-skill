@@ -159,5 +159,55 @@ class ScoreTests(unittest.TestCase):
                     self.assertEqual(before, {p.name: p.read_bytes() for p in self.run.iterdir()})
 
 
+JOB = Path(__file__).resolve().parents[2] / 'dev' / 'jobs' / 'fl150-ja-2026-09-17'
+
+
+class TerminologyAxisTests(unittest.TestCase):
+    """The loop measures the reviser too.
+
+    Two numbers, both fed by a job's review.json: how much a reviser still has
+    to fix, and how often the reviser was wrong. Neither is a target — this is
+    the first measurement there has ever been.
+    """
+
+    def test_the_axis_reproduces_the_fl150_measurement(self):
+        axis = score.terminology_axis(str(JOB / 'review.json'),
+                                      str(JOB / 'translations.json'))
+        self.assertEqual(axis['findings'], 31)
+        self.assertEqual(axis['accepted'], 25)
+        self.assertEqual(axis['rejected'], 6)
+        # The reviser was wrong six times in thirty-one, twice in its own top
+        # seven. 6/31 = 19.4%.
+        self.assertEqual(axis['false_positive_rate'], round(6 / 31, 4))
+        self.assertGreater(axis['source_words'], 0)
+        self.assertEqual(
+            axis['accepted_per_1000_source_words'],
+            round(25 * 1000 / axis['source_words'], 2))
+
+    def test_a_job_with_no_review_json_scores_none_not_zero(self):
+        # An unmeasured job and a perfect one are not the same number, and a
+        # zero here would read as "the reviser found nothing wrong".
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = os.path.join(tmp, 'review.json')
+            self.assertIsNone(score.terminology_axis(
+                missing, str(JOB / 'translations.json')))
+
+    def test_an_unreadable_review_json_scores_none_not_an_exception(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bad = os.path.join(tmp, 'review.json')
+            with open(bad, 'w', encoding='utf-8') as fh:
+                fh.write('{"findings": [')
+            self.assertIsNone(score.terminology_axis(
+                bad, str(JOB / 'translations.json')))
+
+    def test_the_axis_counts_accepted_terminology_separately(self):
+        axis = score.terminology_axis(str(JOB / 'review.json'),
+                                      str(JOB / 'translations.json'))
+        self.assertEqual(axis['terminology'], 12)
+        self.assertEqual(axis['terminology_accepted'], 11)
+        # None of them names a term, so none can enter a termbase yet.
+        self.assertEqual(axis['termbase_ready'], 0)
+
+
 if __name__ == '__main__':
     unittest.main()

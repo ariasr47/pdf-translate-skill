@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: oklch(0.55 0.13 45); }
+    a:hover { color: oklch(0.42 0.11 45); }
+  </style>
+</helmet>
+
+<div style="width: 1240px; min-height: 960px; box-sizing: border-box; padding: 40px 44px; background: oklch(0.98 0.006 85); font-family: 'IBM Plex Sans', system-ui, sans-serif; color: oklch(0.22 0.01 60); display: flex; flex-direction: column; gap: 26px;">
+
+  <div style="display: flex; flex-direction: column; gap: 7px;">
+    <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.55 0.02 60);">Row 32 &middot; dev/goals/32-terminology-loop.md</div>
+    <div style="font-size: 32px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.15;">The terminology loop</div>
+    <div style="font-size: 15px; line-height: 1.5; color: oklch(0.44 0.012 60); max-width: 720px;">A wrong term of art cannot reach a delivery without a second reader, and every reviewed job makes the next one checkable.</div>
+    <div style="font-size: 12px; line-height: 1.5; color: oklch(0.55 0.015 60); max-width: 720px; padding-top: 2px;">Commands are named by subcommand below. Two spellings run: <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11.5px;">python3 scripts/pipeline.py &hellip;</span>, which is what <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11.5px;">SKILL.md</span> documents and what the thin wrappers exist for, and <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11.5px;">python3 -m pdf_translate.pipeline &hellip;</span>. The consoles here use the package form.</div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; align-items: start;">
+
+    <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 0;">
+
+      <div style="display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; background: oklch(0.955 0.005 85); border: 1px solid oklch(0.88 0.008 75); border-radius: 3px;">
+        <div style="display: flex; align-items: baseline; gap: 10px;">
+          <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 500; color: oklch(0.45 0.012 60);">qa --work DIR</div>
+          <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.6 0.015 60);">unchanged</div>
+        </div>
+        <div style="font-size: 13px; line-height: 1.5; color: oklch(0.47 0.012 60);">Mechanical defects in the mapping: figures and dates that moved, untranslated lines, inconsistent variants, bracket and punctuation parity. Advisory. It cannot read.</div>
+      </div>
+
+      <div style="display: flex; justify-content: center; padding: 7px 0;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="oklch(0.7 0.012 60)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 11px; padding: 17px 19px; background: oklch(0.995 0.004 85); border: 1.5px solid oklch(0.72 0.14 70); border-radius: 3px;">
+        <div style="display: flex; align-items: baseline; gap: 10px;">
+          <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 13.5px; font-weight: 600;">review --work DIR</div>
+          <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.58 0.14 60); font-weight: 600;">new</div>
+        </div>
+        <div style="font-size: 13px; line-height: 1.5; color: oklch(0.35 0.012 60);">Writes two files beside the mapping. Reads; changes nothing.</div>
+        <div style="display: flex; gap: 10px;">
+          <div style="flex-grow: 1; padding: 10px 12px; background: oklch(0.97 0.012 80); border-radius: 3px; display: flex; flex-direction: column; gap: 3px;">
+            <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 500;">review_pairs.md</div>
+            <div style="font-size: 12px; line-height: 1.45; color: oklch(0.47 0.012 60);">every authored pair, merges, overrides, notices</div>
+          </div>
+          <div style="flex-grow: 1; padding: 10px 12px; background: oklch(0.97 0.012 80); border-radius: 3px; display: flex; flex-direction: column; gap: 3px;">
+            <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 500;">review_prompt.md</div>
+            <div style="font-size: 12px; line-height: 1.45; color: oklch(0.47 0.012 60);">the MQM prompt, identity facts filled</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: center; padding: 7px 0;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="oklch(0.7 0.012 60)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 9px; padding: 16px 18px; background: oklch(0.955 0.005 85); border: 1px dashed oklch(0.75 0.01 70); border-radius: 3px;">
+        <div style="font-size: 13.5px; font-weight: 600;">A second reader fills <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-weight: 500;">review.json</span></div>
+        <div style="font-size: 13px; line-height: 1.5; color: oklch(0.47 0.012 60);">A model first pass, a qualified human, or both. Outside the pipeline; the skill never calls a model. The schema is already <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12.5px;">references/review.md</span> &sect;4 &mdash; but &sect;4 closes with &ldquo;Nothing in the pipeline reads it&rdquo;, and this row makes that line false. It has to change with the code.</div>
+      </div>
+
+      <div style="display: flex; justify-content: center; padding: 7px 0;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="oklch(0.7 0.012 60)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 9px; padding: 17px 19px; background: oklch(0.995 0.004 85); border: 1.5px solid oklch(0.72 0.14 70); border-radius: 3px;">
+        <div style="display: flex; align-items: baseline; gap: 10px;">
+          <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 13.5px; font-weight: 600;">review --work DIR --ingest review.json</div>
+          <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.58 0.14 60); font-weight: 600;">new</div>
+        </div>
+        <div style="font-size: 13px; line-height: 1.5; color: oklch(0.35 0.012 60);">Validates the schema, prints the open findings, and appends every <em>accepted</em> terminology finding to <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12.5px;">glossary.csv</span> beside the job.</div>
+      </div>
+
+      <div style="display: flex; justify-content: center; padding: 7px 0;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="oklch(0.7 0.012 60)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 9px; padding: 17px 19px; background: oklch(0.985 0.012 30); border: 1.5px solid oklch(0.68 0.14 25); border-radius: 3px;">
+        <div style="display: flex; align-items: baseline; gap: 10px;">
+          <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 13.5px; font-weight: 600;">finish</div>
+          <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.16 25); font-weight: 600;">now refuses</div>
+        </div>
+        <div style="font-size: 13px; line-height: 1.5; color: oklch(0.33 0.012 60);">Refuses while <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12.5px;">review.json</span> is absent, or any finding is <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12.5px;">open</span>. <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12.5px;">--no-review</span> is the only way past, and it prints one REVIEW line the delivery must carry.</div>
+      </div>
+
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+
+      <div style="display: flex; flex-direction: column; gap: 10px; padding: 18px; background: oklch(0.175 0.008 60); border-radius: 3px; color: oklch(0.9 0.006 80);">
+        <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: oklch(0.65 0.02 70);">Why &mdash; measured, 17 Sep 2026</div>
+        <div style="font-size: 13px; line-height: 1.55; color: oklch(0.86 0.008 80);">The first FL-150 &rarr; Japanese job on skill v56 shipped with:</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="padding: 10px 11px; background: oklch(0.23 0.012 55); border-left: 2px solid oklch(0.68 0.14 25); border-radius: 2px; display: flex; flex-direction: column; gap: 3px;">
+            <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 13px;">&#19990;&#24111;&#20027;</div>
+            <div style="font-size: 12px; line-height: 1.45; color: oklch(0.76 0.01 80);">for &ldquo;head of household&rdquo; &mdash; in Japan the registered household head, usually the married breadwinner; in US tax law a status reserved for the unmarried. On a form signed under penalty of perjury.</div>
+          </div>
+          <div style="padding: 10px 11px; background: oklch(0.23 0.012 55); border-left: 2px solid oklch(0.72 0.14 70); border-radius: 2px; display: flex; flex-direction: column; gap: 3px;">
+            <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 13px;">&#30456;&#25163;&#26041;&#12398;&#35242;</div>
+            <div style="font-size: 12px; line-height: 1.45; color: oklch(0.76 0.01 80);">for &ldquo;the other parent&rdquo; &mdash; reads as the respondent&rsquo;s <em>own</em> parent, the child&rsquo;s grandparent.</div>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 5px; padding-top: 4px;">
+          <div style="display: flex; gap: 8px; align-items: baseline;"><span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11.5px; color: oklch(0.68 0.14 150);">verify</span><span style="font-size: 12px; color: oklch(0.76 0.01 80);">exited 0</span></div>
+          <div style="display: flex; gap: 8px; align-items: baseline;"><span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11.5px; color: oklch(0.68 0.14 150);">qa_check</span><span style="font-size: 12px; color: oklch(0.76 0.01 80);">0 errors</span></div>
+          <div style="font-size: 12px; line-height: 1.45; color: oklch(0.7 0.012 80); padding-top: 3px;">No gate could see either. The page was right and the strings were present.</div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 9px; padding: 16px 17px; background: oklch(0.955 0.005 85); border: 1px solid oklch(0.88 0.008 75); border-radius: 3px;">
+        <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: oklch(0.55 0.02 60);">What caught them</div>
+        <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.4 0.012 60);">An independent MQM pass after delivery: 31 items &mdash; 1 critical, 6 major, 24 minor. 25 accepted, 6 rejected on measurement. A human page-1 read agreed with every accepted item.</div>
+        <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.4 0.012 60);">The reviser was wrong twice in its top seven, so the loop measures the reviewer too.</div>
+        <div style="font-size: 12px; line-height: 1.45; color: oklch(0.55 0.015 60);">The brief records 24 / 7; <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11.5px;">review.json</span> reads 25 / 6, because one finding resolves as &ldquo;accepted with a different fix&rdquo;. The file is the measurement.</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; padding: 16px 17px; background: oklch(0.955 0.005 85); border: 1px solid oklch(0.88 0.008 75); border-radius: 3px;">
+        <div style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: oklch(0.55 0.02 60);">Not done when</div>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; line-height: 1.45; color: oklch(0.4 0.012 60);">
+          <div>A model is fine-tuned, or a global glossary ships inside the skill.</div>
+          <div>The reviser is presented as replacing human sign-off for court, government, medical or legal filings.</div>
+          <div><span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12px;">finish</span> can pass an open finding without the REVIEW line in the delivery.</div>
+          <div>The terms-of-art table is optional prose rather than a slot the reviser reads.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

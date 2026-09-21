@@ -35,10 +35,81 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 SCRIPTS = os.path.join(REPO, 'pdf-translate', 'scripts')
 sys.path.insert(0, SCRIPTS)
 
+PACKAGE = os.path.join(REPO, 'pdf-translate')
+if PACKAGE not in sys.path:
+    sys.path.insert(0, PACKAGE)
+
 import pymupdf  # noqa: E402
 import extract_segments  # noqa: E402
 import qa_check  # noqa: E402
 import verify  # noqa: E402
+
+from pdf_translate import review as review_mod  # noqa: E402
+
+
+def source_words(translations_path):
+    """Words of SOURCE text in a job: the mapping keys, plus every merge's
+    source lines. Overrides' `contains` is a locator and notices are authored
+    target text, so neither counts.
+
+    Whitespace-delimited, which undercounts a spaceless source (Japanese,
+    Chinese). That is fine here: the axis compares runs of the same class in
+    the same pair, and a measure that is consistent beats one that is clever.
+    """
+    try:
+        with open(translations_path, encoding='utf-8-sig') as fh:
+            doc = json.load(fh)
+    except (OSError, ValueError):
+        return 0
+    words = 0
+    for core in (doc.get('translations') or {}):
+        words += len(str(core).split())
+    for merge in (doc.get('merges') or []):
+        for line in (merge.get('lines') or []):
+            words += len(str(line).split())
+    return words
+
+
+def terminology_axis(review_path, translations_path):
+    """How much a reviser still had to fix, and how often they were wrong.
+
+    Returns None — never zero — when there is no readable review.json. An
+    unmeasured job and a job whose reviser found nothing are not the same
+    number, and a 0 here would read as the second.
+
+    Neither figure is a target. The false-positive rate measures the REVISER:
+    on the FL-150 it is 6 of 31, 19%, and two of those six were in the
+    reviser's own top seven findings. A loop that gates the next job on a
+    reviser's output has to measure the reviser too.
+    """
+    doc, errors = review_mod.load_review(review_path)
+    if errors:
+        return None
+    findings, _ = review_mod.validate(doc)
+    if not findings:
+        return None
+
+    accepted = sum(1 for f in findings if f.resolution == 'accepted')
+    rejected = sum(1 for f in findings if f.resolution == 'rejected')
+    terminology = [f for f in findings if f.category == 'terminology']
+    term_accepted = [f for f in terminology if f.resolution == 'accepted']
+    rows, _skipped = review_mod.termbase_rows(findings)
+    words = source_words(translations_path)
+
+    return {
+        'findings': len(findings),
+        'accepted': accepted,
+        'rejected': rejected,
+        'open': sum(1 for f in findings if f.resolution == 'open'),
+        'terminology': len(terminology),
+        'terminology_accepted': len(term_accepted),
+        'termbase_ready': len(rows),
+        'source_words': words,
+        'accepted_per_1000_source_words': (
+            round(accepted * 1000 / words, 2) if words else None),
+        'false_positive_rate': (
+            round(rejected / len(findings), 4) if findings else None),
+    }
 
 
 def run_file(rundir, value, label):
@@ -219,6 +290,23 @@ def score_run(original, rundir, output=None, allow=None, fill_text=None):
     else:
         print('  qa_check: no translations.json found in the run')
 
+    terminology = None
+    if tr:
+        terminology = terminology_axis(
+            str(Path(tr).with_name('review.json')), tr)
+    if terminology is None:
+        print('  terminology: not measured — no readable review.json '
+              '(an unmeasured job is not a clean one)')
+    else:
+        print(f'  terminology: {terminology["accepted"]} accepted of '
+              f'{terminology["findings"]} finding(s); '
+              f'{terminology["accepted_per_1000_source_words"]} accepted per '
+              f'1,000 source words; reviser false-positive rate '
+              f'{terminology["false_positive_rate"]:.0%}')
+        print(f'     terminology findings: {terminology["terminology"]}, '
+              f'{terminology["terminology_accepted"]} accepted, '
+              f'{terminology["termbase_ready"]} ready for the termbase')
+
     artifacts = sorted(
         os.path.relpath(p, rundir)
         for p in glob.glob(os.path.join(rundir, '**', '*'), recursive=True)
@@ -230,7 +318,8 @@ def score_run(original, rundir, output=None, allow=None, fill_text=None):
             'verification': settings, 'verify_log': log,
             'identifiers': [{'kind': k, 'text': s, 'kept': ok}
                             for k, s, ok in ids],
-            'qa_findings': findings, 'artifacts': artifacts}
+            'qa_findings': findings, 'terminology': terminology,
+            'artifacts': artifacts}
 
 
 def main(argv=None):

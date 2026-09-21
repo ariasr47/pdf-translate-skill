@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: oklch(0.55 0.13 45); }
+    a:hover { color: oklch(0.42 0.11 45); }
+    .mono { font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+    .code { white-space: pre; font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11.5px; line-height: 1.72; }
+    .kw { color: oklch(0.72 0.11 300); }
+    .fn { color: oklch(0.78 0.11 200); }
+    .str { color: oklch(0.78 0.11 140); }
+    .cm { color: oklch(0.6 0.02 70); }
+    .add { color: oklch(0.76 0.12 150); }
+  </style>
+</helmet>
+
+<div style="width: 900px; min-height: 780px; box-sizing: border-box; padding: 34px 34px; background: oklch(0.98 0.006 85); font-family: 'IBM Plex Sans', system-ui, sans-serif; color: oklch(0.22 0.01 60); display: flex; flex-direction: column; gap: 20px;">
+
+  <div style="display: flex; flex-direction: column; gap: 5px;">
+    <div class="mono" style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.55 0.02 60);">C4 &middot; the product streams progress to a browser</div>
+    <div style="font-size: 24px; font-weight: 600; letter-spacing: -0.012em;">Progress and cancellation</div>
+    <div style="font-size: 13.5px; line-height: 1.5; color: oklch(0.44 0.012 60);">Nothing today: no callback parameter, no cooperative check in either loop. It is also the cheapest item in the epic, for one structural reason. (C7&rsquo;s <span class="mono" style="font-size: 12.5px;">timestamp=</span> is not here: determinism moved to E8 on 2026-09-18.)</div>
+  </div>
+
+  <div style="display: flex; gap: 14px; padding: 15px 17px; background: oklch(0.96 0.02 150); border: 1px solid oklch(0.82 0.08 150); border-radius: 3px;">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="oklch(0.5 0.13 150)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
+    <div style="font-size: 12.5px; line-height: 1.55; color: oklch(0.32 0.03 150);"><strong style="font-weight: 600;">&ldquo;Leaving no partial file at the output path&rdquo; is already true.</strong> <span class="mono" style="font-size: 12px;">retypeset</span> has exactly one save &mdash; <span class="mono" style="font-size: 12px;">doc.ez_save(out)</span> at <span class="mono" style="font-size: 12px;">retypeset.py:1387</span> &mdash; after both loops and after the metadata pass. Every refusal path already returns before it. So cancelling between pages cannot leave a partial output; the guarantee C4 asks for is a property of the existing structure, not something to build.</div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">The signature</div>
+    <div style="padding: 15px 17px; background: oklch(0.175 0.008 60); border-radius: 3px; color: oklch(0.88 0.008 80);">
+<div class="code"><span class="cm"># today  — retypeset.py:622</span>
+<span class="kw">def</span> <span class="fn">retypeset</span>(stripped, segf, trf, out):
+
+<span class="cm"># proposed — the silent twin; the bare retypeset() keeps its exact shape</span>
+<span class="kw">def</span> <span class="fn">run_retypeset</span>(stripped, segf, trf, out, *,
+              <span class="add">progress=None,</span>      <span class="cm"># progress(done, total) after each unit</span>
+              <span class="add">cancel=None,</span>        <span class="cm"># anything with .is_set() — threading.Event fits</span>
+              <span class="add">scale_report=None</span>)  <span class="cm"># explicit path, or None to return it only</span></div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">Inside, at the top of each unit</div>
+      <div style="padding: 14px 16px; background: oklch(0.175 0.008 60); border-radius: 3px; color: oklch(0.88 0.008 80); flex-grow: 1;">
+<div class="code"><span class="kw">if</span> cancel <span class="kw">is not</span> <span class="kw">None</span> <span class="kw">and</span> cancel.<span class="fn">is_set</span>():
+    doc.<span class="fn">close</span>()
+    <span class="kw">return</span> <span class="fn">RetypesetResult</span>(
+        cancelled=<span class="kw">True</span>, output=<span class="kw">None</span>, …)
+
+<span class="cm"># … place the page …</span>
+
+done += 1
+<span class="kw">if</span> progress <span class="kw">is not</span> <span class="kw">None</span>:
+    <span class="fn">progress</span>(done, total)</div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">What a consumer writes</div>
+      <div style="padding: 14px 16px; background: oklch(0.175 0.008 60); border-radius: 3px; color: oklch(0.88 0.008 80); flex-grow: 1;">
+<div class="code">stop = threading.<span class="fn">Event</span>()
+
+<span class="kw">def</span> <span class="fn">on_progress</span>(done, total):
+    ws.<span class="fn">send</span>({<span class="str">"done"</span>: done, <span class="str">"total"</span>: total})
+
+built = <span class="fn">run_retypeset</span>(…, progress=on_progress,
+                                cancel=stop)
+
+<span class="kw">if</span> built.cancelled:
+    <span class="cm"># nothing was written. no cleanup.</span>
+    …</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 9px; padding: 15px 17px; background: oklch(0.955 0.005 85); border: 1px solid oklch(0.88 0.008 75); border-radius: 3px;">
+    <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">The detail that decides the counter</div>
+    <div style="font-size: 12.5px; line-height: 1.55; color: oklch(0.42 0.012 60);"><span class="mono" style="font-size: 12px;">retypeset</span> runs <strong style="font-weight: 600;">two</strong> loops, not one: a per-page placement pass, then a separate per-merge-job pass over the same document. A naive <span class="mono" style="font-size: 12px;">progress(page, page_count)</span> would reach 100% and then keep working, which is the worst thing a progress bar can do.</div>
+    <div style="font-size: 12.5px; line-height: 1.55; color: oklch(0.42 0.012 60);">So <span class="mono" style="font-size: 12px;">total</span> is <span class="mono" style="font-size: 12px;">pages + merge jobs</span> and <span class="mono" style="font-size: 12px;">done</span> is monotonic across both &mdash; one fraction, never resetting, never overrunning. A caller who wants the phase can read it from <span class="mono" style="font-size: 12px;">RetypesetResult</span> afterwards; a progress bar does not need it.</div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

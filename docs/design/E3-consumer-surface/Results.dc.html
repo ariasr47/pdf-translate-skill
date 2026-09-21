@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: oklch(0.55 0.13 45); }
+    a:hover { color: oklch(0.42 0.11 45); }
+    .mono { font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+    .code { white-space: pre; font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11.5px; line-height: 1.72; }
+    .kw { color: oklch(0.72 0.11 300); }
+    .fn { color: oklch(0.78 0.11 200); }
+    .str { color: oklch(0.78 0.11 140); }
+    .cm { color: oklch(0.6 0.02 70); }
+  </style>
+</helmet>
+
+<div style="width: 900px; min-height: 1120px; box-sizing: border-box; padding: 34px 34px; background: oklch(0.98 0.006 85); font-family: 'IBM Plex Sans', system-ui, sans-serif; color: oklch(0.22 0.01 60); display: flex; flex-direction: column; gap: 20px;">
+
+  <div style="display: flex; flex-direction: column; gap: 5px;">
+    <div class="mono" style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.55 0.02 60);">C3 &middot; outputs a consumer can explain an outcome from</div>
+    <div style="font-size: 24px; font-weight: 600; letter-spacing: -0.012em;">One result family</div>
+    <div style="font-size: 13.5px; line-height: 1.5; color: oklch(0.44 0.012 60);">Frozen dataclass, tuple fields, <span class="mono" style="font-size: 12.5px;">to_dict()</span> carrying <span class="mono" style="font-size: 12.5px;">schema</span> and <span class="mono" style="font-size: 12.5px;">version</span> &mdash; the shape <span class="mono" style="font-size: 12.5px;">VerifyVerdict</span> has had since v51.</div>
+  </div>
+
+  <div style="display: flex; gap: 13px; padding: 14px 16px; background: oklch(0.985 0.012 80); border: 1px solid oklch(0.85 0.05 78); border-radius: 3px;">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="oklch(0.55 0.13 70)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+    <div style="font-size: 12.5px; line-height: 1.55; color: oklch(0.38 0.012 60);"><strong style="font-weight: 600;">C3 is cheaper than its own status note says.</strong> The note reads &ldquo;the extractor&rsquo;s warnings and the strip result are printed, not returned&rdquo;. Measured at v56, both are <em>returned and also printed</em>: <span class="mono" style="font-size: 12px;">strip_text()</span> returns a report dict (<span class="mono" style="font-size: 12px;">encryption</span>, <span class="mono" style="font-size: 12px;">perms_removed</span>, <span class="mono" style="font-size: 12px;">certified</span>, <span class="mono" style="font-size: 12px;">leftover_text</span>, counts) and <span class="mono" style="font-size: 12px;">extract_segments()</span> returns <span class="mono" style="font-size: 12px;">segments</span>, <span class="mono" style="font-size: 12px;">warnings</span>, <span class="mono" style="font-size: 12px;">cores</span>, <span class="mono" style="font-size: 12px;">document</span>, <span class="mono" style="font-size: 12px;">pages</span>. The data exists; it needs an envelope and a type, not an excavation.</div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+    <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">The family</div>
+    <div style="border: 1px solid oklch(0.87 0.008 75); border-radius: 3px; overflow: hidden;">
+      <div style="display: grid; grid-template-columns: 1fr 1.05fr 0.7fr; background: oklch(0.94 0.008 80); border-bottom: 1px solid oklch(0.87 0.008 75);">
+        <div class="mono" style="padding: 8px 12px; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: oklch(0.45 0.015 60);">type</div>
+        <div class="mono" style="padding: 8px 12px; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: oklch(0.45 0.015 60);">carries</div>
+        <div class="mono" style="padding: 8px 12px; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: oklch(0.45 0.015 60);">today</div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1.05fr 0.7fr; font-size: 12px; line-height: 1.45;">
+        <div class="mono" style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); font-size: 12px;">VerifyVerdict</div>
+        <div style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">exit_code, gates (each a GateResult with its own findings)</div>
+        <div style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); color: oklch(0.5 0.13 150); font-weight: 500;">schema 1 &mdash; exists</div>
+        <div class="mono" style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); font-size: 12px;">QAVerdict</div>
+        <div style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">findings, error_count, warn_count</div>
+        <div style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); color: oklch(0.55 0.13 70); font-weight: 500;">no envelope</div>
+        <div class="mono" style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); font-size: 12px;">StripResult</div>
+        <div style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">encryption, perms_removed, certified, xfa, buttons, leftover_text</div>
+        <div style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); color: oklch(0.55 0.13 70); font-weight: 500;">dict, no type</div>
+        <div class="mono" style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); font-size: 12px;">ExtractResult</div>
+        <div style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">segments, cores, warnings, document, pages</div>
+        <div style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); color: oklch(0.55 0.13 70); font-weight: 500;">dict, no type</div>
+        <div class="mono" style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); font-size: 12px;">FontResult</div>
+        <div style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">face, subset size, glyphs added, roles</div>
+        <div style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); color: oklch(0.6 0.14 25); font-weight: 500;">rc + 12 prints</div>
+        <div class="mono" style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); font-size: 12px;">RetypesetResult</div>
+        <div style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80);">pages, placed, <strong style="font-weight: 600;">scaled runs</strong>, cancelled, output path</div>
+        <div style="padding: 9px 12px; border-bottom: 1px solid oklch(0.92 0.006 80); color: oklch(0.6 0.14 25); font-weight: 500;">rc + 32 prints</div>
+        <div class="mono" style="padding: 9px 12px; font-size: 12px;">FieldFontsResult</div>
+        <div style="padding: 9px 12px;">fields touched, face embedded</div>
+        <div style="padding: 9px 12px; color: oklch(0.6 0.14 25); font-weight: 500;">rc + 4 prints</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 9px; padding: 16px 17px; background: oklch(0.955 0.005 85); border: 1px solid oklch(0.88 0.008 75); border-radius: 3px;">
+    <div class="mono" style="font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 60);">The one that is not just an envelope</div>
+    <div style="font-size: 13px; font-weight: 600;"><span class="mono" style="font-size: 12.5px; font-weight: 500;">scale_report.json</span> is a bare JSON list</div>
+    <div style="padding: 12px 14px; background: oklch(0.175 0.008 60); border-radius: 3px; color: oklch(0.88 0.008 80);">
+<div class="code"><span class="cm"># retypeset.py:1379 — today</span>
+report = os.path.<span class="fn">join</span>(os.path.<span class="fn">dirname</span>(os.path.<span class="fn">abspath</span>(out)), SCALE_REPORT)
+<span class="kw">with</span> <span class="fn">open</span>(report, <span class="str">'w'</span>, encoding=<span class="str">'utf-8'</span>) <span class="kw">as</span> f:
+    json.<span class="fn">dump</span>(<span class="fn">sorted</span>(scaled, key=<span class="kw">lambda</span> r: (r[<span class="str">'page'</span>], r[<span class="str">'key'</span>])), f, …)</div>
+    </div>
+    <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.42 0.012 60);">Three problems in four lines. There is <strong style="font-weight: 600;">no envelope</strong>, so no place to put <span class="mono" style="font-size: 12px;">schema</span> without changing the file&rsquo;s top-level type. There is <strong style="font-weight: 600;">no atomic write</strong> &mdash; no temp-and-replace, no stale removal &mdash; the protections <span class="mono" style="font-size: 12px;">write_report</span> gained in v53 after PR #7, never carried across. And the path is <strong style="font-weight: 600;">a fixed name beside the output</strong>, so two jobs writing their outputs to one directory silently overwrite each other&rsquo;s report.</div>
+  </div>
+
+  <div style="display: flex; gap: 14px; padding: 14px 16px; background: oklch(0.985 0.012 30); border: 1px solid oklch(0.84 0.07 30); border-radius: 3px;">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="oklch(0.55 0.15 25)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+    <div style="font-size: 12.5px; line-height: 1.55; color: oklch(0.35 0.012 60);"><strong style="font-weight: 600;">Wrapping it is a breaking change to a published file format.</strong> That is a decision, not a detail &mdash; it is Question 2 on the &ldquo;Decide first&rdquo; artboard. It is cheapest now, before the product pins a version and builds goldens on the current shape.</div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

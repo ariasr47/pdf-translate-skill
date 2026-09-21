@@ -231,3 +231,23 @@ translations.json`, `--segments segments.json`, `--allow-extra-prefix`,
 of a checkout — an installed package has none, so a service passes its own; with
 `--fail-on-review`, a CJK job exits 1 until they are shipped). Omit
 `--translations`: the always-on gates run unchanged.
+
+## The review loop is not a gate
+
+`pipeline.py review` and the refusal inside `finish` are **not** gates, and
+nobody should look for a gate 22. They produce no `GateResult`, they record
+nothing in `VerifyVerdict`, they do not appear in `GATE_NAMES`, and
+`verify.py`'s twenty-one gates are unchanged by them.
+
+The distinction is the point. A gate is a structural check a script can make
+about a file. The review loop exists precisely because the failure it addresses
+— a plausible, fluent, wrong term of art — is one **no gate can see**: the page
+is right, the string is present, the script is correct and the numbers match.
+Its verdict comes from a person (or a model the operator runs), and it lives in
+`review.json`, in `ReviewVerdict`, and in the `review_state.json` written beside
+every delivery.
+
+The one place a gate does carry terminology forward is `qa_check --glossary`,
+which has read a two-column termbase since long before this loop existed.
+`review --ingest` now fills that file from accepted terminology findings, so the
+next job of the same class is gated on what this one learned.

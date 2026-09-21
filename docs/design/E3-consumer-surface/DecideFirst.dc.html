@@ -1,0 +1,123 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: oklch(0.55 0.13 45); }
+    a:hover { color: oklch(0.42 0.11 45); }
+    .mono { font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+    .opt { padding: 13px 15px; background: oklch(0.21 0.01 58); border: 1px solid oklch(0.34 0.012 60); border-radius: 3px; display: flex; flex-direction: column; gap: 6px; }
+    .optrec { padding: 13px 15px; background: oklch(0.24 0.02 80); border: 1.5px solid oklch(0.72 0.14 70); border-radius: 3px; display: flex; flex-direction: column; gap: 6px; }
+    .lbl { font-size: 12px; font-weight: 600; color: oklch(0.65 0.015 70); flex-shrink: 0; width: 12px; }
+    .lblrec { font-size: 12px; font-weight: 600; color: oklch(0.82 0.13 70); flex-shrink: 0; width: 12px; }
+    .ttl { font-size: 13.5px; font-weight: 600; }
+    .body { font-size: 12.5px; line-height: 1.5; color: oklch(0.8 0.008 80); }
+    .cost { font-size: 12.5px; line-height: 1.5; color: oklch(0.68 0.012 75); }
+    .rec { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.8 0.12 70); font-weight: 600; }
+    .qh { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; }
+    .qn { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.72 0.13 70); }
+    .ev { padding: 11px 13px; background: oklch(0.2 0.01 58); border-radius: 2px; white-space: pre-wrap; font-size: 11.5px; line-height: 1.6; color: oklch(0.78 0.06 75); }
+  </style>
+</helmet>
+
+<div style="width: 780px; min-height: 1560px; box-sizing: border-box; padding: 32px 32px; background: oklch(0.175 0.008 60); font-family: 'IBM Plex Sans', system-ui, sans-serif; color: oklch(0.89 0.008 80); display: flex; flex-direction: column; gap: 24px;">
+
+  <div style="display: flex; flex-direction: column; gap: 5px;">
+    <div class="mono" style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.72 0.13 70);">Decide before the plan</div>
+    <div style="font-size: 24px; font-weight: 600; letter-spacing: -0.012em;">Three questions</div>
+    <div style="font-size: 12.5px; line-height: 1.5; color: oklch(0.7 0.012 75);">Everything else on this canvas is settled by measurement. These are judgement.</div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <div class="mono qn">Question 1 &mdash; the biggest</div>
+      <div class="qh">Row 32 or E3 first?</div>
+    </div>
+    <div class="body">Row 32 is the repo&rsquo;s P0 and its plan is written. But its plan commits to <span class="mono" style="font-size: 12px;">run_review()</span> returning a <span class="mono" style="font-size: 12px;">ReviewVerdict</span> that mirrors <span class="mono" style="font-size: 12px;">QAVerdict</span> and <span class="mono" style="font-size: 12px;">VerifyVerdict</span> &mdash; and E3 changes what that family looks like: a schema envelope, no printing, a logger.</div>
+
+    <div class="optrec">
+      <div style="display: flex; align-items: baseline; gap: 9px;"><div class="mono lblrec">C</div><div class="ttl">Neither &mdash; row 32 builds against this canvas</div><div class="mono rec">recommended</div></div>
+      <div class="body">The ordering conflict is not real once the family is <em>designed</em>, which is what this canvas does. Row 32 writes <span class="mono" style="font-size: 12px;">ReviewVerdict</span> to the shape settled here &mdash; frozen dataclass, tuple fields, <span class="mono" style="font-size: 12px;">to_dict()</span> with <span class="mono" style="font-size: 12px;">schema</span> and <span class="mono" style="font-size: 12px;">version</span>, logs rather than prints &mdash; and E3 then finds one stage already compliant instead of one stage to redo.</div>
+      <div class="cost">Cost: one edit to row 32&rsquo;s plan before it is executed, adding the envelope and the logger to Task 1&rsquo;s interfaces. Ten minutes, and it has to happen before the build starts, not after.</div>
+    </div>
+    <div class="opt">
+      <div style="display: flex; align-items: baseline; gap: 9px;"><div class="mono lbl">A</div><div class="ttl">Row 32 first, as the handover says</div></div>
+      <div class="body">Honours the stated order. A wrong term of art reaching a delivery is the open hole; E3 is readiness work for someone else&rsquo;s deadline.</div>
+      <div class="cost"><strong style="font-weight: 600; color: oklch(0.78 0.008 80);">Cost:</strong> <span class="mono" style="font-size: 12px;">review.py</span> is written twice &mdash; once to today&rsquo;s convention, once to E3&rsquo;s &mdash; unless option C&rsquo;s edit is made anyway, at which point A <em>is</em> C.</div>
+    </div>
+    <div class="opt">
+      <div style="display: flex; align-items: baseline; gap: 9px;"><div class="mono lbl">B</div><div class="ttl">E3 first</div></div>
+      <div class="body">Row 32 then inherits a finished surface with nothing to anticipate.</div>
+      <div class="cost"><strong style="font-weight: 600; color: oklch(0.78 0.008 80);">Cost:</strong> weeks, not days &mdash; see Question 3 &mdash; with the terminology hole open throughout. The product&rsquo;s own order puts E3 after E2, which is done; it never asked for E3 ahead of the repo&rsquo;s own P0.</div>
+    </div>
+  </div>
+
+  <div style="height: 1px; background: oklch(0.32 0.012 60);"></div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <div class="mono qn">Question 2</div>
+      <div class="qh">Break <span class="mono" style="font-weight: 500;">scale_report.json</span> now, or leave it?</div>
+    </div>
+    <div class="body">It is a bare JSON list, so there is nowhere to put <span class="mono" style="font-size: 12px;">schema</span> without changing the file&rsquo;s top-level type. C3 wants every output schema-versioned.</div>
+    <div class="mono ev">today     [ {page, ratio, key}, … ]
+proposed  {"schema": 1, "version": "57", "runs": [ … ]}</div>
+
+    <div class="optrec">
+      <div style="display: flex; align-items: baseline; gap: 9px;"><div class="mono lblrec">A</div><div class="ttl">Break it now, in E3</div><div class="mono rec">recommended</div></div>
+      <div class="body">Nothing outside this repo reads it yet &mdash; the product has not pinned a version and has no goldens on it. The cost is a one-line note in the release and a docs edit. After they pin, the same change costs them a migration.</div>
+    </div>
+    <div class="opt">
+      <div style="display: flex; align-items: baseline; gap: 9px;"><div class="mono lbl">B</div><div class="ttl">Leave the file; return the data instead</div></div>
+      <div class="body">No break at all: the runs come back in <span class="mono" style="font-size: 12px;">RetypesetResult</span>, and a consumer that wants them schema-versioned reads the object, not the file.</div>
+      <div class="cost"><strong style="font-weight: 600; color: oklch(0.78 0.008 80);">Cost:</strong> C3 says a consumer explains every outcome <em>from these files alone</em>. One file stays outside that promise, and the asymmetry has to be documented forever.</div>
+    </div>
+  </div>
+
+  <div style="height: 1px; background: oklch(0.32 0.012 60);"></div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <div class="mono qn">Question 3</div>
+      <div class="qh">E3 is bigger than &ldquo;about a week&rdquo;.</div>
+    </div>
+    <div class="body">The product accepted E3 at &ldquo;about a week&rdquo;. Sized against the measurement on this canvas:</div>
+    <div class="mono ev">logging move, 141 sites + parity runner   ~2 d
+result family, 6 types + envelopes        ~1 d
+typed exceptions, audit + family          ~1.5 d
+progress and cancellation                 ~0.5 d
+C7 probe, then whatever it finds          1–2 d, unknown until probed
+Archive root + concurrency test           ~0.5 d
+consumer guide                            ~1 d
+tests/test_consumer_contract.py           ~1 d
+                                          ——————
+                                          8.5–9.5 d</div>
+
+    <div class="optrec">
+      <div style="display: flex; align-items: baseline; gap: 9px;"><div class="mono lblrec">A</div><div class="ttl">Move C7 to E8, ship the rest as E3</div><div class="mono rec">recommended</div></div>
+      <div class="body">E8 is <em>&ldquo;performance and determinism as a published number&rdquo;</em> and its acceptance already reads &ldquo;the C7 determinism test gates&rdquo;. Determinism belongs there by the product&rsquo;s own text, and it is the one item whose size is unknown until a probe runs. Without it E3 is 7.5 days &mdash; within sight of the accepted estimate, and with no unknown left in the total.</div>
+      <div class="cost">Needs telling the product, since C7 is listed against E3 today. One line in the requests doc.</div>
+    </div>
+    <div class="opt">
+      <div style="display: flex; align-items: baseline; gap: 9px;"><div class="mono lbl">B</div><div class="ttl">Ship all of it, tell them two weeks</div></div>
+      <div class="body">One coherent surface, delivered once, nothing split across epics.</div>
+      <div class="cost"><strong style="font-weight: 600; color: oklch(0.78 0.008 80);">Cost:</strong> it doubles an estimate the product is planning a council around, and C7&rsquo;s size is still a guess until the probe runs.</div>
+    </div>
+    <div class="opt">
+      <div style="display: flex; align-items: baseline; gap: 9px;"><div class="mono lbl">C</div><div class="ttl">E3a now, E3b after</div></div>
+      <div class="body">C1, C3, C10, the guide and the contract test in one week; C4, C5, C7 in a second pass.</div>
+      <div class="cost"><strong style="font-weight: 600; color: oklch(0.78 0.008 80);">Cost:</strong> C4 and C5 are half a day each and fall out of work E3a does anyway &mdash; splitting them out costs more in ceremony than it saves.</div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
