@@ -25,6 +25,18 @@ __version__ = '60'
 # because no suitable real face was available to measure them with.
 MAPPING_FORMATS = ('legacy', 'typography-1')
 
+# Importing this package needs all three third-party packages, because the
+# stage modules below import them at module level. Say so once, naming every
+# one that is absent, instead of failing on whichever the first import
+# happened to reach. Nothing is relaxed here: the same imports succeed or
+# fail as before, only the message changes.
+from . import _requirements as _requirements
+
+_absent = _requirements.missing_requirements()
+if _absent:
+    raise ImportError(_requirements.requirements_message(_absent))
+del _absent
+
 import logging as _logging
 
 # A library configures no logging for its host: one NullHandler so a record

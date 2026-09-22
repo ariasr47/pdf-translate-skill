@@ -60,7 +60,10 @@ fonts; a missing non-passthrough translation fails the build.
 ## Requirements
 
 Python with `pymupdf`, `pikepdf`, `fonttools` (`pip install pymupdf pikepdf
-fonttools`). Born-digital PDFs only. Scans are out of scope with or without an OCR
+fonttools`). If any are absent every command stops before doing anything,
+names all of them, and prints an install line bound to the interpreter that
+is actually running — the usual cause is a working install sitting in a
+different Python. Born-digital PDFs only. Scans are out of scope with or without an OCR
 layer: `extract_segments.py` and `verify.py` **fail** when a page has ink
 or an image but no text, and also when a page's text is invisible (an OCR
 layer over the scanned pixels, or text hidden under an image). In both
