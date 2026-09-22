@@ -38,6 +38,9 @@ document gets the same behavior:
   FAILS (exit 1) if any exist — missing text must never ship silently
 - any run scaled below 0.7× FAILS unless its core (or merge first line) is
   in allow_scale — tiny type must not ship as a note
+- opt in with capture_dir= (or PDF_TRANSLATE_CAPTURE_DIR) and a below-the-floor
+  FAIL also writes a replayable evidence bundle; off by default and a capture
+  problem never changes the refusal (capture.py)
 - document metadata is retargeted: /Lang (and dc:language in XMP) from
   translations.json's "lang", /Title and every outline title from the
   mapping (both are cores), and the orphaned /StructTreeRoot is removed
@@ -82,6 +85,7 @@ from pathlib import Path, PurePath
 
 import pymupdf
 
+from . import capture
 from ._console import console
 from .results import (FontError, GlyphError, MappingError, PdfTranslateError,
                       PlacementError, RetypesetResult)
@@ -1026,17 +1030,24 @@ def _run_typography(stripped, document, out, *, original, progress, cancel, scal
                           scaled=tuple(scaled), scale_report_path=str(report or ''), typography=record)
 
 
-def retypeset(stripped, segf, trf, out, *, original=None):
+def retypeset(stripped, segf, trf, out, *, original=None, capture_dir=None,
+              capture_below=None):
     """Place translations onto a stripped PDF. Returns 0, or 1 if cores/overflow.
 
     The loud shape, unchanged: same signature, same printed bytes, same return
     code. `run_retypeset` is the one a service calls — it returns a
     `RetypesetResult` and raises, and its exceptions carry every refused core
     in full through `.refusals`, not the console's 40-character abbreviation.
+
+    `capture_dir` is opt-in evidence collection for a below-the-floor scale
+    refusal (`capture.py`) — off by default, and when off this function's
+    console output and return code are exactly what they were before it
+    existed.
     """
     with console():
         try:
-            run_retypeset(stripped, segf, trf, out, original=original)
+            run_retypeset(stripped, segf, trf, out, original=original,
+                          capture_dir=capture_dir, capture_below=capture_below)
         except PdfTranslateError as exc:
             log.info(exc.console_line)
             return exc.exit_code
@@ -1044,7 +1055,8 @@ def retypeset(stripped, segf, trf, out, *, original=None):
 
 
 def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
-                  scale_report=_DEFAULT, resource_root=None, original=None):
+                  scale_report=_DEFAULT, resource_root=None, original=None,
+                  capture_dir=None, capture_below=None):
     """Place translations onto a stripped PDF.
 
     Silent. Returns a RetypesetResult. Raises on refusal — `GlyphError` when
@@ -1052,6 +1064,16 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
     a merge that does not match, `PlacementError` for a run that will not fit
     or a notice that cannot be placed. Every one carries `.refusals`: each
     refused item, by kind, with the core untruncated.
+
+    `capture_dir` turns on evidence collection for a refusal caused
+    specifically by a run scaling below `SCALE_MIN`: a self-contained,
+    replayable bundle (source PDF, mapping, fonts, the structured refusal,
+    the occurrence's page/position, and its box permission if any is on
+    record) is written under a new subdirectory of `capture_dir`, named for
+    the capture's timestamp. Unset — the default — nothing is written and
+    nothing else about this call changes; `PDF_TRANSLATE_CAPTURE_DIR` is the
+    same switch for a caller that cannot pass the keyword (see `capture.py`).
+    A problem writing the bundle never changes the refusal that follows it.
 
     `progress(done, total)` is called once per unit of work. The total is
     **pages plus merge jobs**, because this runs two loops: a per-page pass and
@@ -1074,6 +1096,8 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
     working directory: a service that runs from anywhere else was silently
     getting a substituted face.
     """
+    resolved_capture = capture.resolve_capture_dir(capture_dir)
+    resolved_below = capture.resolve_capture_below(capture_below)
     document = load_mapping(trf, segf)
     if document.format == FORMAT:
         protected = [stripped, segf, trf, original]
@@ -1085,9 +1109,21 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                 refuse('invalid-style-reference', 'output/report aliases a typography input')
         if report and _same_path(out, report):
             refuse('invalid-style-reference', 'PDF and report paths must differ')
-        return _run_typography(stripped, document, out, original=original,
-                               progress=progress, cancel=cancel, scale_report=scale_report,
-                               resource_root=resource_root)
+        try:
+            return _run_typography(stripped, document, out, original=original,
+                                   progress=progress, cancel=cancel, scale_report=scale_report,
+                                   resource_root=resource_root)
+        except PdfTranslateError as exc:
+            # Only a run that actually scaled below the floor is evidence for
+            # B1; every other typography refusal (an impossible baseline, two
+            # occurrences that collide, ...) is left alone.
+            if resolved_capture and capture.is_below_floor(exc):
+                capture.capture_refusal(
+                    resolved_capture, exc, stripped=stripped, segf=segf, trf=trf,
+                    out=out, original=original, fonts=document.font_sets,
+                    mapping_format=document.format, legacy_conf=None,
+                    scale_report=scale_report, resource_root=resource_root)
+            raise
     segd = _load_json(segf)
     conf = document.legacy
     T = conf['translations']
@@ -1897,11 +1933,21 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                                exit_code=1, core=missing[0][1],
                                refusals=refusals)
         first = (overflow[0] if overflow else None)
-        raise PlacementError(
+        placement_exc = PlacementError(
             summary, console_line='\n'.join(block), exit_code=1,
             page=(first[0] if first else rotated_shaped[0][0]),
             key=(first[2] if first else rotated_shaped[0][1]),
             scale=(first[1] if first else None), refusals=refusals)
+        # Only `overflow` is "a run scaled below the floor" — a rotated run
+        # that needs shaping refuses for an unrelated reason and is not B1
+        # evidence, even though it can share this raise site.
+        if overflow and resolved_capture:
+            capture.capture_refusal(
+                resolved_capture, placement_exc, stripped=stripped, segf=segf,
+                trf=trf, out=out, original=original, fonts=fonts,
+                mapping_format=document.format, legacy_conf=conf,
+                scale_report=scale_report, resource_root=resource_root)
+        raise placement_exc
 
     if mirror:
         for page in doc:
@@ -1960,6 +2006,15 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
     if report:
         write_scale_report(sorted(scaled, key=lambda r: (r['page'], r['key'])),
                            report)
+    if resolved_capture and resolved_below is not None:
+        # Nothing refused: this build is about to succeed. A consumer whose
+        # floor sits above SCALE_MIN reverts these cores itself afterwards,
+        # so the case that costs them never reaches the refusal path.
+        capture.capture_near_floor(
+            resolved_capture, scaled, resolved_below, stripped=stripped,
+            segf=segf, trf=trf, out=out, original=original, fonts=fonts,
+            mapping_format='legacy', legacy_conf=conf, scale_report=report,
+            resource_root=resource_root)
 
     doc.ez_save(out)
     doc.close()
@@ -2002,14 +2057,27 @@ def main(argv=None):
 def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     from ._console import missing_option_value
-    missing = missing_option_value(argv, ('--original',))
+    missing = missing_option_value(
+        argv, ('--original', '--capture-dir', '--capture-below'))
     if missing:
         log.info(f'usage: {missing} requires a value')
         return 2
     stripped, segf, trf, out = argv[0], argv[1], argv[2], argv[3]
     t0 = time.perf_counter()
     original = argv[argv.index('--original') + 1] if '--original' in argv else None
-    rc = retypeset(stripped, segf, trf, out, original=original)
+    # `--capture-dir` opts into a below-the-floor refusal bundle (capture.py);
+    # PDF_TRANSLATE_CAPTURE_DIR is the same switch for an invocation that
+    # cannot pass a flag. Neither is set here, so `retypeset()` resolves the
+    # environment variable itself when this stays None.
+    capture_dir = (argv[argv.index('--capture-dir') + 1]
+                   if '--capture-dir' in argv else None)
+    # `--capture-below RATIO` widens it to a build that SUCCEEDS: a caller
+    # whose own floor sits above SCALE_MIN reverts those cores itself, so
+    # the case that costs them never reaches the refusal path at all.
+    capture_below = (argv[argv.index('--capture-below') + 1]
+                     if '--capture-below' in argv else None)
+    rc = retypeset(stripped, segf, trf, out, original=original,
+                   capture_dir=capture_dir, capture_below=capture_below)
     log.info(f'elapsed {time.perf_counter()-t0:.2f}s')
     return rc
 

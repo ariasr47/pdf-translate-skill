@@ -161,6 +161,24 @@ descend from `PdfTranslateError`, so one `except` catches every refusal.
 changes without a version bump, and a consumer whose regex stops matching
 fails silently, which is the worst way to fail.
 
+### Capturing a below-the-floor refusal for later evidence
+
+`run_retypeset(..., capture_dir='/path/to/captures')` is opt-in, off by
+default. When a refusal is caused specifically by a run scaling below
+`SCALE_MIN` — not any `PlacementError`, only that one — a self-contained,
+replayable bundle is written under a new timestamped subdirectory of
+`capture_dir`: the source PDF (if you passed `original`) and stripped PDF,
+segments, the authored mapping with its fonts, the structured refusal
+(`exc.to_dict()`), the occurrence's page and position, and its box
+permission if one is on record (`null`, with a note, when it is not — never
+guessed). `PDF_TRANSLATE_CAPTURE_DIR` is the same switch for a caller that
+cannot pass the keyword, checked only when `capture_dir` is not given.
+
+Leave it unset and nothing changes — no directory, no extra file, same
+console output. A problem writing the bundle is logged and swallowed; it
+never changes, masks, or replaces the exception you catch. Details and the
+exact bundle layout: `references/retypeset.md` and `pdf_translate/capture.py`.
+
 ## Progress and cancellation
 
 ```python
