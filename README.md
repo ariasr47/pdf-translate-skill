@@ -34,7 +34,15 @@ works wherever `git` has GitHub credentials):
 /plugin install pdf-translate@pdf-translate-skill
 ```
 
-Later versions: `/plugin marketplace update pdf-translate-skill`, then
+Installing the plugin copies files and runs nothing, so it succeeds on a
+machine with no Python. The first command is where that shows up: every CLI
+checks for `pymupdf`, `pikepdf` and `fonttools` first and, if any are
+missing, names them all and exits 2 without a traceback.
+
+Nothing tells you when a new version exists. Auto-update is off by default
+for a marketplace like this one, and no notification is sent when the
+repository publishes. To pick up a later version, run
+`/plugin marketplace update pdf-translate-skill`, then
 `/plugin update pdf-translate`. The plugin's version is `metadata.version`
 as `N.0.0`, and `/plugin list` shows which one is installed. CI validates
 both manifests and fails if the two versions disagree.
