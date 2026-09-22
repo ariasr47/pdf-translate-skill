@@ -42,6 +42,8 @@ Usage:
   python3 pipeline.py rebuild --work DIR ORIGINAL.pdf OUT.pdf [verify flags...]
       retypeset DIR/stripped.pdf + DIR/segments.json + DIR/translations.json
       then verify ORIGINAL.pdf OUT.pdf with any extra verify flags
+      Invalidates the default and selected verification reports before the
+      attempt. An older PDF may remain after failure; check this run's result.
 
   python3 pipeline.py render ORIGINAL.pdf TRANSLATED.pdf renders/ [--dpi 110]
 
@@ -433,6 +435,41 @@ def cmd_qa(argv):
     return qa_main(args + rest)
 
 
+def _prepare_rebuild_reports(paths, protected):
+    """Invalidate only recognized verification reports, before any stage runs.
+
+    Preflight every path before removing any: --report is caller-controlled,
+    and an unreadable/unrelated file must never be treated as our disposable
+    output. The content check also protects fonts before mapping can load.
+    """
+    from .retypeset import _same_path
+    from .verify import _remove_stale_report
+
+    for path in paths:
+        if any(_same_path(path, source) for source in protected):
+            log.info(f'rebuild: report path must not overwrite an input or output: {path}')
+            return False
+        if not os.path.lexists(path):
+            continue
+        try:
+            with open(path, encoding='utf-8') as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            data = None
+        if not (isinstance(data, dict) and data.get('schema') == 1
+                and isinstance(data.get('gates'), list)
+                and isinstance(data.get('original'), str)
+                and isinstance(data.get('output'), str)
+                and type(data.get('exit_code')) is int):
+            log.info(f'rebuild: refusing to replace an unrecognized verification report: {path}')
+            return False
+    for path in paths:
+        if not _remove_stale_report(path):
+            log.info('rebuild: cannot invalidate previous verification; rebuild not started')
+            return False
+    return True
+
+
 def cmd_rebuild(argv):
     if '--work' not in argv:
         log.info('rebuild requires --work DIR')
@@ -451,20 +488,22 @@ def cmd_rebuild(argv):
     segs = os.path.join(work, 'segments.json')
     tr = os.path.join(work, 'translations.json')
     t0 = time.perf_counter()
+    default_report = os.path.join(work, 'verify_report.json')
+    report = extra[extra.index('--report') + 1] if '--report' in extra else default_report
+    protected = [orig, out, stripped, segs, tr]
+    for flag in ('--translations', '--segments', '--original', '--source-words-from', '--reference-fonts'):
+        protected.extend(extra[i + 1] for i, arg in enumerate(extra[:-1]) if arg == flag)
+    # The work directory's default report must not claim success after the
+    # caller switches to a custom report. Other custom paths are caller-owned.
+    reports = list(dict.fromkeys((default_report, os.path.abspath(report))))
+    if not _prepare_rebuild_reports(reports, protected):
+        return 2
     mapping = load_mapping(tr, segs)
     typography = mapping.format == FORMAT
     if typography:
         for arg in extra:
             if any(arg == flag or arg.startswith(flag + '=') for flag in ('--translations', '--segments', '--original')):
                 log.info('rebuild: typography source/mapping/segments are fixed; conflicting forwarded flags are not allowed')
-                return 2
-        if '--report' in extra:
-            from .retypeset import _same_path
-            report = extra[extra.index('--report') + 1]
-            protected = [orig, out, stripped, segs, tr]
-            protected.extend(p for roles in mapping.font_sets.values() for p in roles.values())
-            if any(_same_path(report, p) for p in protected):
-                log.info('rebuild: --report must not overwrite an input or output PDF')
                 return 2
         extra += ['--translations', tr, '--segments', segs]
     rc = retypeset(stripped, segs, tr, out, **({'original': orig} if typography else {}))
@@ -474,7 +513,7 @@ def cmd_rebuild(argv):
     # Retypeset resolves font paths beside the mapping. Leave the caller's
     # directory intact so all command-line verification paths keep meaning.
     if '--report' not in extra:
-        extra = extra + ['--report', os.path.join(work, 'verify_report.json')]
+        extra = extra + ['--report', default_report]
     rc = verify_main([orig, out] + extra)
     log.info(f'elapsed {time.perf_counter()-t0:.2f}s')
     return rc

@@ -3,6 +3,38 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 22 September 2026, A03 completed locally
+
+Rodrigo authorized the next bounded upstream repair after coordination with
+the PDF Translator task **Approve sandbox proposal**
+(`01a0ca6d-e3e3-7e31-84e8-2b53e80b5dd7`). That task's sandbox work is independent;
+its current pin is unchanged. No product source was read or copied.
+
+This managed checkout is `codex/a03-stale-rebuild-report`, based on verified
+GitHub main **b20fadda/v60**. It invalidates default/selected verification
+reports before a rebuild can fail, preserving previous PDFs on early failure
+or refusal. Unsafe report paths and files that are not recognizable verifier
+output are refused. Read `docs/reviews/2026-09-22-a03-stale-rebuild-report.md`
+for acceptance results, commands, independent real-process/locked-file probes
+and limitations. This is existing report/return-code behavior, not a manifest
+or a transactional PDF/sidecar publication redesign.
+
+Independent review found no actionable issues: 339 compatibility tests passed,
+10 strengthened typography tests passed, four real interrupted subprocesses
+recovered, and two real locked-report cases safely refused. Author red/green,
+final focused tests and 12-invocation ordinary CLI parity are recorded there.
+Full discovery passed **657 tests in 415.069s**, no failures/errors/skips;
+the final test-only strengthening passed the affected author and independent
+reruns. Existing file-handle ResourceWarnings remain documented in the report.
+
+The candidate remains unpublished and declares v60; choose a release version
+against current main when preparing publication. A01 is a separate verified
+local commit **41bdf9911c81116ab282aa6e39ce3bee0ca82b04** on
+`codex/a01-invalid-review-refusal`; it is not included here. Integrate those
+bounded candidates before separately taking A02, A06 or capture/B1 work.
+The original `codex/b1-design-canvas` checkout's dirty work remains intact.
+Do not merge that older branch wholesale or treat its v61 metadata as a release.
+
 ## Start here — 20 September 2026, typography implementation active
 
 Rodrigo approved the typography design, nine-stage plan and native execution.

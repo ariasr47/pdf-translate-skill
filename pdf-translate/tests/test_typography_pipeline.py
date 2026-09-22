@@ -39,6 +39,16 @@ class TypographyPipelineTests(unittest.TestCase):
     def snapshot(self):
         return {p.name: p.read_bytes() for p in self.work.iterdir() if p.is_file()}
 
+    def successful_rebuild(self):
+        conf = json.loads(self.job['mapping'].read_text(encoding='utf-8'))
+        conf['lang'] = 'es'
+        for target in conf['targets']:
+            target['runs'][0]['text'], target['runs'][1]['text'] = 'Pague ', 'AHORA'
+        self.job['mapping'].write_text(json.dumps(conf), encoding='utf-8')
+        self.assert_ok(self.pipeline('rebuild', self.job['original'], self.job['output'], '--work', self.work))
+        report = json.loads((self.work / 'verify_report.json').read_text(encoding='utf-8'))
+        self.assertEqual(report['exit_code'], 0)
+
     def test_init_scaffold_author_rebuild_review_and_final_verify(self):
         self.assert_ok(self.pipeline('init', self.job['original'], '--work', self.work, '--typography'))
         self.assert_ok(self.pipeline('from-cores', '--work', self.work, '--force'))
@@ -150,13 +160,17 @@ class TypographyPipelineTests(unittest.TestCase):
             self.assertEqual(self.snapshot(), before)
 
     def test_conflicting_bound_context_or_report_alias_preserves_previous_files(self):
-        self.job['output'].write_bytes(b'previous PDF')
-        (self.work / 'verify_report.json').write_bytes(b'previous report')
         for flag, value in [('--translations', self.work / 'other.json'), ('--segments', self.job['segments']),
                             ('--report', self.job['original']), ('--report', self.job['output'])]:
+            self.successful_rebuild()
             before = self.snapshot()
             result = self.pipeline('rebuild', self.job['original'], self.job['output'], '--work', self.work, flag, value)
             self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+            if flag != '--report':
+                self.assertIn('conflicting forwarded flags', result.stdout)
+                before.pop('verify_report.json')
+            else:
+                self.assertIn('must not overwrite', result.stdout)
             self.assertEqual(self.snapshot(), before)
 
     def test_unknown_format_merge_proposal_cannot_write_first(self):
@@ -167,6 +181,7 @@ class TypographyPipelineTests(unittest.TestCase):
         self.assertEqual(self.snapshot(), before)
 
     def test_required_metadata_is_unauthored_and_stale_rebuild_preserves_files(self):
+        self.successful_rebuild()
         with pymupdf.open(self.job['original']) as doc:
             doc.set_metadata({'title': 'Payment'})
             data = doc.tobytes()
@@ -179,10 +194,11 @@ class TypographyPipelineTests(unittest.TestCase):
         conf = make_mapping(extraction, latin_font_sets())
         conf['extraction_id'] = '0' * 64
         self.job['mapping'].write_text(json.dumps(conf), encoding='utf-8')
-        self.job['output'].write_bytes(b'previous PDF')
-        (self.work / 'verify_report.json').write_bytes(b'previous report')
         before = self.snapshot()
-        self.assertNotEqual(self.pipeline('rebuild', self.job['original'], self.job['output'], '--work', self.work).returncode, 0)
+        result = self.pipeline('rebuild', self.job['original'], self.job['output'], '--work', self.work)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('extraction', result.stdout)
+        before.pop('verify_report.json')
         self.assertEqual(self.snapshot(), before)
 
 

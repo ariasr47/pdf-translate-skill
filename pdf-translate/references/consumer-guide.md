@@ -104,7 +104,8 @@ Every result is a frozen dataclass whose `to_dict()` carries `schema` and
 
 `run_verify` returning `exit_code == 1` is a **needs-attention notice, not a
 withholding.** The document is built and on disk. Only a build refusal
-(`run_retypeset` raising) means there is no document — see `docs/DECISIONS.md`
+(`run_retypeset` raising) means this attempt produced no successful document.
+An older file can still exist at a reused output path — see `docs/DECISIONS.md`
 and the product's ruling R5.
 
 ## The files on disk, and which call wrote them
@@ -121,6 +122,39 @@ and the product's ruling R5.
 | `scale_report.json` | `run_retypeset` | `{"schema": 1, "version": …, "runs": [...]}` — every run below source size. Pass `scale_report=` to move it, or `None` to write nothing and read `result.scaled` instead |
 | `final.pdf` | `run_field_fonts` | the delivery copy, fields able to render typed text |
 | `review_pairs.md`, `review_prompt.md`, `glossary.csv` | `run_review` | the second reader's inputs, and the termbase their verdict grows |
+
+### Rebuilding in an existing work directory
+
+`pipeline.py rebuild` invalidates `work/verify_report.json` and its selected
+`--report` path before loading the mapping or starting any stage. A failed or
+interrupted attempt cannot inherit an earlier success report at those paths.
+Verification writes a fresh report if it runs to completion, including a
+report with `exit_code: 1` when verification finds a problem.
+
+Use the current command's return code and its fresh report together. A
+missing report means verification evidence is unavailable, even if the
+command returns 0 after a report-write warning. An old PDF or scale sidecar
+is never proof that this attempt succeeded. Early failures and build refusals
+leave the previous PDF in place; a verification failure may leave the newly
+built PDF. This change does not make PDF/sidecar publication transactional.
+
+Report paths must be dedicated to verifier output. Before removing any
+report, rebuild checks for aliases to inputs/output and requires existing
+files to have the verifier's schema-1 report shape. Unrelated, unreadable or
+unrecognized files are preserved and the command returns 2. If the operating
+system prevents removing an old report, rebuild refuses before typesetting
+and explains that the retained report does not describe this attempt.
+
+The default report is invalidated even when switching to a custom path.
+Older reports at other custom paths remain caller-owned history; rebuild
+does not discover or manage them. Invalid CLI syntax rejected before rebuild
+starts does not invalidate reports. Use a separate workspace for each
+concurrent job.
+
+Direct `run_retypeset` callers retain the existing result/exception contract:
+check the result's `cancelled` and `output` fields or catch the refusal, and
+run verification on the successful current result. These calls do not manage
+the pipeline's verification report.
 
 ## Refusals
 
@@ -191,7 +225,7 @@ result = pdf_translate.run_retypeset(
     cancel=lambda: user_pressed_stop)
 
 if result.cancelled:
-    assert result.output is None          # and no file at `out`
+    assert result.output is None          # no output from this attempt
 ```
 
 `total` is **pages plus merge jobs**, because `run_retypeset` runs two loops —
@@ -199,8 +233,9 @@ a per-page pass and then a per-merge pass. A counter of pages alone reaches
 100% and keeps going.
 
 `cancel()` is checked at the top of every unit in both loops. There is exactly
-one save, at the very end, so **a cancelled run cannot leave a partial file**.
-The absence is by construction, not by cleanup.
+one save, at the very end, so a cancelled run does not publish its candidate.
+A file from a previous successful run can remain at `out`; cancellation does
+not remove it.
 
 ## Threads
 
@@ -241,7 +276,7 @@ two jobs writing to one directory would race for.
 - **Never ships a glossary.** A termbase is a job input and a job output, never
   repository content.
 - **Never withholds a document it built.** A verify FAIL is advisory; only a
-  build refusal means there is no file.
+  build refusal means this attempt did not produce a successful document.
 - **Never configures logging for you.**
 - **Never judges whether the wording is right.** Nothing can. That is what
   `run_review` and a second human reader are for.
