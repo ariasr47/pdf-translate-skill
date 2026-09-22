@@ -103,6 +103,35 @@ NOTICE_LH = 1.25
 # delivery can read what shrank without re-running retypeset. Pages are
 # 0-based, the same as translations.json's merges[].page.
 SCALE_REPORT = 'scale_report.json'
+# Every refusal list the console prints stops here. The exception carries
+# them whole, so this is a reading limit, not a data limit.
+CONSOLE_LIST = 30
+
+
+def more_not_shown(items, shown=CONSOLE_LIST):
+    """`  … N more not shown` when a console list was cut, else nothing.
+
+    The `scaled runs` listing names SCALE_REPORT at this point, because it
+    writes that file on its next statement. A refusal cannot borrow the
+    wording: it raises before `write_scale_report` is ever reached, and a
+    report outliving a refused write is the failure
+    `verify._remove_stale_report` exists to prevent - a missing report any
+    consumer can detect, a stale one none can. So the count is stated and no
+    file is promised.
+    """
+    extra = len(items) - shown
+    return [f'  … {extra} more not shown'] if extra > 0 else []
+
+
+def refusal_tail(*lists):
+    """One line for the whole block when anything was cut, else nothing."""
+    total = sum(max(len(x) - CONSOLE_LIST, 0) for x in lists)
+    if not total:
+        return []
+    # Said once, not per list. The console is for a person; a consumer
+    # calling run_retypeset already holds every entry, unsliced.
+    return [f'  ({total} hidden in total — a caller using run_retypeset '
+            f'gets every entry in refusals)']
 
 # Sentinel: `scale_report=None` means WRITE NOTHING, which is a different
 # instruction from "you did not say". Only the default writes the legacy
@@ -1251,13 +1280,16 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
         block.append(f'FAIL: {len(unauthored_merges)} merges with html null '
                      f'(accepted as proposals; author the paragraph or delete '
                      f'the entry):')
-        for p, first in unauthored_merges[:30]:
+        for p, first in unauthored_merges[:CONSOLE_LIST]:
             block.append(f'  p{p}: {first[:70]}')
+        block.extend(more_not_shown(unauthored_merges))
     if missing:
         block.append(f'FAIL: {len(missing)} untranslated segments:')
-        for p, c in missing[:30]:
+        for p, c in missing[:CONSOLE_LIST]:
             block.append(f'  p{p}: {c}')
+        block.extend(more_not_shown(missing))
     if missing or unauthored_merges:
+        block.extend(refusal_tail(missing, unauthored_merges))
         raise MappingError(
             f'{len(missing)} untranslated segment(s), '
             f'{len(unauthored_merges)} unauthored merge(s)',
@@ -1837,14 +1869,16 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
     block = []
     if missing:
         block.append(f'FAIL: {len(missing)} untranslated segments:')
-        for p, c in missing[:30]:
+        for p, c in missing[:CONSOLE_LIST]:
             block.append(f'  p{p}: {c}')
+        block.extend(more_not_shown(missing))
     if overflow:
         block.append(f'FAIL: {len(overflow)} segments scaled below '
                      f'{SCALE_MIN}x (shorten the translation or add '
                      f'allow_scale):')
         for p, ratio, c in overflow[:30]:
             block.append(f'  p{p} {ratio:.2f}x: {c}')
+        block.extend(more_not_shown(overflow))
     if glyph_misses:
         block.append(f'FAIL: {len(glyph_misses)} character(s) the chosen font '
                      f'cannot draw. MuPDF substitutes a fallback face '
@@ -1860,6 +1894,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
             # cores can share a 40-character prefix.
             block.append(f'  p{pno} [{label}] U+{ord(ch):04X} {name} ({ch}) '
                          f'in: {(key or "")[:40]}')
+        block.extend(more_not_shown(glyph_misses))
     if rotated_shaped:
         block.append(f'FAIL: {len(rotated_shaped)} rotated segments whose '
                      f'target needs shaping. The Story engine places shaped '
@@ -1867,6 +1902,8 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                      f'would ship confidently wrong text:')
         for p, c in rotated_shaped[:30]:
             block.append(f'  p{p}: {c}')
+        block.extend(more_not_shown(rotated_shaped))
+    block.extend(refusal_tail(missing, overflow, glyph_misses, rotated_shaped))
     if missing or overflow or rotated_shaped or glyph_misses:
         doc.close()
         refusals = {

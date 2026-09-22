@@ -12,6 +12,7 @@ unknown box permission is recorded as unknown rather than guessed.
 """
 import json
 import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -396,6 +397,103 @@ class LegacyCaptureTests(unittest.TestCase):
             else:
                 os.environ[capture.ENV_VAR] = old
         self.assertEqual(len(list(self.captures.iterdir())), 1)
+
+
+class BundleReplayTests(unittest.TestCase):
+    """A bundle is only worth writing if it still reproduces the job.
+
+    Every other test here proves a bundle is *complete* — the files are
+    present, byte-identical, and the manifest is right. None of them proves
+    it *replays*, which is the only reason the bundle exists. A change to
+    the font-path rewriting could satisfy every completeness assertion and
+    still produce a directory nobody can rebuild from.
+
+    That gap matters more than it first looked. The consumer that prompted
+    this feature publishes a promise that a customer's document is never
+    stored and is deleted automatically, so it cannot switch capture on for
+    real traffic at all — only staging, against synthetic or its own
+    documents. For as long as that holds, a synthetic replay is not a
+    supplement to real-world evidence; it is the only evidence there is.
+
+    Each test moves the bundle somewhere else and deletes the original job
+    first, so a bundle that secretly depends on a path outside itself fails
+    here rather than months later.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.font = latin_font_sets()['sans']['regular']
+        self.captures = Path(self.tmp.name) / 'captures'
+
+    def _isolate(self, job_dir):
+        """Move the one bundle away, then destroy the job it came from."""
+        cases = list(self.captures.iterdir())
+        self.assertEqual(len(cases), 1, cases)
+        island = Path(self.tmp.name) / 'island'
+        shutil.copytree(cases[0], island)
+        shutil.rmtree(job_dir)
+        self.assertFalse(job_dir.exists())
+        return island
+
+    def test_a_refusal_bundle_reproduces_the_same_refusal(self):
+        job_dir = Path(self.tmp.name) / 'job'
+        job, source_text = make_legacy_job(job_dir, self.font)
+        with self.assertRaises(PlacementError) as first:
+            run_retypeset(str(job['stripped']), str(job['segments']),
+                          str(job['mapping']), str(job['output']),
+                          capture_dir=str(self.captures))
+        island = self._isolate(job_dir)
+
+        with self.assertRaises(PlacementError) as again:
+            run_retypeset(str(island / 'stripped.pdf'), str(island / 'segments.json'),
+                          str(island / 'translations.json'), str(island / 'replayed.pdf'))
+        before, after = first.exception, again.exception
+        self.assertEqual(after.refusals['overflow'][0]['core'],
+                         before.refusals['overflow'][0]['core'])
+        self.assertEqual(after.page, before.page)
+        # The ratio to the last float digit: a bundle that reproduces the
+        # refusal but not the number has lost the measurement B1 needs.
+        self.assertEqual(after.scale, before.scale)
+        self.assertEqual(after.refusals['overflow'][0]['core'], source_text)
+        self.assertFalse((island / 'replayed.pdf').exists())
+
+    def test_a_near_floor_bundle_reproduces_the_same_ratios_and_succeeds(self):
+        job_dir = Path(self.tmp.name) / 'job'
+        job, _ = make_modest_job(job_dir, self.font)
+        first = run_retypeset(str(job['stripped']), str(job['segments']),
+                              str(job['mapping']), str(job['output']),
+                              capture_dir=str(self.captures), capture_below=0.8)
+        self.assertIsNotNone(first.output)
+        island = self._isolate(job_dir)
+
+        again = run_retypeset(str(island / 'stripped.pdf'), str(island / 'segments.json'),
+                              str(island / 'translations.json'), str(island / 'replayed.pdf'))
+        # This one must SUCCEED on replay. Nothing refused the first time,
+        # and a near-floor bundle that refuses on rebuild is not the job.
+        self.assertIsNotNone(again.output)
+        self.assertEqual([r['ratio'] for r in again.scaled],
+                         [r['ratio'] for r in first.scaled])
+
+    def test_a_bundle_replays_with_no_font_outside_itself(self):
+        """The fonts travel with it, so a caller's font path may vanish."""
+        fonts_dir = Path(self.tmp.name) / 'fonts'
+        fonts_dir.mkdir()
+        local_font = fonts_dir / 'face.ttf'
+        shutil.copy2(self.font, local_font)
+        job_dir = Path(self.tmp.name) / 'job'
+        job, _ = make_legacy_job(job_dir, str(local_font))
+        with self.assertRaises(PlacementError):
+            run_retypeset(str(job['stripped']), str(job['segments']),
+                          str(job['mapping']), str(job['output']),
+                          capture_dir=str(self.captures))
+        island = self._isolate(job_dir)
+        shutil.rmtree(fonts_dir)   # the face the mapping named is gone
+
+        with self.assertRaises(PlacementError) as again:
+            run_retypeset(str(island / 'stripped.pdf'), str(island / 'segments.json'),
+                          str(island / 'translations.json'), str(island / 'replayed.pdf'))
+        self.assertTrue(again.exception.refusals['overflow'])
 
 
 if __name__ == '__main__':
