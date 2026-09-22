@@ -595,7 +595,13 @@ def cmd_finish(argv):
         verdict = replace(verdict, no_review=True)
 
     if verdict.blocks_delivery and not no_review:
-        if not verdict.present:
+        if verdict.errors:
+            log.info('finish: review could not be accepted:')
+            for error in verdict.errors:
+                log.info(f'  {error}')
+            log.info(f'finish: correct the errors, then run `pipeline.py review '
+                     f'--work {work} --ingest review.json` before retrying.')
+        elif not verdict.present:
             log.info(f'finish: no {os.path.join(work, "review.json")} — no '
                      f'second reader has checked this translation.')
             log.info(f'finish: run `pipeline.py review --work {work}`, have '

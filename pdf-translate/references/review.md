@@ -185,6 +185,14 @@ infer it from. A termbase that gates the next job is never filled by
 inference.
 
 `pipeline.py review --ingest review.json` reads this file, `finish` refuses
-while any finding is `open`, and accepted terminology findings are appended to
+when review loading/validation reports errors or any finding is `open`, and accepted terminology findings are appended to
 the job's `glossary.csv`. It is still for the humans who accept the work, and
 for the next person who has to touch this document.
+
+An invalid review remains an error even if validation drops every malformed
+finding. `ReviewVerdict.blocks_delivery` and `review_state.json` report that
+refusal; `finish` returns 2 without writing a new final PDF or comparison.
+If a prior delivery already exists, it is left untouched: its existence does
+not mean this attempt succeeded. Read the current command result and review
+state. The deliberate `--no-review` option still permits delivery, explicitly
+marks it as unreviewed, and preserves any review errors in the state record.

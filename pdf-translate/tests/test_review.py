@@ -80,6 +80,28 @@ def a_review(findings=None, **over):
     return doc
 
 
+def invalid_reviews():
+    """Malformed input must not become a resolved review by dropping findings."""
+    missing_core = a_finding()
+    del missing_core['core']
+    return {
+        'malformed-json': '{"findings": [',
+        'non-object': '[]',
+        'empty-object': '{}',
+        'missing-reviewer': json.dumps({'findings': []}),
+        'wrong-reviewer-type': json.dumps(a_review([], reviewer='Someone')),
+        'missing-findings': json.dumps({'reviewer': {'name': 'Reader'}}),
+        'wrong-findings-type': json.dumps(a_review(findings={})),
+        'non-object-finding': json.dumps(a_review([None])),
+        'missing-finding-field': json.dumps(a_review([missing_core])),
+        'invalid-category': json.dumps(a_review([a_finding(category='vibes')])),
+        'invalid-severity': json.dumps(a_review([a_finding(severity='huge')])),
+        'invalid-resolution': json.dumps(a_review([a_finding(resolution='deferred')])),
+        'mixed-valid-invalid': json.dumps(a_review([
+            a_finding(), a_finding(resolution='deferred')])),
+    }
+
+
 class SchemaTests(unittest.TestCase):
 
     def test_the_enum_resolutions_are_accepted_as_is(self):
@@ -419,6 +441,18 @@ class RunReviewTests(unittest.TestCase):
             self.assertTrue(verdict.blocks_delivery)
             self.assertEqual(verdict.exit_code, 1)
 
+    def test_invalid_review_errors_block_delivery_even_without_open_findings(self):
+        for name, text in invalid_reviews().items():
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as tmp:
+                work = self._job(tmp, with_review=False)
+                (Path(work) / 'review.json').write_text(text, encoding='utf-8')
+                verdict = run_review(work, ingest='review.json', generate=False)
+                self.assertTrue(verdict.errors)
+                self.assertEqual(verdict.exit_code, 2)
+                self.assertTrue(verdict.blocks_delivery)
+                self.assertTrue(verdict.review_line)
+                self.assertTrue(verdict.to_dict()['blocks_delivery'])
+
     def test_a_missing_work_directory_is_an_error_not_an_exception(self):
         verdict = run_review(os.path.join(tempfile.gettempdir(), 'no-such-work'))
         self.assertTrue(verdict.errors)
@@ -538,6 +572,77 @@ class RefusalTests(unittest.TestCase):
                                  '--work', str(work)])
             self.assertEqual(rc, 0, out)
             self.assertTrue(os.path.isfile(d['final']))
+
+    def test_finish_invalid_review_refuses_without_creating_delivery(self):
+        for name, text in invalid_reviews().items():
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as tmp:
+                work = self._work(tmp, review_json=False)
+                (work / 'review.json').write_text(text, encoding='utf-8')
+                d = self._delivery(tmp)
+                rc, out = self._run(['finish', d['orig.pdf'], d['out.pdf'],
+                                    str(self.FONT), d['final'], d['html'],
+                                    '--work', str(work)])
+                self.assertEqual(rc, 2, out)
+                self.assertFalse(Path(d['final']).exists())
+                self.assertFalse(Path(d['html']).exists())
+                state = json.loads((Path(tmp) / 'review_state.json').read_text())
+                self.assertTrue(state['blocks_delivery'])
+                self.assertEqual(state['exit_code'], 2)
+                self.assertFalse(state['no_review'])
+                self.assertTrue(state['review_line'])
+                self.assertTrue(state['errors'])
+                self.assertIn(state['errors'][0], out)
+
+    def test_invalid_review_replaces_prior_success_state_without_touching_old_delivery(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = self._work(tmp)
+            d = self._delivery(tmp)
+            argv = ['finish', d['orig.pdf'], d['out.pdf'], str(self.FONT),
+                    d['final'], d['html'], '--work', str(work)]
+            rc, out = self._run(argv)
+            self.assertEqual(rc, 0, out)
+            previous = {p: Path(p).read_bytes() for p in (d['final'], d['html'])}
+            (work / 'review.json').write_text('{}', encoding='utf-8')
+            rc, out = self._run(argv)
+            self.assertEqual(rc, 2, out)
+            self.assertEqual(previous, {p: Path(p).read_bytes() for p in previous})
+            state = json.loads((Path(tmp) / 'review_state.json').read_text())
+            self.assertTrue(state['blocks_delivery'])
+            self.assertEqual(state['exit_code'], 2)
+            self.assertTrue(state['errors'])
+            self.assertNotIn('saved', out)
+
+    def test_explicit_no_review_discloses_bypass_of_invalid_review(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = self._work(tmp)
+            (work / 'review.json').write_text('{}', encoding='utf-8')
+            d = self._delivery(tmp)
+            rc, out = self._run(['finish', d['orig.pdf'], d['out.pdf'],
+                                str(self.FONT), d['final'], d['html'],
+                                '--work', str(work), '--no-review'])
+            self.assertEqual(rc, 0, out)
+            self.assertTrue(Path(d['final']).is_file())
+            state = json.loads((Path(tmp) / 'review_state.json').read_text())
+            self.assertTrue(state['no_review'])
+            self.assertTrue(state['errors'])
+            self.assertTrue(state['blocks_delivery'])
+            self.assertEqual(state['exit_code'], 2)
+            self.assertIn('--no-review', state['review_line'])
+            self.assertIn(state['review_line'], out)
+
+    def test_valid_review_with_no_findings_can_deliver(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = self._work(tmp)
+            (work / 'review.json').write_text(json.dumps(a_review([])), encoding='utf-8')
+            d = self._delivery(tmp)
+            rc, out = self._run(['finish', d['orig.pdf'], d['out.pdf'],
+                                str(self.FONT), d['final'], d['html'], '--work', str(work)])
+            self.assertEqual(rc, 0, out)
+            self.assertTrue(Path(d['final']).is_file())
+            state = json.loads((Path(tmp) / 'review_state.json').read_text())
+            self.assertFalse(state['blocks_delivery'])
+            self.assertFalse(state['no_review'])
+            self.assertEqual(state['exit_code'], 0)
 
     def test_no_review_delivers_and_prints_one_review_line(self):
         with tempfile.TemporaryDirectory() as tmp:

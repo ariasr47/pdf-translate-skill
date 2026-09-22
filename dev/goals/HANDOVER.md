@@ -3,6 +3,34 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 22 September 2026, A01 local repair verified
+
+This managed checkout is `codex/a01-invalid-review-refusal`, based on remote
+main **b20fadda (v60)**. The original checkout's dirty B1/v61 work is separate
+and untouched. A01 was assigned through the PDF Translator task after Rodrigo
+requested review and coordination. No push, merge, publication, PR mutation,
+consumer pin change or product-source access is part of this repair.
+
+The local fix makes existing review validation/loading errors block ordinary
+finish and prints those errors. Valid resolved reviews still deliver; explicit
+no-review still delivers with disclosure and retains errors. An old final PDF
+is preserved on refusal, with a fresh failed review state. No renderer, review
+schema or broader A03 artifact-lifecycle change is included.
+
+Evidence: `docs/reviews/2026-09-22-a01-invalid-review-refusal.md`. Tests first
+showed 29 failing assertions. Focused 81 tests pass; independent reviewer found
+no actionable issues after a separate 81-test run and 31 invalid-review CLI
+cases. Full discovery passes **655 tests in 353.699s**, with no failures,
+errors or skips. The ordinary 12-invocation CLI parity probe matches v60.
+Version metadata remains 60 for this unpublished candidate; select the next
+release number against current main when preparing publication.
+
+Next after A01: separately scope A03, A02 and A06. The new typography
+near-floor capture omission and B1 evidence/containment work remain separate.
+The app task owns staging translation and Python 3.14/exact-pin adoption.
+Keep capture off for production customer jobs under its existing TTL promise.
+The earlier sections below describe historical work, not this branch.
+
 ## Start here — 20 September 2026, typography implementation active
 
 Rodrigo approved the typography design, nine-stage plan and native execution.
