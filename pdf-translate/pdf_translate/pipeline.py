@@ -89,14 +89,11 @@ from .verify import verify, main as verify_main
 
 log = logging.getLogger(__name__)
 
-# Row 32's two commands emit through the package logger rather than `print`.
-# E3 is converting the rest; the handler that carries them to stdout now lives
-# in `_console.py`, shared by every CLI entry point, because `pipeline.py`
-# calls five library functions directly and a second handler would print every
-# line twice. `console()` is re-entrant for exactly that reason.
-#
-# pipeline.py's own remaining `print` sites are E3's Task 3; the mixture is
-# expected and temporary.
+# Everything here emits through the package logger; nothing prints. The
+# handler that carries those lines to stdout lives in `_console.py`, shared by
+# every CLI entry point, because `pipeline.py` calls five library functions
+# directly and a second handler would print every line twice. `console()` is
+# re-entrant for exactly that reason.
 
 
 def cmd_init(argv):
