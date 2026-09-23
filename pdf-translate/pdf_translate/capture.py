@@ -230,6 +230,14 @@ def _write_bundle(capture_dir, exc, *, stripped, segf, trf, out, original,
     files['stripped_pdf'] = 'stripped.pdf'
     shutil.copy2(segf, case_dir / 'segments.json')
     files['segments_json'] = 'segments.json'
+    # Read once for the whole bundle. `described` below runs per
+    # occurrence, and every one of them used to reparse this file.
+    try:
+        segments = json.loads(Path(segf).read_text(encoding='utf-8-sig'))
+        segments_note = None
+    except (OSError, ValueError) as exc:
+        segments = None
+        segments_note = f'could not read segments.json to resolve position: {exc}'
 
     font_map, font_files = _copy_fonts(case_dir, fonts or {})
     files['fonts'] = font_files
@@ -237,7 +245,8 @@ def _write_bundle(capture_dir, exc, *, stripped, segf, trf, out, original,
     files['mapping_json'] = mapping_rel
 
     def described(page, key, scale):
-        position, position_note = _locate_position(segf, page, key)
+        position, position_note = _locate_position(
+            segments, segments_note, page, key)
         box_permitted, box_note = _locate_box_permission(
             mapping_format, legacy_conf, page, key)
         return {'page': page, 'key': key, 'scale': scale,
@@ -369,17 +378,16 @@ def _copy_mapping(case_dir, trf, font_map):
     return 'translations.json'
 
 
-def _locate_position(segf, page, key):
-    """Best-effort geometry for the refused occurrence, read back from segments.json.
+def _locate_position(data, read_note, page, key):
+    """Best-effort geometry for the refused occurrence, from parsed segments.json.
 
     Matches on `occurrence_id` (typography) or `core`/stripped `text`
     (legacy, including a merge's first line). Honest about a miss: a
-    caller reads `position_note`, not a guess.
+    caller reads `position_note`, not a guess. `data` is None, with
+    `read_note` saying why, when the caller could not parse the file.
     """
-    try:
-        data = json.loads(Path(segf).read_text(encoding='utf-8-sig'))
-    except (OSError, ValueError) as exc:
-        return None, f'could not read segments.json to resolve position: {exc}'
+    if data is None:
+        return None, read_note
     key_stripped = (key or '').strip()
     for seg in data.get('segments', []):
         if seg.get('page') != page:
