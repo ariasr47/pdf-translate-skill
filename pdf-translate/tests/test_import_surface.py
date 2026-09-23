@@ -768,6 +768,64 @@ class LoggerCallShapeTests(unittest.TestCase):
                         offenders.append(f'{path.name}:{node.lineno}')
         self.assertEqual(offenders, [], f'log call with != 1 argument: {offenders}')
 
+    def test_no_except_name_shadows_a_value_read_after_the_handler(self):
+        """`except ... as name` unbinds `name` when the handler exits.
+
+        So a handler that borrows a name the function still needs leaves it
+        UNBOUND, and the next read raises UnboundLocalError. `capture.py`'s
+        `_write_bundle(capture_dir, exc, ...)` did exactly that: a read whose
+        handler was also called `exc` erased the refusal it had been handed,
+        and because capture is best effort the failure was swallowed and the
+        whole bundle was abandoned.
+
+        Structural for the same reason as the log-shape check above: this
+        fires only when the handler actually runs, which is the case a green
+        suite never reaches.
+        """
+        import ast
+        offenders = []
+        for path in sorted((SKILL / 'pdf_translate').glob('*.py')):
+            tree = ast.parse(path.read_text(encoding='utf-8'))
+            parent = {child: node for node in ast.walk(tree)
+                      for child in ast.iter_child_nodes(node)}
+
+            def enclosing_function(node):
+                while node in parent:
+                    node = parent[node]
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        return node
+                return None
+
+            def span(node):
+                lines = [getattr(n, 'lineno', node.lineno) for n in ast.walk(node)]
+                return min(lines), max(lines)
+
+            for handler in [n for n in ast.walk(tree)
+                            if isinstance(n, ast.ExceptHandler) and n.name]:
+                function = enclosing_function(handler)
+                if function is None:
+                    continue
+                args = function.args
+                params = {a.arg for a in
+                          args.posonlyargs + args.args + args.kwonlyargs}
+                # A read inside another handler binding the same name is that
+                # handler's own exception, not this one's corpse.
+                siblings = [span(h) for h in ast.walk(function)
+                            if isinstance(h, ast.ExceptHandler)
+                            and h.name == handler.name and h is not handler]
+                _, ends = span(handler)
+                read_after = any(
+                    isinstance(n, ast.Name) and n.id == handler.name
+                    and isinstance(n.ctx, ast.Load) and n.lineno > ends
+                    and not any(lo <= n.lineno <= hi for lo, hi in siblings)
+                    for n in ast.walk(function))
+                if handler.name in params or read_after:
+                    offenders.append(
+                        f'{path.name}:{handler.lineno} in {function.name}() '
+                        f'as {handler.name!r}')
+        self.assertEqual(offenders, [],
+                         f'except name outlives its handler: {offenders}')
+
     def test_no_stage_module_prints(self):
         # C10: through the logging module on the package's own logger, never
         # `print`. Listed explicitly so adding a module is a deliberate act.
