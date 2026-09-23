@@ -110,7 +110,7 @@ class TypographyPipelineTests(unittest.TestCase):
                 result = self.pipeline('finish', self.job['original'], self.job['output'],
                                        latin_font_sets()['sans']['regular'], final, html,
                                        '--work', self.work)
-                state = json.loads((self.work / 'review_state.json').read_text())
+                state = json.loads((self.work / 'review_state.json').read_text(encoding='utf-8'))
                 if binding == current:
                     self.assert_ok(result)
                     self.assertTrue(final.is_file())
