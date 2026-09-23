@@ -138,8 +138,17 @@ got the 26 font files (20 fetched, 6 instanced) from the integration worktree.
 `.gitattributes` affects how Git checks files out, not what the library
 draws, and the rest is documentation, docstrings, evidence and a test that
 only reads files. Rule 1's independent rendering run therefore does not apply.
-A separate review pass over this reconciliation is recorded in the handover
-once it has run.
+**Independent review (a separate pass on another model): approve, with no
+blocker or major finding.** It re-derived every disposition. It found all 39
+carried evidence files byte-identical after LF normalisation, all 18 carried
+DECISIONS rows identical to the old checkout's, DECISIONS a pure 58-row append,
+all 14 of main's HANDOVER sections present verbatim, and the only production
+changes docstrings. It reran binary integrity (3 OK) and a full suite (670 OK,
+466.163 s). Two cosmetic nits, left as they are: two adjacent HANDOVER
+headings for the same 20 September event read alike (both genuine, different
+entries), and the root README's table now names two older documents in one
+row. Its report is in this worktree's ignored
+`runs/reconcile-b1/independent-review.md`.
 
 ## What remains, and where it belongs
 

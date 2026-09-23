@@ -3,6 +3,45 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 23 September 2026, evening: reconcile, A02 and A06 are built; integration is Rodrigo's call
+
+**Verified state.** Remote `main` is still **`178a06f`** (v60). Nothing was
+pushed, merged or released. There are three local branches from `178a06f`,
+plus a throwaway local merge of all three:
+
+| Branch | Head | Worktree | State |
+|---|---|---|---|
+| `chore/reconcile-b1-checkout` | this commit | `C:/Dev/worktrees/pdf-translate-reconcile-b1` | Done. Full suite 670 OK. Independent review: approve, with two cosmetic nits. |
+| `fix/a02-page-count` | `5348082` | `C:/Dev/worktrees/pdf-translate-a02` | Done. Full suite 686 OK at `06f2c35`. Boundary fix `d9efd44` (page-parity module 17 OK). Independent verification: verified with findings, both handled. |
+| `fix/a06-rebuild-mapping-checks` | `9f9365d` | `C:/Dev/worktrees/pdf-translate-a06` | Fix built and probed; 30/30 documented examples behave as specified. **Owed:** a completed full-suite run on `55bb44d`, and the independent pass. Machine crashes cut off both. |
+| `trial/integrate-reconcile-a02-a06` | local only | `C:/Dev/worktrees/pdf-translate-trial` | All three merged. Only `docs/DECISIONS.md` conflicted (tail appends; all 60 rows kept). Links, compilation and binary integrity pass. **Full suite not run.** |
+
+Evidence: `docs/reviews/2026-09-23-b1-checkout-reconciliation.md` (this
+branch), `docs/reviews/2026-09-23-a02-page-parity.md` (A02 branch) and
+`docs/reviews/2026-09-23-a06-rebuild-mapping-checks.md` (A06 branch). The old
+checkout at `C:\Dev\pdf-translate-skill` carries a pointer section at the top
+of its own handover; otherwise it is exactly as snapshotted.
+
+**The local machine crashed twice during full-suite runs** on 23 September,
+and one run ended in a native Python crash (exit 139). Heavy local runs were
+stopped.
+
+**Decision (Rodrigo, 23 September): run the owed full suites on GitHub CI.**
+The three branches were pushed as they stand here, and the workflow was started
+on each with `workflow_dispatch`: CI runs automatically only for pushes to
+`main` and for pull requests, and no PR was opened. Look up the runs with
+`gh run list --workflow tests.yml`. The trial branch was not pushed.
+
+To integrate: merge in the order reconcile → A02 → A06, keep every DECISIONS
+row (the trial branch shows the result), and bump the version once, to v61.
+The release note should name two behaviour changes. Every verify run prints a
+`page parity` line and FAILs a missing, extra or reshaped page. A default
+legacy rebuild now runs the mapping checks and can exit 1 where it exited 0.
+
+**Still open, unchanged:** A04's process-isolated validation, A15's broader
+public wording, and the other A-rows in `dev/goals/PROGRAM.md`. B1 wrapping
+stays deferred.
+
 ## Start here — 23 September 2026, old B1 checkout reconciled; A02 then A06
 
 **Verified state.** Remote `main` is **`178a06f`**, v60: PR #22 merged at
