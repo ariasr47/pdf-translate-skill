@@ -1,0 +1,722 @@
+{
+ "probe": "dev/probes/a06_rebuild_mapping_probe.py",
+ "before_178a06f": {
+  "version": "60",
+  "cases": {
+   "complete_default": {
+    "exit": 0,
+    "report_exit": 0,
+    "failing_gates": [],
+    "mapping_gates_present": []
+   },
+   "empty_target_default": {
+    "exit": 0,
+    "report_exit": 0,
+    "failing_gates": [],
+    "mapping_gates_present": []
+   },
+   "whitespace_target_default": {
+    "exit": 0,
+    "report_exit": 0,
+    "failing_gates": [],
+    "mapping_gates_present": []
+   },
+   "null_target_default": {
+    "exit": 1,
+    "report_exit": null,
+    "failing_gates": null,
+    "mapping_gates_present": null
+   },
+   "absent_core_default": {
+    "exit": 1,
+    "report_exit": null,
+    "failing_gates": null,
+    "mapping_gates_present": null
+   },
+   "empty_target_explicit_flags": {
+    "exit": 1,
+    "report_exit": 1,
+    "failing_gates": [
+     "empty-targets"
+    ],
+    "mapping_gates_present": [
+     "button-captions",
+     "caption-width",
+     "empty-targets",
+     "identifiers",
+     "metadata",
+     "metadata-lang",
+     "placement",
+     "scaled-runs"
+    ]
+   },
+   "complete_explicit_elsewhere": {
+    "exit": 0,
+    "report_exit": 0,
+    "failing_gates": [],
+    "mapping_gates_present": [
+     "button-captions",
+     "caption-width",
+     "empty-targets",
+     "identifiers",
+     "metadata",
+     "metadata-lang",
+     "placement",
+     "scaled-runs"
+    ]
+   },
+   "override_drops_marker_default": {
+    "exit": 0,
+    "report_exit": 0,
+    "failing_gates": [],
+    "mapping_gates_present": []
+   }
+  }
+ },
+ "after_fix": {
+  "version": "60",
+  "cases": {
+   "complete_default": {
+    "exit": 0,
+    "report_exit": 0,
+    "failing_gates": [],
+    "mapping_gates_present": [
+     "button-captions",
+     "caption-width",
+     "empty-targets",
+     "identifiers",
+     "metadata",
+     "metadata-lang",
+     "placement",
+     "scaled-runs"
+    ]
+   },
+   "empty_target_default": {
+    "exit": 1,
+    "report_exit": 1,
+    "failing_gates": [
+     "empty-targets"
+    ],
+    "mapping_gates_present": [
+     "button-captions",
+     "caption-width",
+     "empty-targets",
+     "identifiers",
+     "metadata",
+     "metadata-lang",
+     "placement",
+     "scaled-runs"
+    ]
+   },
+   "whitespace_target_default": {
+    "exit": 1,
+    "report_exit": 1,
+    "failing_gates": [
+     "empty-targets"
+    ],
+    "mapping_gates_present": [
+     "button-captions",
+     "caption-width",
+     "empty-targets",
+     "identifiers",
+     "metadata",
+     "metadata-lang",
+     "placement",
+     "scaled-runs"
+    ]
+   },
+   "null_target_default": {
+    "exit": 1,
+    "report_exit": null,
+    "failing_gates": null,
+    "mapping_gates_present": null
+   },
+   "absent_core_default": {
+    "exit": 1,
+    "report_exit": null,
+    "failing_gates": null,
+    "mapping_gates_present": null
+   },
+   "empty_target_explicit_flags": {
+    "exit": 1,
+    "report_exit": 1,
+    "failing_gates": [
+     "empty-targets"
+    ],
+    "mapping_gates_present": [
+     "button-captions",
+     "caption-width",
+     "empty-targets",
+     "identifiers",
+     "metadata",
+     "metadata-lang",
+     "placement",
+     "scaled-runs"
+    ]
+   },
+   "complete_explicit_elsewhere": {
+    "exit": 0,
+    "report_exit": 0,
+    "failing_gates": [],
+    "mapping_gates_present": [
+     "button-captions",
+     "caption-width",
+     "empty-targets",
+     "identifiers",
+     "metadata",
+     "metadata-lang",
+     "placement",
+     "scaled-runs"
+    ]
+   },
+   "override_drops_marker_default": {
+    "exit": 1,
+    "report_exit": 1,
+    "failing_gates": [
+     "placement",
+     "override-markers"
+    ],
+    "mapping_gates_present": [
+     "button-captions",
+     "caption-width",
+     "empty-targets",
+     "identifiers",
+     "metadata",
+     "metadata-lang",
+     "override-markers",
+     "placement",
+     "scaled-runs"
+    ]
+   }
+  }
+ },
+ "documented_examples": {
+  "probe": "dev/probes/a06_doc_examples_probe.py",
+  "documented_cli_commands": 7,
+  "outcomes": 30,
+  "results": [
+   {
+    "case": "empty-target",
+    "document": "(bare default rebuild)",
+    "exit_code": 1,
+    "empty_targets": "FAIL"
+   },
+   {
+    "case": "empty-target",
+    "document": "README.md",
+    "command": [
+     "verify.py",
+     "original.pdf",
+     "out.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json",
+     "--translations",
+     "translations.json",
+     "--segments",
+     "segments.json",
+     "--report",
+     "verify_report.json"
+    ],
+    "exit_code": 1,
+    "failures": [
+     "empty-targets"
+    ],
+    "output": "out.pdf"
+   },
+   {
+    "case": "empty-target",
+    "document": "README.md",
+    "command": [
+     "verify.py",
+     "original.pdf",
+     "final.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json",
+     "--translations",
+     "translations.json",
+     "--segments",
+     "segments.json",
+     "--report",
+     "final_verify_report.json"
+    ],
+    "exit_code": 1,
+    "failures": [
+     "empty-targets"
+    ],
+    "output": "final.pdf"
+   },
+   {
+    "case": "empty-target",
+    "document": "README.md",
+    "command": [
+     "pipeline.py",
+     "rebuild",
+     "--work",
+     ".",
+     "original.pdf",
+     "out.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json"
+    ],
+    "exit_code": 1,
+    "failures": [
+     "empty-targets"
+    ],
+    "output": "out.pdf"
+   },
+   {
+    "case": "empty-target",
+    "document": "SKILL.md",
+    "command": [
+     "pipeline.py",
+     "rebuild",
+     "--work",
+     ".",
+     "original.pdf",
+     "out.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json"
+    ],
+    "exit_code": 1,
+    "failures": [
+     "empty-targets"
+    ],
+    "output": "out.pdf"
+   },
+   {
+    "case": "empty-target",
+    "document": "SKILL.md",
+    "command": [
+     "verify.py",
+     "original.pdf",
+     "out.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json",
+     "--translations",
+     "translations.json",
+     "--segments",
+     "segments.json",
+     "--report",
+     "verify_report.json"
+    ],
+    "exit_code": 1,
+    "failures": [
+     "empty-targets"
+    ],
+    "output": "out.pdf"
+   },
+   {
+    "case": "empty-target",
+    "document": "SKILL.md",
+    "command": [
+     "verify.py",
+     "original.pdf",
+     "final.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json",
+     "--translations",
+     "translations.json",
+     "--segments",
+     "segments.json",
+     "--report",
+     "final_verify_report.json"
+    ],
+    "exit_code": 1,
+    "failures": [
+     "empty-targets"
+    ],
+    "output": "final.pdf"
+   },
+   {
+    "case": "empty-target",
+    "document": "references/gates.md",
+    "command": [
+     "verify.py",
+     "original.pdf",
+     "out.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json",
+     "--translations",
+     "translations.json",
+     "--segments",
+     "segments.json",
+     "--report",
+     "verify_report.json"
+    ],
+    "exit_code": 1,
+    "failures": [
+     "empty-targets"
+    ],
+    "output": "out.pdf"
+   },
+   {
+    "case": "empty-target",
+    "document": "references/consumer-guide.md",
+    "exit_code": 1,
+    "failures": [
+     "empty-targets"
+    ],
+    "output": "out.pdf"
+   },
+   {
+    "case": "empty-target",
+    "document": "references/consumer-guide.md",
+    "exit_code": 1,
+    "failures": [
+     "empty-targets"
+    ],
+    "output": "final.pdf"
+   },
+   {
+    "case": "complete-targets",
+    "document": "(bare default rebuild)",
+    "exit_code": 0,
+    "empty_targets": "PASS"
+   },
+   {
+    "case": "complete-targets",
+    "document": "README.md",
+    "command": [
+     "verify.py",
+     "original.pdf",
+     "out.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json",
+     "--translations",
+     "translations.json",
+     "--segments",
+     "segments.json",
+     "--report",
+     "verify_report.json"
+    ],
+    "exit_code": 0,
+    "failures": [],
+    "output": "out.pdf"
+   },
+   {
+    "case": "complete-targets",
+    "document": "README.md",
+    "command": [
+     "verify.py",
+     "original.pdf",
+     "final.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json",
+     "--translations",
+     "translations.json",
+     "--segments",
+     "segments.json",
+     "--report",
+     "final_verify_report.json"
+    ],
+    "exit_code": 0,
+    "failures": [],
+    "output": "final.pdf"
+   },
+   {
+    "case": "complete-targets",
+    "document": "README.md",
+    "command": [
+     "pipeline.py",
+     "rebuild",
+     "--work",
+     ".",
+     "original.pdf",
+     "out.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json"
+    ],
+    "exit_code": 0,
+    "failures": [],
+    "output": "out.pdf"
+   },
+   {
+    "case": "complete-targets",
+    "document": "SKILL.md",
+    "command": [
+     "pipeline.py",
+     "rebuild",
+     "--work",
+     ".",
+     "original.pdf",
+     "out.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json"
+    ],
+    "exit_code": 0,
+    "failures": [],
+    "output": "out.pdf"
+   },
+   {
+    "case": "complete-targets",
+    "document": "SKILL.md",
+    "command": [
+     "verify.py",
+     "original.pdf",
+     "out.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json",
+     "--translations",
+     "translations.json",
+     "--segments",
+     "segments.json",
+     "--report",
+     "verify_report.json"
+    ],
+    "exit_code": 0,
+    "failures": [],
+    "output": "out.pdf"
+   },
+   {
+    "case": "complete-targets",
+    "document": "SKILL.md",
+    "command": [
+     "verify.py",
+     "original.pdf",
+     "final.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json",
+     "--translations",
+     "translations.json",
+     "--segments",
+     "segments.json",
+     "--report",
+     "final_verify_report.json"
+    ],
+    "exit_code": 0,
+    "failures": [],
+    "output": "final.pdf"
+   },
+   {
+    "case": "complete-targets",
+    "document": "references/gates.md",
+    "command": [
+     "verify.py",
+     "original.pdf",
+     "out.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json",
+     "--translations",
+     "translations.json",
+     "--segments",
+     "segments.json",
+     "--report",
+     "verify_report.json"
+    ],
+    "exit_code": 0,
+    "failures": [],
+    "output": "out.pdf"
+   },
+   {
+    "case": "complete-targets",
+    "document": "references/consumer-guide.md",
+    "exit_code": 0,
+    "failures": [],
+    "output": "out.pdf"
+   },
+   {
+    "case": "complete-targets",
+    "document": "references/consumer-guide.md",
+    "exit_code": 0,
+    "failures": [],
+    "output": "final.pdf"
+   },
+   {
+    "case": "fillable-complete",
+    "document": "(bare default rebuild)",
+    "exit_code": 0,
+    "empty_targets": "PASS"
+   },
+   {
+    "case": "fillable-complete",
+    "document": "README.md",
+    "command": [
+     "verify.py",
+     "original.pdf",
+     "out.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json",
+     "--translations",
+     "translations.json",
+     "--segments",
+     "segments.json",
+     "--report",
+     "verify_report.json"
+    ],
+    "exit_code": 0,
+    "failures": [],
+    "output": "out.pdf"
+   },
+   {
+    "case": "fillable-complete",
+    "document": "README.md",
+    "command": [
+     "verify.py",
+     "original.pdf",
+     "final.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json",
+     "--translations",
+     "translations.json",
+     "--segments",
+     "segments.json",
+     "--report",
+     "final_verify_report.json"
+    ],
+    "exit_code": 0,
+    "failures": [],
+    "output": "final.pdf"
+   },
+   {
+    "case": "fillable-complete",
+    "document": "README.md",
+    "command": [
+     "pipeline.py",
+     "rebuild",
+     "--work",
+     ".",
+     "original.pdf",
+     "out.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json"
+    ],
+    "exit_code": 0,
+    "failures": [],
+    "output": "out.pdf"
+   },
+   {
+    "case": "fillable-complete",
+    "document": "SKILL.md",
+    "command": [
+     "pipeline.py",
+     "rebuild",
+     "--work",
+     ".",
+     "original.pdf",
+     "out.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json"
+    ],
+    "exit_code": 0,
+    "failures": [],
+    "output": "out.pdf"
+   },
+   {
+    "case": "fillable-complete",
+    "document": "SKILL.md",
+    "command": [
+     "verify.py",
+     "original.pdf",
+     "out.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json",
+     "--translations",
+     "translations.json",
+     "--segments",
+     "segments.json",
+     "--report",
+     "verify_report.json"
+    ],
+    "exit_code": 0,
+    "failures": [],
+    "output": "out.pdf"
+   },
+   {
+    "case": "fillable-complete",
+    "document": "SKILL.md",
+    "command": [
+     "verify.py",
+     "original.pdf",
+     "final.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json",
+     "--translations",
+     "translations.json",
+     "--segments",
+     "segments.json",
+     "--report",
+     "final_verify_report.json"
+    ],
+    "exit_code": 0,
+    "failures": [],
+    "output": "final.pdf"
+   },
+   {
+    "case": "fillable-complete",
+    "document": "references/gates.md",
+    "command": [
+     "verify.py",
+     "original.pdf",
+     "out.pdf",
+     "--fill-text",
+     "Prueba 123",
+     "--source-words-from",
+     "segments.json",
+     "--translations",
+     "translations.json",
+     "--segments",
+     "segments.json",
+     "--report",
+     "verify_report.json"
+    ],
+    "exit_code": 0,
+    "failures": [],
+    "output": "out.pdf"
+   },
+   {
+    "case": "fillable-complete",
+    "document": "references/consumer-guide.md",
+    "exit_code": 0,
+    "failures": [],
+    "output": "out.pdf"
+   },
+   {
+    "case": "fillable-complete",
+    "document": "references/consumer-guide.md",
+    "exit_code": 0,
+    "failures": [],
+    "output": "final.pdf"
+   }
+  ]
+ }
+}

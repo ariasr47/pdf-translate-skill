@@ -67,3 +67,52 @@ dropped marker or tail, a translated write/find/say identifier. Those are the
 defects these checks exist for, and the workflow has told authors to pass the
 mapping since 20 September. The verify console of a default rebuild gains the
 mapping gates' lines.
+
+## What changed
+
+`cmd_rebuild` (legacy branch only): when `--translations` is not among the
+forwarded tokens, rebuild appends `--translations DIR/translations.json`; when
+`--segments` is not among them either, it also appends
+`--segments DIR/segments.json`. That is the rule above, and nothing else in
+rebuild moved. The skill, README, gates reference and consumer guide carry
+the 20 September verification-examples slice. It was routed here from the old
+checkout because this change rewrites the sentences it touched. The rebuild
+examples drop the mapping flags they no longer need; direct `verify.py` and
+`run_verify` examples keep them; final-artifact verification after field fonts
+is added.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| New tests, `tests.test_rebuild_attempt.DefaultMappingVerificationTests` (8, as real rebuild subprocesses) | RED on `178a06f`: 6 failed for the missing feature, and 2 controls passed (a caller's explicit mapping is honoured; a null target refuses the build). GREEN after the fix: the module's 16 tests, including A03's 8, pass. |
+| Full discovery on the fix | **Not completed on `55bb44d`.** Two runs were cut off by crashes of the local machine, one of them a native crash of the Python process (exit 139) about 110 tests in. The run on the fix before the two test updates completed: 678 tests, and only those two tests failed, because they pinned the old default. After their update they pass on their own (`tests.test_pipeline.ChromeTests` and `PlacementTests`: 14 OK), and `tests.test_rebuild_attempt` passes (16 OK). A complete run on `55bb44d` is still owed; it runs on GitHub CI (Rodrigo's decision, 23 September). |
+| Probe after the fix (`dev/probes/a06_rebuild_mapping_probe.py`, fresh directory) | complete default: 0, all eight mapping gates present; empty `""` and `"   "`: 1, `empty-targets` FAIL; dropped marker: 1, `placement` and `override-markers` FAIL; null and absent: 1, build refused, no report (unchanged); explicit flags: 1 (unchanged); explicit mapping elsewhere: 0 (unchanged) |
+| Documented examples (`dev/probes/a06_doc_examples_probe.py`, adapted from the 20 September harness) | 7 CLI commands read from README, SKILL and gates (2 rebuild, 5 verify) and 2 `run_verify` calls from the consumer guide, over an empty-target, a complete and a fillable job: 30 expected outcomes, including 3 bare default rebuilds (empty: 1; complete and fillable: 0, with field round-trip PASS) |
+| CLI ratchet (`cli_parity_runner.py`, eleven CLIs, `178a06f` vs fix) | byte-identical. Its rebuild already passes `--translations`, which shows explicit callers are untouched. |
+| Default route on the ratchet's own correct job, `178a06f` vs fix | exit 0 both; the fix's console gains exactly the seven mapping gates' PASS lines (empty targets, authored translations, button captions, caption width, metadata, scaled runs, identifiers) |
+
+The saved input for the examples probe is the 19 September audit's
+`empty-target` case (`runs/public-readiness-audit-2026-09-19/repro/empty-target`
+in the original checkout, ignored). Raw logs are in this worktree's ignored
+`runs/a06/`, and [sanitised results](data/2026-09-23-a06-rebuild-mapping-checks.json)
+are committed.
+
+**AGENTS.md Rule 1.** This changes which flags rebuild passes to verify, and
+the documentation; no rendering, shaping, font or layout code. The independent
+pass is recorded below regardless.
+
+**Independent verification: not yet complete.** A separate pass on another model was started with the acceptance criteria only, and crashes of the local machine cut it off twice on 23 September. Its partial artifacts are in this worktree's ignored `runs/a06-verifier/`. Until it completes, the checks above are this author's own.
+
+## Limits
+
+- Direct `verify.py` and `run_verify` without a mapping still exit 0 on an
+  empty target. That is the documented structure-only mode, now stated
+  wherever verification is shown. A06 closes the default rebuild route, the
+  one that used to look complete.
+- `--source-words-from` is not supplied automatically: it tunes the leak
+  scan's vocabulary rather than enabling mapping checks, and adding it would
+  change leak verdicts on same-script jobs.
+- The version stays v60 on this candidate. The integration that lands it
+  should bump and name the consequence above: a default legacy rebuild can
+  now exit 1 where it exited 0.
