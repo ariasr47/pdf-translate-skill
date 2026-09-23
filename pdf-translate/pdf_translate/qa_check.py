@@ -288,13 +288,16 @@ def identifier_cores(conf, segments):
     """Cores the write/find/say rule says may legitimately stay verbatim."""
     allowed = set(conf.get('allow_translate') or [])
     out = set(allowed)
-    texts = [s.get('text') or '' for s in (segments or [])]
-    texts.extend(conf.get('translations') or {})
-    for text in texts:
+    for seg in (segments or []):
+        text = seg.get('text') or ''
         if write_find_say_hits(text):
             out.add(text.strip())
+    # A translation core used to be scanned twice — once folded into the
+    # segment texts above, once here — to add its stripped and unstripped
+    # forms. One scan, both forms, same set.
     for core in (conf.get('translations') or {}):
         if write_find_say_hits(core):
+            out.add(core.strip())
             out.add(core)
     return out
 

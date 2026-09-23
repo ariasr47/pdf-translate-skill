@@ -717,6 +717,10 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None, *, typography=False)
                        'text — this looks scanned. Scans are out of scope with or '
                        'without an OCR layer; do not ship an untranslated file',
             })
+    # Collected while `doc` is still open, so the source is opened once
+    # instead of twice; the warnings are still appended in their original
+    # place below, so the order of `result.warnings` is unchanged.
+    image_warnings = image_region_warnings(doc, wanted)
     doc.close()
 
     warnings.extend(merge_candidate_warnings(segments))
@@ -736,11 +740,7 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None, *, typography=False)
         })
 
     document = document_strings(src)
-    doc_for_images = pymupdf.open(src)
-    try:
-        warnings.extend(image_region_warnings(doc_for_images, wanted))
-    finally:
-        doc_for_images.close()
+    warnings.extend(image_warnings)
 
     uniq = {}
     for s in segments:
