@@ -1,8 +1,17 @@
 # Queue: the five items the product bubbled, 2026-09-18
 
+**Current status, 19 September (unchanged on 23 September):** B1's design
+direction is approved and further work is deferred pending a genuine fit-refusal
+case. The probe, the capture and a 21 September baseline-anchor probe are
+complete; none establishes customer recovery. See `dev/goals/HANDOVER.md`
+and the current coordination status in `docs/REQUESTS-from-product.md`. The
+analysis and priority suggestions below were written on 18 September; they do
+not assign new work now.
+
 Not a design. A reading of five measurements the product took while integrating pdf-translate
 54.0.0 (rev `9675c619`), with what this repo already answers, what it does not, and what each one
-would cost. **Nothing here is implemented.** B1 needs a design pass before any build.
+would cost. This brief itself implements nothing. B1's later design and evidence
+are linked above.
 
 Licence boundary observed: no product code or product constants are reproduced here. The figures
 below are the product's measurements, restated as behaviour. Obstacle-bounded placement (R6) is
@@ -17,7 +26,7 @@ Read alongside `docs/REQUESTS-from-product.md` (the standing inbox) and
 
 | | item | state after v57/v58 |
 | --- | --- | --- |
-| **B1** | no line breaking, so no kinsoku | **open, and the largest thing on the board.** Needs a design pass |
+| **B1** | explicit occurrence-level wrapping within a fixed box | **Design approved; further work deferred.** Synthetic probe and known-success capture complete; genuine fit-refusal evidence missing. No plan/build. |
 | **B2** | refusal report truncates the core to 40 chars | **answered for library consumers** in v58; the console is unchanged by design |
 | **B3** | refusals printed, not returned | **answered** in v58 |
 | **B4** | widget text not translated | **open.** Contained, and the extractor already does half of it |
@@ -215,10 +224,11 @@ fields, so it fills no termbase — 0 added, 11 reported as skipped, never guess
 
 ## If a priority is wanted
 
-The product's own ordering is right, with two items already closed:
+Historical priority advice from 18 September, superseded for B1 by the status
+above. This list is not an active assignment or the canonical product roadmap:
 
-1. **B1** — design canvas first, then a corpus probe to size it, then a plan. Nothing else changes
-   what reaches the reader.
+1. **B1** — the design and probe have since run; further work is deferred pending
+   genuine fit-refusal evidence. Do not restart the completed design pass.
 2. **B4** — fold into whatever epic follows; one parameter and one ruling.
 3. **B2 console** — only if the product asks for the printed line to change, as its own decision.
 4. **B5** — nothing to build; watch the canary's false-positive rate and see whether the termbase
