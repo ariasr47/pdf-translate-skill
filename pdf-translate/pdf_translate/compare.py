@@ -17,7 +17,7 @@ import sys
 import pymupdf
 
 
-from ._console import console
+from ._console import console, _arg
 
 log = logging.getLogger(__name__)
 
@@ -80,10 +80,8 @@ def _main(argv=None):
     orig = argv[0] if len(argv) > 0 else 'original.pdf'
     trans = argv[1] if len(argv) > 1 else 'translated.pdf'
     html_path = argv[2] if len(argv) > 2 else 'comparison.html'
-    labels = (argv[argv.index('--labels') + 1]
-              if '--labels' in argv else None)
-    lang = (argv[argv.index('--lang') + 1]
-            if '--lang' in argv else 'en')
+    labels = _arg(argv, '--labels')
+    lang = _arg(argv, '--lang', 'en')
     return compare(orig, trans, html_path, labels=labels, lang=lang)
 
 

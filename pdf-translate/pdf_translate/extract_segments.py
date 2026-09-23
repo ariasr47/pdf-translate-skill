@@ -97,7 +97,7 @@ import sys
 
 import pymupdf
 
-from ._console import console
+from ._console import console, _arg
 from .results import ExtractResult
 from .strip_text import (
     invisible_text_pages, page_textdict_without_annots,
@@ -717,7 +717,15 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None, *, typography=False)
                        'text — this looks scanned. Scans are out of scope with or '
                        'without an OCR layer; do not ship an untranslated file',
             })
-    doc.close()
+    # Collected while `doc` is still open, so the source is opened once
+    # instead of twice; the warnings are still appended in their original
+    # place below, so the order of `result.warnings` is unchanged. The
+    # `finally` is why this is safe: the second open it replaced had one, and
+    # without it a raising image scan would leave the source handle open.
+    try:
+        image_warnings = image_region_warnings(doc, wanted)
+    finally:
+        doc.close()
 
     warnings.extend(merge_candidate_warnings(segments))
     warnings.extend(narrow_column_warnings(segments))
@@ -736,11 +744,7 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None, *, typography=False)
         })
 
     document = document_strings(src)
-    doc_for_images = pymupdf.open(src)
-    try:
-        warnings.extend(image_region_warnings(doc_for_images, wanted))
-    finally:
-        doc_for_images.close()
+    warnings.extend(image_warnings)
 
     uniq = {}
     for s in segments:
@@ -848,11 +852,10 @@ def _main(argv=None):
         log.info(f'usage: {missing} requires a value')
         return 2
     src = argv[0]
-    gap = float(argv[argv.index('--gap') + 1]) if '--gap' in argv else 12.0
-    outdir = argv[argv.index('--outdir') + 1] if '--outdir' in argv else '.'
-    pages = argv[argv.index('--pages') + 1] if '--pages' in argv else None
-    max_per_kind = (int(argv[argv.index('--max-per-kind') + 1])
-                    if '--max-per-kind' in argv else DEFAULT_MAX_PER_KIND)
+    gap = float(_arg(argv, '--gap', 12.0))
+    outdir = _arg(argv, '--outdir', '.')
+    pages = _arg(argv, '--pages')
+    max_per_kind = int(_arg(argv, '--max-per-kind', DEFAULT_MAX_PER_KIND))
     result = extract_segments(src, outdir=outdir, gap=gap, pages=pages,
                               typography='--typography' in argv)
     nseg = len(result['segments'])

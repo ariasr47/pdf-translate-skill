@@ -204,6 +204,34 @@ def _case_id():
     return f'{stamp}-{uuid.uuid4().hex[:8]}'
 
 
+# A segments.json that will not parse. Distinct from every value json.loads
+# can return, `null` included.
+_UNREAD = object()
+
+
+def _read_segments(segf):
+    """(parsed segments.json, None), or (_UNREAD, why it could not be read).
+
+    _UNREAD rather than None: `null` is valid JSON, so a file that parses
+    cleanly to None is a parsed document, not a failed read, and the two must
+    not answer the same question the same way.
+
+    Read once per bundle: `_write_bundle`'s `described` closure runs per
+    occurrence and would otherwise reparse this file for every one of them.
+
+    It lives out here, rather than inline in `_write_bundle`, so that an
+    `except ... as` binding cannot land in the same scope as the refusal that
+    caller passed in. It did once: the handler was named `exc`, Python unbinds
+    that name when the handler exits, and every later use of the refusal
+    raised UnboundLocalError — so a bundle that should have recorded an
+    unknown position was abandoned instead.
+    """
+    try:
+        return json.loads(Path(segf).read_text(encoding='utf-8-sig')), None
+    except (OSError, ValueError) as read_error:
+        return _UNREAD, f'could not read segments.json to resolve position: {read_error}'
+
+
 def _write_bundle(capture_dir, exc, *, stripped, segf, trf, out, original,
                   fonts, mapping_format, legacy_conf, scale_report,
                   resource_root, near=None, threshold=None):
@@ -230,6 +258,7 @@ def _write_bundle(capture_dir, exc, *, stripped, segf, trf, out, original,
     files['stripped_pdf'] = 'stripped.pdf'
     shutil.copy2(segf, case_dir / 'segments.json')
     files['segments_json'] = 'segments.json'
+    segments, segments_note = _read_segments(segf)
 
     font_map, font_files = _copy_fonts(case_dir, fonts or {})
     files['fonts'] = font_files
@@ -237,7 +266,8 @@ def _write_bundle(capture_dir, exc, *, stripped, segf, trf, out, original,
     files['mapping_json'] = mapping_rel
 
     def described(page, key, scale):
-        position, position_note = _locate_position(segf, page, key)
+        position, position_note = _locate_position(
+            segments, segments_note, page, key)
         box_permitted, box_note = _locate_box_permission(
             mapping_format, legacy_conf, page, key)
         return {'page': page, 'key': key, 'scale': scale,
@@ -369,17 +399,18 @@ def _copy_mapping(case_dir, trf, font_map):
     return 'translations.json'
 
 
-def _locate_position(segf, page, key):
-    """Best-effort geometry for the refused occurrence, read back from segments.json.
+def _locate_position(data, read_note, page, key):
+    """Best-effort geometry for the refused occurrence, from parsed segments.json.
 
     Matches on `occurrence_id` (typography) or `core`/stripped `text`
     (legacy, including a merge's first line). Honest about a miss: a
-    caller reads `position_note`, not a guess.
+    caller reads `position_note`, not a guess. `data` is _UNREAD, with
+    `read_note` saying why, when the caller could not parse the file. A file
+    that parsed to `null` is not that case and takes the ordinary path below,
+    exactly as it did when this function opened the file itself.
     """
-    try:
-        data = json.loads(Path(segf).read_text(encoding='utf-8-sig'))
-    except (OSError, ValueError) as exc:
-        return None, f'could not read segments.json to resolve position: {exc}'
+    if data is _UNREAD:
+        return None, read_note
     key_stripped = (key or '').strip()
     for seg in data.get('segments', []):
         if seg.get('page') != page:

@@ -42,6 +42,8 @@ Usage:
   python3 pipeline.py rebuild --work DIR ORIGINAL.pdf OUT.pdf [verify flags...]
       retypeset DIR/stripped.pdf + DIR/segments.json + DIR/translations.json
       then verify ORIGINAL.pdf OUT.pdf with any extra verify flags
+      Invalidates the default and selected verification reports before the
+      attempt. An older PDF may remain after failure; check this run's result.
 
   python3 pipeline.py render ORIGINAL.pdf TRANSLATED.pdf renders/ [--dpi 110]
 
@@ -81,7 +83,7 @@ from .retypeset import retypeset
 from .strip_text import strip_text, WidgetTextError
 from .bilingual import main as bilingual_main
 from .qa_check import main as qa_main
-from ._console import console
+from ._console import console, _arg
 from .review import run_review
 from .mapping import FORMAT, load_extraction, load_mapping, load_mapping_data, refuse
 from .results import MappingError, PdfTranslateError
@@ -89,19 +91,16 @@ from .verify import verify, main as verify_main
 
 log = logging.getLogger(__name__)
 
-# Row 32's two commands emit through the package logger rather than `print`.
-# E3 is converting the rest; the handler that carries them to stdout now lives
-# in `_console.py`, shared by every CLI entry point, because `pipeline.py`
-# calls five library functions directly and a second handler would print every
-# line twice. `console()` is re-entrant for exactly that reason.
-#
-# pipeline.py's own remaining `print` sites are E3's Task 3; the mixture is
-# expected and temporary.
+# Everything here emits through the package logger; nothing prints. The
+# handler that carries those lines to stdout lives in `_console.py`, shared by
+# every CLI entry point, because `pipeline.py` calls five library functions
+# directly and a second handler would print every line twice. `console()` is
+# re-entrant for exactly that reason.
 
 
 def cmd_init(argv):
     src = argv[0]
-    work = argv[argv.index('--work') + 1] if '--work' in argv else '.'
+    work = _arg(argv, '--work', '.')
     os.makedirs(work, exist_ok=True)
     captions = None
     if '--captions' in argv:
@@ -225,7 +224,7 @@ def _scaffold_from_cores(to_translate_path, out_path, force=False):
 
 
 def cmd_from_cores(argv):
-    work = argv[argv.index('--work') + 1] if '--work' in argv else '.'
+    work = _arg(argv, '--work', '.')
     force = '--force' in argv
     to_path = os.path.join(work, 'to_translate.json')
     out_path = os.path.join(work, 'translations.json')
@@ -331,9 +330,8 @@ def _propose_merges(work, accept=False, min_lines=2):
 
 
 def cmd_propose_merges(argv):
-    work = argv[argv.index('--work') + 1] if '--work' in argv else '.'
-    min_lines = int(argv[argv.index('--min-lines') + 1]
-                    if '--min-lines' in argv else 2)
+    work = _arg(argv, '--work', '.')
+    min_lines = int(_arg(argv, '--min-lines', 2))
     return propose_merges(work, accept='--accept' in argv,
                           min_lines=min_lines)
 
@@ -407,7 +405,7 @@ def cmd_merge_mappings(argv):
 
 
 def cmd_qa(argv):
-    work = argv[argv.index('--work') + 1] if '--work' in argv else '.'
+    work = _arg(argv, '--work', '.')
     rest = [a for a in argv if a not in ('--work', work)]
     tr = os.path.join(work, 'translations.json')
     segs = os.path.join(work, 'segments.json')
@@ -433,6 +431,41 @@ def cmd_qa(argv):
     return qa_main(args + rest)
 
 
+def _prepare_rebuild_reports(paths, protected):
+    """Invalidate only recognized verification reports, before any stage runs.
+
+    Preflight every path before removing any: --report is caller-controlled,
+    and an unreadable/unrelated file must never be treated as our disposable
+    output. The content check also protects fonts before mapping can load.
+    """
+    from .retypeset import _same_path
+    from .verify import _remove_stale_report
+
+    for path in paths:
+        if any(_same_path(path, source) for source in protected):
+            log.info(f'rebuild: report path must not overwrite an input or output: {path}')
+            return False
+        if not os.path.lexists(path):
+            continue
+        try:
+            with open(path, encoding='utf-8') as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            data = None
+        if not (isinstance(data, dict) and data.get('schema') == 1
+                and isinstance(data.get('gates'), list)
+                and isinstance(data.get('original'), str)
+                and isinstance(data.get('output'), str)
+                and type(data.get('exit_code')) is int):
+            log.info(f'rebuild: refusing to replace an unrecognized verification report: {path}')
+            return False
+    for path in paths:
+        if not _remove_stale_report(path):
+            log.info('rebuild: cannot invalidate previous verification; rebuild not started')
+            return False
+    return True
+
+
 def cmd_rebuild(argv):
     if '--work' not in argv:
         log.info('rebuild requires --work DIR')
@@ -451,20 +484,22 @@ def cmd_rebuild(argv):
     segs = os.path.join(work, 'segments.json')
     tr = os.path.join(work, 'translations.json')
     t0 = time.perf_counter()
+    default_report = os.path.join(work, 'verify_report.json')
+    report = extra[extra.index('--report') + 1] if '--report' in extra else default_report
+    protected = [orig, out, stripped, segs, tr]
+    value_flags = ('--translations', '--segments', '--original', '--source-words-from', '--reference-fonts')
+    protected.extend(value for flag, value in zip(extra, extra[1:]) if flag in value_flags)
+    # The work directory's default report must not claim success after the
+    # caller switches to a custom report. Other custom paths are caller-owned.
+    reports = list(dict.fromkeys((default_report, os.path.abspath(report))))
+    if not _prepare_rebuild_reports(reports, protected):
+        return 2
     mapping = load_mapping(tr, segs)
     typography = mapping.format == FORMAT
     if typography:
         for arg in extra:
             if any(arg == flag or arg.startswith(flag + '=') for flag in ('--translations', '--segments', '--original')):
                 log.info('rebuild: typography source/mapping/segments are fixed; conflicting forwarded flags are not allowed')
-                return 2
-        if '--report' in extra:
-            from .retypeset import _same_path
-            report = extra[extra.index('--report') + 1]
-            protected = [orig, out, stripped, segs, tr]
-            protected.extend(p for roles in mapping.font_sets.values() for p in roles.values())
-            if any(_same_path(report, p) for p in protected):
-                log.info('rebuild: --report must not overwrite an input or output PDF')
                 return 2
         extra += ['--translations', tr, '--segments', segs]
     rc = retypeset(stripped, segs, tr, out, **({'original': orig} if typography else {}))
@@ -474,14 +509,14 @@ def cmd_rebuild(argv):
     # Retypeset resolves font paths beside the mapping. Leave the caller's
     # directory intact so all command-line verification paths keep meaning.
     if '--report' not in extra:
-        extra = extra + ['--report', os.path.join(work, 'verify_report.json')]
+        extra = extra + ['--report', default_report]
     rc = verify_main([orig, out] + extra)
     log.info(f'elapsed {time.perf_counter()-t0:.2f}s')
     return rc
 
 
 def cmd_render(argv):
-    dpi = int(argv[argv.index('--dpi') + 1]) if '--dpi' in argv else 110
+    dpi = int(_arg(argv, '--dpi', 110))
     orig, trans, outdir = argv[0], argv[1], argv[2]
     t0 = time.perf_counter()
     render_pages(orig, trans, outdir, dpi=dpi)
@@ -500,8 +535,8 @@ def cmd_review(argv):
         log.info('review requires --work DIR')
         return 2
     work = argv[argv.index('--work') + 1]
-    ingest = argv[argv.index('--ingest') + 1] if '--ingest' in argv else None
-    notes = argv[argv.index('--notes') + 1] if '--notes' in argv else None
+    ingest = _arg(argv, '--ingest')
+    notes = _arg(argv, '--notes')
 
     t0 = time.perf_counter()
     verdict = run_review(work, ingest=ingest, notes=notes)
@@ -595,7 +630,13 @@ def cmd_finish(argv):
         verdict = replace(verdict, no_review=True)
 
     if verdict.blocks_delivery and not no_review:
-        if not verdict.present:
+        if verdict.errors:
+            log.info('finish: review could not be accepted:')
+            for error in verdict.errors:
+                log.info(f'  {error}')
+            log.info(f'finish: correct the errors, then run `pipeline.py review '
+                     f'--work {work} --ingest review.json` before retrying.')
+        elif not verdict.present:
             log.info(f'finish: no {os.path.join(work, "review.json")} — no '
                      f'second reader has checked this translation.')
             log.info(f'finish: run `pipeline.py review --work {work}`, have '

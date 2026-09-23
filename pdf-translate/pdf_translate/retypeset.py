@@ -86,7 +86,7 @@ from pathlib import Path, PurePath
 import pymupdf
 
 from . import capture
-from ._console import console
+from ._console import console, _arg
 from .results import (FontError, GlyphError, MappingError, PdfTranslateError,
                       PlacementError, RetypesetResult)
 from .mapping import FORMAT, charset_for, load_mapping, refuse
@@ -2064,18 +2064,16 @@ def _main(argv=None):
         return 2
     stripped, segf, trf, out = argv[0], argv[1], argv[2], argv[3]
     t0 = time.perf_counter()
-    original = argv[argv.index('--original') + 1] if '--original' in argv else None
+    original = _arg(argv, '--original')
     # `--capture-dir` opts into a below-the-floor refusal bundle (capture.py);
     # PDF_TRANSLATE_CAPTURE_DIR is the same switch for an invocation that
     # cannot pass a flag. Neither is set here, so `retypeset()` resolves the
     # environment variable itself when this stays None.
-    capture_dir = (argv[argv.index('--capture-dir') + 1]
-                   if '--capture-dir' in argv else None)
+    capture_dir = _arg(argv, '--capture-dir')
     # `--capture-below RATIO` widens it to a build that SUCCEEDS: a caller
     # whose own floor sits above SCALE_MIN reverts those cores itself, so
     # the case that costs them never reaches the refusal path at all.
-    capture_below = (argv[argv.index('--capture-below') + 1]
-                     if '--capture-below' in argv else None)
+    capture_below = _arg(argv, '--capture-below')
     rc = retypeset(stripped, segf, trf, out, original=original,
                    capture_dir=capture_dir, capture_below=capture_below)
     log.info(f'elapsed {time.perf_counter()-t0:.2f}s')

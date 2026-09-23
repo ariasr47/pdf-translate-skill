@@ -341,9 +341,13 @@ def main(argv=None):
     # Check before selection: even malformed manifests and ambiguous outputs
     # must leave every delivery artifact intact. Reports belong outside runs.
     report = Path(args.report).resolve()
+    # Unresolved as well as resolved: a run directory reached through a symlink
+    # compares equal one way and not the other. Neither form depends on the
+    # loop variable, so both are computed once.
+    abs_report = Path(os.path.abspath(args.report))
     if report == Path(args.original).resolve() or any(
             report.is_relative_to(Path(directory).resolve())
-            or Path(os.path.abspath(args.report)).is_relative_to(Path(os.path.abspath(directory)))
+            or abs_report.is_relative_to(Path(os.path.abspath(directory)))
             for directory in args.rundirs):
         parser.error('--report must be outside every run directory and must not overwrite the original')
     results = [score_run(args.original, d, args.output, args.allow, args.fill_text)

@@ -58,7 +58,7 @@ import sys
 import unicodedata
 from dataclasses import dataclass
 
-from ._console import console, say
+from ._console import console, say, _arg
 from .extract_segments import write_find_say_hits
 from .mapping import FORMAT, load_mapping
 from .verify import SPACELESS_SCRIPTS, dominant_script, strip_inline_markup
@@ -288,13 +288,16 @@ def identifier_cores(conf, segments):
     """Cores the write/find/say rule says may legitimately stay verbatim."""
     allowed = set(conf.get('allow_translate') or [])
     out = set(allowed)
-    texts = [s.get('text') or '' for s in (segments or [])]
-    texts.extend(conf.get('translations') or {})
-    for text in texts:
+    for seg in (segments or []):
+        text = seg.get('text') or ''
         if write_find_say_hits(text):
             out.add(text.strip())
+    # A translation core used to be scanned twice — once folded into the
+    # segment texts above, once here — to add its stripped and unstripped
+    # forms. One scan, both forms, same set.
     for core in (conf.get('translations') or {}):
         if write_find_say_hits(core):
+            out.add(core.strip())
             out.add(core)
     return out
 
@@ -379,10 +382,6 @@ def run_qa(translations_path, segments_path=None, glossary_path=None):
     """Run linguistic QA. Returns a QAVerdict; does not print or exit."""
     return QAVerdict(findings=qa_check(
         translations_path, segments_path, glossary_path))
-
-
-def _arg(argv, name, default=None):
-    return argv[argv.index(name) + 1] if name in argv else default
 
 
 def _say(line):

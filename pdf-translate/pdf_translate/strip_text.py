@@ -194,16 +194,27 @@ def strip_xobjects(res, pdf, page_index, report, seen, depth=1):
                        depth + 1)
 
 
+def _annots_free_textpage(page):
+    """A TextPage built from the page CONTENT only, widget appearances out.
+
+    PyMuPDF sometimes hands back the raw wrapped object rather than an
+    already-typed TextPage, so the four extractors below shared this
+    four-line preamble verbatim.
+    """
+    dl = page.get_displaylist(annots=False)
+    tp = dl.get_textpage()
+    if not isinstance(tp, pymupdf.TextPage):
+        tp = pymupdf.TextPage(tp)
+    return tp
+
+
 def page_text_without_annots(page):
     """Text of the page CONTENT only: annotation appearance streams excluded.
 
     get_text() includes widget appearances (captions, field values); those
     are not page text and must not count as leftovers.
     """
-    dl = page.get_displaylist(annots=False)
-    tp = dl.get_textpage()
-    if not isinstance(tp, pymupdf.TextPage):
-        tp = pymupdf.TextPage(tp)
+    tp = _annots_free_textpage(page)
     return tp.extractText()
 
 
@@ -217,10 +228,7 @@ def page_textdict_without_annots(page):
     retypeset draws the translation *under* a widget that still shows the
     source value.
     """
-    dl = page.get_displaylist(annots=False)
-    tp = dl.get_textpage()
-    if not isinstance(tp, pymupdf.TextPage):
-        tp = pymupdf.TextPage(tp)
+    tp = _annots_free_textpage(page)
     return tp.extractDICT()
 
 
@@ -228,10 +236,7 @@ def page_rawdict_without_annots(page):
     """get_text('rawdict') of the page CONTENT only: per-character boxes and
     origins from the same annotation-free text page as the dict helper.
     The extractor reads it for lines that carry a list marker (row 23)."""
-    dl = page.get_displaylist(annots=False)
-    tp = dl.get_textpage()
-    if not isinstance(tp, pymupdf.TextPage):
-        tp = pymupdf.TextPage(tp)
+    tp = _annots_free_textpage(page)
     return tp.extractRAWDICT()
 
 
@@ -261,10 +266,7 @@ INK_SKIP = 20                # same floor as verify: below this the page is blan
 
 def text_span_area(page):
     """Sum of text-span bbox areas (pt²) from page content, annotations excluded."""
-    dl = page.get_displaylist(annots=False)
-    tp = dl.get_textpage()
-    if not isinstance(tp, pymupdf.TextPage):
-        tp = pymupdf.TextPage(tp)
+    tp = _annots_free_textpage(page)
     area = 0.0
     for block in tp.extractDICT().get('blocks', []):
         for line in block.get('lines', []):

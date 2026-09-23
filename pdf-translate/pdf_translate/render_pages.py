@@ -16,7 +16,7 @@ import time
 import pymupdf
 
 
-from ._console import console
+from ._console import console, _arg
 
 log = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ def main(argv=None):
 def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     orig, trans, outdir = argv[0], argv[1], argv[2]
-    dpi = int(argv[argv.index('--dpi') + 1]) if '--dpi' in argv else 110
+    dpi = int(_arg(argv, '--dpi', 110))
     t0 = time.perf_counter()
     render_pages(orig, trans, outdir, dpi=dpi)
     log.info(f'elapsed {time.perf_counter()-t0:.2f}s')

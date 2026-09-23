@@ -3,6 +3,66 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 22 September 2026, A03 completed locally
+
+Rodrigo authorized the next bounded upstream repair after coordination with
+the PDF Translator task **Approve sandbox proposal**
+(`01a0ca6d-e3e3-7e31-84e8-2b53e80b5dd7`). That task's sandbox work is independent;
+its current pin is unchanged. No product source was read or copied.
+
+This managed checkout is `codex/a03-stale-rebuild-report`, based on verified
+GitHub main **b20fadda/v60**. It invalidates default/selected verification
+reports before a rebuild can fail, preserving previous PDFs on early failure
+or refusal. Unsafe report paths and files that are not recognizable verifier
+output are refused. Read `docs/reviews/2026-09-22-a03-stale-rebuild-report.md`
+for acceptance results, commands, independent real-process/locked-file probes
+and limitations. This is existing report/return-code behavior, not a manifest
+or a transactional PDF/sidecar publication redesign.
+
+Independent review found no actionable issues: 339 compatibility tests passed,
+10 strengthened typography tests passed, four real interrupted subprocesses
+recovered, and two real locked-report cases safely refused. Author red/green,
+final focused tests and 12-invocation ordinary CLI parity are recorded there.
+Full discovery passed **657 tests in 415.069s**, no failures/errors/skips;
+the final test-only strengthening passed the affected author and independent
+reruns. Existing file-handle ResourceWarnings remain documented in the report.
+
+The candidate remains unpublished and declares v60; choose a release version
+against current main when preparing publication. A01 is a separate verified
+local commit **41bdf9911c81116ab282aa6e39ce3bee0ca82b04** on
+`codex/a01-invalid-review-refusal`; it is not included here. Integrate those
+bounded candidates before separately taking A02, A06 or capture/B1 work.
+The original `codex/b1-design-canvas` checkout's dirty work remains intact.
+Do not merge that older branch wholesale or treat its v61 metadata as a release.
+
+## Start here — 22 September 2026, A01 local repair verified
+
+This managed checkout is `codex/a01-invalid-review-refusal`, based on remote
+main **b20fadda (v60)**. The original checkout's dirty B1/v61 work is separate
+and untouched. A01 was assigned through the PDF Translator task after Rodrigo
+requested review and coordination. No push, merge, publication, PR mutation,
+consumer pin change or product-source access is part of this repair.
+
+The local fix makes existing review validation/loading errors block ordinary
+finish and prints those errors. Valid resolved reviews still deliver; explicit
+no-review still delivers with disclosure and retains errors. An old final PDF
+is preserved on refusal, with a fresh failed review state. No renderer, review
+schema or broader A03 artifact-lifecycle change is included.
+
+Evidence: `docs/reviews/2026-09-22-a01-invalid-review-refusal.md`. Tests first
+showed 29 failing assertions. Focused 81 tests pass; independent reviewer found
+no actionable issues after a separate 81-test run and 31 invalid-review CLI
+cases. Full discovery passes **655 tests in 353.699s**, with no failures,
+errors or skips. The ordinary 12-invocation CLI parity probe matches v60.
+Version metadata remains 60 for this unpublished candidate; select the next
+release number against current main when preparing publication.
+
+Next after A01: separately scope A03, A02 and A06. The new typography
+near-floor capture omission and B1 evidence/containment work remain separate.
+The app task owns staging translation and Python 3.14/exact-pin adoption.
+Keep capture off for production customer jobs under its existing TTL promise.
+The earlier sections below describe historical work, not this branch.
+
 ## Start here — 20 September 2026, typography implementation active
 
 Rodrigo approved the typography design, nine-stage plan and native execution.

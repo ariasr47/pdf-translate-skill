@@ -142,8 +142,8 @@ class ReviewVerdict:
 
     @property
     def blocks_delivery(self):
-        """No verdict on record, or a finding nobody has resolved."""
-        return (not self.present) or bool(self.open_findings)
+        """A review must be present, valid and fully resolved to attest delivery."""
+        return bool(self.errors) or (not self.present) or bool(self.open_findings)
 
     @property
     def exit_code(self):
@@ -158,6 +158,9 @@ class ReviewVerdict:
             return ('REVIEW no reviser: this delivery was built with '
                     '--no-review. No second reader has checked its '
                     'terminology; a wrong term of art passes every gate.')
+        if self.errors:
+            return ('REVIEW invalid review: errors prevent this review from '
+                    'attesting delivery; correct the reported errors and retry.')
         if not self.present:
             return ('REVIEW no reviser: no review.json on record for this '
                     'job.')
