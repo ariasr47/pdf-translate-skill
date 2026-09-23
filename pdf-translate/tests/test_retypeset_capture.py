@@ -553,6 +553,59 @@ class UnreadableSegmentsCaptureTests(unittest.TestCase):
         self.assertIn('could not read segments.json',
                       occurrence['position_note'])
 
+    def test_a_parsed_null_is_not_a_failed_read(self):
+        """`null` is valid JSON, so it must not answer as a read failure.
+
+        Reading segments.json once per bundle means passing the parsed value
+        around, and for a while a failed read was signalled by passing None —
+        which a file containing `null` also parses to. The two then took the
+        same branch, and a `null` segments.json produced a bundle whose
+        `position_note` was None: no position, and no reason given either.
+
+        The values below are b20fadd's, measured: at the baseline a
+        segments.json that parses to anything other than an object writes no
+        bundle at all, because `data.get` raises and capture swallows it.
+        That is a pre-existing defect, pinned here only so this refactor
+        cannot quietly change it; a deliberate fix updates this test.
+        """
+        self.assertIsNot(capture._UNREAD, None)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            good = Path(tmp) / 'null.json'
+            good.write_text('null', encoding='utf-8')
+            data, note = capture._read_segments(str(good))
+            self.assertIsNone(data, 'a parsed null is the parsed document')
+            self.assertIsNone(note)
+            self.assertIsNot(data, capture._UNREAD)
+
+            bad = Path(tmp) / 'truncated.json'
+            bad.write_text('{', encoding='utf-8')
+            data, note = capture._read_segments(str(bad))
+            self.assertIs(data, capture._UNREAD)
+            self.assertIn('could not read segments.json', note)
+            # Only the unreadable one short-circuits to the note.
+            self.assertEqual(capture._locate_position(data, note, 0, 'k'),
+                             (None, note))
+
+    def test_non_object_segments_behave_as_they_did_at_the_baseline(self):
+        cases = {'null': 'null', 'list': '[]', 'string': '"nope"', 'number': '5'}
+        for name, payload in cases.items():
+            with self.subTest(payload=payload):
+                captures = Path(self.tmp.name) / f'cap-{name}'
+                job, _ = make_legacy_job(
+                    Path(self.tmp.name) / f'job-{name}', self.font)
+
+                def progress(done, total, segments=job['segments']):
+                    segments.write_text(payload, encoding='utf-8')
+
+                with self.assertRaises(PlacementError):
+                    run_retypeset(str(job['stripped']), str(job['segments']),
+                                  str(job['mapping']), str(job['output']),
+                                  capture_dir=str(captures), progress=progress)
+                self.assertFalse(
+                    captures.exists() and list(captures.glob('*/manifest.json')),
+                    f'{payload} wrote a bundle; b20fadd wrote none')
+
     def test_near_floor_bundle_survives_unreadable_segments(self):
         job, source_text = make_modest_job(Path(self.tmp.name) / 'job', self.font)
         result = run_retypeset(str(job['stripped']), str(job['segments']),

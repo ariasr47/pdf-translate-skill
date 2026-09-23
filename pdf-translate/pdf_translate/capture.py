@@ -204,8 +204,17 @@ def _case_id():
     return f'{stamp}-{uuid.uuid4().hex[:8]}'
 
 
+# A segments.json that will not parse. Distinct from every value json.loads
+# can return, `null` included.
+_UNREAD = object()
+
+
 def _read_segments(segf):
-    """(parsed segments.json, None), or (None, why it could not be read).
+    """(parsed segments.json, None), or (_UNREAD, why it could not be read).
+
+    _UNREAD rather than None: `null` is valid JSON, so a file that parses
+    cleanly to None is a parsed document, not a failed read, and the two must
+    not answer the same question the same way.
 
     Read once per bundle: `_write_bundle`'s `described` closure runs per
     occurrence and would otherwise reparse this file for every one of them.
@@ -220,7 +229,7 @@ def _read_segments(segf):
     try:
         return json.loads(Path(segf).read_text(encoding='utf-8-sig')), None
     except (OSError, ValueError) as read_error:
-        return None, f'could not read segments.json to resolve position: {read_error}'
+        return _UNREAD, f'could not read segments.json to resolve position: {read_error}'
 
 
 def _write_bundle(capture_dir, exc, *, stripped, segf, trf, out, original,
@@ -395,10 +404,12 @@ def _locate_position(data, read_note, page, key):
 
     Matches on `occurrence_id` (typography) or `core`/stripped `text`
     (legacy, including a merge's first line). Honest about a miss: a
-    caller reads `position_note`, not a guess. `data` is None, with
-    `read_note` saying why, when the caller could not parse the file.
+    caller reads `position_note`, not a guess. `data` is _UNREAD, with
+    `read_note` saying why, when the caller could not parse the file. A file
+    that parsed to `null` is not that case and takes the ordinary path below,
+    exactly as it did when this function opened the file itself.
     """
-    if data is None:
+    if data is _UNREAD:
         return None, read_note
     key_stripped = (key or '').strip()
     for seg in data.get('segments', []):
