@@ -496,5 +496,84 @@ class BundleReplayTests(unittest.TestCase):
         self.assertTrue(again.exception.refusals['overflow'])
 
 
+class UnreadableSegmentsCaptureTests(unittest.TestCase):
+    """Geometry is best effort; the bundle is not.
+
+    `_write_bundle` reads segments.json to resolve each occurrence's origin
+    and bbox. When that read fails the position is unknown and the note says
+    so — but the manifest, the refusal and the occurrence keys are what make
+    the bundle replayable, and none of them depend on that read. A build that
+    truncates its own segments.json after the run has loaded it (a concurrent
+    job, an interrupted write) must still leave a complete bundle behind.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.font = latin_font_sets()['sans']['regular']
+        self.captures = Path(self.tmp.name) / 'captures'
+
+    @staticmethod
+    def _truncate_during_build(segments):
+        """Make segments.json unparseable once the build has read it."""
+        def progress(done, total):
+            segments.write_text('{', encoding='utf-8')
+        return progress
+
+    def _one_manifest(self):
+        cases = list(self.captures.iterdir())
+        self.assertEqual(len(cases), 1, f'expected one bundle, got {cases}')
+        manifest_path = cases[0] / 'manifest.json'
+        self.assertTrue(manifest_path.is_file(),
+                        'the bundle was abandoned instead of written')
+        return json.loads(manifest_path.read_text(encoding='utf-8'))
+
+    def test_refusal_bundle_survives_unreadable_segments(self):
+        job, source_text = make_legacy_job(Path(self.tmp.name) / 'job', self.font)
+        with self.assertRaises(PlacementError) as caught:
+            run_retypeset(str(job['stripped']), str(job['segments']),
+                          str(job['mapping']), str(job['output']),
+                          capture_dir=str(self.captures),
+                          progress=self._truncate_during_build(job['segments']))
+
+        # The refusal itself is untouched by anything capture does.
+        self.assertTrue(caught.exception.refusals['overflow'])
+        self.assertEqual(caught.exception.refusals['overflow'][0]['core'], source_text)
+
+        manifest = self._one_manifest()
+        self.assertEqual(manifest['kind'], 'refusal')
+        self.assertIsNotNone(manifest['refusal'],
+                             'the original refusal was lost from the manifest')
+        self.assertEqual(
+            manifest['refusal']['refusals']['overflow'][0]['core'], source_text)
+
+        occurrence = manifest['occurrence']
+        self.assertEqual(occurrence['key'], source_text)
+        self.assertIsNone(occurrence['position'])
+        self.assertIn('could not read segments.json',
+                      occurrence['position_note'])
+
+    def test_near_floor_bundle_survives_unreadable_segments(self):
+        job, source_text = make_modest_job(Path(self.tmp.name) / 'job', self.font)
+        result = run_retypeset(str(job['stripped']), str(job['segments']),
+                               str(job['mapping']), str(job['output']),
+                               capture_dir=str(self.captures), capture_below=0.8,
+                               progress=self._truncate_during_build(job['segments']))
+        self.assertIsNotNone(result.output, 'the build must still succeed')
+
+        manifest = self._one_manifest()
+        self.assertEqual(manifest['kind'], 'near-floor')
+        self.assertIsNone(manifest['refusal'], 'nothing was refused')
+        self.assertEqual(manifest['capture_below'], 0.8)
+
+        occurrences = manifest['occurrences']
+        self.assertTrue(occurrences, 'the near-floor occurrences were lost')
+        self.assertIn(source_text, [o['key'] for o in occurrences])
+        for occurrence in occurrences:
+            self.assertIsNone(occurrence['position'])
+            self.assertIn('could not read segments.json',
+                          occurrence['position_note'])
+
+
 if __name__ == '__main__':
     unittest.main()

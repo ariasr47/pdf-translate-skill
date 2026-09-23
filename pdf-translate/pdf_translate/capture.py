@@ -204,6 +204,25 @@ def _case_id():
     return f'{stamp}-{uuid.uuid4().hex[:8]}'
 
 
+def _read_segments(segf):
+    """(parsed segments.json, None), or (None, why it could not be read).
+
+    Read once per bundle: `_write_bundle`'s `described` closure runs per
+    occurrence and would otherwise reparse this file for every one of them.
+
+    It lives out here, rather than inline in `_write_bundle`, so that an
+    `except ... as` binding cannot land in the same scope as the refusal that
+    caller passed in. It did once: the handler was named `exc`, Python unbinds
+    that name when the handler exits, and every later use of the refusal
+    raised UnboundLocalError — so a bundle that should have recorded an
+    unknown position was abandoned instead.
+    """
+    try:
+        return json.loads(Path(segf).read_text(encoding='utf-8-sig')), None
+    except (OSError, ValueError) as read_error:
+        return None, f'could not read segments.json to resolve position: {read_error}'
+
+
 def _write_bundle(capture_dir, exc, *, stripped, segf, trf, out, original,
                   fonts, mapping_format, legacy_conf, scale_report,
                   resource_root, near=None, threshold=None):
@@ -230,14 +249,7 @@ def _write_bundle(capture_dir, exc, *, stripped, segf, trf, out, original,
     files['stripped_pdf'] = 'stripped.pdf'
     shutil.copy2(segf, case_dir / 'segments.json')
     files['segments_json'] = 'segments.json'
-    # Read once for the whole bundle. `described` below runs per
-    # occurrence, and every one of them used to reparse this file.
-    try:
-        segments = json.loads(Path(segf).read_text(encoding='utf-8-sig'))
-        segments_note = None
-    except (OSError, ValueError) as exc:
-        segments = None
-        segments_note = f'could not read segments.json to resolve position: {exc}'
+    segments, segments_note = _read_segments(segf)
 
     font_map, font_files = _copy_fonts(case_dir, fonts or {})
     files['fonts'] = font_files
