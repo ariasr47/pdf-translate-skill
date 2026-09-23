@@ -1,0 +1,197 @@
+{
+  "stress": [
+    {
+      "id": "table-cell",
+      "baseline": "overflow-refused",
+      "wrapped": "overflow-refused"
+    },
+    {
+      "id": "left-column-tail",
+      "pages": 1,
+      "target_stream_exact": true,
+      "raw_font": [
+        {
+          "xref": 19,
+          "resource": "F0",
+          "face": "Noto Sans Regular",
+          "Tf_size": 8.8,
+          "hash": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823"
+        }
+      ],
+      "font_weight_class": 400,
+      "first_origin_delta_pt": [
+        0.0,
+        -0.167999
+      ],
+      "effective_scales": [
+        0.977778
+      ],
+      "unclipped_ink_432dpi": [
+        50.0,
+        133.0,
+        301.6666666666667,
+        162.83333333333334
+      ],
+      "other_text_overlap": []
+    },
+    {
+      "id": "right-column-tail",
+      "pages": 1,
+      "target_stream_exact": true,
+      "raw_font": [
+        {
+          "xref": 19,
+          "resource": "F0",
+          "face": "Noto Sans Regular",
+          "Tf_size": 8.8,
+          "hash": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823"
+        }
+      ],
+      "font_weight_class": 400,
+      "first_origin_delta_pt": [
+        0.0,
+        -0.167999
+      ],
+      "effective_scales": [
+        0.977778
+      ],
+      "unclipped_ink_432dpi": [
+        330.0,
+        133.0,
+        542.8333333333334,
+        171.16666666666666
+      ],
+      "other_text_overlap": []
+    },
+    {
+      "id": "banner",
+      "pages": 1,
+      "target_stream_exact": true,
+      "raw_font": [
+        {
+          "xref": 19,
+          "resource": "F0",
+          "face": "Noto Sans Regular",
+          "Tf_size": 19.6,
+          "hash": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823"
+        }
+      ],
+      "font_weight_class": 400,
+      "first_origin_delta_pt": [
+        -1.9e-05,
+        -2.480686
+      ],
+      "effective_scales": [
+        0.871867
+      ],
+      "unclipped_ink_432dpi": [
+        50.0,
+        44.0,
+        548.5,
+        103.0
+      ],
+      "other_text_overlap": []
+    },
+    {
+      "id": "blue-tail",
+      "pages": 1,
+      "target_stream_exact": true,
+      "raw_font": [
+        {
+          "xref": 19,
+          "resource": "F0",
+          "face": "Noto Sans Regular",
+          "Tf_size": 9.8,
+          "hash": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823"
+        }
+      ],
+      "font_weight_class": 400,
+      "first_origin_delta_pt": [
+        0.0,
+        -1.278
+      ],
+      "effective_scales": [
+        0.98
+      ],
+      "unclipped_ink_432dpi": [
+        50.0,
+        166.16666666666666,
+        330.1666666666667,
+        199.33333333333334
+      ],
+      "other_text_overlap": []
+    },
+    {
+      "id": "cjk-tail",
+      "pages": 1,
+      "target_stream_exact": true,
+      "raw_font": [
+        {
+          "xref": 15,
+          "resource": "F0",
+          "face": "Noto Sans JP Thin",
+          "Tf_size": 10.8,
+          "hash": "6bd6db3e82e1821c4bc51af0f245a62dc442e74ba5c0917fa1d8f987ded45afb"
+        }
+      ],
+      "font_weight_class": 400,
+      "first_origin_delta_pt": [
+        0.0,
+        -0.388
+      ],
+      "effective_scales": [
+        0.981818
+      ],
+      "unclipped_ink_432dpi": [
+        61.166666666666664,
+        160.5,
+        491.5,
+        195.83333333333334
+      ],
+      "other_text_overlap": []
+    },
+    {
+      "id": "two-page-room",
+      "pages": 2,
+      "target_stream_exact": true,
+      "raw_font": [
+        {
+          "xref": 15,
+          "resource": "F0",
+          "face": "Noto Sans Regular",
+          "Tf_size": 11.8,
+          "hash": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823"
+        }
+      ],
+      "font_weight_class": 400,
+      "first_origin_delta_pt": [
+        0.0,
+        0.501999
+      ],
+      "effective_scales": [
+        0.983333
+      ],
+      "unclipped_ink_432dpi": [
+        40.0,
+        61.5,
+        244.83333333333334,
+        129.0
+      ],
+      "other_text_overlap": []
+    },
+    {
+      "id": "last-page-full",
+      "baseline": "overflow-refused",
+      "wrapped": "overflow-refused"
+    }
+  ],
+  "duplicate": {
+    "short_label_origin": [
+      40.0,
+      190.0
+    ],
+    "first_occurrence_absent": true,
+    "pages": 1
+  },
+  "result": "PASS independent raw-PDF checks; approved first-baseline requirement remains unsatisfied"
+}

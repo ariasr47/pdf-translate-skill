@@ -1,0 +1,188 @@
+{
+  "revision": "b20fadda832b673b61ce8bc4a5f17189edd58209",
+  "version": "60",
+  "readiness": {
+    "stale_after_failed_rebuild": {
+      "first_rc": 0,
+      "failed_rc": 1,
+      "pdf_remains_unchanged": true,
+      "verify_report_remains_unchanged": true,
+      "old_verify_exit_code": 0
+    },
+    "invalid_review_delivery": {
+      "review_errors": [
+        "review.json has no \"reviewer\" block; a review with no named reviewer is not a review",
+        "review.json has no \"findings\" list"
+      ],
+      "review_exit_code": 2,
+      "blocks_delivery": false,
+      "finish_rc": 0,
+      "final_created": true,
+      "review_state": {
+        "schema": 1,
+        "version": "60",
+        "work": "C:\\Dev\\pdf-translate-skill\\runs\\review-2026-09-22\\main\\runs\\public-readiness-audit-2026-09-19\\repro",
+        "present": true,
+        "no_review": false,
+        "blocks_delivery": false,
+        "exit_code": 2,
+        "review_line": "",
+        "counts": {
+          "critical": 0,
+          "major": 0,
+          "minor": 0,
+          "accepted": 0,
+          "rejected": 0,
+          "open": 0
+        },
+        "reviewer": null,
+        "document": null,
+        "findings": [],
+        "termbase_added": [],
+        "termbase_skipped": [],
+        "conflicts": [],
+        "errors": [
+          "review.json has no \"reviewer\" block; a review with no named reviewer is not a review",
+          "review.json has no \"findings\" list"
+        ]
+      }
+    },
+    "non_form_temp_file": {
+      "temporary_pdf_remains": true
+    },
+    "empty_override_contains": {
+      "exception": "UnboundLocalError",
+      "message": "cannot access local variable 't' where it is not associated with a value"
+    },
+    "mismatched_comparison": {
+      "rc": 0,
+      "source_pages": 2,
+      "target_pages": 1,
+      "rendered_page_sections": 1
+    },
+    "verify_more_pages": {
+      "exit_code": 0,
+      "gates": [
+        {
+          "name": "field-parity",
+          "status": "PASS"
+        },
+        {
+          "name": "fill-roundtrip",
+          "status": "SKIP"
+        },
+        {
+          "name": "ink-ratio",
+          "status": "PASS"
+        },
+        {
+          "name": "visible-text",
+          "status": "PASS"
+        },
+        {
+          "name": "canonical-text",
+          "status": "PASS"
+        },
+        {
+          "name": "leak-running",
+          "status": "PASS"
+        },
+        {
+          "name": "leak-isolated",
+          "status": "PASS"
+        }
+      ]
+    },
+    "verify_fewer_pages": {
+      "exit_code": 0,
+      "gates": [
+        {
+          "name": "field-parity",
+          "status": "PASS"
+        },
+        {
+          "name": "fill-roundtrip",
+          "status": "SKIP"
+        },
+        {
+          "name": "ink-ratio",
+          "status": "PASS"
+        },
+        {
+          "name": "visible-text",
+          "status": "PASS"
+        },
+        {
+          "name": "canonical-text",
+          "status": "PASS"
+        },
+        {
+          "name": "leak-running",
+          "status": "PASS"
+        },
+        {
+          "name": "leak-isolated",
+          "status": "PASS"
+        }
+      ]
+    },
+    "mismatched_renders": {
+      "files_written": 2
+    },
+    "empty_target_default_vs_explicit_mapping": {
+      "default_rebuild_rc": 0,
+      "explicit_mapping_verify_rc": 1,
+      "explicit_failures": [
+        "empty-targets"
+      ]
+    }
+  },
+  "capture_typography": {
+    "version": "60",
+    "module": "C:\\Dev\\pdf-translate-skill\\runs\\review-2026-09-22\\main\\pdf-translate\\pdf_translate\\__init__.py",
+    "threshold": 0.75,
+    "output_exists": true,
+    "scaled": [
+      {
+        "page": 0,
+        "key": "Pay NOW",
+        "occurrence_id": "s0",
+        "ratio": 0.7402
+      },
+      {
+        "page": 0,
+        "key": "Pay NOW",
+        "occurrence_id": "s1",
+        "ratio": 0.7284
+      }
+    ],
+    "capture_exists": false
+  },
+  "baseline": {
+    "model_points": 112,
+    "model_points_unshrunk": 107,
+    "max_offset_residual_pt": 0.0,
+    "max_leading_residual_pt": 0.0,
+    "cases_built_as_authored": 6,
+    "cases_anchored_to_0_01pt": 6,
+    "cases_closed_form_to_0_01pt": 5,
+    "shifts_applied_pt": {
+      "left-column-tail": 0.168,
+      "right-column-tail": 0.168,
+      "banner": 2.4807,
+      "blue-tail": 1.278,
+      "cjk-tail": 0.388,
+      "two-page-room": -0.502
+    },
+    "warning": "Stress sample. Not a customer recovery rate."
+  },
+  "unittest": {
+    "count": 649,
+    "seconds": 359.579,
+    "errors": 2,
+    "affected_test_count": 1,
+    "corrected_git_context_rerun": "1 test OK in 5.370s"
+  },
+  "typography_acceptance": "6 cases PASS, verify 0, equal page counts",
+  "binary_integrity": "3 tests OK in 1.187s"
+}
