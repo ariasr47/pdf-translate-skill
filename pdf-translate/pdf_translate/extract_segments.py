@@ -719,9 +719,13 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None, *, typography=False)
             })
     # Collected while `doc` is still open, so the source is opened once
     # instead of twice; the warnings are still appended in their original
-    # place below, so the order of `result.warnings` is unchanged.
-    image_warnings = image_region_warnings(doc, wanted)
-    doc.close()
+    # place below, so the order of `result.warnings` is unchanged. The
+    # `finally` is why this is safe: the second open it replaced had one, and
+    # without it a raising image scan would leave the source handle open.
+    try:
+        image_warnings = image_region_warnings(doc, wanted)
+    finally:
+        doc.close()
 
     warnings.extend(merge_candidate_warnings(segments))
     warnings.extend(narrow_column_warnings(segments))

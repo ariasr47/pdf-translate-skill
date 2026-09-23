@@ -314,6 +314,48 @@ class LeakGateFindingsTests(unittest.TestCase):
             self.assertEqual(_findings(v, 'leak-scan'), [(None, 'script', 'CJK')])
 
 
+class MappingReadOrderTests(unittest.TestCase):
+    """A malformed mapping fails as a mapping, before the output is read.
+
+    The translated document's text is read once and shared by three gates.
+    That read has to stay behind the mapping, or a job with both a bad
+    mapping and an unreadable output surfaces a content-stream error instead
+    of the mapping error that actually needs fixing.
+    """
+
+    def test_a_malformed_mapping_is_reported_before_the_output_is_read(self):
+        import importlib
+        from pdf_translate.verify import run_verify
+
+        # `pdf_translate.verify` the NAME is the exported function; the module
+        # has to be asked for by import_module.
+        verify_module = importlib.import_module('pdf_translate.verify')
+
+        reads = []
+        real = verify_module.extract_actualtext
+
+        def unreadable(page):
+            reads.append(page.number)
+            raise RuntimeError('mupdf: broken content stream')
+
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, tr = _job(tmp)
+            conf = json.loads(Path(tr).read_text(encoding='utf-8'))
+            # Hand-authored and wrong: a merge's `html` must be a string.
+            conf['merges'] = [{'page': 0, 'lines': ['Hello world.'],
+                               'html': ['not', 'a', 'string']}]
+            Path(tr).write_text(json.dumps(conf), encoding='utf-8')
+
+            verify_module.extract_actualtext = unreadable
+            try:
+                with self.assertRaises(TypeError):
+                    run_verify(src, out, translations=tr, min_ink=0.1)
+            finally:
+                verify_module.extract_actualtext = real
+
+        self.assertEqual(reads, [], 'the output was read before the mapping')
+
+
 class TranslationGateFindingsTests(unittest.TestCase):
     def test_empty_target_and_missing_placement_name_the_target(self):
         from pdf_translate.verify import run_verify

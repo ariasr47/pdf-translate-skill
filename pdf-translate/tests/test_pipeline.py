@@ -3208,6 +3208,31 @@ class SmallGuardTests(unittest.TestCase):
             self.assertFalse([w for w in result['warnings']
                               if w.get('kind') == 'image-region'])
 
+    def test_a_raising_image_scan_still_closes_the_source(self):
+        """The scan reads the source document while it is still open.
+
+        It used to run against a second handle of its own, wrapped in
+        try/finally. Collecting it from the already-open `doc` saves an open,
+        but only a `finally` keeps the promise the old one made: a scan that
+        throws must not leave the source handle behind.
+        """
+        seen = {}
+
+        def exploding(doc, wanted):
+            seen['doc'] = doc
+            raise RuntimeError('image scan failed')
+
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_plain_pdf(src)
+            with mock.patch.object(extract_segments, 'image_region_warnings',
+                                   exploding):
+                with self.assertRaises(RuntimeError):
+                    extract_segments.extract_segments(src, outdir=tmp)
+            self.assertIn('doc', seen, 'the image scan never ran')
+            self.assertTrue(seen['doc'].is_closed,
+                            'the source document was left open')
+
     def test_choice_field_default_appearance_is_rewritten(self):
         font = find_test_font()
         with tempfile.TemporaryDirectory() as tmp:

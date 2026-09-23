@@ -1837,6 +1837,17 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             Finding(pno + 1, 'page', f'stripping the text changes {fraction:.1%} of its span area')
             for pno, fraction in invisible])
 
+    # Canonical text layer (audit H4/H5). Authored strings count as
+    # deliberate; so does anything already in the original, whose own
+    # drift we cannot rewrite.
+    #
+    # The mapping is read first, before anything touches the output document:
+    # a mapping this malformed should fail as a mapping, not as whatever the
+    # output's content stream happens to do next.
+    authored = o_text
+    if document is not None:
+        authored += '\n' + '\n'.join(collect_translation_targets(document))
+
     # Read the translated document's text once. `jc` is not touched between
     # here and `jc.close()`, and get_text() re-derives layout from the content
     # stream on every call, so the gates below share one pass instead of
@@ -1846,12 +1857,6 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     page_search = '\n'.join('\n'.join([t] + a)
                             for t, a in zip(page_gettext, page_actualtext))
 
-    # Canonical text layer (audit H4/H5). Authored strings count as
-    # deliberate; so does anything already in the original, whose own
-    # drift we cannot rewrite.
-    authored = o_text
-    if document is not None:
-        authored += '\n' + '\n'.join(collect_translation_targets(document))
     drift = drifted_characters(page_search, authored)
     if drift:
         log.info(f'FAIL text layer is not canonical ({len(drift)} character(s) '
