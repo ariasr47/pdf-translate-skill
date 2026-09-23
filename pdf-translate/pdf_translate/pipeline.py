@@ -491,8 +491,8 @@ def cmd_rebuild(argv):
     default_report = os.path.join(work, 'verify_report.json')
     report = extra[extra.index('--report') + 1] if '--report' in extra else default_report
     protected = [orig, out, stripped, segs, tr]
-    for flag in ('--translations', '--segments', '--original', '--source-words-from', '--reference-fonts'):
-        protected.extend(extra[i + 1] for i, arg in enumerate(extra[:-1]) if arg == flag)
+    value_flags = ('--translations', '--segments', '--original', '--source-words-from', '--reference-fonts')
+    protected.extend(value for flag, value in zip(extra, extra[1:]) if flag in value_flags)
     # The work directory's default report must not claim success after the
     # caller switches to a custom report. Other custom paths are caller-owned.
     reports = list(dict.fromkeys((default_report, os.path.abspath(report))))
