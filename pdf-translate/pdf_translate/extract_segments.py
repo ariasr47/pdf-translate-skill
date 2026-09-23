@@ -97,7 +97,7 @@ import sys
 
 import pymupdf
 
-from ._console import console
+from ._console import console, _arg
 from .results import ExtractResult
 from .strip_text import (
     invisible_text_pages, page_textdict_without_annots,
@@ -848,11 +848,10 @@ def _main(argv=None):
         log.info(f'usage: {missing} requires a value')
         return 2
     src = argv[0]
-    gap = float(argv[argv.index('--gap') + 1]) if '--gap' in argv else 12.0
-    outdir = argv[argv.index('--outdir') + 1] if '--outdir' in argv else '.'
-    pages = argv[argv.index('--pages') + 1] if '--pages' in argv else None
-    max_per_kind = (int(argv[argv.index('--max-per-kind') + 1])
-                    if '--max-per-kind' in argv else DEFAULT_MAX_PER_KIND)
+    gap = float(_arg(argv, '--gap', 12.0))
+    outdir = _arg(argv, '--outdir', '.')
+    pages = _arg(argv, '--pages')
+    max_per_kind = int(_arg(argv, '--max-per-kind', DEFAULT_MAX_PER_KIND))
     result = extract_segments(src, outdir=outdir, gap=gap, pages=pages,
                               typography='--typography' in argv)
     nseg = len(result['segments'])

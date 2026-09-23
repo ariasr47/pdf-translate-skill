@@ -58,7 +58,7 @@ import sys
 import unicodedata
 from dataclasses import dataclass
 
-from ._console import console, say
+from ._console import console, say, _arg
 from .extract_segments import write_find_say_hits
 from .mapping import FORMAT, load_mapping
 from .verify import SPACELESS_SCRIPTS, dominant_script, strip_inline_markup
@@ -379,10 +379,6 @@ def run_qa(translations_path, segments_path=None, glossary_path=None):
     """Run linguistic QA. Returns a QAVerdict; does not print or exit."""
     return QAVerdict(findings=qa_check(
         translations_path, segments_path, glossary_path))
-
-
-def _arg(argv, name, default=None):
-    return argv[argv.index(name) + 1] if name in argv else default
 
 
 def _say(line):

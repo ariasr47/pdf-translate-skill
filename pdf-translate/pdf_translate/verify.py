@@ -177,7 +177,7 @@ from dataclasses import dataclass
 
 import pymupdf
 
-from ._console import console
+from ._console import console, _arg
 from .extract_segments import write_find_say_hits
 from .strip_text import choice_exports, invisible_text_pages
 
@@ -412,10 +412,6 @@ RUN = re.compile(r"[A-Za-z][A-Za-z'\-]*(?:\s+[A-Za-z][A-Za-z'\-]*){2,}")
 # gate. At-or-above, combined with empty get_text(), it is a scan suspect.
 VISIBLE_INK = 50
 INK_SKIP = 20
-
-
-def _arg(argv, name, default=None):
-    return argv[argv.index(name) + 1] if name in argv else default
 
 
 def source_words_from_segments(path, allow, script='Latin'):

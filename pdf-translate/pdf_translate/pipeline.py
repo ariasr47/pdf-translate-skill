@@ -81,7 +81,7 @@ from .retypeset import retypeset
 from .strip_text import strip_text, WidgetTextError
 from .bilingual import main as bilingual_main
 from .qa_check import main as qa_main
-from ._console import console
+from ._console import console, _arg
 from .review import run_review
 from .mapping import FORMAT, load_extraction, load_mapping, load_mapping_data, refuse
 from .results import MappingError, PdfTranslateError
@@ -101,7 +101,7 @@ log = logging.getLogger(__name__)
 
 def cmd_init(argv):
     src = argv[0]
-    work = argv[argv.index('--work') + 1] if '--work' in argv else '.'
+    work = _arg(argv, '--work', '.')
     os.makedirs(work, exist_ok=True)
     captions = None
     if '--captions' in argv:
@@ -225,7 +225,7 @@ def _scaffold_from_cores(to_translate_path, out_path, force=False):
 
 
 def cmd_from_cores(argv):
-    work = argv[argv.index('--work') + 1] if '--work' in argv else '.'
+    work = _arg(argv, '--work', '.')
     force = '--force' in argv
     to_path = os.path.join(work, 'to_translate.json')
     out_path = os.path.join(work, 'translations.json')
@@ -331,9 +331,8 @@ def _propose_merges(work, accept=False, min_lines=2):
 
 
 def cmd_propose_merges(argv):
-    work = argv[argv.index('--work') + 1] if '--work' in argv else '.'
-    min_lines = int(argv[argv.index('--min-lines') + 1]
-                    if '--min-lines' in argv else 2)
+    work = _arg(argv, '--work', '.')
+    min_lines = int(_arg(argv, '--min-lines', 2))
     return propose_merges(work, accept='--accept' in argv,
                           min_lines=min_lines)
 
@@ -407,7 +406,7 @@ def cmd_merge_mappings(argv):
 
 
 def cmd_qa(argv):
-    work = argv[argv.index('--work') + 1] if '--work' in argv else '.'
+    work = _arg(argv, '--work', '.')
     rest = [a for a in argv if a not in ('--work', work)]
     tr = os.path.join(work, 'translations.json')
     segs = os.path.join(work, 'segments.json')
@@ -481,7 +480,7 @@ def cmd_rebuild(argv):
 
 
 def cmd_render(argv):
-    dpi = int(argv[argv.index('--dpi') + 1]) if '--dpi' in argv else 110
+    dpi = int(_arg(argv, '--dpi', 110))
     orig, trans, outdir = argv[0], argv[1], argv[2]
     t0 = time.perf_counter()
     render_pages(orig, trans, outdir, dpi=dpi)
@@ -500,8 +499,8 @@ def cmd_review(argv):
         log.info('review requires --work DIR')
         return 2
     work = argv[argv.index('--work') + 1]
-    ingest = argv[argv.index('--ingest') + 1] if '--ingest' in argv else None
-    notes = argv[argv.index('--notes') + 1] if '--notes' in argv else None
+    ingest = _arg(argv, '--ingest')
+    notes = _arg(argv, '--notes')
 
     t0 = time.perf_counter()
     verdict = run_review(work, ingest=ingest, notes=notes)

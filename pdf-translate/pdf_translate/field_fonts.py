@@ -32,7 +32,7 @@ import sys
 import pikepdf
 import pymupdf
 
-from ._console import console
+from ._console import console, _arg
 from .results import FieldFontsResult, PdfTranslateError
 
 log = logging.getLogger(__name__)
@@ -152,8 +152,7 @@ def run_field_fonts(inp, font, out, name='TransFF'):
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     inp, font, out = argv[0], argv[1], argv[2]
-    name = (argv[argv.index('--name') + 1]
-            if '--name' in argv else 'TransFF')
+    name = _arg(argv, '--name', 'TransFF')
     return field_fonts(inp, font, out, name=name)
 
 

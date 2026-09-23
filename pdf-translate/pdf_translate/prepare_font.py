@@ -43,7 +43,7 @@ from pathlib import Path
 import pymupdf
 
 from . import han_forms, shaping_probe
-from ._console import console
+from ._console import console, _arg
 from .results import FontError, FontResult, PdfTranslateError
 from .mapping import CLASSES, FORMAT, ROLES, charset_for, load_mapping
 from .typography import validate_font
@@ -375,16 +375,11 @@ def main(argv=None):
             log.info(f'usage: {missing} requires a value')
         return 2
     font_in, trf, font_out = argv[0], argv[1], argv[2]
-    instance = (argv[argv.index('--instance') + 1]
-                if '--instance' in argv else None)
-    sample = (argv[argv.index('--sample') + 1]
-              if '--sample' in argv else None)
-    reference_fonts = (argv[argv.index('--reference-fonts') + 1]
-                       if '--reference-fonts' in argv else None)
-    font_class = (argv[argv.index('--font-class') + 1]
-                  if '--font-class' in argv else None)
-    font_role = (argv[argv.index('--font-role') + 1]
-                 if '--font-role' in argv else None)
+    instance = _arg(argv, '--instance')
+    sample = _arg(argv, '--sample')
+    reference_fonts = _arg(argv, '--reference-fonts')
+    font_class = _arg(argv, '--font-class')
+    font_role = _arg(argv, '--font-role')
     return prepare_font(font_in, trf, font_out, instance=instance,
                         sample=sample,
                         allow_restricted='--allow-restricted' in argv,

@@ -36,6 +36,17 @@ def missing_option_value(argv, options):
                  (index + 1 == len(argv) or argv[index + 1].startswith('--'))), None)
 
 
+def _arg(argv, name, default=None):
+    """The token after `name`, or `default` when the option is absent.
+
+    Every CLI's `_main` wants this and each used to spell it out. A dangling
+    option — `name` as the last token — still raises, exactly as the inline
+    form did; `missing_option_value` above is what a `_main` calls first to
+    turn that into a usage line.
+    """
+    return argv[argv.index(name) + 1] if name in argv else default
+
+
 @contextlib.contextmanager
 def console(stream=None):
     """Attach one stdout handler to the package logger, re-entrantly.
