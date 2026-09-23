@@ -614,7 +614,7 @@ class RefusalTests(unittest.TestCase):
 
     def test_explicit_no_review_discloses_bypass_of_invalid_review(self):
         with tempfile.TemporaryDirectory() as tmp:
-            work = self._work(tmp)
+            work = self._work(tmp, review_json=False)
             (work / 'review.json').write_text('{}', encoding='utf-8')
             d = self._delivery(tmp)
             rc, out = self._run(['finish', d['orig.pdf'], d['out.pdf'],
@@ -632,7 +632,7 @@ class RefusalTests(unittest.TestCase):
 
     def test_valid_review_with_no_findings_can_deliver(self):
         with tempfile.TemporaryDirectory() as tmp:
-            work = self._work(tmp)
+            work = self._work(tmp, review_json=False)
             (work / 'review.json').write_text(json.dumps(a_review([])), encoding='utf-8')
             d = self._delivery(tmp)
             rc, out = self._run(['finish', d['orig.pdf'], d['out.pdf'],
