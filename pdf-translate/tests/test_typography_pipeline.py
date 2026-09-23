@@ -84,6 +84,33 @@ class TypographyPipelineTests(unittest.TestCase):
         self.assertNotEqual(self.pipeline('from-cores', '--work', self.work, '--force').returncode, 0)
         self.assertEqual(self.snapshot(), before)
 
+    def test_finish_rejects_stale_review_binding_and_accepts_current_binding(self):
+        run_retypeset(*(self.job[k] for k in ('stripped', 'segments', 'mapping', 'output')),
+                      original=self.job['original'])
+        mapping = load_mapping(self.job['mapping'])
+        current = {'extraction_id': mapping.extraction_id, 'mapping_sha256': mapping.mapping_sha256}
+        final, html = self.work / 'final.pdf', self.work / 'comparison.html'
+        for binding in (None, dict(current, extraction_id='0' * 64),
+                        dict(current, mapping_sha256='0' * 64), current):
+            with self.subTest(binding=binding):
+                doc = {'reviewer': {'name': 'Fixture reviewer'}, 'findings': []}
+                if binding is not None:
+                    doc['typography'] = binding
+                (self.work / 'review.json').write_text(json.dumps(doc), encoding='utf-8')
+                result = self.pipeline('finish', self.job['original'], self.job['output'],
+                                       latin_font_sets()['sans']['regular'], final, html,
+                                       '--work', self.work)
+                state = json.loads((self.work / 'review_state.json').read_text())
+                if binding == current:
+                    self.assert_ok(result)
+                    self.assertTrue(final.is_file())
+                    self.assertFalse(state['blocks_delivery'])
+                else:
+                    self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                    self.assertFalse(final.exists())
+                    self.assertTrue(state['blocks_delivery'])
+                    self.assertIn('binding', result.stdout)
+
     def test_removed_reference_cannot_flatten_typography_extraction(self):
         path = self.work / 'to_translate.json'
         path.write_text('{"cores": [{"text":"Pay NOW"}]}', encoding='utf-8')
