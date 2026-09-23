@@ -566,9 +566,7 @@ def collect_translation_targets(conf, exclude_cores=None):
         for part in strip_inline_markup(str(tgt)).split('‖'):
             targets.append(part)
     for merge in conf.get('merges') or []:
-        html = merge.get('html') or ''
-        text = re.sub(r'<br\s*/?>', ' ', html, flags=re.I)
-        text = re.sub(r'<[^>]+>', '', text)
+        text = _merge_plain_text(merge.get('html'))
         if text:
             targets.append(text)
     for override in conf.get('overrides') or []:
@@ -1843,14 +1841,22 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             Finding(pno + 1, 'page', f'stripping the text changes {fraction:.1%} of its span area')
             for pno, fraction in invisible])
 
+    # Read the translated document's text once. `jc` is not touched between
+    # here and `jc.close()`, and get_text() re-derives layout from the content
+    # stream on every call, so the gates below share one pass instead of
+    # taking three.
+    page_gettext = [page.get_text() or '' for page in jc]
+    page_actualtext = [extract_actualtext(page) for page in jc]
+    page_search = '\n'.join('\n'.join([t] + a)
+                            for t, a in zip(page_gettext, page_actualtext))
+
     # Canonical text layer (audit H4/H5). Authored strings count as
     # deliberate; so does anything already in the original, whose own
     # drift we cannot rewrite.
     authored = o_text
     if document is not None:
         authored += '\n' + '\n'.join(collect_translation_targets(document))
-    drift = drifted_characters(
-        '\n'.join(page_search_text(jc[i]) for i in range(len(jc))), authored)
+    drift = drifted_characters(page_search, authored)
     if drift:
         log.info(f'FAIL text layer is not canonical ({len(drift)} character(s) '
               f'nobody authored — ToUnicode drift; the page looks right but '
@@ -1962,7 +1968,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
                    findings=[Finding(None, 'script', src_script)])
     else:
         for i in range(len(jc)):
-            r, iso = scan_leaks(jc[i].get_text(), allow, source_words=source_words,
+            r, iso = scan_leaks(page_gettext[i], allow, source_words=source_words,
                                 src_re=src_re, script=src_script,
                                 keep=keep, kept=kept)
             running.extend((i + 1, ph) for ph in r)
@@ -1998,7 +2004,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     if document is not None:
         segfile = document.extraction if is_typography else load_segments_file(translations, segments)
         meta_cores = document_only_cores(segfile)
-        hay = '\n'.join(page_search_text(jc[i]) for i in range(len(jc)))
+        hay = page_search
         blanks = empty_translation_targets(conf)
         if blanks:
             log.info(f'FAIL empty translation targets ({len(blanks)}):')
@@ -2030,7 +2036,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
             log.info('PASS authored translations present')
             record('placement', 'PASS')
 
-        marks = [ '\n'.join(extract_actualtext(jc[i])) for i in range(len(jc))]
+        marks = ['\n'.join(a) for a in page_actualtext]
         unmarked = unmarked_shaped_targets(marks, targets)
         if unmarked:
             log.info(f'FAIL shaped-script targets not drawn by the Story engine '
