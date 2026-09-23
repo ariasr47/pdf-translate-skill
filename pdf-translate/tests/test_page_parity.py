@@ -137,6 +137,19 @@ class VerifyPageParityTests(unittest.TestCase):
             self.assertEqual([(f.page, f.where) for f in gate.findings],
                              [(n, 'missing') for n in range(2, 13)])
 
+    def test_the_box_tolerance_holds_at_its_boundary(self):
+        """Boxes are read as 32-bit floats: 612.01 comes back as 612.0100098,
+        which must still count as 0.01 pt, the documented tolerance. Found by
+        the independent verification pass."""
+        from pdf_translate.verify import page_parity
+        with tempfile.TemporaryDirectory() as tmp:
+            src = _pdf(Path(tmp) / 'orig.pdf', SOURCE)
+            for width, differs in ((612.01, False), (612.02, True)):
+                out = _reshape(src, Path(tmp) / f'w{width}.pdf', 1, mediabox=(0, 0, width, 792))
+                with pymupdf.open(src) as a, pymupdf.open(out) as b:
+                    wheres = [f.where for f in page_parity(a, b)]
+                self.assertEqual('media-box' in wheres, differs, (width, wheres))
+
     def test_the_gate_is_declared(self):
         from pdf_translate.verify import GATE_NAMES
         self.assertEqual(GATE_NAMES[GATE_NAMES.index('fill-roundtrip') + 1], 'page-parity')

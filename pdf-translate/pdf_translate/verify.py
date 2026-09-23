@@ -1638,8 +1638,16 @@ def ink(page):
 
 # Boxes are compared to a hundredth of a point: a stage that re-serialises a
 # box must not fail it, while any real resize (A4 against Letter is 17 pt)
-# is far above this.
+# is far above this. PyMuPDF reads box values as 32-bit floats (612.01 comes
+# back as 612.0100098), so the comparison also allows that representation
+# error — two roundings of at most 2**-24 relative each — or a box exactly
+# 0.01 pt off would fail.
 PAGE_BOX_TOLERANCE = 0.01
+
+
+def _box_differs(x, y):
+    return any(abs(p - q) > PAGE_BOX_TOLERANCE + 2.4e-7 * max(1.0, abs(p), abs(q))
+               for p, q in zip(x, y))
 
 
 def _box(rect):
@@ -1663,7 +1671,7 @@ def page_parity(original, translation):
         a, b = original[i], translation[i]
         for where, x, y in (('media-box', a.mediabox, b.mediabox),
                             ('crop-box', a.cropbox, b.cropbox)):
-            if any(abs(p - q) > PAGE_BOX_TOLERANCE for p, q in zip(x, y)):
+            if _box_differs(x, y):
                 findings.append(Finding(i + 1, where, f'original {_box(x)}, translation {_box(y)}'))
         if a.rotation != b.rotation:
             findings.append(Finding(i + 1, 'rotation',
