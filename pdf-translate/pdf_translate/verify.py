@@ -301,7 +301,7 @@ class GateResult:
 # that prints nothing for a job (no fields, no Arabic, no --translations)
 # records nothing either: the verdict mirrors the console, line for line.
 GATE_NAMES = (
-    'field-parity', 'opt-export-parity', 'fill-roundtrip',
+    'field-parity', 'opt-export-parity', 'fill-roundtrip', 'page-parity',
     'extractable-text', 'ink-ratio', 'visible-text', 'canonical-text',
     'arabic-letterforms', 'conjunct-shaping', 'kinsoku', 'han-forms',
     'leak-scan', 'leak-cjk', 'leak-running', 'leak-isolated',
@@ -1636,6 +1636,41 @@ def ink(page):
     return sum(1 for k in range(0, len(buf), px.n) if buf[k] < 100)
 
 
+# Boxes are compared to a hundredth of a point: a stage that re-serialises a
+# box must not fail it, while any real resize (A4 against Letter is 17 pt)
+# is far above this.
+PAGE_BOX_TOLERANCE = 0.01
+
+
+def _box(rect):
+    return '[' + ', '.join(f'{v:g}' for v in rect) + ']'
+
+
+def page_parity(original, translation):
+    """Every way the translation's pages differ from the original's.
+
+    A translation has exactly the original's pages: the same count, and on
+    each page the same media box, crop box and rotation. `original` and
+    `translation` are open documents. Findings name the page: an original page
+    the translation lacks, a translated page with no original, then a box or
+    rotation that changed on a page both have.
+    """
+    findings = [Finding(i + 1, 'missing', 'no page in the translation')
+                for i in range(len(translation), len(original))]
+    findings += [Finding(i + 1, 'extra', 'no page in the original')
+                 for i in range(len(original), len(translation))]
+    for i in range(min(len(original), len(translation))):
+        a, b = original[i], translation[i]
+        for where, x, y in (('media-box', a.mediabox, b.mediabox),
+                            ('crop-box', a.cropbox, b.cropbox)):
+            if any(abs(p - q) > PAGE_BOX_TOLERANCE for p, q in zip(x, y)):
+                findings.append(Finding(i + 1, where, f'original {_box(x)}, translation {_box(y)}'))
+        if a.rotation != b.rotation:
+            findings.append(Finding(i + 1, 'rotation',
+                                    f'original {a.rotation}, translation {b.rotation}'))
+    return findings
+
+
 def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
                     source_regex=None, source_words_from=None, allow_extra_prefix=None,
                     translations=None, segments=None, fail_on_review=False,
@@ -1785,6 +1820,24 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
     else:
         log.info('SKIP fill round-trip (no fields)')
         record('fill-roundtrip', 'SKIP', 'no fields')
+
+    # A02: every gate below walks only the pages both files have, so a page
+    # the translation lost or gained, or one whose box or rotation changed,
+    # was invisible to all of them. One status line; details are indented.
+    pages = page_parity(o, j)
+    if pages:
+        log.info(f'FAIL page parity: {len(o)} original / {len(j)} translated, '
+                 f'{len(pages)} difference(s)')
+        for f in pages[:10]:
+            log.info(f'   page {f.page} {f.where}: {f.text}')
+        if len(pages) > 10:
+            log.info(f'   … {len(pages) - 10} more not shown')
+        fail = 1
+        record('page-parity', 'FAIL', f'{len(o)} original / {len(j)} translated',
+               findings=pages)
+    else:
+        log.info(f'PASS page parity: {len(o)} page(s), same boxes and rotation')
+        record('page-parity', 'PASS', f'{len(o)} page(s)')
 
     jc = pymupdf.open(trans)
     ink_status = None
