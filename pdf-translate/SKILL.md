@@ -105,10 +105,17 @@ seconds. A 30–40 minute run is almost entirely translation authoring and
 python3 scripts/pipeline.py init original.pdf --work .
 python3 scripts/pipeline.py from-cores --work .
 # write identity record, author every null, prepare_font once
+TARGET_FILL="Prueba 123"  # Spanish example; replace for your target language/script
 python3 scripts/pipeline.py rebuild --work . original.pdf out.pdf \
-    --fill-text "text in target script" --source-words-from segments.json
+    --fill-text "$TARGET_FILL" --source-words-from segments.json
 python3 scripts/pipeline.py render original.pdf out.pdf renders/
 ```
+
+`rebuild` verifies against the work directory's `translations.json` and
+`segments.json`, so empty targets, placement and override markers are checked
+on every build; a `--translations` or `--segments` you pass is used instead.
+Set `TARGET_FILL` to the actual target script (for example, `山田太郎 123` for
+Japanese), with a field font that covers it.
 
 ### 1. Recon
 
@@ -432,10 +439,13 @@ reader has to look for.
 
 ```bash
 python3 scripts/verify.py original.pdf out.pdf \
-    --fill-text "text in target script" \
-    --source-words-from segments.json --allow ACRONYM1,PROPERNOUN \
-    --translations translations.json [--report verify_report.json]
+    --fill-text "$TARGET_FILL" --source-words-from segments.json \
+    --translations translations.json --segments segments.json \
+    --report verify_report.json
 ```
+
+Use the `TARGET_FILL` value chosen above. Add `--allow` only for deliberately
+allowlisted source names/phrases; do not copy placeholder allowlist entries.
 
 `--report` writes every gate and its findings as JSON; the pipeline's
 `rebuild` writes it into the work dir. `--fail-on-review` turns a run with
@@ -499,7 +509,11 @@ Every gate — what it reads, what fails, and why — is in
   and the references are present, and refuses a face of the wrong
   convention.
 
-Omit `--translations`: the always-on gates run unchanged.
+Without `--translations`, only the always-on checks run; a zero exit code
+does not establish authored-target coverage. Keep the mapping in translation
+verification commands (`rebuild` passes its work directory's for you).
+`--segments` supplies override-marker context, while `--source-words-from`
+supplies the leak scan's source vocabulary.
 
 All gates must pass. Then the step that actually creates the quality:
 **render every page of the output next to the original (~110 dpi) and look
@@ -513,6 +527,10 @@ declare victory until a full-page visual pass is clean.
 
 ```bash
 python3 scripts/field_fonts.py out.pdf FULL_FONT.ttf final.pdf
+python3 scripts/verify.py original.pdf final.pdf \
+    --fill-text "$TARGET_FILL" --source-words-from segments.json \
+    --translations translations.json --segments segments.json \
+    --report final_verify_report.json
 ```
 
 Users type arbitrary names — characters outside your translation's subset —
@@ -520,7 +538,12 @@ so this embeds a FULL-coverage font, points every text **and choice** field's
 default appearance at it, and sets NeedAppearances. A combo box renders its
 selection from `/DA` exactly as a text field renders a typed value, so
 leaving choice fields on a Latin default is the same tofu one widget over.
-Skip only for non-form PDFs.
+Skip font embedding only for non-form PDFs; their delivery file remains
+`out.pdf`. Verify the actual delivery path after any packaging or font change,
+including `pipeline.py finish`, which does not run final verification itself.
+Keep the final verdict separate from the earlier build verdict and inspect its
+FAIL/REVIEW findings before delivery. Use `out.pdf` in step 8 when no
+`final.pdf` was created.
 
 ### 8. Deliver
 

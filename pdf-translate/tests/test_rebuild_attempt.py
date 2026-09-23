@@ -181,5 +181,107 @@ class RebuildAttemptTests(unittest.TestCase):
         self.assertIn('does not describe this run', output.getvalue())
 
 
+class DefaultMappingVerificationTests(unittest.TestCase):
+    """A06: a default legacy rebuild verifies against the mapping it built from.
+
+    Before the fix, rebuild forwarded only the caller's verify flags, so a
+    legacy job with an empty target, or an override that dropped the source's
+    list marker, exited 0 with a PASS report and no mapping-dependent gate.
+    """
+
+    LABELS = ('Hello world', 'Another label')
+    COMPLETE = {'Hello world': 'Hola mundo', 'Another label': 'Otra etiqueta'}
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+
+    def job(self, translations, overrides=(), lines=LABELS, name='job'):
+        import pymupdf
+        work = self.root / name
+        work.mkdir()
+        doc = pymupdf.open()
+        try:
+            page = doc.new_page()
+            for k, text in enumerate(lines):
+                page.insert_text((72, 100 + 30 * k), text, fontsize=12)
+            doc.save(str(work / 'original.pdf'))
+        finally:
+            doc.close()
+        run_extract(str(work / 'original.pdf'), str(work))
+        run_strip(str(work / 'original.pdf'), str(work / 'stripped.pdf'))
+        (work / 'translations.json').write_text(json.dumps({
+            'fonts': latin_font_sets()['sans'], 'lang': 'es', 'translations': translations,
+            'overrides': list(overrides)}, ensure_ascii=False), encoding='utf-8')
+        return work
+
+    def rebuild(self, work, *extra):
+        result = subprocess.run(
+            [sys.executable, str(ROOT / 'scripts/pipeline.py'), 'rebuild', '--work', str(work),
+             str(work / 'original.pdf'), str(work / 'out.pdf'), '--min-ink', '0.1', *map(str, extra)],
+            cwd=work, env=dict(os.environ, PYTHONPATH=str(ROOT), PYTHONUTF8='1'),
+            capture_output=True, encoding='utf-8', timeout=120)
+        report = work / 'verify_report.json'
+        gates = ({g['name']: g['status'] for g in json.loads(report.read_text(encoding='utf-8'))['gates']}
+                 if report.exists() else None)
+        return result.returncode, gates, result.stdout + result.stderr
+
+    def test_a_complete_mapping_passes_with_the_mapping_checks_run(self):
+        rc, gates, out = self.rebuild(self.job(self.COMPLETE))
+        self.assertEqual(rc, 0, out)
+        self.assertEqual((gates.get('empty-targets'), gates.get('placement')), ('PASS', 'PASS'), gates)
+
+    def test_an_empty_target_fails_the_default_rebuild(self):
+        rc, gates, out = self.rebuild(self.job({'Hello world': 'Hola mundo', 'Another label': ''}))
+        self.assertEqual(rc, 1, out)
+        self.assertEqual(gates.get('empty-targets'), 'FAIL', gates)
+
+    def test_a_whitespace_target_fails_the_default_rebuild(self):
+        rc, gates, out = self.rebuild(self.job({'Hello world': 'Hola mundo', 'Another label': '   '}))
+        self.assertEqual(rc, 1, out)
+        self.assertEqual(gates.get('empty-targets'), 'FAIL', gates)
+
+    def test_an_override_that_drops_the_marker_fails_the_default_rebuild(self):
+        work = self.job({'a. Hello world': 'a. Hola mundo', 'Another label': 'Otra etiqueta'},
+                        overrides=[{'page': 0, 'contains': 'a. Hello world',
+                                    'parts': [{'text': 'Hola mundo'}]}],
+                        lines=('a. Hello world', 'Another label'))
+        rc, gates, out = self.rebuild(work)
+        self.assertEqual(rc, 1, out)
+        self.assertEqual(gates.get('override-markers'), 'FAIL', gates)
+
+    def test_the_equals_spelling_does_not_switch_the_checks_off(self):
+        work = self.job({'Hello world': 'Hola mundo', 'Another label': ''})
+        rc, gates, out = self.rebuild(work, f'--translations={work / "translations.json"}')
+        self.assertEqual(rc, 1, out)
+        self.assertEqual(gates.get('empty-targets'), 'FAIL', gates)
+
+    def test_segments_alone_still_gets_the_default_mapping(self):
+        work = self.job({'Hello world': 'Hola mundo', 'Another label': ''})
+        rc, gates, out = self.rebuild(work, '--segments', work / 'segments.json')
+        self.assertEqual(rc, 1, out)
+        self.assertEqual(gates.get('empty-targets'), 'FAIL', gates)
+
+    def test_an_explicit_mapping_elsewhere_is_honoured(self):
+        """The build's mapping is complete; the caller's own has an empty
+        target. Verification follows the caller, so it fails."""
+        work = self.job(self.COMPLETE)
+        other = self.root / 'other'
+        other.mkdir()
+        conf = json.loads((work / 'translations.json').read_text(encoding='utf-8'))
+        conf['translations']['Another label'] = ''
+        (other / 'translations.json').write_text(json.dumps(conf, ensure_ascii=False), encoding='utf-8')
+        (other / 'segments.json').write_bytes((work / 'segments.json').read_bytes())
+        rc, gates, out = self.rebuild(work, '--translations', other / 'translations.json')
+        self.assertEqual(rc, 1, out)
+        self.assertEqual(gates.get('empty-targets'), 'FAIL', gates)
+
+    def test_a_null_target_still_refuses_the_build(self):
+        rc, gates, out = self.rebuild(self.job({'Hello world': 'Hola mundo', 'Another label': None}))
+        self.assertEqual(rc, 1, out)
+        self.assertIsNone(gates, 'a refused build writes no verification report')
+
+
 if __name__ == '__main__':
     unittest.main()

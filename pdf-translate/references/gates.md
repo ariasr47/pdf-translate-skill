@@ -5,12 +5,25 @@ adds (placement, canonical text layer, chrome and caption width,
 identifiers, override markers) · `/Opt` export parity · document metadata
 · shaped scripts · flags.
 
-`verify.py` runs after every build; exit 0 means every gate passed. The
-gates check the **file** — structure, placement, the text layer. None of
-them can read: a plausible wrong term passes every one, which is why the
-visual pass and the reviewer checklist exist. `python3 scripts/verify.py
-original.pdf out.pdf --fill-text "…" --source-words-from segments.json
---translations translations.json`.
+`verify.py` checks the **file** — structure, placement, the text layer. Exit 0
+means no enabled gate failed; REVIEW findings may remain unless
+`--fail-on-review` was supplied. Mapping-dependent checks require the mapping;
+`pipeline.py rebuild` supplies its work directory's. None of the gates judges
+whether a term is right, which is why visual inspection and the reviewer
+checklist remain necessary.
+
+```bash
+TARGET_FILL="Prueba 123"  # Spanish example; replace for your target language/script
+python3 scripts/verify.py original.pdf out.pdf \
+    --fill-text "$TARGET_FILL" --source-words-from segments.json \
+    --translations translations.json --segments segments.json --report verify_report.json
+```
+
+`rebuild` runs this after each build with the work directory's mapping. Run it
+again yourself on the actual delivery PDF after field-font embedding or
+packaging, using a separate final report: `pipeline.py finish` does not perform
+that final verification. For a non-form delivery without a font-embedding
+step, the file may still be `out.pdf`.
 
 ## Always on
 
@@ -246,8 +259,11 @@ translations.json`, `--segments segments.json`, `--allow-extra-prefix`,
 `--min-ink`, `--report verify_report.json`, `--fail-on-review`, `--reference-fonts DIR` (the
 `NotoSansJP-VF.ttf` and `NotoSansSC-VF.ttf` faces gate 20 compares against; default `tests/fonts/`
 of a checkout — an installed package has none, so a service passes its own; with
-`--fail-on-review`, a CJK job exits 1 until they are shipped). Omit
-`--translations`: the always-on gates run unchanged.
+`--fail-on-review`, a CJK job exits 1 until they are shipped). Without
+`--translations`, mapping-dependent checks such as empty targets and authored
+target placement are absent; exit 0 then does not attest translation coverage.
+`pipeline.py rebuild` passes its work directory's `translations.json` and
+`segments.json` unless you pass your own; it has no way to skip them.
 
 ## The review loop is not a gate
 

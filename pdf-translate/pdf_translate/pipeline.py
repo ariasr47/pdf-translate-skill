@@ -41,7 +41,9 @@ Usage:
 
   python3 pipeline.py rebuild --work DIR ORIGINAL.pdf OUT.pdf [verify flags...]
       retypeset DIR/stripped.pdf + DIR/segments.json + DIR/translations.json
-      then verify ORIGINAL.pdf OUT.pdf with any extra verify flags
+      then verify ORIGINAL.pdf OUT.pdf with any extra verify flags, against
+      DIR/translations.json and DIR/segments.json unless --translations or
+      --segments is forwarded (the mapping is always supplied)
       Invalidates the default and selected verification reports before the
       attempt. An older PDF may remain after failure; check this run's result.
 
@@ -502,6 +504,17 @@ def cmd_rebuild(argv):
                 log.info('rebuild: typography source/mapping/segments are fixed; conflicting forwarded flags are not allowed')
                 return 2
         extra += ['--translations', tr, '--segments', segs]
+    else:
+        # A06: verify against the mapping this rebuild built from, so empty
+        # targets, placement, override markers and identifiers are checked on
+        # every default run. A caller's own --translations / --segments are
+        # honoured as given; the mapping itself is always supplied, and the
+        # default segments come only with the default mapping. Only the exact
+        # tokens verify reads count: `--translations=X` never reached verify.
+        if '--translations' not in extra:
+            extra += ['--translations', tr]
+            if '--segments' not in extra:
+                extra += ['--segments', segs]
     rc = retypeset(stripped, segs, tr, out, **({'original': orig} if typography else {}))
     if rc != 0:
         log.info(f'elapsed {time.perf_counter()-t0:.2f}s (retypeset failed)')
