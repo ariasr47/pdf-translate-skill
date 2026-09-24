@@ -6623,6 +6623,102 @@ def words_needing(font, size, width, words=SMALL_WORDS):
     return ' '.join(out)
 
 
+def file_digest(path):
+    import hashlib
+    with open(path, 'rb') as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+class OutputAliasTests(unittest.TestCase):
+    """R-05: a legacy build never writes over one of its own inputs.
+
+    typography-1 refused an output or scale-report path that named one of
+    its inputs; a legacy mapping went straight to the save. The CLI then
+    exited 0 having replaced translations.json or segments.json with PDF
+    bytes, an output named stripped.pdf raised a bare ValueError, and
+    `rebuild`, which never passes the original to a legacy retypeset, could
+    write over the original PDF."""
+
+    def _job(self, tmp):
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        # A private copy: if the guard failed, the vendored face would be
+        # the file overwritten.
+        font = os.path.join(tmp, 'face.ttf')
+        shutil.copyfile(find_test_font(), font)
+        build_small_print_pdf(src, 11)
+        extract_segments.extract_segments(src, outdir=tmp)
+        strip_text.strip_text(src, stripped)
+        write_mapping(tr, {SMALL_LABEL: 'Nombre', 'Date': 'Fecha'}, font)
+        return src, stripped, os.path.join(tmp, 'segments.json'), tr, font
+
+    def test_output_naming_an_input_is_refused_and_the_input_kept(self):
+        for role, index in (('mapping', 3), ('segments', 2),
+                            ('stripped PDF', 1), ('font', 4)):
+            # A fresh job each time: a guard that fails destroys the input,
+            # and every later case would then fail to read it.
+            with self.subTest(role=role), tempfile.TemporaryDirectory() as tmp:
+                src, stripped, segs, tr, font = self._job(tmp)
+                target = (src, stripped, segs, tr, font)[index]
+                before = file_digest(target)
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    rc = retypeset.retypeset(stripped, segs, tr, target)
+                log = buf.getvalue()
+                self.assertEqual(rc, 1, msg=log)
+                self.assertIn('would overwrite one of its inputs', log)
+                self.assertIn(role, log)
+                self.assertEqual(file_digest(target), before)
+
+    def test_scale_report_naming_an_input_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, stripped, segs, tr, _ = self._job(tmp)
+            before = file_digest(tr)
+            out = os.path.join(tmp, 'out.pdf')
+            with self.assertRaises(retypeset.MappingError) as caught:
+                retypeset.run_retypeset(stripped, segs, tr, out,
+                                        scale_report=tr)
+            self.assertEqual(caught.exception.refusals['output_aliases'],
+                             [{'writes': 'scale report', 'path': tr,
+                               'input': 'mapping'}])
+            self.assertEqual(file_digest(tr), before)
+            self.assertFalse(os.path.exists(out))
+
+    def test_rebuild_refuses_an_output_naming_an_input(self):
+        for name in ('translations.json', 'orig.pdf', 'segments.json'):
+            with self.subTest(target=name), tempfile.TemporaryDirectory() as tmp:
+                src = os.path.join(tmp, 'orig.pdf')
+                work = os.path.join(tmp, 'work')
+                build_small_print_pdf(src, 11)
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    self.assertEqual(
+                        pipeline.main(['init', src, '--work', work]), 0)
+                write_mapping(os.path.join(work, 'translations.json'),
+                              {SMALL_LABEL: 'Nombre', 'Date': 'Fecha'},
+                              find_test_font())
+                target = src if name == 'orig.pdf' else os.path.join(work, name)
+                before = file_digest(target)
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    rc = pipeline.main(['rebuild', '--work', work, src, target])
+                log = buf.getvalue()
+                self.assertEqual(rc, 2, msg=log)
+                self.assertIn('output path must not overwrite an input', log)
+                self.assertEqual(file_digest(target), before)
+
+    def test_a_distinct_output_still_builds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, stripped, segs, tr, _ = self._job(tmp)
+            out = os.path.join(tmp, 'out.pdf')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(stripped, segs, tr, out)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            self.assertTrue(os.path.isfile(out))
+
+
 class SmallPrintClampTests(unittest.TestCase):
     """R-02: a run that must shrink is drawn at the size that fits.
 

@@ -771,6 +771,55 @@ def _same_path(first, second):
         return os.path.normcase(os.path.realpath(first)) == os.path.normcase(os.path.realpath(second))
 
 
+def _legacy_fonts(conf, trf):
+    """{role: path} for a legacy mapping's fonts, resolved as retypeset
+    opens them. Mapping-relative paths work for both the direct command and
+    rebuild. Old caller-relative mappings stay usable, but the fallback is
+    made visible."""
+    font_dir = os.path.dirname(os.path.abspath(trf))
+    fonts = {}
+    for role_name, path in conf['fonts'].items():
+        if path and not os.path.isabs(path):
+            local = os.path.join(font_dir, path)
+            if not os.path.isfile(local) and os.path.isfile(path):
+                log.info(f'NOTE font {role_name}: legacy caller-relative path {path}; '
+                      'prefer a path relative to translations.json')
+                local = os.path.abspath(path)
+            path = local
+        fonts[role_name] = path
+    return fonts
+
+
+def _refuse_output_aliases(out, report, inputs):
+    """Refuse a legacy build whose output or scale report names an input.
+
+    typography-1 refuses this before it builds; a legacy mapping used to go
+    straight to the save. It then replaced translations.json or
+    segments.json with PDF or report bytes and exited 0, or raised a bare
+    ValueError for stripped.pdf (R-05). `inputs` is [(role, path)]; a path
+    of None is skipped.
+    """
+    hits = []
+    for writes, destination in (('output', out), ('scale report', report)):
+        if not destination:
+            continue
+        for role, path in inputs:
+            if path and _same_path(destination, path):
+                hits.append({'writes': writes, 'path': destination,
+                             'input': role})
+    if report and _same_path(out, report):
+        hits.append({'writes': 'output', 'path': out, 'input': 'scale report'})
+    if not hits:
+        return
+    lines = [f'FAIL: {len(hits)} path(s) of this build would overwrite one of '
+             f'its inputs; write them somewhere else:']
+    lines += [f'  the {h["writes"]} {h["path"]} is the {h["input"]}'
+              for h in hits]
+    raise MappingError('an output path names an input of this build',
+                       console_line='\n'.join(lines), exit_code=1,
+                       refusals={'output_aliases': hits})
+
+
 def _refuse_stale_geometry(segd, stripped):
     """Refuse a segments.json that records a rotated page in the old space.
 
@@ -1189,9 +1238,16 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                     mapping_format=document.format, legacy_conf=None,
                     scale_report=scale_report, resource_root=resource_root)
             raise
+    conf = document.legacy
+    fonts = _legacy_fonts(conf, trf)
+    _refuse_output_aliases(
+        out, (os.path.join(os.path.dirname(os.path.abspath(out)), SCALE_REPORT)
+              if scale_report is _DEFAULT else scale_report),
+        [('stripped PDF', stripped), ('segments', segf), ('mapping', trf),
+         ('original PDF', original)]
+        + [(f'{role_name} font', path) for role_name, path in fonts.items()])
     segd = _load_json(segf)
     _refuse_stale_geometry(segd, stripped)
-    conf = document.legacy
     T = conf['translations']
     merges = conf.get('merges', [])
     center = set(conf.get('center', []))
@@ -1200,19 +1256,6 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
     allow_scale = set(conf.get('allow_scale') or [])
     overrides = conf.get('overrides', [])
     notices = conf.get('notices') or []
-    # Mapping-relative paths work for both the direct command and rebuild.
-    # Keep old caller-relative mappings usable, but make the fallback visible.
-    font_dir = os.path.dirname(os.path.abspath(trf))
-    fonts = {}
-    for role_name, path in conf['fonts'].items():
-        if path and not os.path.isabs(path):
-            local = os.path.join(font_dir, path)
-            if not os.path.isfile(local) and os.path.isfile(path):
-                log.info(f'NOTE font {role_name}: legacy caller-relative path {path}; '
-                      'prefer a path relative to translations.json')
-                local = os.path.abspath(path)
-            path = local
-        fonts[role_name] = path
     overflow = []
     scaled = []
     mirror = bool(conf.get('mirror'))
