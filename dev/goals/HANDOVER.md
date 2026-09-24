@@ -10,14 +10,16 @@ there is no release or tag. PR #27 (Rule 4: the product directs this library)
 is open on `docs/app-directs-skill` at `b24f03a`, and all three of its checks
 pass (run 35978209544). Rodrigo merges it.
 
-**This Mac's checkout.** Local `main` still holds two commits from 12
-September that are on no remote. `ca2dd06` adds `dev/canary/GPT6_PROMPT.md`,
-which its message calls the only copy. `c1d9c93` is the Mac's own lane B row
-P9 restructure (root `AGENTS.md`, `dev/STATUS.md`, `dev/DECISIONS.md`); the
+**This Mac's checkout.** Local `main` held two commits from 12 September
+that were on no remote. `ca2dd06` adds `dev/canary/GPT6_PROMPT.md`, which its
+message calls the only copy. `c1d9c93` is the Mac's own lane B row P9
+restructure (root `AGENTS.md`, `dev/STATUS.md`, `dev/DECISIONS.md`); the
 Windows line has its own `AGENTS.md` and `docs/DECISIONS.md` instead. `main`
-and `origin/main` have diverged (2 and 206 commits), so `git pull --ff-only`
-exits 128. `main` stays as it is until Rodrigo decides; everything below ran
-on `origin/main`.
+and `origin/main` had diverged (2 and 206 commits), so `git pull --ff-only`
+exited 128. On Rodrigo's word both commits are now on GitHub as
+`backup/mac-main-2026-09-12` (at `c1d9c93`) and local `main` was reset to
+`origin/main`; whether either commit belongs on `main` is a separate
+decision. Everything below ran on `origin/main`.
 
 **Setup, as `pdf-translate/README.md` says.** `pdf-translate/.venv` is
 CPython 3.14.6. uv created it without pip, so dependencies go in with
