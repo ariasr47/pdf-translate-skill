@@ -13,6 +13,141 @@ refused. Describe the input, the observable output, and why it matters;
 this repo's own tests and corpus are what any implementation is checked
 against.
 
+## Current coordination status — 23 September 2026
+
+**Main is v60 at `178a06f`.** Since the 20 September snapshot below, PRs
+#12/#13 (v57/v58), #17 (typography, v59), #18 (Python 3.14 only), #19 (opt-in
+refusal capture, v60), #20, #21 and #22 (A01 invalid-review refusal, A03
+rebuild-report invalidation, cleanup) have all merged. PR #22 changed shipped
+behaviour without a version bump, so `178a06f` and `b20fadd` both say v60; the
+next integration picks the number. The app reports it still runs library v54 at
+`9675c6196c14eb2a2d37d34e371391eb1955a386` on Python 3.12. Adopting current
+main needs its own Python 3.14 migration and a same-input comparison, which the
+app owns. No consumer pin or runtime changed here.
+
+**B1 stays deferred.** The design is approved. The synthetic probe, the
+baseline-anchor probe and the known-success capture are complete. No genuine
+fit-refusal case exists, and none of that work is an implementation. Opt-in
+refusal capture (v60) is how such a case would arrive.
+
+**Next library work:** A02 (legacy page-count verification), then A06
+(mapping-dependent checks on the default rebuild), each as a separate change
+from main. `dev/goals/HANDOVER.md` has their state. Nothing here is a new
+assignment to the app.
+
+## Coordination status — 20 September 2026 (historical snapshot)
+
+**Only B1 is deferred, not the product roadmap.** Its canvas and page-count
+ruling are approved; the synthetic probe and real-job capture are complete.
+The capture replayed a known success. Further B1 work awaits genuine fit-refusal
+evidence and explicitly permitted boxes before testing wrapping. No B1 plan or
+implementation is underway. See `dev/goals/HANDOVER.md` for the current evidence.
+
+The v57/v58 work described below has open PRs #12/#13. A branch described as
+"built" or "done" does not establish that the product has adopted it; consumer
+adoption must cite its actual library version and pin. The captured form used
+v54. Historical work orders below are not fresh assignments to another session.
+
+**Typography adoption disposition, 20 September:** the app requested source
+serif/sans class and meaningful within-line emphasis preservation without relaxing
+its product requirement. No delivered documented API inspected satisfies both.
+A same-source probe reproduces lost family/span information at the app-reported
+v54 pin, main v56 and open-PR v58. Read the [bounded disposition](reviews/2026-09-20-typography-capability.md)
+for existing manual controls, occurrence-selector limits and ownership. Rodrigo subsequently requested proceeding with the typography prerequisite.
+Rodrigo approved the additive approach and subsequently the written
+[typography design](design/typography-preservation/README.md). The
+[implementation plan](plans/2026-09-20-typography-preservation-brief.md) now awaits
+his review and execution-method choice; implementation has not started.
+The disposition below remains evidence for the existing APIs. No implementation,
+new consumer pin or wider app routing is promised.
+
+**Audit follow-ups recorded 19 September:** the current library/skill backlog is
+in [PROGRAM.md](../dev/goals/PROGRAM.md#public-readiness-backlog). Its A-IDs are
+scoped follow-ups to the existing work, not a second product roadmap:
+
+- E1/C4's earlier fixes do not cover a stale successful PDF/report after rebuild
+  refuses before verification; see **A03**.
+- C5's stdout-isolation fix does not establish native-backend thread safety.
+  **A04** is partial: the library guidance now requires separate processes and
+  job directories; process-isolated validation is still open. See the
+  [20 September wording evidence](reviews/2026-09-20-concurrency-guidance.md).
+  Worker integration remains app-owned and has not been inspected or reassigned
+  here. The historical thread-pool request below is not current guidance.
+- C3's general serialization/immutability promise needs qualification for QA and
+  nested collections; see **A12**, coordinated with E4.
+- C8/E11's dependency support needs an actually proven lower bound; see **A05**.
+- E10 remains the home for package identity, licenses and release contents;
+  see **A07/A08/A13/A20**, rather than duplicating that epic.
+
+The audit is [local reproduced evidence](reviews/2026-09-19-public-readiness.md),
+not a new product-side report or implementation authorization. Current status
+and closing checks live in PROGRAM; the historical rows below are preserved.
+
+## Ownership split — approved by Rodrigo
+
+| Responsibility | Accountable owner |
+| --- | --- |
+| Final priorities, scope changes, and product tradeoffs | Rodrigo |
+| Product roadmap, user outcomes, app/service work, integration, and real-job evidence | PDF Translator app task |
+| Shared PDF engine, reusable API, rendering behavior, and library tests | This library task/repository |
+
+The app task maintains **one existing product roadmap**, linking engine
+requests into this inbox rather than creating a second implementation queue.
+This inbox records library requests and technical delivery status; it does not
+compete with the product's priority order. The app imports the shared library.
+Product-specific UI and orchestration remain in the app.
+
+To prevent duplicate work, each cross-repository item needs a stable ID, one
+implementation owner per component, current state, blocking dependency, and a
+link to its evidence/PR and required library pin. Each task checks that entry
+before starting and updates its owned status when handing work back. A changed
+priority or conflicting requirement returns to Rodrigo rather than being
+silently resolved differently in each repository.
+
+**Coordination complete:** Rodrigo selected A, adopting this split and
+authorizing the message to **Boot Spire Tech web app**
+(`01a0bc1c-cdb2-7b93-8860-0154a450beb4`). The app task confirmed that its existing
+roadmap and companion status documents now record the alignment. Its reported
+canonical roadmap is
+`C:/Dev/pdf-translator/.spire/clusters/tech/context/ROADMAP.md`.
+That file was not opened here; this records the owning task's confirmation.
+
+**App-reported status, 20 September:** N1's seven approved screenshot-reference updates
+are complete, with fresh independent verification of **331/331, zero skips**.
+This does not close all of N1: the known frontend baseline and historical
+process records remain separate closure obligations.
+
+The next available product action is **app-owned preparation of a reviewable
+CI authentication arrangement for the private library dependency**. Credential
+provisioning and push/merge/deploy remain operator-controlled. This is a status
+snapshot from the owning task, not an assignment or authorization for the
+library task to perform that work. No new library implementation is assigned.
+
+<details>
+<summary>Technical detail (skip freely)</summary>
+
+The app reports that the roadmap's opening ownership note and section 2
+component register include stable IDs, one implementation owner per component,
+state, blocking dependencies, evidence/PR pointers and adoption pins. Companion
+records are `PROJECT_CONTEXT.md` and `INDEX.md` in the same context directory,
+plus `C:/Dev/pdf-translator/docs/reference/WORKORDER-skill-2026-09-16.md`.
+These paths are provenance only; no product files were inspected here.
+
+No unresolved duplicate implementation assignment was identified in the app's
+bounded alignment. Historical N2 save/subset and N6/E5 wording that assigned
+reusable rendering behavior to the product is superseded: the library owns
+reusable behavior/rendering; the app owns integration, product policy and
+evidence. New priority or scope conflicts return to Rodrigo.
+
+The app reports adoption remains `pdf-translate 54.0.0`, pinned at
+`9675c6196c14eb2a2d37d34e371391eb1955a386`. B1 alone remains deferred. No library
+files, pin, PRs #12/#13, push, merge, or implementation assignment changed in
+this documentation alignment. This repo independently rechecked #12/#13 open
+with unchanged heads; product-side file contents and deployment were not
+independently inspected.
+
+</details>
+
 ## Format
 
 `date | what the product needs | why | status`
@@ -104,7 +239,9 @@ deleting anything.
 | 2026-09-16 | **C10 — logging.** Through the `logging` module on the package's own logger, never `print`; nothing the library logs contains document text beyond what a finding already carries. | A service's logs. | **open** (E3). 166 `print` sites across the package modules today. **done** — v58. All 172 `print` sites in the package emit through `logging.getLogger('pdf_translate')` at INFO; one re-entrant `console()` attaches the single stdout handler at each CLI entry point; importing the package attaches only a `NullHandler` and sets no level on the root. Two structural tests keep it that way: no module calls `print`, and no `log.info` takes more than one argument (a two-argument call silently drops the record — it happened twice during the conversion). |
 | 2026-09-18 | **Row 32 — the terminology loop** (this repo's own row, filed here because it changes a stage the product calls). `pipeline.py finish` now requires `--work DIR` and refuses while `review.json` is absent or any finding is `open`. | A wrong term of art passed every gate on the first FL-150 → ja job and reached a delivery; no gate can see one. | **done** — v57, branch `feat/terminology-loop`. **R5 is not breached and the CLI refusal does not reach the product.** `finish` is packaging, not building, so a refusal there would be a withholding by a non-build stage; the refusal is built for the person driving the CLI by hand, and for the product the load-bearing artefact is the **record**: `review_state.json` is written beside `FINAL.pdf` on every run, refused or not, carrying `schema`, `version`, `blocks_delivery`, the counts and the one `REVIEW` line — surfaceable without parsing console text. Nothing here deletes or withholds an output file that was built: the refusal happens before `field_fonts` runs, so no delivery is produced and then held back. A consumer driving the library calls `run_review(work, generate=False)` and decides for itself; a consumer driving the CLI and wanting today's behaviour passes `--no-review`, which delivers and marks the delivery. C10 (logging) is honoured for the two new commands ahead of E3: they emit through the package logger, and `import pdf_translate` attaches only a `NullHandler`. |
 
-| 2026-09-18 | **The five bubbled items (B1–B5)**, each a measurement taken while integrating 54.0.0 (rev `9675c619`). B1: the library never breaks a line, so a long translation shrinks and below the floor is left untranslated. B2: the refusal report truncates the core to 40 characters. B3: refusals are printed, not returned. B4: widget text is not translated. B5: terminology quality is invisible to every gate. | Each one costs a customer something: untranslated text, a silent revert of 247 of 247 cores, a consumer's regex that stopped matching, form fields still in the source language, and a wrong legal term on a legal form. | **read and queued** — `docs/BRIEF-product-bubble-2026-09-18.md`. **B3 done (v58)**: every stage raises a typed exception carrying structured attributes and `refusals`. **B2 done for library consumers (v58)**: `refusals` carries every refused core **in full**; the printed line keeps its 40-character abbreviation deliberately, because it is read by a person and changing it breaks console parity — ask for that separately if it is wanted. **B5 built (v57)**: row 32's review loop, `references/terminology-failure-modes.md`, the per-class termbase and the canary's reviser axis (19% false-positive rate on the FL-150). **B4 open but contained**: the widget-text scaffold, the `/Opt` export-value rule and the refusal already exist in `extract_segments` and `strip_text`; what is missing is exposure on the consumer surface and a ruling on whether an unauthored scaffold should warn. **B1 open and the largest**: it is four rulings, three of them user-facing, and it inverts today's guarantee that nothing is silently reflowed — design canvas, then a corpus probe to size how many refused runs wrapping would recover, then a plan. One correction on record: `kinsoku_report` **is** called (gate 19, `verify.py:1852`, shipped v52); what is true is that `retypeset` makes no line-break decision for it to judge. |
+| 2026-09-18 | **The five bubbled items (B1–B5)**, each a measurement taken while integrating 54.0.0 (rev `9675c619`). B1: the library never breaks a line, so a long translation shrinks and below the floor is left untranslated. B2: the refusal report truncates the core to 40 characters. B3: refusals are printed, not returned. B4: widget text is not translated. B5: terminology quality is invisible to every gate. | Each one costs a customer something: untranslated text, a silent revert of 247 of 247 cores, a consumer's regex that stopped matching, form fields still in the source language, and a wrong legal term on a legal form. | **read and queued** — `docs/BRIEF-product-bubble-2026-09-18.md`. **B3 done (v58)**: every stage raises a typed exception carrying structured attributes and `refusals`. **B2 done for library consumers (v58)**: `refusals` carries every refused core **in full**; the printed line keeps its 40-character abbreviation deliberately, because it is read by a person and changing it breaks console parity — ask for that separately if it is wanted. **B5 built (v57)**: row 32's review loop, `references/terminology-failure-modes.md`, the per-class termbase and the canary's reviser axis (19% false-positive rate on the FL-150). **B4 open but contained**: the widget-text scaffold, the `/Opt` export-value rule and the refusal already exist in `extract_segments` and `strip_text`; what is missing is exposure on the consumer surface and a ruling on whether an unauthored scaffold should warn. **B1 design approved; further work deferred (19 September)**: exact page count, same-page placement, per-occurrence permission and a caller-authored fixed box. The synthetic probe and known-success real-job capture are complete; genuine fit-refusal evidence remains missing. No plan or implementation has begun. See `docs/design/B1-line-wrapping/README.md` and `docs/reviews/2026-09-19-b1-captured-case.md`. Correction to the original report: explicit merges already reflow and gate 19 is called; ordinary-line overflow is a build refusal, not automatic source-text restoration by the library. |
+
+| 2026-09-20 | **Typography preservation for wider library adoption.** Preserve source serif-versus-sans class and meaningful within-line bold/italic distinctions; exact source font reuse is not required. Retain an unambiguous relationship between translated style runs and repeated source occurrences, and explicitly report unsupported/ambiguous cases. | The app reports v54 at `9675c6196c14eb2a2d37d34e371391eb1955a386`: ES/zh-Hans core placement succeeds on synthetic invoices, but mixed families and emphasized tails lose their distinctions. Its five compatibility failures remain app-owned and open. | **Written typography design approved; nine-stage implementation plan saved for review and execution-method choice. Code has not started.** Own-source fixture and AST comparison confirm flattened style flags and missing class/span records at v54, main v56 and open-PR v58, with no extraction warning. Existing four-role fonts, inline emphasis and substring overrides are narrower manual controls. See `docs/reviews/2026-09-20-typography-capability.md` for exact APIs/pins and the library/app ownership split. The app's typography promise is unchanged. The selected approach preserves legacy calls and adds explicit style/occurrence data. Approved first scope is horizontal, single-baseline Latin/Japanese/Simplified Chinese page text; unsupported cases refuse and remain ineligible for adoption under the unchanged promise. See [the written design](design/typography-preservation/README.md), saved locally in `ef52e5f`. Its detailed scope/API is approved; [the implementation plan](plans/2026-09-20-typography-preservation-brief.md) remains unapproved. No new pin or PR change. B1 remains separate and deferred. **Done — v59** (PR #17, merged 21 September): the capability ships as the opt-in `typography-1` mapping format and announces itself in `pdf_translate.MAPPING_FORMATS`; `references/typography.md` documents it. App adoption, routing and its five compatibility failures remain app-owned and are not verified here; the app reports v54. |
 
 Add new rows at the bottom. Do not delete a row when its status changes —
 update the status column in place so the history of what was asked for

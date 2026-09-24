@@ -1,0 +1,145 @@
+{
+  "case_id": "20260919-webapp-fl150-page1-opus-01",
+  "files": [
+    {
+      "path": "extract.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "extract.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "extraction/segments.json",
+      "bytes": 49976,
+      "sha256": "85206eee14721b1700617d16bfe60f620366852a8dcf5dc81f0db8c7e52110e4"
+    },
+    {
+      "path": "extraction/to_translate.json",
+      "bytes": 5927,
+      "sha256": "46ece3b3285d2b34b58832c6261c1abd143f455b16227dc681ff2ceb3cce941c"
+    },
+    {
+      "path": "extraction/widget_text.json",
+      "bytes": 5469,
+      "sha256": "6f2c271df635fd230103a2e2f9928522895111a648e16afd7211b3c1f360ab3c"
+    },
+    {
+      "path": "fonts/NotoSansJP-Regular.ttf",
+      "bytes": 5766828,
+      "sha256": "b1d942338e6c899d21ef24c653a42c7b39dac6ab5ed8f7814dbc33e682aabeae"
+    },
+    {
+      "path": "fonts/OFL-NotoSansJP.txt",
+      "bytes": 4388,
+      "sha256": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9"
+    },
+    {
+      "path": "fonts/provenance.json",
+      "bytes": 358,
+      "sha256": "9a8909ce081130457681003c0f5ef1ba79648dd64ddbea83ee333134ed530751"
+    },
+    {
+      "path": "input-manifest.json",
+      "bytes": 3237,
+      "sha256": "329852a6a1315a69b19b05cffde3bd9552c6dcca166f7149f7ac5d3a5803d71a"
+    },
+    {
+      "path": "occurrences.json",
+      "bytes": 66661,
+      "sha256": "060dfa39bd8d540e41e96ee489346169f4a52543609252523b7577238ec6b60c"
+    },
+    {
+      "path": "outcome.json",
+      "bytes": 794,
+      "sha256": "338413a513235818991db053643595b365bdd829c3eff250b8fa152e1c357dd3"
+    },
+    {
+      "path": "output-page-1.png",
+      "bytes": 186685,
+      "sha256": "7c2b79bc23797886aa43f4ec162a91fa50ab38f0394e065cdfdc0f218bd15ecb"
+    },
+    {
+      "path": "output.pdf",
+      "bytes": 3582780,
+      "sha256": "df03005cc10cd7c58dee0ed9f5c87cb0eb64836b79f6d7dd3b767c3490c51e7b"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3226,
+      "sha256": "c0ef6a3d91257ddc1095d18fb711db7002445a33331c386b8bca5f5667106cb7"
+    },
+    {
+      "path": "retypeset.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "retypeset.stdout.txt",
+      "bytes": 1076,
+      "sha256": "46538f81a5c9fb1a08fa9c668999fbb354a7b261bd1a7067d328412f0cd6a616"
+    },
+    {
+      "path": "scale-occurrence-links.json",
+      "bytes": 1439,
+      "sha256": "534d9cd5dabbc026ad01dcaebf49af6e8ae1716725324225fd1a1f5feafde78d"
+    },
+    {
+      "path": "scale_report.json",
+      "bytes": 534,
+      "sha256": "861d76550cd181c8fa075c7efb031622ee0db4215a6b1994eef2b95d588c6b98"
+    },
+    {
+      "path": "source.pdf",
+      "bytes": 227097,
+      "sha256": "13eeab9c3dea9f2af29881d1b36fb20bd5cecc9a5100c09545baad6d06cbcf46"
+    },
+    {
+      "path": "stage-results.json",
+      "bytes": 89580,
+      "sha256": "492ace8fa7555e1a542ed53ce9136fd5302fadba3208d41aea8d1ba903e5c6ff"
+    },
+    {
+      "path": "strip.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "strip.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "stripped.pdf",
+      "bytes": 190559,
+      "sha256": "1120ea2b97c31d333260325d53d6b39fcfce61da468e673bdce6d9a279efdce0"
+    },
+    {
+      "path": "translations.json",
+      "bytes": 5913,
+      "sha256": "622a0c8f778c76b99c0b568ef9c6a238234a2295d20c9ef9a827ebf7fbca7378"
+    },
+    {
+      "path": "translations.original.json",
+      "bytes": 5961,
+      "sha256": "78fd8dc8f051aff00887a531b8ad9cf9f4006ef3f426ec5e7d72c5c7cb495831"
+    },
+    {
+      "path": "verification.json",
+      "bytes": 3954,
+      "sha256": "c9f5d1b37edb5beccf09385382965463631e91f1f9d5016695af635480dfc226"
+    },
+    {
+      "path": "verify.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "verify.stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

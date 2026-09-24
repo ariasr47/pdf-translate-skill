@@ -1,0 +1,34 @@
+# Line endings are LF in the repository and LF in the working tree, on every
+# platform. This does not depend on a per-machine `core.autocrlf`: a Windows
+# checkout that sets it gets LF anyway, and a scripted edit (sed, node) that
+# would silently no-op on a CRLF file keeps working.
+#
+# The index was already LF everywhere when this file was added, so it caused
+# no re-normalisation. Adding a text type below cannot change that; adding a
+# binary type to the text set could, so check before you do.
+* text=auto eol=lf
+
+# The text the repository is made of. Listed explicitly so a file whose
+# contents fool `text=auto` heuristics is still normalised.
+*.md    text eol=lf
+*.py    text eol=lf
+*.json  text eol=lf
+*.toml  text eol=lf
+*.txt   text eol=lf
+*.html  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+
+# Never touched: corpus and eval PDFs, review screenshots, and any font that
+# ends up committed. A stray CRLF conversion corrupts these silently.
+*.pdf   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.ttf   binary
+*.otf   binary
+*.woff  binary
+*.woff2 binary
+*.zip   binary

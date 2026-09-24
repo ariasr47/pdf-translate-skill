@@ -16,9 +16,10 @@ SDK; any person or model authors the translation mapping.
 | `.claude-plugin/` | The plugin and marketplace manifests that make the repository installable with `/plugin marketplace add`. The skill needs nothing in them. |
 | `dev/goals/` | The improvement program: one gate per sitting, closed briefs, handover for a cold session. |
 | `dev/*.html`, `dev/*_SESSION_PROMPT.md` | Explainers and session prompts. Development material — deliberately outside the skill. |
-| `docs/RESEARCH-AND-FINDINGS.md` | The September 2026 audit, the research behind it, and every verified defect with status. |
-| `docs/REVIEW-2026-09-02.md` | The 2 September deep review: verdict, fresh research, and the two-lane backlog. |
-| `docs/audit-2026-09-01.html`, `docs/checklist.html` | The audit page (a dated snapshot) and the living tracker (self-contained). |
+| [Current backlog](dev/goals/PROGRAM.md#public-readiness-backlog) | Current library/skill follow-ups and completion checks; [smallest-items shortlist](docs/PUBLIC-READINESS-QUICK-WINS-2026-09-19.md) is a dated reading aid. |
+| [19 September readiness audit](docs/reviews/2026-09-19-public-readiness.md) | Dated evidence for the shared engine and installable skill, with measured limits and open findings. |
+| `docs/RESEARCH-AND-FINDINGS.md`, `docs/REVIEW-2026-09-02.md` | Earlier research, defect history and the 2 September review; consult the current backlog for status. |
+| `docs/audit-2026-09-01.html`, `docs/checklist.html` | Historical audit/checklist snapshots; current status lives in the backlog above. |
 
 Job artifacts (`work/`, `runs/`, session exports, bakeoff outputs, the FL-150
 sample PDFs) are ignored on purpose; they are large and not the product. So
@@ -39,35 +40,58 @@ machine with no Python. The first command is where that shows up: every CLI
 checks for `pymupdf`, `pikepdf` and `fonttools` first and, if any are
 missing, names them all and exits 2 without a traceback.
 
+So install them before the first job, into whichever Python the agent runs.
+The declared version bounds are in
+[requirements.txt](pdf-translate/requirements.txt); from the repository root:
+
+```bash
+python -m pip install -r pdf-translate/requirements.txt
+```
+
+The skill states the same requirement in its own **Requirements** section, so
+an agent that reads `SKILL.md` will ask for these if they are missing.
+
 Nothing tells you when a new version exists. Auto-update is off by default
 for a marketplace like this one, and no notification is sent when the
 repository publishes. To pick up a later version, run
 `/plugin marketplace update pdf-translate-skill`, then
 `/plugin update pdf-translate`. The plugin's version is `metadata.version`
-as `N.0.0`, and `/plugin list` shows which one is installed. CI validates
-both manifests and fails if the two versions disagree.
+as `N.0.0`, and `/plugin list` shows which one is installed. The CI workflow
+invokes plugin validation and checks that the plugin, skill, Python package
+metadata and runtime versions agree. Explicit validation of both manifests is
+tracked under A21 in the [current backlog](dev/goals/PROGRAM.md#public-readiness-backlog).
 
 ## Run the tests
 
-From `pdf-translate/` (use `py -3` on Windows if `python` is the Store alias):
+From `pdf-translate/` in a repository checkout, use the same Python environment
+for installation and tests. On Windows, use your virtual environment's Python
+or `py -3` if `python` resolves to the Store alias.
 
 ```bash
 python -m pip install -r requirements.txt
-python tools/fetch_test_fonts.py     # optional, stops the shaping tests skipping
-python -m unittest tests.test_pipeline tests.test_corpus_verdicts
+python tools/fetch_test_fonts.py
+python tools/fetch_test_fonts.py --check
+python -m unittest discover -s tests -t . -v
 ```
 
-The suite — constructed PDFs driving the shipped scripts; the current count
-is in the CI log and in `dev/goals/HANDOVER.md` — runs in about 25 seconds
-locally and 40 on CI, with **no skips** once the fonts are there.
-The Arabic, Hebrew and Devanagari tests need faces with real shaping
-tables: `tools/fetch_test_fonts.py` downloads four OFL Noto faces into
-`tests/fonts/` (never committed), and each test asks for a font covering
-the characters it needs — no single Noto face carries both Arabic and
-Hebrew, which is why these tests used to run only on macOS and Windows.
-Without the fetch they fall back to system fonts and skip where there are
-none. GitHub Actions runs the whole thing on Linux and Windows, Python
-3.14.
+This discovers the complete library test suite, rather than only the pipeline
+and corpus modules. The fetcher configures **20 Noto font files** in
+`tests/fonts/` (never committed): script-specific shaping faces, the
+Japanese/Simplified Chinese references and the serif/sans role faces. Some
+tests write instanced copies beside them. Missing fonts can cause skips;
+`--check` checks presence only, not the font bytes or whether every test will
+pass.
+
+Dependency bounds are declared in [requirements.txt](pdf-translate/requirements.txt)
+and [pyproject.toml](pdf-translate/pyproject.toml); proving the supported lower
+bounds remains A05 in the backlog. Use the requirements file rather than an
+unbounded package list.
+
+GitHub Actions runs the listed test modules on Linux and Windows with Python
+3.14; the badge above shows the latest result. On 23 September 2026 the run for
+`main` at `178a06f` reported 670 tests OK in 762.9 seconds on Linux and 670 OK
+(one skip) in 899.0 seconds on Windows. That is a dated measurement, not a
+runtime promise for other versions or machines.
 
 ## The skill's own metadata
 
