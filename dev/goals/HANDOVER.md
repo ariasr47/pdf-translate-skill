@@ -3,7 +3,7 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 24 September 2026, later: tech-debt review delivered; nothing fixed
+## Start here — 24 September 2026, later: review delivered; its findings assigned, R-03 first
 
 **The review.** While E12 waits on the product's six rulings, Rodrigo
 directed a tech-debt review. It is `docs/REVIEW-2026-09-24.md`: 110 items
@@ -12,6 +12,12 @@ nothing. Its twelve most important claims were each reproduced by two more
 independent refuters. Everything else was confirmed by one verifier, so
 reproduce it again before building on it. Nothing in it is assigned:
 Rodrigo picks items (`docs/DECISIONS.md`, 2026-09-24).
+
+**Assigned, in this order** (Rodrigo's ruling A, relayed by the app): R-03, R-01, the `/Rotate 90`
+blank page with R-64, R-02, the quick wins, then performance. E12 comes first again the moment
+its rulings arrive. The inbox's status section carries the order, the holds and the shared
+acceptance bar; the rows carry each ID. Tell the app's session when each item starts, blocks
+or ships.
 
 **Decision pending: R-94.** The repository is public, and has been since 2
 September. The 19 September audit and A20 assume it is private. The review
