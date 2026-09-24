@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "64"
+  version: "65"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -612,7 +612,7 @@ optional model first pass are in `references/review.md`.
 
 ## References
 
-- `references/failure-modes.md` — the fourteen silent failures and their fixes.
+- `references/failure-modes.md` — the fifteen silent failures and their fixes.
 - `references/terminology-failure-modes.md` — the five ways a term of art goes
   wrong while every gate passes.
 - `references/consumer-guide.md` — running one document end to end **from

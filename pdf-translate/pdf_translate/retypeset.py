@@ -191,6 +191,21 @@ def rotation_morph(x, y, dx, dy):
     return (pymupdf.Point(x, y), pymupdf.Matrix(dx, -dy, dy, dx, 0, 0))
 
 
+def fitted_size(fs, width, room):
+    """The size at which a run `width` points wide at `fs` fits `room`.
+
+    Never larger than the source, and with no floor: until v65 every shrink
+    was lifted to 4.0 pt, so a run from a source of 5.71 pt or less drew
+    past its room onto its neighbour, the 0.7x gate saw the lifted ratio,
+    and a source under 4 pt was drawn larger than it was (R-02). The ratio
+    fs2 / fs is now what the page shows. A room of 1 pt or less is taken as
+    1 pt, the guard the other budgets use, so a run never gets a size of 0.
+    """
+    if width <= room or width <= 0:
+        return fs
+    return fs * max(room, 1.0) / width
+
+
 def unrotated_frame(page):
     """The page's rectangle in the space this module draws and measures in.
 
@@ -1597,7 +1612,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                                             part.get('italic')))
                     w = f.text_length(t, fs)
                     maxw = part.get('max_width', 10_000)
-                    fs2 = fs if w <= maxw else max(4.0, fs * maxw / w)
+                    fs2 = fitted_size(fs, w, maxw)
                     if fs and fs2 < fs:
                         consider_ratio(pno, ov.get('contains') or t, fs2 / fs)
                     if needs_shaping(t):
@@ -1745,7 +1760,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                                         bool(seg.get('italic'))))
                 else:
                     w = body_font.text_length(body, fs)
-                    fs2 = fs if w <= room else max(4.0, fs * room / w)
+                    fs2 = fitted_size(fs, w, room)
                     if fs and fs2 < fs:
                         consider_ratio(pno, core, fs2 / fs)
                     check_glyphs(pno, body_font, body, core,
@@ -1757,7 +1772,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
 
             if dots and not rtl_body and not shaped and not mirror and not rot:
                 cur_end, label_max = leader_geometry()
-                fs2 = fs if wsum <= label_max else max(4.0, fs * label_max / wsum)
+                fs2 = fitted_size(fs, wsum, label_max)
                 if fs and fs2 < fs:
                     consider_ratio(pno, core, fs2 / fs)
                 x = ox
@@ -1774,7 +1789,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                 maxw = seg['bbox'][2] - left_limit(pno, seg, segs)
             else:
                 maxw = right_limit(pno, seg, segs) - ox
-            fs2 = fs if wsum <= maxw or wsum == 0 else max(4.0, fs * maxw / wsum)
+            fs2 = fitted_size(fs, wsum, maxw)
             if fs and fs2 < fs and not shaped:
                 consider_ratio(pno, core, fs2 / fs)
             x = ox

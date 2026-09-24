@@ -243,6 +243,21 @@ in a subset) where you wrote "oficina". `verify.py` then FAILs any
 drift-prone character that is in neither the original nor the mapping, and
 the placement gate compares verbatim instead of folding.
 
+## 15. Small print drawn over its neighbour
+
+Until v65, every shrink-to-fit was lifted to a 4 pt minimum.
+- **A source of 5.71 pt or less** that needed more than its room allowed
+  was drawn at 4 pt, wider than the room, over the next cell. The gate was
+  told the lifted size: a 5 pt run that needed 0.54× reported 0.8×, passed
+  the 0.7× floor, and verify exited 0.
+- **A source under 4 pt** was drawn *larger* than the source, and was
+  reported as shipping at source size.
+
+Now a shrunk run is drawn at exactly the size that fits, never larger than
+its source, and the gate sees that ratio. A small-print translation that
+needs less than 0.7× fails like any other; `allow_scale` ships it, at the
+size that fits.
+
 ## Also worth knowing
 
 - Extraction geometry must come from the ORIGINAL (text intact); writing

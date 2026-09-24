@@ -6592,6 +6592,188 @@ def build_band_pdf(path):
     doc.close()
 
 
+SMALL_LABEL = 'Name'
+SMALL_NEIGHBOUR_X = 150
+SMALL_WORDS = ('Nombre', 'completo', 'del', 'solicitante', 'principal', 'tal',
+               'como', 'figura', 'en', 'el', 'documento', 'oficial')
+HE_WORDS = ('בקשת', 'סיוע', 'משפטי', 'עבור', 'המבקש', 'הראשי', 'כפי', 'שמופיע')
+
+
+def build_small_print_pdf(path, size, leader=False):
+    """A small label on a row that ends in a neighbour 90 pt to its right,
+    or, with `leader`, a small dot-leader row `Name ........ $`."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    if leader:
+        page.insert_text((60, 100), SMALL_LABEL + ' ' + '.' * 40 + ' $',
+                         fontsize=size)
+    else:
+        page.insert_text((60, 100), SMALL_LABEL, fontsize=size)
+        page.insert_text((SMALL_NEIGHBOUR_X, 100), 'Date', fontsize=size)
+    doc.save(path)
+    doc.close()
+
+
+def words_needing(font, size, width, words=SMALL_WORDS):
+    """Words joined until the run needs at least `width` pt at `size`."""
+    face = pymupdf.Font(fontfile=str(font))
+    out = []
+    while face.text_length(' '.join(out), size) < width:
+        out.append(words[len(out) % len(words)])
+    return ' '.join(out)
+
+
+class SmallPrintClampTests(unittest.TestCase):
+    """R-02: a run that must shrink is drawn at the size that fits.
+
+    Each shrink site lifted the fitted size to 4.0 pt. A run from a source
+    of 5.71 pt or less then drew wider than its room, over its neighbour,
+    and the gate saw the lifted ratio, so a 0.54x run passed as 0.8x. A
+    source under 4 pt was drawn larger than it was and reported as source
+    size. The four sites -- a plain run, a leader label, a right-to-left
+    leader label and an override part -- now draw fs * room / width and
+    report that ratio."""
+
+    def _job(self, tmp, size, target, *, leader=False, allow=False,
+             override=None, font=None):
+        font = font or find_test_font()
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        build_small_print_pdf(src, size, leader=leader)
+        result = extract_segments.extract_segments(src, outdir=tmp)
+        strip_text.strip_text(src, stripped)
+        cores = {s['core'] for s in result['segments']}
+        T = {c: (target if c == SMALL_LABEL else 'Fecha') for c in cores}
+        write_mapping(tr, T, font,
+                      allow_scale=[SMALL_LABEL] if allow else None)
+        if override is not None:
+            data = json.loads(Path(tr).read_text(encoding='utf-8'))
+            data['overrides'] = [override]
+            T[SMALL_LABEL] = None
+            data['translations'] = T
+            Path(tr).write_text(json.dumps(data, ensure_ascii=False),
+                                encoding='utf-8')
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(
+                stripped, os.path.join(tmp, 'segments.json'), tr, out)
+        return rc, buf.getvalue(), out, result['segments']
+
+    @staticmethod
+    def _room(segments):
+        """The budget right_limit gives the label: the neighbour's left edge
+        less 1.5 pt, from the label's origin."""
+        label = next(s for s in segments if s['core'] == SMALL_LABEL)
+        other = next(s for s in segments if s['core'] != SMALL_LABEL)
+        return other['bbox'][0] - 1.5 - label['origin'][0], other['bbox'][0]
+
+    @staticmethod
+    def _span(out, starts):
+        doc = pymupdf.open(out)
+        try:
+            for b in doc[0].get_text('dict')['blocks']:
+                for line in b.get('lines', []):
+                    for sp in line['spans']:
+                        if sp['text'].startswith(starts):
+                            return sp
+        finally:
+            doc.close()
+        return None
+
+    @staticmethod
+    def _report(out):
+        path = os.path.join(os.path.dirname(out), retypeset.SCALE_REPORT)
+        with open(path, encoding='utf-8') as f:
+            return json.load(f)['runs']
+
+    def _target(self, size, ratio, font=None, words=SMALL_WORDS):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'probe.pdf')
+            build_small_print_pdf(src, size)
+            segments = extract_segments.extract_segments(
+                src, outdir=tmp)['segments']
+        room, _ = self._room(segments)
+        target = words_needing(font or find_test_font(), size, room / ratio,
+                               words)
+        face = pymupdf.Font(fontfile=str(font or find_test_font()))
+        return target, room / face.text_length(target, size)
+
+    def test_five_point_run_below_the_floor_is_refused(self):
+        target, need = self._target(5, 0.54)
+        self.assertLess(need, retypeset.SCALE_MIN)
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, log, out, _ = self._job(tmp, 5, target)
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn('scaled below 0.7x', log)
+            self.assertFalse(os.path.exists(out))
+
+    def test_allowed_small_run_is_drawn_inside_its_room(self):
+        target, need = self._target(5, 0.54)
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, log, out, segments = self._job(tmp, 5, target, allow=True)
+            self.assertEqual(rc, 0, msg=log)
+            _, neighbour_x0 = self._room(segments)
+            span = self._span(out, target.split()[0])
+            self.assertIsNotNone(span, msg=log)
+            self.assertAlmostEqual(span['size'], 5 * need, places=1)
+            self.assertLess(span['size'], 4.0)
+            self.assertLessEqual(span['bbox'][2], neighbour_x0)
+            ratio = self._report(out)[0]['ratio']
+            self.assertAlmostEqual(ratio, need, places=2)
+            self.assertAlmostEqual(ratio, span['size'] / 5, places=2)
+
+    def test_run_under_four_points_is_never_enlarged(self):
+        target, need = self._target(3, 0.9)
+        self.assertTrue(retypeset.SCALE_MIN < need < 1.0, msg=need)
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, log, out, segments = self._job(tmp, 3, target)
+            self.assertEqual(rc, 0, msg=log)
+            span = self._span(out, target.split()[0])
+            self.assertLess(span['size'], 3.0)
+            self.assertAlmostEqual(span['size'], 3 * need, places=1)
+            _, neighbour_x0 = self._room(segments)
+            self.assertLessEqual(span['bbox'][2], neighbour_x0)
+            self.assertAlmostEqual(self._report(out)[0]['ratio'], need,
+                                   places=2)
+            self.assertIn('scaled runs (1)', log)
+
+    def test_leader_label_below_the_floor_is_refused(self):
+        target, _ = self._target(5, 0.3)
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, log, out, _ = self._job(tmp, 5, target, leader=True)
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn('scaled below 0.7x', log)
+
+    def test_right_to_left_leader_label_below_the_floor_is_refused(self):
+        font = vendored('NotoSansHebrew-Regular.ttf')
+        if font is None:
+            self.skipTest('Noto Sans Hebrew not fetched')
+        target, _ = self._target(5, 0.3, font=font, words=HE_WORDS)
+        self.assertTrue(retypeset.is_rtl_text(target))
+        self.assertFalse(retypeset.needs_shaping(target))
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, log, out, _ = self._job(tmp, 5, target, leader=True,
+                                        font=font)
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn('scaled below 0.7x', log)
+
+    def test_override_part_below_the_floor_is_refused(self):
+        target, need = self._target(5, 0.54)
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'probe.pdf')
+            build_small_print_pdf(src, 5)
+            room, _ = self._room(extract_segments.extract_segments(
+                src, outdir=os.path.join(tmp, 'probe'))['segments'])
+            override = {'page': 0, 'contains': SMALL_LABEL,
+                        'parts': [{'text': target, 'x': 60,
+                                   'max_width': round(room, 2)}]}
+            rc, log, out, _ = self._job(tmp, 5, target, override=override)
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn('scaled below 0.7x', log)
+
+
 class ShrinkBandTests(unittest.TestCase):
     """Row 25: a run between 0.7x and 1.0x was placed and mentioned nowhere.
 

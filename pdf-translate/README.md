@@ -142,7 +142,7 @@ README.md                       this file
 LICENSE                         MIT
 requirements.txt                declared dependency bounds (upper bounds are deliberate)
 references/
-  failure-modes.md              14 silent failures and their fixes — read before you start
+  failure-modes.md              15 silent failures and their fixes — read before you start
   translations-format.md        the translations.json contract
   fonts.md                      per-script font sourcing; the glyf-flavor rule
   review.md                     the reviewer checklist, MQM prompt, review.json schema
