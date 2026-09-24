@@ -100,7 +100,7 @@ import pymupdf
 from ._console import console, _arg
 from .results import ExtractResult
 from .strip_text import (
-    invisible_text_pages, page_textdict_without_annots,
+    GEOMETRY_SPACE, invisible_text_pages, page_textdict_without_annots,
     page_rawdict_without_annots, widget_text_scaffold)
 
 MARKER = re.compile(
@@ -572,10 +572,19 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None, *, typography=False)
     segments, warnings = [], []
     obstacles = {}
     raw_lines = {}   # page -> character lines, read only where a marker needs one
+    # Every coordinate below is in the unrotated page space get_text uses.
+    # A consumer that draws over a render maps a rotated page's coordinates
+    # through page.rotation_matrix; these entries say which pages need it.
+    rotated_pages = {}
     sid = 0
     for pno, page in enumerate(doc):
         if pno not in wanted:
             continue
+        if page.rotation:
+            frame = page.rect * page.derotation_matrix
+            rotated_pages[str(pno)] = {'rotation': page.rotation,
+                                       'width': round(frame.width, 2),
+                                       'height': round(frame.height, 2)}
         obstacles[pno] = page_obstacles(page)
         for b in page_textdict_without_annots(page)['blocks']:
             if b['type'] != 0:
@@ -762,7 +771,9 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None, *, typography=False)
     widget_path = os.path.join(outdir, 'widget_text.json')
     widget_text = widget_text_scaffold(src)
     segment_data = {'source': src, 'segments': segments, 'warnings': warnings,
-                    'document': document, 'pages': sorted(wanted)}
+                    'document': document, 'pages': sorted(wanted),
+                    'geometry': {'space': GEOMETRY_SPACE,
+                                 'rotated_pages': rotated_pages}}
     if typography:
         segment_data['typography'] = typography_data
         typography_data = typo.bind_extraction(segment_data)

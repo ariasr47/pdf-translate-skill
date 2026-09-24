@@ -57,10 +57,11 @@ this file is where your judgment lives.
   // "merge-candidate"), each with html null.
   // A null html FAILs retypeset exactly like a null translation: an
   // accepted proposal is not a translated paragraph.
-  // "box": [x0, y0, x1, y1] in the ORIGINAL page's coordinates replaces
-  // the union of the member lines as the rect the paragraph re-flows
-  // into — for a paragraph whose target needs one more line than the
-  // source and has empty space below it. Absent or null: unchanged.
+  // "box": [x0, y0, x1, y1] in the ORIGINAL page's coordinates (see
+  // Coordinates below) replaces the union of the member lines as the rect
+  // the paragraph re-flows into — for a paragraph whose target needs one
+  // more line than the source and has empty space below it. Absent or
+  // null: unchanged.
   // Nothing computes a box for you: a rect that grows into a rule or a
   // field is worse than a shrink, and only you can see the page. It is
   // used exactly as given (a union bbox gets a little slop; your rect
@@ -135,9 +136,10 @@ this file is where your judgment lives.
   // The target-language compliance notice, when the document class needs
   // one (references/compliance.md §1). The ONLY text here that is not the
   // translation of an existing string. Placed by retypeset with the job's
-  // fonts into the box YOU chose from a render — nothing computes it and
-  // no gate judges it — through the same glyph check, canonical layer,
-  // scale report and placement gate as every other run. No page is added.
+  // fonts into the box YOU chose from a render (see Coordinates below for
+  // a rotated page) — nothing computes it and no gate judges it — through
+  // the same glyph check, canonical layer, scale report and placement gate
+  // as every other run. No page is added.
   // "‖" splits a bold lead-in from the rest when "bold_lead" is true;
   // "size" defaults to 8. Pages are 0-based. A null or empty text, a page
   // outside the document and an empty or inverted box are refused by name
@@ -160,6 +162,15 @@ this file is where your judgment lives.
   ]
 }
 ```
+
+**Coordinates.** Every `x`, merge `box` and notice `box` is in points,
+measured from the top-left of the page's unrotated space, y down. That is
+the space of `origin` and `bbox` in `segments.json`, and of
+`page.get_text`. On an unrotated page it is also what a 72 dpi render
+shows. A page with `/Rotate` is listed under `geometry.rotated_pages` in
+`segments.json`. To map a point `(x, y)` read off its render, divide by
+`dpi / 72` and multiply by `page.derotation_matrix`:
+`pymupdf.Point(x, y) * page.derotation_matrix`.
 
 Font paths are relative to the directory containing `translations.json`;
 absolute paths also work. This rule is the same for direct `retypeset.py`

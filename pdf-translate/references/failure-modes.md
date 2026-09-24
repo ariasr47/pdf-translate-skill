@@ -185,13 +185,40 @@ whole section is about. Check a dropdown in a real viewer instead.
 
 ## 13. Rotated lines re-typeset flat
 
-Page `/Rotate` is harmless — origins come back in unrotated space. A
-rotated *line* is not: the extractor kept origin, bbox and size but not
-direction, so a 90-degree "FOR OFFICE USE ONLY" side stamp was re-drawn
-horizontally across the middle of the form. No gate moved: the string was
-placed, the ink ratio barely changed, and the text layer read correctly.
-Only the render showed it. Segments now carry the line's direction vector
-and retypeset morphs each rotated run about its own origin.
+A rotated *line* was re-typeset flat: the extractor kept origin, bbox and
+size but not direction, so a 90-degree "FOR OFFICE USE ONLY" side stamp was
+re-drawn horizontally across the middle of the form. No gate moved: the
+string was placed, the ink ratio barely changed, and the text layer read
+correctly. Only the render showed it. Segments now carry the line's
+direction vector and retypeset morphs each rotated run about its own origin.
+
+A rotated *page* (`/Rotate` 90, 180 or 270) went wrong differently, from
+v17 to v63.
+- **Why.** Extract read text through an annotation-free display list, to
+  keep widget values out. A display list reports what a viewer shows, so
+  segment geometry came back in the rotated space. Retypeset, widget rects,
+  `get_text` and every verify reader use the unrotated space.
+- **What it did.** On a /Rotate 90 page every run went off the page: a
+  blank page, which verify catches (ink 0.00, missing targets). At 270 most
+  runs landed turned or upside down. At 180 every run was point-reflected
+  onto the opposite corner, on the page, and retypeset and verify both exit
+  0 when the page has no other defect. No verify gate reads positions.
+- **Now.** Extract maps the text page back to the unrotated space, where
+  `segments.json` equals `page.get_text('dict')`. Its `geometry` key names
+  that space and lists each rotated page. Width budgets and the RTL mirror
+  use the unrotated page frame, not the rotated `page.rect`.
+- **Refusal.** A `segments.json` with no `geometry` key was extracted by
+  v63 or earlier. When one of its rotated pages carries segments, retypeset
+  refuses it with this stable line, which consumers may match:
+  `FAIL: stale extraction: segments.json names no geometry space and N
+  rotated page(s) carry segments (pP /Rotate R, …); it was extracted before
+  v64 in the rotated space: run extract again.`
+- **Still degraded: landscape pages.** On these, the content is
+  counter-rotated so it reads upright under `/Rotate`. Their text is
+  vertical in PDF space, so every run takes the rotated-run path
+  (`retypeset.md`, Rotated lines): each lands at its source origin, but
+  leaders, `right`, `center`, merges, override `x` and inline markup are
+  horizontal-only there.
 
 ## 14. The text layer reports characters nobody wrote
 
