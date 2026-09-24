@@ -34,9 +34,10 @@ session.
 
 ## Current coordination status — 24 September 2026
 
-**Main is v61 at `221a86f`.** Since the 23 September status below, PRs #23
+**Main is v61 at `0542dc2`.** Since the 23 September status below, PRs #23
 (the old B1 checkout reconciled; B1 stays deferred), #24 (A02) and #25 (A06,
-with the bump to v61) have merged, and #26 added handover notes. All four
+with the bump to v61) have merged; #26 added handover notes, and #27
+delivered GOV-2026-09-24 (the row at the bottom), docs only. All four
 version sources say 61, CI passed on `221a86f`, and there is no release or
 tag. For a consumer, v61 changes two things:
 
@@ -52,23 +53,35 @@ tag. For a consumer, v61 changes two things:
 
 No consumer pin changed here; the app last reported v54.
 
-**No message about v61 is on record.** Rule 4 asks for one when the version
-changes. This session could not send it: on 24 September no `pdf-translator`
-session was running on the Mac this was checked from (`ListAgents` listed
-two unrelated sessions), so this status reaches the product through Rodrigo.
+**The product has the v61 notice.** On 24 September this library's session
+sent it, with the question of what to prioritize, by `SendMessage` to the
+app's session on the Mac. The app acknowledged v61 and keeps its pin at v54
+(`9675c6196c14eb2a2d37d34e371391eb1955a386`) on Python 3.12. v61 requires
+Python 3.14, so adopting it is an app migration, and none has been decided.
 
-**Nothing new is assigned.** No request has been filed since 20 September.
-Of the 16 September work order, E2 and E3 have shipped although their status
+**Nothing is assigned until the product sends IDs.** The app answered that
+the priority is Rodrigo's call and put the question to him. The 16 September
+sequence below ("E4–E7 in that order, E8–E11 in the gaps") is no longer the
+order of record. The app reports that its own work-order file said so in a
+status update of 19 September, and that its `ROADMAP.md` §2 is canonical;
+neither file was opened here. That roadmap ties this library's work to the
+app's own milestones:
+- the reusable PDF save and subset behaviour, recorded here under E8, at
+  its N2;
+- E4 and E6 as existing requests with no adoption claimed;
+- E5's notice placement at its N6.
+
+Rodrigo's pending ruling, whether the app's pending work is N1 alone or N2
+to N9 as well, decides whether E8's save and subset part or E4 comes first.
+Of the 16 September rows, E2 and E3 have shipped although their status
 cells below still read accepted: gates 19, 20 and 21 (PRs #6, #8 and #10,
-v52 to v55) and the consumer surface (PR #13, v58; C7 moved to E8). E4 to E11
-remain accepted. E4 has not started: no schema file for the verify report is
-published and its gates carry no severity or category. E10 waits on the
-operator's choice of distribution name. By the work order's own sequence
-("E4–E7 in that order, E8–E11 in the gaps") E4 is next. This library asks
-the product to confirm E4, or name another item, before it starts.
+v52 to v55) and the consumer surface (PR #13, v58; C7 moved to E8). E4 has
+not started: no schema file for the verify report is published and its
+gates carry no severity or category. E10 waits on the operator's choice of
+distribution name.
 
-**Proposed by this library; the product decides.** None of these has
-started:
+**Proposed by this library; the product decides.** The app is taking these
+to Rodrigo in the same pass. None of them has started:
 
 - **A21**, the smallest backlog item: validate both manifests explicitly and
   give the type checker its declared environment. Two XS slices; see
@@ -85,10 +98,6 @@ started:
   validation), A05 (proven dependency floors) and A14 (review freshness,
   which needs a behaviour ruling first). A07 and A08 wait on owner
   decisions. The rest of the backlog is in PROGRAM.md.
-
-This library recommends E4 next: it is the work order's next item, and it is
-what lets the product map gate findings to its closed notice codes without
-reading Python.
 
 ## Coordination status — 23 September 2026 (historical snapshot)
 
@@ -319,6 +328,8 @@ deleting anything.
 | 2026-09-18 | **The five bubbled items (B1–B5)**, each a measurement taken while integrating 54.0.0 (rev `9675c619`). B1: the library never breaks a line, so a long translation shrinks and below the floor is left untranslated. B2: the refusal report truncates the core to 40 characters. B3: refusals are printed, not returned. B4: widget text is not translated. B5: terminology quality is invisible to every gate. | Each one costs a customer something: untranslated text, a silent revert of 247 of 247 cores, a consumer's regex that stopped matching, form fields still in the source language, and a wrong legal term on a legal form. | **read and queued** — `docs/BRIEF-product-bubble-2026-09-18.md`. **B3 done (v58)**: every stage raises a typed exception carrying structured attributes and `refusals`. **B2 done for library consumers (v58)**: `refusals` carries every refused core **in full**; the printed line keeps its 40-character abbreviation deliberately, because it is read by a person and changing it breaks console parity — ask for that separately if it is wanted. **B5 built (v57)**: row 32's review loop, `references/terminology-failure-modes.md`, the per-class termbase and the canary's reviser axis (19% false-positive rate on the FL-150). **B4 open but contained**: the widget-text scaffold, the `/Opt` export-value rule and the refusal already exist in `extract_segments` and `strip_text`; what is missing is exposure on the consumer surface and a ruling on whether an unauthored scaffold should warn. **B1 design approved; further work deferred (19 September)**: exact page count, same-page placement, per-occurrence permission and a caller-authored fixed box. The synthetic probe and known-success real-job capture are complete; genuine fit-refusal evidence remains missing. No plan or implementation has begun. See `docs/design/B1-line-wrapping/README.md` and `docs/reviews/2026-09-19-b1-captured-case.md`. Correction to the original report: explicit merges already reflow and gate 19 is called; ordinary-line overflow is a build refusal, not automatic source-text restoration by the library. |
 
 | 2026-09-20 | **Typography preservation for wider library adoption.** Preserve source serif-versus-sans class and meaningful within-line bold/italic distinctions; exact source font reuse is not required. Retain an unambiguous relationship between translated style runs and repeated source occurrences, and explicitly report unsupported/ambiguous cases. | The app reports v54 at `9675c6196c14eb2a2d37d34e371391eb1955a386`: ES/zh-Hans core placement succeeds on synthetic invoices, but mixed families and emphasized tails lose their distinctions. Its five compatibility failures remain app-owned and open. | **Written typography design approved; nine-stage implementation plan saved for review and execution-method choice. Code has not started.** Own-source fixture and AST comparison confirm flattened style flags and missing class/span records at v54, main v56 and open-PR v58, with no extraction warning. Existing four-role fonts, inline emphasis and substring overrides are narrower manual controls. See `docs/reviews/2026-09-20-typography-capability.md` for exact APIs/pins and the library/app ownership split. The app's typography promise is unchanged. The selected approach preserves legacy calls and adds explicit style/occurrence data. Approved first scope is horizontal, single-baseline Latin/Japanese/Simplified Chinese page text; unsupported cases refuse and remain ineligible for adoption under the unchanged promise. See [the written design](design/typography-preservation/README.md), saved locally in `ef52e5f`. Its detailed scope/API is approved; [the implementation plan](plans/2026-09-20-typography-preservation-brief.md) remains unapproved. No new pin or PR change. B1 remains separate and deferred. **Done — v59** (PR #17, merged 21 September): the capability ships as the opt-in `typography-1` mapping format and announces itself in `pdf_translate.MAPPING_FORMATS`; `references/typography.md` documents it. App adoption, routing and its five compatibility failures remain app-owned and are not verified here; the app reports v54. |
+
+| 2026-09-24 | **GOV-2026-09-24 — the product directs this library.** The product sets this library's direction and assigns its work through this file; this repo reports findings and proposes, and builds and tests only what is assigned. Sessions on both sides message each other when a request, the state of work or a version changes, and every outcome is written here in the same session. The app's request file is `docs/reference/REQUEST-to-skill-app-direction-2026-09-24.md` at `a837961` in `pdf-translator`: provenance only, not opened here. | Rodrigo's ruling: one owner of direction and one queue of work, so the two repositories never keep competing roadmaps and nothing agreed in a chat is lost between sessions. | **done** — PR #27, merged 24 September as `0542dc2`: `AGENTS.md` Rule 4, the section "How work arrives here" above, a `CLAUDE.md` that imports `AGENTS.md`, and the `docs/DECISIONS.md` row of 2026-09-24. Docs only; the version stays 61. The ID is the app's, recorded here at its request so both sides name the request the same way. |
 
 Add new rows at the bottom. Do not delete a row when its status changes —
 update the status column in place so the history of what was asked for

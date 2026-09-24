@@ -5,10 +5,12 @@ Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 
 ## Start here — 24 September 2026, on the Mac: set up and verified; nothing assigned
 
-**Verified state.** `origin/main` is `221a86f` (v61); CI passed on it and
-there is no release or tag. PR #27 (Rule 4: the product directs this library)
-is open on `docs/app-directs-skill` at `b24f03a`, and all three of its checks
-pass (run 35978209544). Rodrigo merges it.
+**Verified state.** `origin/main` is `0542dc2` (v61). CI passed on `221a86f`
+before it, and there is no release or tag. PR #27 (Rule 4: the product
+directs this library; the app calls it GOV-2026-09-24) passed all three
+checks on `b24f03a` (run 35978209544). It was merged on Rodrigo's word as
+`0542dc2`, whose tree is `b24f03a`'s. It changed only docs, so the version
+stays 61. Its branch `docs/app-directs-skill` is still on GitHub.
 
 **This Mac's checkout.** Local `main` held two commits from 12 September
 that were on no remote. `ca2dd06` adds `dev/canary/GPT6_PROMPT.md`, which its
@@ -19,7 +21,7 @@ and `origin/main` had diverged (2 and 206 commits), so `git pull --ff-only`
 exited 128. On Rodrigo's word both commits are now on GitHub as
 `backup/mac-main-2026-09-12` (at `c1d9c93`) and local `main` was reset to
 `origin/main`; whether either commit belongs on `main` is a separate
-decision. Everything below ran on `origin/main`.
+decision. Everything below ran on `221a86f`; #27 changed no code.
 
 **Setup, as `pdf-translate/README.md` says.** `pdf-translate/.venv` is
 CPython 3.14.6. uv created it without pip, so dependencies go in with
@@ -41,12 +43,21 @@ compared by `realpath`, the same rebuild exits 0 and prints its PASS line.
 Nobody assigned the fix, so it is proposed in the inbox rather than made.
 
 **Next: nothing is assigned.** Under Rule 4, work comes from
-`docs/REQUESTS-from-product.md`. Its 24 September status records v61 and that
-no product session was running to be told, lists this library's proposals,
-and asks the product to confirm E4 or name another item. The backlog in
+`docs/REQUESTS-from-product.md`. This session sent the app's session the v61
+notice and asked what to prioritize. The app answered:
+- it received v61, and its pin stays v54 on Python 3.12;
+- the 16 September order ("E4–E7 in that order") is no longer the order of
+  record;
+- the priority waits on Rodrigo's ruling, whether the app's pending work is
+  N1 alone or N2 to N9 as well, which decides whether E8's save and subset
+  part or E4 comes first;
+- nothing is assigned until it sends IDs.
+
+The inbox's 24 September status records all of this and this library's
+proposals. Wait for the app's message. The backlog in
 `dev/goals/PROGRAM.md` (A21 and the rest) is a set of proposals now, not the
-next work; this supersedes the "Next" of the section below. Merged PRs #22
-and #26 still have their branches on GitHub; deleting them is Rodrigo's call.
+next work; this supersedes the "Next" of the section below. Merged PRs #22,
+#26 and #27 still have their branches on GitHub; deleting them is Rodrigo's call.
 
 ## Start here — 23 September 2026, night: reconcile, A02 and A06 merged; main is v61
 
