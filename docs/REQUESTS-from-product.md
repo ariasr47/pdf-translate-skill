@@ -394,6 +394,8 @@ deleting anything.
 
 | 2026-09-24 | **Review performance items** (review priority 6). R-51: test CJK faces instanced once, not per test. R-48 with R-49: the pixel and character loops in extract and verify replaced by exact equivalents. R-50: `prepare_font` subsets before instancing. **Acceptance:** the shared bar, and output identical by a render or byte diff. | R-51 is about 79% of Linux CI time; the loops are about half of extract and verify time. | **accepted** — priority 6 (the app's `REQUEST-to-skill-review-2026-09-24`). |
 
+| 2026-09-24 | **Proposal from this library: refuse clip-mode text.** Strip drops text drawn in a clipping render mode (`Tr` 4–7) whole, so graphics that relied on that clip draw unclipped. The proposal was (a) refuse such a page with a named reason, or (b) leave it, documented. | Found while measuring R-01. The 17 wild PDFs and 16 corpus fixtures contain 0 cases. | **declined** — the product chose (b) on 24 September. The app reads refusals from retypeset's printed output by fixed patterns, so a new refusal kind could reach an app path that does not recognise it. Documented in `references/failure-modes.md` §4 and the DECISIONS row of 2026-09-24 on the R-01 branch; to be revisited with app-side support if design-heavy PDFs appear. |
+
 Add new rows at the bottom. Do not delete a row when its status changes —
 update the status column in place so the history of what was asked for
 stays readable.
