@@ -602,6 +602,96 @@ def build_rotated_text_pdf(path):
     doc.close()
 
 
+PAGE_ROTATIONS = (0, 90, 180, 270)
+PAGE_ROT_MERGE = ['The applicant must sign this form before it is',
+                  'filed with the county office in person.']
+PAGE_ROT_MERGE_HTML = ('El solicitante debe firmar este formulario antes de '
+                       'entregarlo en persona en la oficina del condado.')
+PAGE_ROT_GAP_LINE = 'Married          Single'
+PAGE_ROT_TR = {
+    'APPLICATION FOR BENEFITS': 'SOLICITUD DE PRESTACIONES',
+    # Must shrink to stay inside the page: the frame test.
+    'Mailing address': 'Dirección postal completa del solicitante',
+    'Name:': 'Nombre:',
+    'Due 1,250.00': 'Adeudado 1,250.00',
+    'Paid 80.00': 'Pagado 80.00',
+    'Total income': 'Ingresos totales',
+    'Terms of use': '<b>Términos</b> de uso',
+    'FOR OFFICE USE ONLY': 'USO OFICIAL',
+}
+PAGE_ROT_LINK = pymupdf.Rect(60, 440, 200, 452)
+
+
+def build_page_rotation_pdf(path, rotation, font):
+    """One layout drawn once on an unrotated 612 x 792 page, then saved with
+    /Rotate `rotation`. Only /Rotate differs between the four files, so
+    every rotation must extract and rebuild exactly like the /Rotate 0
+    control. The page carries a title; a label near the right edge whose
+    translation must shrink; a label beside a text field; a wrapped
+    paragraph; an inner-gap line; two amounts right-aligned against a rule;
+    a dot leader with a tail; a line whose target has inline bold; a
+    90-degree side label; and a link."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    face = pymupdf.Font(fontfile=str(font))
+
+    def put(x, y, text, size=11, rotate=0):
+        page.insert_text((x, y), text, fontsize=size, fontname='NotoSans',
+                         fontfile=str(font), rotate=rotate)
+
+    put(60, 80, 'APPLICATION FOR BENEFITS', 14)
+    put(420, 110, 'Mailing address')
+    put(60, 140, 'Name:')
+    put(60, 180, PAGE_ROT_MERGE[0])
+    put(60, 194.5, PAGE_ROT_MERGE[1])
+    put(60, 290, PAGE_ROT_GAP_LINE)
+    for y, text in ((330, 'Due 1,250.00'), (345, 'Paid 80.00')):
+        put(480 - face.text_length(text, 11), y, text)
+    page.draw_line((484, 320), (484, 350), width=0.8)
+    put(60, 380, 'Total income ' + '.' * 60 + ' $')
+    put(60, 420, 'Terms of use')
+    put(40, 700, 'FOR OFFICE USE ONLY', 10, rotate=90)
+    w = pymupdf.Widget()
+    w.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+    w.field_name = 'applicant_name'
+    w.rect = pymupdf.Rect(102, 129, 330, 143)
+    w.text_fontsize = 10
+    page.add_widget(w)
+    page.insert_link({'kind': pymupdf.LINK_URI, 'from': PAGE_ROT_LINK,
+                      'uri': 'https://example.org/'})
+    if rotation:
+        page.set_rotation(rotation)
+    doc.save(path)
+    doc.close()
+
+
+def drawn_runs(pdf_path):
+    """Every text span of page 1 as (text, origin, dir, size), in the
+    unrotated page space get_text reports, rounded and sorted."""
+    doc = pymupdf.open(pdf_path)
+    try:
+        runs = []
+        for b in doc[0].get_text('dict')['blocks']:
+            for line in b.get('lines', []):
+                for sp in line['spans']:
+                    if sp['text'].strip():
+                        runs.append((sp['text'],
+                                     tuple(round(v, 1) for v in sp['origin']),
+                                     tuple(round(v, 3) for v in line['dir']),
+                                     round(sp['size'], 2)))
+        return sorted(runs)
+    finally:
+        doc.close()
+
+
+def annot_rects(pdf_path):
+    """The raw /Rect of every annotation on page 1, in PDF space."""
+    with pikepdf.open(pdf_path) as pdf:
+        return sorted((str(a.get('/Subtype')),
+                       tuple(round(float(v), 2) for v in a['/Rect']))
+                      for a in pdf.pages[0].obj.get('/Annots', []))
+
+
 def line_dirs(pdf_path):
     """{text: (dx, dy)} of every line in a PDF, rounded."""
     doc = pymupdf.open(pdf_path)
@@ -1798,14 +1888,13 @@ class RotatedTextTests(unittest.TestCase):
         self.assertEqual(retypeset.seg_dir({'dir': 'nonsense'}), (1.0, 0.0))
         self.assertFalse(retypeset.is_rotated(1.0, 0.0))
         self.assertTrue(retypeset.is_rotated(0.0, -1.0))
-        page = mock.Mock()
-        page.rect = pymupdf.Rect(0, 0, 400, 400)
+        frame = pymupdf.Rect(0, 0, 400, 400)
         seg = {'origin': [360, 340]}
         # Straight up from y=340: 340 - 16 of room, not the page width.
         self.assertAlmostEqual(
-            retypeset.direction_limit(page, seg, 0.0, -1.0), 324.0)
+            retypeset.direction_limit(frame, seg, 0.0, -1.0), 324.0)
         self.assertAlmostEqual(
-            retypeset.direction_limit(page, seg, 1.0, 0.0), 24.0)
+            retypeset.direction_limit(frame, seg, 1.0, 0.0), 24.0)
 
     def test_rotated_lines_keep_their_angle_through_retypeset(self):
         font = find_test_font()
@@ -1906,6 +1995,303 @@ class RotatedTextTests(unittest.TestCase):
             self.assertNotEqual(rc, 0, msg=log)
             self.assertIn('rotated segments whose target needs shaping', log)
             self.assertFalse(os.path.exists(out), msg=log)
+
+
+class PageRotationTests(unittest.TestCase):
+    """Item 3: a page with /Rotate rebuilds like the same page unrotated.
+
+    Extract reads text through an annotation-free display list, which
+    reports the page's rotated (on-screen) coordinates. Everything else --
+    widget and drawing rects, TextWriter, insert_htmlbox, get_text and every
+    verify reader -- uses the unrotated page space. segments.json is
+    recorded in that unrotated space, so a /Rotate page is just its
+    unrotated page as far as geometry goes."""
+
+    def _font(self):
+        return find_test_font()
+
+    def _fonts(self):
+        font = self._font()
+        bold = vendored('NotoSans-Bold.ttf') or font
+        return {'regular': str(font), 'bold': str(bold),
+                'italic': str(font), 'bold_italic': str(bold)}
+
+    def _source(self, tmp, rotation):
+        src = os.path.join(tmp, f'rot{rotation}.pdf')
+        build_page_rotation_pdf(src, rotation, self._font())
+        return src
+
+    def _span_geometry(self, d):
+        return sorted(
+            (sp['text'], tuple(round(v, 3) for v in sp['origin']),
+             tuple(round(v, 3) for v in sp['bbox']),
+             tuple(round(v, 3) for v in line['dir']))
+            for b in d['blocks'] if b.get('type') == 0
+            for line in b['lines'] for sp in line['spans'])
+
+    def test_annotation_free_text_dicts_match_get_text(self):
+        """The annotation-free dict and rawdict report PyMuPDF's own
+        unrotated space: the same origins, boxes and directions as
+        page.get_text on every rotation."""
+        with tempfile.TemporaryDirectory() as tmp:
+            for rotation in PAGE_ROTATIONS:
+                with self.subTest(rotation=rotation):
+                    doc = pymupdf.open(self._source(tmp, rotation))
+                    try:
+                        page = doc[0]
+                        self.assertEqual(page.rotation, rotation)
+                        self.assertEqual(
+                            self._span_geometry(
+                                strip_text.page_textdict_without_annots(page)),
+                            self._span_geometry(page.get_text('dict')))
+                        ours = [(c['c'], tuple(round(v, 3) for v in c['origin']),
+                                 tuple(round(v, 3) for v in c['bbox']))
+                                for b in strip_text.page_rawdict_without_annots(
+                                    page)['blocks'] if b.get('type') == 0
+                                for line in b['lines'] for sp in line['spans']
+                                for c in sp['chars']]
+                        theirs = [(c['c'], tuple(round(v, 3) for v in c['origin']),
+                                   tuple(round(v, 3) for v in c['bbox']))
+                                  for b in page.get_text('rawdict')['blocks']
+                                  if b.get('type') == 0
+                                  for line in b['lines'] for sp in line['spans']
+                                  for c in sp['chars']]
+                        self.assertEqual(sorted(ours), sorted(theirs))
+                    finally:
+                        doc.close()
+
+    def test_annotation_free_dict_still_leaves_widget_values_out(self):
+        """Why extract reads a display list at all (goal 17): a field's
+        value is drawn by the widget, not the page. That must hold on a
+        rotated page too."""
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'field.pdf')
+            doc = pymupdf.open()
+            page = doc.new_page(width=612, height=792)
+            page.insert_text((60, 100), 'Name:', fontsize=11)
+            w = pymupdf.Widget()
+            w.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+            w.field_name = 'name'
+            w.field_value = 'DEFAULT'
+            w.rect = pymupdf.Rect(100, 88, 300, 104)
+            page.add_widget(w)
+            page.set_rotation(90)
+            doc.save(src)
+            doc.close()
+            doc = pymupdf.open(src)
+            try:
+                text = ' '.join(
+                    sp['text']
+                    for b in strip_text.page_textdict_without_annots(
+                        doc[0])['blocks'] if b.get('type') == 0
+                    for line in b['lines'] for sp in line['spans'])
+                self.assertIn('Name:', text)
+                self.assertNotIn('DEFAULT', text)
+                self.assertIn('DEFAULT', doc[0].get_text())
+            finally:
+                doc.close()
+
+    def test_corpus_rotated_page_records_unrotated_geometry(self):
+        """corpus/rotated.pdf draws its text at PDF (60, 712) under
+        /Rotate 90. Its segments sit where get_text puts them, reading +x,
+        and segments.json says which space it uses."""
+        with tempfile.TemporaryDirectory() as tmp:
+            result = extract_segments.extract_segments(
+                str(CORPUS / 'rotated.pdf'), outdir=tmp)
+            got = {s['core']: (s['origin'], s['dir'])
+                   for s in result['segments']}
+            self.assertEqual(got['ROTATED PAGE TEST'], ([60.0, 80.0], [1.0, 0.0]))
+            self.assertEqual(got['Name of applicant:'], ([60.0, 110.0], [1.0, 0.0]))
+            self.assertEqual(got['Date of birth:'], ([60.0, 130.0], [1.0, 0.0]))
+            data = json.loads(Path(tmp, 'segments.json').read_text(encoding='utf-8'))
+            self.assertEqual(data['geometry'], {
+                'space': 'unrotated',
+                'rotated_pages': {'0': {'rotation': 90, 'width': 612.0,
+                                        'height': 792.0}}})
+
+    def test_extraction_is_the_same_at_every_rotation(self):
+        """Geometry and warnings do not depend on /Rotate."""
+        def essentials(result):
+            segs = [(s['text'], s['origin'], s['bbox'], s['dir'], s['size'])
+                    for s in result['segments']]
+            return segs, result['warnings']
+
+        with tempfile.TemporaryDirectory() as tmp:
+            control = None
+            for rotation in PAGE_ROTATIONS:
+                with self.subTest(rotation=rotation):
+                    out = os.path.join(tmp, f'x{rotation}')
+                    result = extract_segments.extract_segments(
+                        self._source(tmp, rotation), outdir=out)
+                    got = essentials(result)
+                    if control is None:
+                        control = got
+                        kinds = {w['kind'] for w in got[1]}
+                        # The layout is built to raise these; an empty list
+                        # would make the comparison below vacuous.
+                        self.assertLessEqual(
+                            {'inner-gap', 'merge-candidate', 'right-aligned'},
+                            kinds, msg=got[1])
+                    else:
+                        self.assertEqual(got, control)
+                    data = json.loads(Path(out, 'segments.json').read_text(
+                        encoding='utf-8'))
+                    self.assertEqual(data['geometry']['space'], 'unrotated')
+                    expected = ({} if not rotation else
+                                {'0': {'rotation': rotation, 'width': 612.0,
+                                       'height': 792.0}})
+                    self.assertEqual(data['geometry']['rotated_pages'], expected)
+
+    def _author(self, work, mirror=False):
+        """The mapping an author writes from segments.json, identical for
+        every rotation because segments.json is."""
+        path = os.path.join(work, 'translations.json')
+        cores = [c['text'] for c in json.loads(Path(
+            work, 'to_translate.json').read_text(encoding='utf-8'))['cores']]
+        segs = json.loads(Path(work, 'segments.json').read_text(
+            encoding='utf-8'))['segments']
+        members = {s['core'] for s in segs if s['text'].strip() in PAGE_ROT_MERGE}
+        # Every core is named: an unexpected one stays null and refuses.
+        T = {core: PAGE_ROT_TR.get(core) for core in cores
+             if core not in members}
+        gap = next(s for s in segs if s['core'] == PAGE_ROT_GAP_LINE)
+        face = pymupdf.Font(fontfile=str(self._font()))
+        x_single = gap['origin'][0] + face.text_length('Married          ',
+                                                       gap['size'])
+        data = {'fonts': self._fonts(), 'lang': 'es', 'translations': T,
+                'merges': [{'page': 0, 'lines': list(PAGE_ROT_MERGE),
+                            'html': PAGE_ROT_MERGE_HTML, 'align': 'left',
+                            'box': None}],
+                'overrides': [{'page': 0, 'contains': 'Married',
+                               'parts': [{'text': 'Casado',
+                                          'x': gap['origin'][0]},
+                                         {'text': 'Soltero',
+                                          'x': round(x_single, 2)}]}],
+                'right': ['Due 1,250.00', 'Paid 80.00'],
+                'center': [], 'skip': []}
+        if mirror:
+            data['mirror'] = True
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=1)
+
+    def _rebuild(self, tmp, rotation, mirror=False, drop_geometry=False):
+        src = self._source(tmp, rotation)
+        work = os.path.join(tmp, f'work{rotation}{"m" if mirror else ""}')
+        out = os.path.join(tmp, f'out{rotation}{"m" if mirror else ""}.pdf')
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = pipeline.main(['init', src, '--work', work])
+        self.assertEqual(rc, 0, msg=buf.getvalue())
+        self._author(work, mirror=mirror)
+        if drop_geometry:
+            seg_path = Path(work, 'segments.json')
+            data = json.loads(seg_path.read_text(encoding='utf-8'))
+            del data['geometry']
+            seg_path.write_text(json.dumps(data, ensure_ascii=False),
+                                encoding='utf-8')
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = pipeline.main(['rebuild', '--work', work, src, out,
+                                '--fill-text', 'Prueba 123'])
+        return rc, buf.getvalue(), out
+
+    def test_every_run_is_drawn_like_the_unrotated_control(self):
+        """Each translated run -- plain, shrunk at the page edge, beside a
+        field, merged, overridden, right-anchored, with leaders, with inline
+        bold, and rotated in the page -- lands at the /Rotate 0 control's
+        origin, direction and size, and the build verifies."""
+        with tempfile.TemporaryDirectory() as tmp:
+            control = None
+            for rotation in PAGE_ROTATIONS:
+                with self.subTest(rotation=rotation):
+                    rc, log, out = self._rebuild(tmp, rotation)
+                    self.assertEqual(rc, 0, msg=log)
+                    self.assertNotIn('FAIL', log)
+                    runs = drawn_runs(out)
+                    if control is None:
+                        control = runs
+                        texts = ' '.join(r[0] for r in runs)
+                        for want in ('SOLICITUD', 'Dirección postal', 'Nombre:',
+                                     'Casado', 'Soltero', 'Adeudado', 'Pagado',
+                                     'Ingresos totales', '$', 'Términos',
+                                     'USO OFICIAL', 'El solicitante'):
+                            self.assertIn(want, texts, msg=want)
+                    else:
+                        self.assertEqual(runs, control)
+                    self.assertEqual(annot_rects(out), annot_rects(
+                        os.path.join(tmp, f'rot{rotation}.pdf')))
+
+    def test_mirror_flips_about_the_unrotated_page_width(self):
+        """The RTL mirror flips text, widgets and links about the page's
+        unrotated width, so a mirrored /Rotate page equals the mirrored
+        control."""
+        with tempfile.TemporaryDirectory() as tmp:
+            control = None
+            for rotation in PAGE_ROTATIONS:
+                with self.subTest(rotation=rotation):
+                    rc, log, out = self._rebuild(tmp, rotation, mirror=True)
+                    self.assertEqual(rc, 0, msg=log)
+                    got = (drawn_runs(out), annot_rects(out))
+                    if control is None:
+                        control = got
+                        flipped = 612 - PAGE_ROT_LINK.x1
+                        self.assertIn(round(flipped, 2),
+                                      [r[1][0] for r in got[1]
+                                       if r[0] == '/Link'])
+                    else:
+                        self.assertEqual(got, control)
+
+    def test_stale_extraction_on_a_rotated_page_is_refused(self):
+        """A segments.json with no space marker was extracted in the
+        rotated space (v63 or earlier). On a /Rotate page it is refused by
+        name instead of drawn in the wrong place; on an unrotated page the
+        spaces agree, so it still builds."""
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, log, out = self._rebuild(tmp, 90, drop_geometry=True)
+            self.assertEqual(rc, 1, msg=log)
+            self.assertIn('FAIL: stale extraction', log)
+            self.assertIn('p0 /Rotate 90', log)
+            self.assertIn('run extract again', log)
+            self.assertFalse(os.path.exists(out))
+            rc, log, out = self._rebuild(tmp, 0, drop_geometry=True)
+            self.assertEqual(rc, 0, msg=log)
+
+    def test_stale_extraction_line_marks_a_cut_page_list(self):
+        """The console line names at most CONSOLE_LIST pages and says when
+        it stops; the refusal data lists every page."""
+        pages = retypeset.CONSOLE_LIST + 2
+        with tempfile.TemporaryDirectory() as tmp:
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            doc = pymupdf.open()
+            for _ in range(pages):
+                doc.new_page(width=612, height=792).set_rotation(90)
+            doc.save(stripped)
+            doc.close()
+            segd = {'segments': [{'page': p} for p in range(pages)]}
+            with self.assertRaises(retypeset.MappingError) as caught:
+                retypeset._refuse_stale_geometry(segd, stripped)
+            line = caught.exception.console_line
+            self.assertIn(f'and {pages} rotated page(s) carry segments', line)
+            last = retypeset.CONSOLE_LIST - 1
+            self.assertIn(f'p{last} /Rotate 90, …); it was extracted', line)
+            self.assertNotIn(f'p{last + 1} /Rotate', line)
+            self.assertEqual(
+                len(caught.exception.refusals['stale_extraction']), pages)
+
+    def test_width_budgets_use_the_unrotated_frame(self):
+        doc = pymupdf.open()
+        try:
+            page = doc.new_page(width=612, height=792)
+            page.set_rotation(90)
+            self.assertEqual(tuple(page.rect), (0, 0, 792, 612))
+            frame = retypeset.unrotated_frame(page)
+            self.assertEqual(tuple(frame), (0, 0, 612, 792))
+            seg = {'origin': [300, 500]}
+            # Down the page from y=500: 792 - 16 - 500 of room, not 612's.
+            self.assertAlmostEqual(
+                retypeset.direction_limit(frame, seg, 0.0, 1.0), 276.0)
+        finally:
+            doc.close()
 
 
 class CanonicalTextLayerTests(unittest.TestCase):

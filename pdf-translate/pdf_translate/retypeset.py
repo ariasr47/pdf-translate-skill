@@ -90,6 +90,7 @@ from ._console import console, _arg
 from .results import (FontError, GlyphError, MappingError, PdfTranslateError,
                       PlacementError, RetypesetResult)
 from .mapping import FORMAT, charset_for, load_mapping, refuse
+from .strip_text import GEOMETRY_SPACE
 from .typography import field_identities, page_geometry, source_digest, validate_font
 
 log = logging.getLogger(__name__)
@@ -190,18 +191,30 @@ def rotation_morph(x, y, dx, dy):
     return (pymupdf.Point(x, y), pymupdf.Matrix(dx, -dy, dy, dx, 0, 0))
 
 
-def direction_limit(page, seg, dx, dy, margin=16.0):
-    """Room from the segment origin to the page edge ALONG its direction.
+def unrotated_frame(page):
+    """The page's rectangle in the space this module draws and measures in.
+
+    page.rect is the page as a viewer shows it: 792 x 612 for a portrait
+    page with /Rotate 90. segments.json, widget rects, TextWriter and
+    insert_htmlbox all use the unrotated space instead, so every width
+    budget and mirror pivot is measured against this frame. It equals
+    page.rect when the page is not rotated.
+    """
+    return page.rect * page.derotation_matrix
+
+
+def direction_limit(frame, seg, dx, dy, margin=16.0):
+    """Room from the segment origin to the frame's edge ALONG its direction.
 
     right_limit's obstacle scan is a horizontal idea (same-row neighbours,
     widget rects to the right). Projecting every neighbour onto an
     arbitrary axis is a different problem, and a rotated run is nearly
     always a margin label or a stamp with nothing beyond it. The page edge
     is the budget; the 0.7x gate still refuses a translation that cannot
-    fit in it.
+    fit in it. `frame` is unrotated_frame(page).
     """
     x, y = seg['origin']
-    r = page.rect
+    r = frame
     limits = []
     if dx > 1e-9:
         limits.append((r.x1 - margin - x) / dx)
@@ -743,6 +756,43 @@ def _same_path(first, second):
         return os.path.normcase(os.path.realpath(first)) == os.path.normcase(os.path.realpath(second))
 
 
+def _refuse_stale_geometry(segd, stripped):
+    """Refuse a segments.json that records a rotated page in the old space.
+
+    Up to v63, extract recorded a /Rotate page's text in the rotated space a
+    viewer shows, while this module draws in the unrotated one, so such a
+    file puts every run off the page or in the wrong place. A segments.json
+    whose "geometry" names the unrotated space is current. Without the
+    marker, a page with no /Rotate is the same in both spaces and is
+    accepted; a rotated page that carries segments is refused. The console
+    line is a documented, stable string (references/failure-modes.md §13):
+    a consumer may match it.
+    """
+    if (segd.get('geometry') or {}).get('space') == GEOMETRY_SPACE:
+        return
+    pages = sorted({s['page'] for s in segd.get('segments', [])
+                    if isinstance(s.get('page'), int)})
+    if not pages:
+        return
+    with pymupdf.open(stripped) as doc:
+        stale = [(p, doc[p].rotation) for p in pages
+                 if 0 <= p < doc.page_count and doc[p].rotation]
+    if not stale:
+        return
+    shown = ', '.join(f'p{p} /Rotate {r}' for p, r in stale[:CONSOLE_LIST])
+    if len(stale) > CONSOLE_LIST:
+        shown += ', …'   # the count says how many; refusals lists them all
+    raise MappingError(
+        f'stale extraction: {len(stale)} rotated page(s) in the old space',
+        console_line=(f'FAIL: stale extraction: segments.json names no '
+                      f'geometry space and {len(stale)} rotated page(s) '
+                      f'carry segments ({shown}); it was extracted before '
+                      f'v64 in the rotated space: run extract again.'),
+        exit_code=1,
+        refusals={'stale_extraction': [{'page': p, 'rotation': r}
+                                       for p, r in stale]})
+
+
 def _right_limit(page_rect, seg, segs, widgets):
     """The existing horizontal budget, shared without changing legacy arithmetic."""
     x0 = seg['origin'][0]
@@ -1125,6 +1175,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                     scale_report=scale_report, resource_root=resource_root)
             raise
     segd = _load_json(segf)
+    _refuse_stale_geometry(segd, stripped)
     conf = document.legacy
     T = conf['translations']
     merges = conf.get('merges', [])
@@ -1398,6 +1449,10 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                                   for i, w in bad_notices]})
 
     widg = {p.number: [w.rect for w in p.widgets()] for p in doc}
+    # Budgets and mirror pivots use the unrotated frame, the space
+    # segments.json and every drawing call share; page.rect is the rotated
+    # view and has the wrong width on a /Rotate 90 or 270 page.
+    frames = {p.number: unrotated_frame(p) for p in doc}
     # Authored HTML resolves its resources here. Defaulting to the
     # mapping's directory rather than the process's cwd is what makes a
     # service that runs from anywhere else get the face it named.
@@ -1425,7 +1480,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
            "{font-family: trbi; font-weight: normal; font-style: normal;}")
 
     def right_limit(pno, seg, segs):
-        return _right_limit(doc[pno].rect, seg, segs, widg.get(pno, []))
+        return _right_limit(frames[pno], seg, segs, widg.get(pno, []))
 
     def left_limit(pno, seg, segs):
         """How far back a RIGHT-anchored run may grow (row 28).
@@ -1484,6 +1539,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
             return RetypesetResult(output=None, cancelled=True,
                                    pages=npages, placed=0)
         segs = by_page.get(pno, [])
+        frame = frames[pno]
         # One TextWriter per distinct source color. A single black writer is
         # how white-on-dark headings silently become black-on-dark: the ink
         # gate barely moves because the band was already dark.
@@ -1548,8 +1604,8 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                         if rot:
                             rotated_shaped.append((pno, t))
                             continue
-                        avail = maxw if maxw < 5000 else page.rect.width - 32 - x
-                        shaped_jobs.append((mirror_left(x, w, page.rect.width), oy, t,
+                        avail = maxw if maxw < 5000 else frame.width - 32 - x
+                        shaped_jobs.append((mirror_left(x, w, frame.width), oy, t,
                                             bool(part.get('bold')), fs, int(seg.get('color', 0)),
                                             avail, ov.get('contains') or t,
                                             bool(part.get('italic'))))
@@ -1561,7 +1617,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                         rtl_jobs.append((x, oy, t, f, fs2, int(seg.get('color', 0)), t))
                     else:
                         tw.append((mirror_left(x, f.text_length(t, fs2),
-                                               page.rect.width), oy),
+                                               frame.width), oy),
                                   t, font=f, fontsize=fs2)
                 continue
             core, marker, dots, tail = (
@@ -1601,7 +1657,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                     place_rotated(ox, oy, [(raw, f, fs)],
                                   int(seg.get('color', 0)), dx, dy)
                     continue
-                tw.append((mirror_left(ox, f.text_length(raw, fs), page.rect.width),
+                tw.append((mirror_left(ox, f.text_length(raw, fs), frame.width),
                            oy), raw, font=f, fontsize=fs)
                 continue
             if has_inline_markup(jp) and not rot:
@@ -1711,7 +1767,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                 fill_leaders(x, cur_end)
                 continue
             if rot:
-                maxw = direction_limit(page, seg, dx, dy)
+                maxw = direction_limit(frame, seg, dx, dy)
             elif core in right:
                 # Measured against the room it will occupy, not the room to
                 # the right of an origin it is not going to keep (row 28).
@@ -1732,7 +1788,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                 # rule the column was tucked against.
                 x = max(0.0, seg['bbox'][2] - run_w)
             if not rot:
-                x = mirror_left(x, run_w, page.rect.width)
+                x = mirror_left(x, run_w, frame.width)
             if rot:
                 if shaped:
                     # Drawing a shaped script flat on a rotated label is the
@@ -1801,7 +1857,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
         check_glyphs(pno, font_r, plain_html, merge_key, 'regular')
         if re.search(r'<(b|strong)\b', html or '', re.I):
             check_glyphs(pno, font_b, plain_html, merge_key, 'bold')
-        pw = doc[pno].rect.width
+        pw = frames[pno].width
         if mirror:
             r = pymupdf.Rect(pw - r.x1, r.y0, pw - r.x0, r.y1)
             align = {'left': 'right', 'right': 'left'}.get(align, align)
@@ -1848,7 +1904,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                             for p in parts if p.strip())
         r = pymupdf.Rect(*(float(v) for v in n['box']))
         if mirror:
-            pw = doc[pno].rect.width
+            pw = frames[pno].width
             r = pymupdf.Rect(pw - r.x1, r.y0, pw - r.x0, r.y1)
         h = (f'<div style="font-size:{size:.1f}px; line-height:{NOTICE_LH}; '
              f'color:#000000; text-align:left;">{body}</div>')
@@ -1951,13 +2007,16 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
 
     if mirror:
         for page in doc:
-            pw = page.rect.width
+            pw = frames[page.number].width
             for w in list(page.widgets() or []):
                 r = w.rect
                 w.rect = pymupdf.Rect(pw - r.x1, r.y0, pw - r.x0, r.y1)
                 w.update()
             for lnk in list(page.get_links() or []):
-                r = pymupdf.Rect(lnk['from'])
+                # get_links reports 'from' in the rotated view and
+                # insert_link reads it unrotated: on a /Rotate page the
+                # round trip alone moved the link.
+                r = pymupdf.Rect(lnk['from']) * page.derotation_matrix
                 flipped = dict(lnk)
                 flipped['from'] = pymupdf.Rect(pw - r.x1, r.y0, pw - r.x0, r.y1)
                 page.delete_link(lnk)

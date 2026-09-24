@@ -3,6 +3,37 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 24 September 2026, night: item 3 built (v64), not yet pushed
+
+**Two local branches, stacked, waiting for Rodrigo's go to push:**
+- `docs/delivered-r03-r01`, from `main`: records R-03 and R-01 as
+  delivered. Docs only.
+- `fix/rotate-pages-unrotated-space`, on top of it: item 3 plus R-64, v64.
+
+**Item 3.** A `/Rotate` page now extracts and rebuilds exactly like the
+same page unrotated.
+- The cause and the fix are in
+  `docs/reviews/2026-09-24-rotate-pages.md` and the DECISIONS row.
+- `segments.json` gains a `geometry` key. A file without it is refused on a
+  rotated page, with a stable line from `failure-modes.md` §13; the app
+  agreed to that refusal.
+- **R-64.** The corpus suite identity-rebuilds every `translate` fixture and
+  checks where each run starts.
+- **Rule 1** passed on Sonnet with no blocker. The pixel pass found 0
+  differing pixels against the rotated control, where v63 differed by 7,142
+  to 9,351.
+
+**Filed here, not assigned:**
+- A right-to-left SOURCE is rebuilt one source width to the right. The app
+  says not now: right-to-left is out of its MVP. An expected-failure test
+  pins it.
+- A reading-frame layout for rotated runs: not now.
+- The span-union box, typography-1's rotated `page.rect`, and
+  `python -m` stages printing nothing: proposed.
+
+**Next** in the assignment order: R-02, the 4.0 pt clamp. E12 comes first
+the moment its rulings arrive.
+
 ## Start here — 24 September 2026, evening: R-03 and R-01 shipped (v63); item 3 next
 
 **Main is v63 at `0819091`.** Rodrigo merged three PRs in order, each with

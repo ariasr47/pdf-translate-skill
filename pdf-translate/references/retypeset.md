@@ -58,6 +58,16 @@ whose target also needs shaping (Arabic, Indic, Thai…) is **refused**,
 because the Story engine places shaped text upright and drawing it flat on
 a rotated label ships confidently wrong text.
 
+"Rotated" means rotated in the PDF, not on screen. `segments.json` and
+every drawing call use the page's unrotated space, so text that reads
+across a portrait page with `/Rotate 90` is an ordinary horizontal run. It
+gets every feature, and it is measured against the unrotated page, 612 pt
+wide rather than the 792 pt of the rotated view. On a landscape page whose
+content is counter-rotated to read upright under `/Rotate`, the text is
+vertical in the PDF. So every run on it takes this rotated-run path, with
+its limits. `failure-modes.md` §13 has the history and the stale-extraction
+refusal.
+
 ## The two ways a build fails
 
 It fails loudly if any segment lacks a translation — fix and re-run until

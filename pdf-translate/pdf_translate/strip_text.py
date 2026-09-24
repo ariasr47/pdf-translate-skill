@@ -256,26 +256,74 @@ def page_text_without_annots(page):
     return tp.extractText()
 
 
+# The space segments.json records geometry in, written under its "geometry"
+# key. retypeset refuses a rotated page whose segments.json does not name it.
+GEOMETRY_SPACE = 'unrotated'
+
+
+def _to_unrotated(d, page):
+    """Map a text dict from the page's rotated space to its unrotated one.
+
+    A display list keeps the page's /Rotate, so its text page reports what a
+    viewer shows: on a /Rotate 90 page, text drawn at PDF (60, 712) comes
+    back at (712, 60) reading down. page.get_text sets the rotation to 0 for
+    the call, and so do widget rects, get_drawings, TextWriter,
+    insert_htmlbox and every verify reader. derotation_matrix maps one space
+    to the other exactly; it is the identity when the page is not rotated,
+    so nothing changes there. Mapping here, rather than zeroing /Rotate
+    around get_displaylist the way get_text does, leaves the document
+    untouched.
+    """
+    if not page.rotation:
+        return d
+    m = page.derotation_matrix
+    turn = pymupdf.Matrix(m.a, m.b, m.c, m.d, 0, 0)
+
+    def rect(r):
+        return tuple(pymupdf.Rect(r) * m)
+
+    def point(p):
+        return tuple(pymupdf.Point(p) * m)
+
+    frame = page.rect * m
+    d['width'], d['height'] = frame.width, frame.height
+    for block in d.get('blocks', []):
+        block['bbox'] = rect(block['bbox'])
+        if 'transform' in block:
+            block['transform'] = tuple(pymupdf.Matrix(block['transform']) * m)
+        for line in block.get('lines', []):
+            line['bbox'] = rect(line['bbox'])
+            line['dir'] = tuple(pymupdf.Point(line['dir']) * turn)
+            for span in line.get('spans', []):
+                span['bbox'] = rect(span['bbox'])
+                span['origin'] = point(span['origin'])
+                for char in span.get('chars', []):
+                    char['bbox'] = rect(char['bbox'])
+                    char['origin'] = point(char['origin'])
+    return d
+
+
 def page_textdict_without_annots(page):
     """get_text('dict') of the page CONTENT only: annotation appearances out.
 
-    Same shape as page.get_text('dict'), minus the widget appearance
-    streams. A text field's default value and a combo box's current choice
-    are drawn by the widget, not by the page; letting them into extraction
-    puts them in to_translate.json, where the author translates them and
-    retypeset draws the translation *under* a widget that still shows the
-    source value.
+    Same shape and coordinate space as page.get_text('dict'), minus the
+    widget appearance streams. A text field's default value and a combo
+    box's current choice are drawn by the widget, not by the page; letting
+    them into extraction puts them in to_translate.json, where the author
+    translates them and retypeset draws the translation *under* a widget
+    that still shows the source value.
     """
     tp = _annots_free_textpage(page)
-    return tp.extractDICT()
+    return _to_unrotated(tp.extractDICT(), page)
 
 
 def page_rawdict_without_annots(page):
     """get_text('rawdict') of the page CONTENT only: per-character boxes and
-    origins from the same annotation-free text page as the dict helper.
-    The extractor reads it for lines that carry a list marker (row 23)."""
+    origins from the same annotation-free text page as the dict helper, in
+    the same unrotated space. The extractor reads it for lines that carry a
+    list marker (row 23)."""
     tp = _annots_free_textpage(page)
-    return tp.extractRAWDICT()
+    return _to_unrotated(tp.extractRAWDICT(), page)
 
 
 def leftover_page_text(path):

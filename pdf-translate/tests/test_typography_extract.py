@@ -54,7 +54,9 @@ class ExtractionTests(unittest.TestCase):
     def test_default_extraction_retains_legacy_shapes(self):
         result = run_extract(str(self.source), str(self.work / 'legacy'))
         data = json.loads(Path(result.segments_path).read_text(encoding='utf-8'))
-        self.assertEqual(set(data), {'source', 'segments', 'warnings', 'document', 'pages'})
+        # `geometry` (v64) names the coordinate space; it is not typography.
+        self.assertEqual(set(data), {'source', 'segments', 'warnings', 'document', 'pages',
+                                     'geometry'})
         self.assertNotIn('typography', result.to_dict())
         self.assertNotIn('style_runs', data['segments'][0])
 
