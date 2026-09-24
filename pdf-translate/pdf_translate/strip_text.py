@@ -139,6 +139,30 @@ def _objgen(obj):
         return None
 
 
+def field_full_name(annot):
+    """Fully qualified name of a field widget: every /T up the /Parent chain.
+
+    The partial /T alone does not name a field. XFA-derived government forms
+    repeat "Name[0]" under many parents and put "PDF417BarCode1[0]" on every
+    page, each with its own value; keyed by the partial name, one field's
+    widget text landed on all of them (review R-03). PDF 32000-1 §12.7.3.2.
+    """
+    parts, node, seen = [], annot, set()
+    for _ in range(64):  # a malformed /Parent cycle ends here
+        if node is None:
+            break
+        og = _objgen(node)
+        if og and og != (0, 0):
+            if og in seen:
+                break
+            seen.add(og)
+        t = node.get('/T')
+        if t is not None:
+            parts.append(str(t))
+        node = node.get('/Parent')
+    return '.'.join(reversed(parts))
+
+
 def resources_of(page_obj):
     """/Resources of a page, following /Parent inheritance.
 
@@ -411,7 +435,9 @@ def widget_text_scaffold(src):
     Values are {"source": ..., "target": null} so the author can see what
     the string is and strip_text can tell "not authored yet" from "left in
     the source language on purpose" (delete the key for that). Pushbutton
-    captions are the --captions channel and are not repeated here.
+    captions are the --captions channel and are not repeated here. Keys are
+    fully qualified field names (field_full_name), so two fields that share
+    a partial name each get their own entry.
     """
     out = {}
     pdf = pikepdf.open(src)
@@ -419,10 +445,10 @@ def widget_text_scaffold(src):
         for page in pdf.pages:
             for a in page.get('/Annots', []):
                 ft = a.get('/FT')
-                if ft is None:
+                if ft is None or not str(a.get('/T', '')):
                     continue
-                name = str(a.get('/T', ''))
-                if not name or name in out:
+                name = field_full_name(a)
+                if name in out:
                     continue
                 is_push = (ft == Name('/Btn')
                            and int(a.get('/Ff', 0) or 0) & (1 << 16))
@@ -460,19 +486,26 @@ def choice_exports(path):
 
     The export value is what a viewer submits and what /V holds; translating
     a dropdown must change only the display half of each /Opt entry. This is
-    what verify's /Opt parity gate compares.
+    what verify's /Opt parity gate compares. Keys are fully qualified names;
+    a second widget of the same field gets its own "(widget n)" key, so no
+    widget's exports hide another's.
     """
     out = {}
     pdf = pikepdf.open(path)
     try:
         for page in pdf.pages:
             for a in page.get('/Annots', []):
-                if a.get('/FT') != Name('/Ch'):
+                if a.get('/FT') != Name('/Ch') or not str(a.get('/T', '')):
                     continue
-                name = str(a.get('/T', ''))
                 exports = opt_exports(a)
-                if name and exports is not None:
-                    out[name] = exports
+                if exports is None:
+                    continue
+                name = key = field_full_name(a)
+                n = 2
+                while key in out:
+                    key = f'{name} (widget {n})'
+                    n += 1
+                out[key] = exports
     finally:
         pdf.close()
     return out
@@ -546,16 +579,90 @@ def apply_widget_text(annot, spec, field, report):
     return bool(changed)
 
 
+def resolve_widget_text_keys(pdf, widget_text):
+    """{fully qualified field name: widget-text key} for this PDF.
+
+    A key that is a field's full name applies to that field alone. A key
+    that is a partial /T (or its base, without the [n] index), as mappings
+    written before R-03 have, still applies when it names exactly one
+    field; when it names several, the mapping is refused with every
+    candidate named, rather than one field's text going onto all of them.
+    """
+    widgets = {}
+    partial = {}
+    for page in pdf.pages:
+        for a in page.get('/Annots', []):
+            t = str(a.get('/T', ''))
+            if not t or a.get('/Subtype') != Name('/Widget'):
+                continue  # a comment's /T is its author, not a field name
+            name = field_full_name(a)
+            widgets.setdefault(name, []).append(a)
+            for alias in {t, _field_base(t)}:
+                partial.setdefault(alias, set()).add(name)
+    full = set(widgets)
+    resolved, ambiguous = {}, {}
+    for key in widget_text:
+        if key in full:
+            name = key
+        elif len(partial.get(key, ())) == 1:
+            name = next(iter(partial[key]))
+        elif key in partial:
+            ambiguous[key] = sorted(partial[key])
+            continue
+        else:
+            continue  # unknown keys are reported after the pass
+        if name in resolved:
+            raise WidgetTextError(
+                f'widget-text keys "{resolved[name]}" and "{key}" both name '
+                f'field "{name}"; keep one')
+        resolved[name] = key
+    if ambiguous:
+        detail = '; '.join(f'"{k}" -> {v}' for k, v in sorted(ambiguous.items()))
+        raise WidgetTextError(
+            f'widget-text key names more than one field; key each by its '
+            f'fully qualified name: {detail}')
+    for name, key in resolved.items():
+        _refuse_divergent_widgets(key, name, widgets[name], widget_text[key])
+    return resolved
+
+
+_SPEC_PDF_KEYS = {'tooltip': '/TU', 'value': '/V', 'default': '/DV',
+                  'options': '/Opt'}
+
+
+def _refuse_divergent_widgets(key, name, widgets, spec):
+    """Refuse one entry for widgets that share a full name but not their text.
+
+    Distinct widget dictionaries can carry the same full name: a malformed
+    form repeats a name, or a /T with a '.' in it spells the same string as
+    a nested field. One translation for all of them would overwrite the
+    others' source text, so the entry is refused instead.
+    """
+    if len(widgets) < 2 or not isinstance(spec, dict):
+        return
+    differ = [what for what, pdfkey in _SPEC_PDF_KEYS.items()
+              if what in spec
+              and len({repr(w.get(pdfkey)) for w in widgets}) > 1]
+    if differ:
+        raise WidgetTextError(
+            f'widget-text key "{key}" names {len(widgets)} widgets that share '
+            f'the full name "{name}" but differ in their source {differ}; '
+            f'one entry would overwrite the others — delete the key to leave '
+            f'them as they are')
+
+
 def strip_text(src, dst, hide_buttons=None, captions=None, widget_text=None,
                keep_encryption=False):
     """Strip page text, wrap content in q/Q, remove XFA. Returns a report dict.
 
     hide_buttons: iterable of field names (base name, without [0] suffix).
     captions: dict of field name -> new /MK /CA caption (in-place rewrite).
-    widget_text: dict of field name -> {tooltip, options, value, default}
-        (see apply_widget_text). Rewrites annotation text that never
-        reaches the content stream. Raises WidgetTextError on a mapping
-        that is unauthored (null target) or would break export values.
+    widget_text: dict of fully qualified field name -> {tooltip, options,
+        value, default} (see apply_widget_text). Rewrites annotation text
+        that never reaches the content stream. A partial name is accepted
+        only when it names one field (resolve_widget_text_keys). Raises
+        WidgetTextError on a mapping that is unauthored (null target),
+        ambiguous, or would break export values.
     keep_encryption: re-encrypt the output with the source's permission
         bits. The original owner password cannot be recovered from the
         file, so the output gets an EMPTY owner password: the permissions
@@ -584,6 +691,12 @@ def strip_text(src, dst, hide_buttons=None, captions=None, widget_text=None,
         del acro.XFA
         report['xfa_removed'] = True
 
+    try:
+        spec_keys = resolve_widget_text_keys(pdf, widget_text)
+    except WidgetTextError:
+        pdf.close()
+        raise
+
     seen_xobjects = set()
     seen_widget_text = set()
     for i, page in enumerate(pdf.pages):
@@ -594,10 +707,12 @@ def strip_text(src, dst, hide_buttons=None, captions=None, widget_text=None,
         for a in page.get('/Annots', []):
             t = str(a.get('/T', ''))
             base = _field_base(t)
-            spec_key = (t if t in widget_text
-                        else (base if base in widget_text else None))
+            full_name = (field_full_name(a)
+                         if t and a.get('/Subtype') == Name('/Widget') else '')
+            spec_key = spec_keys.get(full_name)
             if spec_key is not None:
-                if apply_widget_text(a, widget_text[spec_key], t, report):
+                if apply_widget_text(a, widget_text[spec_key], full_name,
+                                     report):
                     seen_widget_text.add(spec_key)
             if a.get('/FT') != Name('/Btn'):
                 continue
