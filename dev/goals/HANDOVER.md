@@ -3,10 +3,10 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 24 September 2026, on the Mac: set up and verified; nothing assigned
+## Start here — 24 September 2026, on the Mac: set up and verified; E12 assigned
 
-**Verified state.** `origin/main` is `0542dc2` (v61). CI passed on `221a86f`
-before it, and there is no release or tag. PR #27 (Rule 4: the product
+**Verified state.** `origin/main` is `0542dc2` (v61). CI passed on it (run
+35981365585), and there is no release or tag. PR #27 (Rule 4: the product
 directs this library; the app calls it GOV-2026-09-24) passed all three
 checks on `b24f03a` (run 35978209544). It was merged on Rodrigo's word as
 `0542dc2`, whose tree is `b24f03a`'s. It changed only docs, so the version
@@ -42,22 +42,24 @@ compares `os.getcwd()` with the temporary path as strings
 compared by `realpath`, the same rebuild exits 0 and prints its PASS line.
 Nobody assigned the fix, so it is proposed in the inbox rather than made.
 
-**Next: nothing is assigned.** Under Rule 4, work comes from
+**Next: E12, the one assignment.** Under Rule 4, work comes from
 `docs/REQUESTS-from-product.md`. This session sent the app's session the v61
-notice and asked what to prioritize. The app answered:
-- it received v61, and its pin stays v54 on Python 3.12;
-- the 16 September order ("E4–E7 in that order") is no longer the order of
-  record;
-- the priority waits on Rodrigo's ruling, whether the app's pending work is
-  N1 alone or N2 to N9 as well, which decides whether E8's save and subset
-  part or E4 comes first;
-- nothing is assigned until it sends IDs.
+notice and asked what to prioritize. The app received v61, and its pin stays
+v54 on Python 3.12. It put the priority to Rodrigo, who ruled on 24
+September (option C). The library's priority 1 of 1 is E12, a compact,
+deterministic output save; nothing else is assigned, and Rodrigo directs
+library tech debt himself (`docs/DECISIONS.md`, 2026-09-24).
 
-The inbox's 24 September status records all of this and this library's
-proposals. Wait for the app's message. The backlog in
-`dev/goals/PROGRAM.md` (A21 and the rest) is a set of proposals now, not the
-next work; this supersedes the "Next" of the section below. Merged PRs #22,
-#26 and #27 still have their branches on GitHub; deleting them is Rodrigo's call.
+The E12 row carries the behaviour and seven observable acceptance checks.
+Checks 1 and 2 are shown red on the unfixed shape before the change lands,
+and Rule 1 applies. Tell the app's session when E12 starts, is blocked or is
+delivered. If E12 as written proves unbuildable or wrong for this code, stop
+and report the measurement rather than substituting a different design.
+
+The backlog in `dev/goals/PROGRAM.md` (A21 and the rest) and this library's
+own proposals (the macOS test, A04, A05, A14) stay unassigned; this
+supersedes the "Next" of the section below. Merged PRs #22, #26 and #27
+still have their branches on GitHub; deleting them is Rodrigo's call.
 
 ## Start here — 23 September 2026, night: reconcile, A02 and A06 merged; main is v61
 
