@@ -32,7 +32,52 @@ Claude sessions do this by name with `SendMessage`; other agents go through
 Rodrigo. Whatever a message settles is written into this file in the same
 session.
 
-## Current coordination status — 24 September 2026
+## Current coordination status — 24 September 2026, later
+
+**Main is v61 at `988b787`.** PR #28 merged the earlier status below, the
+E12 row and its measurement. Docs only.
+
+**Assigned: the review's findings, in the product's order, while E12 is
+blocked.** The library reviewed itself (`docs/REVIEW-2026-09-24.md`: 110
+items, the top twelve each reproduced twice) and proposed the findings to
+the product. Rodrigo ruled A on 24 September, relayed by the app's session:
+build them in the order below. The request of record is the app's
+`docs/reference/REQUEST-to-skill-review-2026-09-24.md`; it is provenance
+only and was not opened here. The rows at the bottom carry each ID. In
+priority order:
+1. R-03;
+2. R-01;
+3. the `/Rotate 90` blank page (diagnosed first), with R-64;
+4. R-02;
+5. the quick wins, XS each: R-05, R-06, R-04, R-27, R-47, R-69 with R-97,
+   R-33, R-40, R-42, R-110, R-100, R-99, then the docs items R-79, R-80,
+   R-82 and R-83;
+6. performance: R-51, then R-48 with R-49, then R-50.
+
+**E12 comes first again the moment its six rulings arrive.** R-106 stays
+with E12.
+
+**Held, not assigned:**
+- group C (R-09 to R-25), because the app runs no library verify today;
+- group E (typography-1 at scale), because the app has not adopted it.
+
+Group F (repository hygiene) and R-94 (repository visibility) are
+Rodrigo's.
+
+**Acceptance for every item:**
+- a test that fails on the unfixed code with the item's one-defect PDF and
+  passes after the fix;
+- Rule 1, plus a rendered pixel comparison, for the drawing, font and layout
+  items (R-01, R-02, R-03, R-04, R-06, R-27, R-33);
+- for strip changes, a re-run of the 17-PDF wild probe with a render diff;
+- one PR per item or small batch, for Rodrigo to merge;
+- a version bump, and a notice to the app, for every shipped change.
+
+Performance items must also leave the output identical, shown by a render
+or byte diff. No adoption is implied: the app stays on v54 on Python 3.12
+until its 3.14 migration, with an exact pin.
+
+## Coordination status — 24 September 2026, earlier (historical snapshot)
 
 **Main is v61 at `0542dc2`.** Since the 23 September status below, PRs #23
 (the old B1 checkout reconciled; B1 stays deferred), #24 (A02) and #25 (A06,
@@ -336,6 +381,20 @@ deleting anything.
 | 2026-09-24 | **GOV-2026-09-24 — the product directs this library.** The product sets this library's direction and assigns its work through this file; this repo reports findings and proposes, and builds and tests only what is assigned. Sessions on both sides message each other when a request, the state of work or a version changes, and every outcome is written here in the same session. The app's request file is `docs/reference/REQUEST-to-skill-app-direction-2026-09-24.md` at `a837961` in `pdf-translator`: provenance only, not opened here. | Rodrigo's ruling: one owner of direction and one queue of work, so the two repositories never keep competing roadmaps and nothing agreed in a chat is lost between sessions. | **done** — PR #27, merged 24 September as `0542dc2`: `AGENTS.md` Rule 4, the section "How work arrives here" above, a `CLAUDE.md` that imports `AGENTS.md`, and the `docs/DECISIONS.md` row of 2026-09-24. Docs only; the version stays 61. The ID is the app's, recorded here at its request so both sides name the request the same way. |
 
 | 2026-09-24 | **E12 — a compact, deterministic output save.** A documented, reusable save that any caller can apply to a finished document, including one assembled from per-page parts. Its output: carries each face as exactly one embedded font program, subset once for the whole document; is written compactly, with unused and duplicate objects dropped and streams compressed; draws exactly the same pixels as its input; keeps every form field, its name and its value; is byte-identical across runs when the caller supplies the same `doc_id`. **Acceptance, observable:** (1) on this repo's corpus text-only fixtures, assembled from per-page parts as described, output bytes ≤ 2.5× input, with per-fixture ratios in a dated table; (2) each face appears as exactly one embedded font program per output document, counted in the file; (3) every page rasterised before and after the save at a pinned zoom gives `pixel_diff_ratio == 0.0`; (4) on a form fixture, the field count, names and values are equal before and after; (5) two runs with the same input and `doc_id` give equal sha256, and behaviour without a `doc_id` is documented; (6) checks 1 and 2 are shown red against the unfixed shape (per-part subsets, default save) before the change lands; (7) Rule 1 applies, the API is documented in `references/`, the version bumps, the app gets a notice, and the PR is Rodrigo's to merge. **Owner:** this library builds it; the app integrates it and owns its real-form size evidence. It takes over E6's "one subset per document, never per page" bullet and needs C7's caller-supplied `doc_id` at the save. It traces to the app's ROADMAP N2.output-save-flags. | A consumer that builds a document from per-page parts, each embedding the same faces, each subset on its own and each saved with default settings, delivers files about 6× the input size. The app measured one real government form at 184 KB in and 1,154 KB out: roughly 200 KB of that is a separate font subset per page, and roughly 700 KB is uncompacted structure. | **accepted** — priority 1 of 1, from Rodrigo's ruling of 24 September as relayed by the app's session; nothing else is assigned. No adoption pin: the app stays on v54 at `9675c6196c14eb2a2d37d34e371391eb1955a386` (Python 3.12) and adopts E12 only at its Python 3.14 migration, with an exact, reviewed pin. Delivery does not imply adoption. If E12 as written proves unbuildable or wrong for this code, this library stops and reports the measurement rather than substituting its own version. **Blocked, 2026-09-24, before any build.** The measurement is in [reviews/2026-09-24-e12-measurement.md](reviews/2026-09-24-e12-measurement.md). Checks 3–5 are buildable, with guards: MuPDF's `subset_fonts` flips two verify gates to REVIEW, and garbage 4 folds widgets that have no `/P`. Check 2 holds for page text, but on every delivered form it contradicts the standing full field face. Check 1 cannot hold on the three base-14 fixtures without dropping TrueType hinting, which breaks a strict check 3. Checks 1, 2 and 6 go red only on constructed multi-page fixtures, because every corpus fixture is one page. Six rulings are asked of the product; nothing is built until they are answered. The app acknowledged the block the same day and queued the rulings for Rodrigo after its N1, since E12 serves N2. Its library route opens the whole document once and never slices, so the `insert_pdf` widget loss does not reach it; the per-page route is the older engine that E12 serves. The app flagged the `/Rotate 90` blank-page finding in the review as a possible N1 risk, because its library route runs no verify. Nothing about it is assigned here. |
+
+| 2026-09-24 | **R-03 — widget text by fully qualified field name** (review priority 1). Tooltips (`/TU`), values (`/V`, `/DV`) and choice labels (`/Opt`) are scaffolded, applied and parity-checked by the fully qualified field name, so no field receives another field's text; a page-specific barcode value stays on its page. **Acceptance:** every widget's tooltip, value and options equal those of the same fully qualified field in the source, and each page's barcode value equals that page's source value; plus the shared bar in the status section. | 72 widgets on 5 government forms (57 of 212 on FL-300) announce another field's name to screen readers, and following SKILL.md's identity rule writes page 1's PDF417 value onto every page of G-28, I-864 and N-400. `docs/REVIEW-2026-09-24.md`. | **accepted** — priority 1 of the review assignment (the app's `REQUEST-to-skill-review-2026-09-24`); started 24 September. |
+
+| 2026-09-24 | **R-01 — strip keeps graphics state set inside text objects** (review priority 2). Inside BT…ET, strip drops only the text-state, positioning and showing operators; colour, `gs`, line width and the other graphics-state operators stay, so graphics drawn after the text object keep their colours. **Acceptance:** the shared bar, including the wild probe with a render diff. | On 4 of 17 real PDFs the stripped page repaints graphics in the wrong colour (arxiv table shading black, USCIS N-400 rules white, Medicare blue near-black), and on a constructed page the ink gate PASSes. | **accepted** — priority 2 (the app's `REQUEST-to-skill-review-2026-09-24`). |
+
+| 2026-09-24 | **The `/Rotate 90` blank page, and R-64 — a corpus test that builds outputs** (review priority 3). A translate fixture on a `/Rotate 90` page rebuilds with its text visible; the cause is diagnosed first. The corpus suite gains a test that builds each translate fixture's output and checks it, so this class of defect cannot pass CI again. **Acceptance:** the shared bar. | `corpus/rotated.pdf` rebuilds to a page with no ink and no text layer; verify FAILs it, but the app's route runs no verify, and the corpus suite never builds an output (E12 measurement; review R-64). | **accepted** — priority 3 (the app's `REQUEST-to-skill-review-2026-09-24`). |
+
+| 2026-09-24 | **R-02 — small print is not drawn over its neighbour** (review priority 4). The 4.0 pt clamp no longer bypasses the 0.7× floor, the gate sees the true ratio, and a run under 4 pt is never enlarged. **Acceptance:** the shared bar. | A 5 pt run needing 0.54× is drawn at 4 pt over its neighbour while verify exits 0; a 3 pt run is drawn larger. | **accepted** — priority 4 (the app's `REQUEST-to-skill-review-2026-09-24`). |
+
+| 2026-09-24 | **Review quick wins, XS each** (review priority 5, in this order). R-05: an output path that names an input mapping or segments file is refused on the legacy path too. R-06: text between inline tags is escaped. R-04: every role face is canonicalized, so italic jobs verify. R-27: `field_fonts` refuses a variable face (or instances it). R-47: typography verify reads page rects once. R-69 with R-97: CI discovers its tests and keys the font cache on the fetcher. R-33: `field_fonts` keeps a field's colour and size. R-40: legacy capture bundles record `source_pdf`. R-42: a typography preflight refusal names the offending text. R-110: SPDX licence form in `pyproject.toml`. R-100: dead code removed. R-99: ResourceWarnings closed. Docs: R-79, R-80, R-82, R-83. **Acceptance:** the shared bar. | `docs/REVIEW-2026-09-24.md` has each item's evidence. | **accepted** — priority 5 (the app's `REQUEST-to-skill-review-2026-09-24`). |
+
+| 2026-09-24 | **Review performance items** (review priority 6). R-51: test CJK faces instanced once, not per test. R-48 with R-49: the pixel and character loops in extract and verify replaced by exact equivalents. R-50: `prepare_font` subsets before instancing. **Acceptance:** the shared bar, and output identical by a render or byte diff. | R-51 is about 79% of Linux CI time; the loops are about half of extract and verify time. | **accepted** — priority 6 (the app's `REQUEST-to-skill-review-2026-09-24`). |
+
+| 2026-09-24 | **Proposal from this library: refuse clip-mode text.** Strip drops text drawn in a clipping render mode (`Tr` 4–7) whole, so graphics that relied on that clip draw unclipped. The proposal was (a) refuse such a page with a named reason, or (b) leave it, documented. | Found while measuring R-01. The 17 wild PDFs and 16 corpus fixtures contain 0 cases. | **declined** — the product chose (b) on 24 September. The app reads refusals from retypeset's printed output by fixed patterns, so a new refusal kind could reach an app path that does not recognise it. Documented in `references/failure-modes.md` §4 and the DECISIONS row of 2026-09-24 on the R-01 branch; to be revisited with app-side support if design-heavy PDFs appear. |
 
 Add new rows at the bottom. Do not delete a row when its status changes —
 update the status column in place so the history of what was asked for
