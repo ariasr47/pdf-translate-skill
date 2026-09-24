@@ -1,7 +1,7 @@
 # A02: a translation keeps exactly the original's pages
 
 23 September 2026 · local branch `fix/a02-page-count`, from main `178a06f` ·
-nothing pushed or released · version unchanged (v60)
+pushed for CI on 23 September; not merged or released · version unchanged (v60)
 
 ## Outcome
 
@@ -64,6 +64,7 @@ A4 against Letter differs by 17 pt.
 | CLI ratchet (`cli_parity_runner.py`, eleven CLIs) | exactly two added lines, the PASS line in `verify` and in `rebuild`; nothing else differs |
 | Matching-page `compare` and `render`, `178a06f` vs fix | HTML byte-identical (64,140 bytes); all four PNGs identical |
 | CI | `tests.test_page_parity` added to the enumerated modules; the list equals all 22 `tests/test_*.py` modules |
+| GitHub CI, run 35935412655 at `5348082`, dispatched after the push | Linux 687 tests OK in 593.161 s, Windows 687 OK with the existing cross-drive skip in 874.203 s (the 670 of main plus 17 page-parity tests), the canary 15 OK on both, the plugin manifest job green |
 
 Commands (from the repository root, with the repository's venv and `PYTHONPATH`
 set to the tree under test; raw outputs are in this worktree's ignored
