@@ -3,7 +3,7 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 24 September 2026, on the Mac: set up and verified; E12 assigned
+## Start here — 24 September 2026, on the Mac: set up and verified; E12 assigned, blocked on rulings
 
 **Verified state.** `origin/main` is `0542dc2` (v61). CI passed on it (run
 35981365585), and there is no release or tag. PR #27 (Rule 4: the product
@@ -55,6 +55,19 @@ Checks 1 and 2 are shown red on the unfixed shape before the change lands,
 and Rule 1 applies. Tell the app's session when E12 starts, is blocked or is
 delivered. If E12 as written proves unbuildable or wrong for this code, stop
 and report the measurement rather than substituting a different design.
+
+**E12 is blocked, as of 24 September.** It was measured before any build:
+`docs/reviews/2026-09-24-e12-measurement.md`, with the raw evidence in the
+ignored `runs/2026-09-24-e12-measurement/` on the Mac. Three acceptance
+checks conflict:
+- check 1's 2.5× ceiling fails on the three base-14 fixtures unless
+  hinting is dropped, which breaks a strict check 3;
+- check 2 contradicts the full field face on forms;
+- the corpus is all one-page fixtures, so checks 1, 2 and 6 go red only on
+  constructed multi-page fixtures.
+
+Six rulings went to the app's session. Build nothing until they come
+back.
 
 The backlog in `dev/goals/PROGRAM.md` (A21 and the rest) and this library's
 own proposals (the macOS test, A04, A05, A14) stay unassigned; this
