@@ -9,7 +9,8 @@ implemented, and B1 stays deferred.** Everything useful in the old checkout now
 sits on the local branch `chore/reconcile-b1-checkout`, based on main
 `178a06f`. Every item is accounted for below: carried, adapted, routed to
 another change, dropped, or left in place. The original checkout was not
-reset, cleaned, stashed, switched or merged. Nothing was pushed.
+reset, cleaned, stashed, switched or merged. The branch was pushed for CI on
+23 September at Rodrigo's instruction; nothing was merged or released.
 
 | Branch commit | Content |
 |---|---|
@@ -122,6 +123,7 @@ one broken relative link (`docs/design/typography-preservation/DESIGN.md` →
 |---|---|
 | Full suite on clean `178a06f` (baseline, from `pdf-translate/`: `python -m unittest discover -s tests -t .`) | 670 tests OK, 578.251 s |
 | Full suite on this branch at `498dec4` (same command) | 670 tests OK, 484.230 s; exit 0 |
+| GitHub CI, run 35935410494 at `8a98afc` | Linux 670 OK; Windows 670 OK with the existing cross-drive skip; the new binary-integrity step 3 OK on both operating systems, including the Windows checkout where the smudge happens; canary 15 OK; manifest green |
 | Binary integrity: green, two reds, green | as above |
 | A04 affected modules (`test_consumer_contract`, `test_import_surface`, `test_verify_report`) | 88 tests OK, 14.106 s |
 | Relative links and heading anchors, whole tree | all resolve except main's 16 pre-existing references to its design canvases' uncommitted `support.js` |

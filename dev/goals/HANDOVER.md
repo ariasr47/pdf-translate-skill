@@ -3,17 +3,18 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 23 September 2026, evening: reconcile, A02 and A06 are built; integration is Rodrigo's call
+## Start here — 23 September 2026, evening: reconcile, A02 and A06 are built and green on CI; integration is Rodrigo's call
 
-**Verified state.** Remote `main` is still **`178a06f`** (v60). Nothing was
-pushed, merged or released. There are three local branches from `178a06f`,
-plus a throwaway local merge of all three:
+**Verified state.** Remote `main` is still **`178a06f`** (v60). Three branches
+from `178a06f` were pushed for CI; nothing was merged or released and no PR
+was opened. Each local branch is one docs commit ahead of its remote, recording
+the CI results below. There is also a throwaway local merge of all three:
 
 | Branch | Head | Worktree | State |
 |---|---|---|---|
-| `chore/reconcile-b1-checkout` | this commit | `C:/Dev/worktrees/pdf-translate-reconcile-b1` | Done. Full suite 670 OK. Independent review: approve, with two cosmetic nits. |
-| `fix/a02-page-count` | `5348082` | `C:/Dev/worktrees/pdf-translate-a02` | Done. Full suite 686 OK at `06f2c35`. Boundary fix `d9efd44` (page-parity module 17 OK). Independent verification: verified with findings, both handled. |
-| `fix/a06-rebuild-mapping-checks` | `9f9365d` | `C:/Dev/worktrees/pdf-translate-a06` | Fix built and probed; 30/30 documented examples behave as specified. **Owed:** a completed full-suite run on `55bb44d`, and the independent pass. Machine crashes cut off both. |
+| `chore/reconcile-b1-checkout` | pushed `8a98afc` | `C:/Dev/worktrees/pdf-translate-reconcile-b1` | Done. Full suite 670 OK locally and on CI. Independent review: approve, with two cosmetic nits. |
+| `fix/a02-page-count` | pushed `5348082` | `C:/Dev/worktrees/pdf-translate-a02` | Done. CI 687 OK on Linux and Windows. Boundary fix `d9efd44`. Independent verification: verified with findings, both handled. |
+| `fix/a06-rebuild-mapping-checks` | pushed `9f9365d` | `C:/Dev/worktrees/pdf-translate-a06` | Built and probed; 30/30 documented examples behave as specified. CI 678 OK on Linux and Windows. **Still owed:** the independent pass, which machine crashes cut off. |
 | `trial/integrate-reconcile-a02-a06` | local only | `C:/Dev/worktrees/pdf-translate-trial` | All three merged. Only `docs/DECISIONS.md` conflicted (tail appends; all 60 rows kept). Links, compilation and binary integrity pass. **Full suite not run.** |
 
 Evidence: `docs/reviews/2026-09-23-b1-checkout-reconciliation.md` (this
@@ -31,6 +32,16 @@ The three branches were pushed as they stand here, and the workflow was started
 on each with `workflow_dispatch`: CI runs automatically only for pushes to
 `main` and for pull requests, and no PR was opened. Look up the runs with
 `gh run list --workflow tests.yml`. The trial branch was not pushed.
+
+| CI run | Branch | Linux | Windows | Canary | Other |
+|---|---|---|---|---|---|
+| 35935410494 | reconcile `8a98afc` | 670 OK | 670 OK, 1 skip | 15 OK both | new binary-integrity step 3 OK on both OSes; manifest green |
+| 35935412655 | A02 `5348082` | 687 OK | 687 OK, 1 skip | 15 OK both | manifest green |
+| 35935414545 | A06 `9f9365d` | 678 OK | 678 OK, 1 skip | 15 OK both | manifest green |
+
+The Windows skip is the existing cross-drive relative-path test. The only
+annotation is GitHub's notice that the `ubuntu-latest` label moves to Ubuntu 26
+on 19 October 2026.
 
 To integrate: merge in the order reconcile → A02 → A06, keep every DECISIONS
 row (the trial branch shows the result), and bump the version once, to v61.
