@@ -3,6 +3,49 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 24 September 2026, on the Mac: set up and verified; nothing assigned
+
+**Verified state.** `origin/main` is `221a86f` (v61); CI passed on it and
+there is no release or tag. PR #27 (Rule 4: the product directs this library)
+is open on `docs/app-directs-skill` at `b24f03a`, and all three of its checks
+pass (run 35978209544). Rodrigo merges it.
+
+**This Mac's checkout.** Local `main` still holds two commits from 12
+September that are on no remote. `ca2dd06` adds `dev/canary/GPT6_PROMPT.md`,
+which its message calls the only copy. `c1d9c93` is the Mac's own lane B row
+P9 restructure (root `AGENTS.md`, `dev/STATUS.md`, `dev/DECISIONS.md`); the
+Windows line has its own `AGENTS.md` and `docs/DECISIONS.md` instead. `main`
+and `origin/main` have diverged (2 and 206 commits), so `git pull --ff-only`
+exits 128. `main` stays as it is until Rodrigo decides; everything below ran
+on `origin/main`.
+
+**Setup, as `pdf-translate/README.md` says.** `pdf-translate/.venv` is
+CPython 3.14.6. uv created it without pip, so dependencies go in with
+`uv pip install --python .venv/bin/python -r requirements.txt`, which gives
+PyMuPDF 1.28.2, pikepdf 10.12.0 and fontTools 4.64.0.
+`tools/fetch_test_fonts.py` and its `--check` both exit 0, with 20 faces.
+`pdf_translate.__file__` resolves into this checkout and `__version__` is 61.
+
+**The suite on macOS.** CI's four test steps, run locally on `221a86f` in
+about seven minutes: the 22 unittest modules ran 695 tests, CI's count on the
+same commit, with 1 failure, no errors and no skips; the canary's 15 tests
+and the binary-integrity 3 passed; the eval fixtures built. The failure is in
+the test, not the library, and only on a Mac:
+`HotLoopTests.test_rebuild_resolves_verify_arguments_from_the_callers_directory`
+compares `os.getcwd()` with the temporary path as strings
+(`pdf-translate/tests/test_pipeline.py:3958`), and macOS reports
+`/var/folders/…` as `/private/var/folders/…`. Run by hand with the paths
+compared by `realpath`, the same rebuild exits 0 and prints its PASS line.
+Nobody assigned the fix, so it is proposed in the inbox rather than made.
+
+**Next: nothing is assigned.** Under Rule 4, work comes from
+`docs/REQUESTS-from-product.md`. Its 24 September status records v61 and that
+no product session was running to be told, lists this library's proposals,
+and asks the product to confirm E4 or name another item. The backlog in
+`dev/goals/PROGRAM.md` (A21 and the rest) is a set of proposals now, not the
+next work; this supersedes the "Next" of the section below. Merged PRs #22
+and #26 still have their branches on GitHub; deleting them is Rodrigo's call.
+
 ## Start here — 23 September 2026, night: reconcile, A02 and A06 merged; main is v61
 
 **Verified state.** On Rodrigo's instruction the three PRs were merged into
