@@ -109,19 +109,33 @@ def remove_perms(pdf, report):
     del pdf.Root['/Perms']
 
 
+# PDF 32000-1 Table 51: text showing, text positioning and text state.
+TEXT_OPERATORS = frozenset({'Tj', 'TJ', "'", '"', 'Td', 'TD', 'Tm', 'T*',
+                            'Tc', 'Tw', 'Tz', 'TL', 'Tf', 'Tr', 'Ts'})
+
+
 def strip_ops(owner, pdf=None):
+    """Remove every text object's text; keep its graphics state (R-01).
+
+    BT/ET do not save and restore the graphics state: colour, gs, line
+    width, cm and marked content set inside a text object stay in effect
+    after ET. Dropping the whole object recoloured whatever was drawn next
+    (arxiv's table shading turned black, N-400's rules turned white). So a
+    text object loses BT, ET and its text operators, and everything else in
+    it stays in place and in order. Returns (stream bytes, text objects).
+    """
     ops = parse_content_stream(owner)
-    out, in_text, removed = [], False, 0
+    out, depth, removed = [], 0, 0
     for operands, op in ops:
         o = str(op)
         if o == 'BT':
-            in_text = True
+            depth += 1
             removed += 1
             continue
         if o == 'ET':
-            in_text = False
+            depth = max(0, depth - 1)
             continue
-        if in_text:
+        if depth and o in TEXT_OPERATORS:
             continue
         out.append((operands, op))
     return unparse_content_stream(out), removed

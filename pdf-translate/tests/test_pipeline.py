@@ -396,6 +396,47 @@ def retranslate_opt_exports(src, dst, mapping):
         pdf.close()
 
 
+def build_graphics_state_pdf(path, content, in_xobject=False):
+    """One page whose text object sets graphics state used after ET (R-01).
+
+    `content` is the page's (or, with in_xobject, a Form XObject's) stream.
+    /F1 is Helvetica and /GS1 sets fill opacity 0.3.
+    """
+    pdf = pikepdf.new()
+    font = pdf.make_indirect(pikepdf.Dictionary(
+        Type=pikepdf.Name('/Font'), Subtype=pikepdf.Name('/Type1'),
+        BaseFont=pikepdf.Name('/Helvetica')))
+    gs = pdf.make_indirect(pikepdf.Dictionary(
+        Type=pikepdf.Name('/ExtGState'), ca=0.3))
+    res = pikepdf.Dictionary(Font=pikepdf.Dictionary(F1=font),
+                             ExtGState=pikepdf.Dictionary(GS1=gs))
+    if in_xobject:
+        xo = pdf.make_stream(content, Type=pikepdf.Name('/XObject'),
+                             Subtype=pikepdf.Name('/Form'),
+                             BBox=pikepdf.Array([0, 0, 612, 792]),
+                             Resources=res)
+        page_res = pikepdf.Dictionary(XObject=pikepdf.Dictionary(Fm1=xo))
+        page_content = b'q /Fm1 Do Q'
+    else:
+        page_res, page_content = res, content
+    page = pdf.make_indirect(pikepdf.Dictionary(
+        Type=pikepdf.Name('/Page'), MediaBox=pikepdf.Array([0, 0, 612, 792]),
+        Resources=page_res, Contents=pdf.make_stream(page_content)))
+    pdf.pages.append(pikepdf.Page(page))
+    pdf.save(path)
+    pdf.close()
+
+
+def rgb_at(path, x, y, page=0):
+    """RGB of the pixel at PDF point (x, y) on a 72 dpi render."""
+    doc = pymupdf.open(path)
+    try:
+        pix = doc[page].get_pixmap(dpi=72)
+        return tuple(pix.pixel(int(x), int(doc[page].rect.height - y)))
+    finally:
+        doc.close()
+
+
 BARCODE_PAGES = 3
 SAME_LEAF_TIPS = {'Applicant[0].Name[0]': "Applicant's full name",
                   'Spouse[0].Name[0]': "Spouse's full name",
@@ -1397,6 +1438,70 @@ class WidgetTextTests(unittest.TestCase):
             with redirect_stdout(buf):
                 verify.verify(src, out)
             self.assertNotIn('/Opt export', buf.getvalue())
+
+
+class StripKeepsGraphicsStateTests(unittest.TestCase):
+    """R-01: strip removes a text object's text, not its graphics state.
+
+    BT/ET do not save and restore the graphics state, so colour, gs, line
+    width and cm set inside a text object stay in effect after ET. Dropping
+    the whole object recoloured what was drawn next: arxiv's table shading
+    turned black, N-400's rules turned white.
+    """
+
+    TEXT = b'BT /F1 14 Tf 72 700 Td (Hello) Tj '
+    RECT = b' 100 400 200 100 re f'   # centre (200, 450)
+
+    def _strip(self, content, in_xobject=False):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        src = os.path.join(tmp, 'orig.pdf')
+        dst = os.path.join(tmp, 'stripped.pdf')
+        build_graphics_state_pdf(src, content, in_xobject=in_xobject)
+        report = strip_text.strip_text(src, dst)
+        self.assertEqual(report['leftover_text'], [])
+        return src, dst
+
+    def test_fill_colour_set_inside_a_text_object_survives(self):
+        for in_xobject in (False, True):
+            with self.subTest(in_xobject=in_xobject):
+                src, dst = self._strip(
+                    self.TEXT + b'0.9 1 0.9 rg ET' + self.RECT, in_xobject)
+                self.assertEqual(rgb_at(src, 200, 450), (229, 255, 229))
+                self.assertEqual(rgb_at(dst, 200, 450), (229, 255, 229))
+
+    def test_every_graphics_state_kind_survives(self):
+        cases = {
+            'gray': self.TEXT + b'0.9 g ET' + self.RECT,
+            'opacity': self.TEXT + b'/GS1 gs ET' + self.RECT,
+            'stroke': (self.TEXT + b'0 0 1 RG 6 w ET'
+                       b' 100 400 200 100 re S'),
+            'outside BT (control)': (b'1 0 0 rg ' + self.TEXT + b'ET'
+                                     + self.RECT),
+        }
+        probes = {'stroke': (100, 450)}
+        for name, content in cases.items():
+            with self.subTest(case=name):
+                src, dst = self._strip(content)
+                x, y = probes.get(name, (200, 450))
+                self.assertEqual(rgb_at(dst, x, y), rgb_at(src, x, y))
+
+    def test_only_text_operators_leave_a_text_object(self):
+        src, dst = self._strip(
+            b'q BT 0 1 -1 0 300 300 cm /F1 12 Tf 2 Tr 1 0 0 1 0 0 Tm '
+            b'/P <</MCID 0>> BDC 0.5 g (Hi) Tj EMC ET Q' + self.RECT)
+        pdf = pikepdf.open(dst)
+        try:
+            ops = [str(op) for _, op in
+                   pikepdf.parse_content_stream(pdf.pages[0])]
+        finally:
+            pdf.close()
+        for gone in ('BT', 'ET', 'Tf', 'Tr', 'Tm', 'Tj'):
+            self.assertNotIn(gone, ops)
+        for kept in ('cm', 'BDC', 'EMC', 'g', 're', 'f'):
+            self.assertIn(kept, ops)
+        self.assertEqual(ops.count('q'), ops.count('Q'))
+        self.assertEqual(rgb_at(dst, 200, 450), rgb_at(src, 200, 450))
 
 
 class WidgetTextFullNameTests(unittest.TestCase):

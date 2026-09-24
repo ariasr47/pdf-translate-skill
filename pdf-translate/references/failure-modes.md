@@ -22,8 +22,9 @@ wired to standard actions (`this.print();`, `this.resetForm();`,
 
 `add_redact_annot` + `apply_redactions` removes annotations — including
 field widgets — that overlap the redaction area. This is why the pipeline
-strips `BT..ET` blocks from content streams instead: widgets are
-annotations, not page content, so a content-stream edit cannot touch them.
+removes the text from `BT..ET` blocks in the content streams instead:
+widgets are annotations, not page content, so a content-stream edit cannot
+touch them.
 
 ## 3. Subsetted CFF fonts silently drop CJK glyphs in MuPDF
 
@@ -42,6 +43,14 @@ insert on one particular page comes out gray while other pages are fine.
 `strip_text.py` wraps surviving content in `q ... Q` so appended text always
 starts from the default state. If you ever see tinted output anyway, check
 for nested un-balanced `q/Q` in Form XObjects.
+
+The leak also runs the other way. `BT`/`ET` do not save and restore the
+graphics state, so a colour, `gs`, line width or `cm` set inside a text
+object stays in effect for the graphics drawn after `ET`. Until v63, strip
+dropped whole text objects, and with them that state. arxiv's pale table
+shading came out black, USCIS N-400's rules came out white, and no gate saw
+it. Strip now removes only `BT`, `ET` and the text operators (showing,
+positioning, text state) and keeps everything else in place.
 
 ## 5. Dot leaders invade checkbox gaps
 
