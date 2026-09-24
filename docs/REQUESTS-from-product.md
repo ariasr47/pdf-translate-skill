@@ -32,7 +32,38 @@ Claude sessions do this by name with `SendMessage`; other agents go through
 Rodrigo. Whatever a message settles is written into this file in the same
 session.
 
-## Current coordination status — 24 September 2026, evening
+## Current coordination status — 24 September 2026, late
+
+**Main is v64 at `154f842`.** Rodrigo merged two PRs in order, each with a
+merge commit, and the app's session relayed the merges. Each merge came
+after the ubuntu and windows py3.14 jobs and the plugin manifest job passed
+on the tested head. `154f842`'s tree is the tested `8c1f4ca`'s.
+
+| PR | contents | version | merge commit |
+|---|---|---|---|
+| #32 | R-03 and R-01 recorded as delivered; item 3 started (docs only) | 63 | `c0d49e9` |
+| #33 | item 3, the `/Rotate` page, with R-64 | 64 | `154f842` |
+
+**Delivered:** item 3 with R-64. Its row below records the evidence.
+
+**For a consumer, v64 changes this:**
+- On a `/Rotate` page, `segments.json` geometry is in the unrotated space,
+  the space `page.get_text` uses.
+- `segments.json` gains an additive `geometry` key.
+- A `segments.json` without that key, on a rotated page that carries
+  segments, is refused as a stale extraction.
+- `retypeset.direction_limit` takes a frame rect; it is not in `__all__`.
+
+**Adoption:** none yet. The app stays pinned to v54 on Python 3.12, and
+Rodrigo is still to rule whether N1 waits for the 3.14 migration.
+
+**Next:** R-02, the 4.0 pt clamp (review priority 4). The assignment order
+and the shared acceptance bar are unchanged; they are in the snapshot of
+"24 September 2026, later" below.
+
+**Unchanged:** E12 is blocked on its six rulings, and R-94 is "not yet".
+
+## Coordination status — 24 September 2026, evening (historical snapshot)
 
 **Main is v63 at `0819091`.** Rodrigo merged three PRs in order, each with
 a merge commit, and the app's session relayed the merges. Each merge came
@@ -414,7 +445,7 @@ deleting anything.
 
 | 2026-09-24 | **R-01 — strip keeps graphics state set inside text objects** (review priority 2). Inside BT…ET, strip drops only the text-state, positioning and showing operators; colour, `gs`, line width and the other graphics-state operators stay, so graphics drawn after the text object keep their colours. **Acceptance:** the shared bar, including the wild probe with a render diff. | On 4 of 17 real PDFs the stripped page repaints graphics in the wrong colour (arxiv table shading black, USCIS N-400 rules white, Medicare blue near-black), and on a constructed page the ink gate PASSes. | **accepted** — priority 2 (the app's `REQUEST-to-skill-review-2026-09-24`). **done** — v63, PR #31 (merge `0819091`, 24 September). On 465 pages across 33 files, 0 non-text pixels now differ from the original. Before the fix, 18 pages in 5 files did. The wild probe's verdicts are unchanged. Rule 1 passed on another model. Evidence: `docs/reviews/2026-09-24-r01-strip-graphics-state.md`. |
 
-| 2026-09-24 | **The `/Rotate 90` blank page, and R-64 — a corpus test that builds outputs** (review priority 3). A translate fixture on a `/Rotate 90` page rebuilds with its text visible; the cause is diagnosed first. The corpus suite gains a test that builds each translate fixture's output and checks it, so this class of defect cannot pass CI again. **Acceptance:** the shared bar. | `corpus/rotated.pdf` rebuilds to a page with no ink and no text layer; verify FAILs it, but the app's route runs no verify, and the corpus suite never builds an output (E12 measurement; review R-64). | **accepted** — priority 3 (the app's `REQUEST-to-skill-review-2026-09-24`). **started** 24 September. Diagnosed: on a `/Rotate` page, extract records text geometry in the rotated (visible) space, but retypeset draws in the unrotated page space. **built** 24 September, v64, branch `fix/rotate-pages-unrotated-space`, awaiting review. `segments.json` is now in the unrotated space, with a `geometry` key; retypeset measures against the unrotated frame; a stale extraction on a rotated page is refused by a stable, documented line. Rule 1 passed: three independent passes on another model. The pixel pass found 0 differing pixels against the rotated control at 90, 180 and 270, where v63 differed by 7,142 to 9,351. One layout saved at `/Rotate` 0/90/180/270 now extracts and rebuilds identically at every rotation: 0 of 13 runs were placed right on rotated pages before, and all are now. The R-64 test identity-rebuilds all 13 `translate` fixtures and checks where each run starts. The app answered the design questions on 24 September. Q1: it reads no segment geometry. Q2: the stale-extraction refusal is acceptable, because extract and retypeset run in one job at one version; keep its text stable. Q3: the row below. Evidence: `docs/reviews/2026-09-24-rotate-pages.md`. |
+| 2026-09-24 | **The `/Rotate 90` blank page, and R-64 — a corpus test that builds outputs** (review priority 3). A translate fixture on a `/Rotate 90` page rebuilds with its text visible; the cause is diagnosed first. The corpus suite gains a test that builds each translate fixture's output and checks it, so this class of defect cannot pass CI again. **Acceptance:** the shared bar. | `corpus/rotated.pdf` rebuilds to a page with no ink and no text layer; verify FAILs it, but the app's route runs no verify, and the corpus suite never builds an output (E12 measurement; review R-64). | **accepted** — priority 3 (the app's `REQUEST-to-skill-review-2026-09-24`). **started** 24 September. Diagnosed: on a `/Rotate` page, extract records text geometry in the rotated (visible) space, but retypeset draws in the unrotated page space. **built** 24 September, v64, branch `fix/rotate-pages-unrotated-space`, awaiting review. `segments.json` is now in the unrotated space, with a `geometry` key; retypeset measures against the unrotated frame; a stale extraction on a rotated page is refused by a stable, documented line. Rule 1 passed: three independent passes on another model. The pixel pass found 0 differing pixels against the rotated control at 90, 180 and 270, where v63 differed by 7,142 to 9,351. One layout saved at `/Rotate` 0/90/180/270 now extracts and rebuilds identically at every rotation: 0 of 13 runs were placed right on rotated pages before, and all are now. The R-64 test identity-rebuilds all 13 `translate` fixtures and checks where each run starts. The app answered the design questions on 24 September. Q1: it reads no segment geometry. Q2: the stale-extraction refusal is acceptable, because extract and retypeset run in one job at one version; keep its text stable. Q3: the row below. Evidence: `docs/reviews/2026-09-24-rotate-pages.md`. **done** — v64, PR #33 (merge `154f842`, 24 September). |
 
 | 2026-09-24 | **R-02 — small print is not drawn over its neighbour** (review priority 4). The 4.0 pt clamp no longer bypasses the 0.7× floor, the gate sees the true ratio, and a run under 4 pt is never enlarged. **Acceptance:** the shared bar. | A 5 pt run needing 0.54× is drawn at 4 pt over its neighbour while verify exits 0; a 3 pt run is drawn larger. | **accepted** — priority 4 (the app's `REQUEST-to-skill-review-2026-09-24`). |
 
