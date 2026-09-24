@@ -50,7 +50,10 @@ object stays in effect for the graphics drawn after `ET`. Until v63, strip
 dropped whole text objects, and with them that state. arxiv's pale table
 shading came out black, USCIS N-400's rules came out white, and no gate saw
 it. Strip now removes only `BT`, `ET` and the text operators (showing,
-positioning, text state) and keeps everything else in place.
+positioning, text state) and keeps everything else in place. The one
+exception is text drawn in a clipping render mode (`Tr` 4–7). It is still
+dropped whole, so graphics that relied on that clip draw unclipped. The
+product chose not to refuse such pages (`docs/DECISIONS.md`, 2026-09-24).
 
 ## 5. Dot leaders invade checkbox gaps
 
