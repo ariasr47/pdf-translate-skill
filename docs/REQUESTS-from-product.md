@@ -32,7 +32,65 @@ Claude sessions do this by name with `SendMessage`; other agents go through
 Rodrigo. Whatever a message settles is written into this file in the same
 session.
 
-## Current coordination status — 23 September 2026
+## Current coordination status — 24 September 2026
+
+**Main is v61 at `221a86f`.** Since the 23 September status below, PRs #23
+(the old B1 checkout reconciled; B1 stays deferred), #24 (A02) and #25 (A06,
+with the bump to v61) have merged, and #26 added handover notes. All four
+version sources say 61, CI passed on `221a86f`, and there is no release or
+tag. For a consumer, v61 changes two things:
+
+- **A02, page parity.** Every verify run prints one `page parity` line, and a
+  missing, extra, rotated or resized page FAILs the new `page-parity` gate.
+  `compare` and `render` show every page and exit 1 when the page counts
+  differ; `finish` returns compare's code. Evidence:
+  [a02-page-parity](reviews/2026-09-23-a02-page-parity.md).
+- **A06, rebuild checks the mapping.** A default legacy `pipeline.py rebuild`
+  verifies against the mapping it built from, so an empty target, a dropped
+  marker or a translated identifier exits 1 where it used to exit 0.
+  Evidence: [a06-rebuild-mapping-checks](reviews/2026-09-23-a06-rebuild-mapping-checks.md).
+
+No consumer pin changed here; the app last reported v54.
+
+**No message about v61 is on record.** Rule 4 asks for one when the version
+changes. This session could not send it: on 24 September no `pdf-translator`
+session was running on the Mac this was checked from (`ListAgents` listed
+two unrelated sessions), so this status reaches the product through Rodrigo.
+
+**Nothing new is assigned.** No request has been filed since 20 September.
+Of the 16 September work order, E2 and E3 have shipped although their status
+cells below still read accepted: gates 19, 20 and 21 (PRs #6, #8 and #10,
+v52 to v55) and the consumer surface (PR #13, v58; C7 moved to E8). E4 to E11
+remain accepted. E4 has not started: no schema file for the verify report is
+published and its gates carry no severity or category. E10 waits on the
+operator's choice of distribution name. By the work order's own sequence
+("E4–E7 in that order, E8–E11 in the gaps") E4 is next. This library asks
+the product to confirm E4, or name another item, before it starts.
+
+**Proposed by this library; the product decides.** None of these has
+started:
+
+- **A21**, the smallest backlog item: validate both manifests explicitly and
+  give the type checker its declared environment. Two XS slices; see
+  [PROGRAM.md](../dev/goals/PROGRAM.md#public-readiness-backlog).
+- **A macOS test finding**, from setting this checkout up on a Mac. On
+  `221a86f` the Mac ran CI's 695 tests with one failure:
+  `HotLoopTests.test_rebuild_resolves_verify_arguments_from_the_callers_directory`
+  compares `os.getcwd()` with the temporary path as strings
+  (`tests/test_pipeline.py:3958`), and macOS reports `/var/…` as
+  `/private/var/…`. Compared by `realpath`, the same run exits 0 and prints
+  its PASS line, so the library is not at fault. CI runs Linux and Windows
+  only. XS.
+- **The open P1 audit items:** A04 (process-isolated concurrency
+  validation), A05 (proven dependency floors) and A14 (review freshness,
+  which needs a behaviour ruling first). A07 and A08 wait on owner
+  decisions. The rest of the backlog is in PROGRAM.md.
+
+This library recommends E4 next: it is the work order's next item, and it is
+what lets the product map gate findings to its closed notice codes without
+reading Python.
+
+## Coordination status — 23 September 2026 (historical snapshot)
 
 **Main is v60 at `178a06f`.** Since the 20 September snapshot below, PRs
 #12/#13 (v57/v58), #17 (typography, v59), #18 (Python 3.14 only), #19 (opt-in
