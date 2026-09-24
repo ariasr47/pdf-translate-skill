@@ -1,7 +1,7 @@
 # Consumer guide — one document, end to end, from Python
 
 Contents: before you start · the six calls · what each returns · the files on
-disk · refusals · progress and cancellation · threads · what this library never
+disk · refusals · progress and cancellation · concurrency and logging · what this library never
 does.
 
 This is for an engineer with zero context who has to run one document through
@@ -237,19 +237,33 @@ one save, at the very end, so a cancelled run does not publish its candidate.
 A file from a previous successful run can remain at `out`; cancellation does
 not remove it.
 
-## Threads
+## Concurrency and logging
 
-The `run_*` twins are the thread-safe surface. They do not touch
-`sys.stdout`, they hold no module-level mutable state for a job, and two of
-them can run in different threads without either losing the other's output.
+**Do not run PDF stages concurrently in multiple threads.** PyMuPDF does not
+support multithreaded use; it can produce incorrect results or crash Python.
+See its [multiprocessing guidance](https://pymupdf.readthedocs.io/en/latest/recipes-multiprocessing.html).
 
-Two things are **not** thread-safe and are not for you:
+For concurrent PDF jobs, use separate processes, with one job running at a time
+in each worker. Pass input paths and plain job data to the worker; open PDFs and
+create PyMuPDF resources inside that process. Do not share live PyMuPDF documents,
+pages or fonts between workers. Each job needs its own `work` directory and
+output/report paths. A distinct `scale_report=` path alone does not isolate the
+other files a job writes.
+
+The silent `run_*` functions avoid process-global stdout redirection. This fixes
+logging interference; it does not make the native PDF backend thread-safe.
+Existing thread-based regression checks cover observed output/report isolation
+on their fixtures, not backend thread safety. End-to-end validation of two
+process-isolated jobs remains pending; this guidance is not a claim that a
+consumer's worker integration has been tested.
+
+For logging in a service, use the silent functions and attach your own handler:
 
 - **`console()`** (`pdf_translate._console`) mutates process-global logging
-  state. It exists for CLI entry points. A service attaches its own handler to
-  the `pdf_translate` logger and never calls it.
-- **The loud names** (`verify`, `retypeset`, …) open `console()` themselves,
-  so calling them from several threads has the same problem.
+  state and is not thread-safe. It exists for CLI entry points; a service does
+  not call it.
+- **The loud names** (`verify`, `retypeset`, …) open `console()` themselves;
+  use their `run_*` counterparts in each service worker.
 
 To see the library's output in your own logs:
 
@@ -261,10 +275,6 @@ logging.getLogger('pdf_translate').addHandler(your_handler)
 
 Importing `pdf_translate` attaches a `NullHandler` and nothing else. It sets
 no level on the root logger and configures nothing for its host.
-
-Give each concurrent job its own `work` directory, or at least its own
-`scale_report=` path — the default is a fixed name beside the output, which
-two jobs writing to one directory would race for.
 
 ## What this library never does
 

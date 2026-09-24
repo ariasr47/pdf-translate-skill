@@ -1,0 +1,73 @@
+{
+  "case_id": "20260919-webapp-fl150-page1-opus-01",
+  "audit_kind": "Independent read-only inspection; no placement rerun",
+  "audit_runtime_pymupdf": "1.28.2",
+  "bundle_files_checked": 28,
+  "input_hashes_checked": 5,
+  "effective_mapping_diff": "fonts.regular path only",
+  "mapping_entries": 86,
+  "source_occurrences": 97,
+  "all_wrapping_permissions_unknown": true,
+  "all_author_permitted_boxes_null": true,
+  "geometry": {
+    "input_pages": 1,
+    "output_pages": 1,
+    "page_rect": [
+      0.0,
+      0.0,
+      612.0,
+      792.0
+    ],
+    "widget_count": 61,
+    "widget_names_types_rects_equal_to_0_0001pt": true
+  },
+  "recorded_library": {
+    "name": "pdf-translate",
+    "version": "54.0.0",
+    "origin": {
+      "url": "https://github.com/ariasr47/pdf-translate-skill.git",
+      "vcs_info": {
+        "vcs": "git",
+        "commit_id": "9675c6196c14eb2a2d37d34e371391eb1955a386",
+        "requested_revision": "9675c6196c14eb2a2d37d34e371391eb1955a386"
+      },
+      "subdirectory": "pdf-translate"
+    }
+  },
+  "recorded_gate_counts": {
+    "PASS": 13,
+    "REVIEW": 3
+  },
+  "recorded_verification_exit": 0,
+  "recorded_scaled_runs": 8,
+  "minimum_recorded_ratio": 0.844,
+  "source_sha256": "13eeab9c3dea9f2af29881d1b36fb20bd5cecc9a5100c09545baad6d06cbcf46",
+  "output_sha256": "df03005cc10cd7c58dee0ed9f5c87cb0eb64836b79f6d7dd3b767c3490c51e7b",
+  "manifest_sha256": "2ab8c4e42c0d8a743d6800dddd3d4efc70bb0bfebe42d363fa29c357bea3a36e",
+  "observed_stage_records": [
+    {
+      "stage": "extract",
+      "started_at": "2026-09-20T01:52:29.254440+00:00",
+      "exception": null,
+      "finished_at": "2026-09-20T01:52:29.376801+00:00"
+    },
+    {
+      "stage": "strip",
+      "started_at": "2026-09-20T01:52:29.378818+00:00",
+      "exception": null,
+      "finished_at": "2026-09-20T01:52:29.423350+00:00"
+    },
+    {
+      "stage": "retypeset",
+      "started_at": "2026-09-20T01:52:29.425350+00:00",
+      "exception": null,
+      "finished_at": "2026-09-20T01:52:29.792130+00:00"
+    }
+  ],
+  "limits": [
+    "Known previously successful case, not a new customer case",
+    "Original product paths were not opened; byte identity to those external originals is reported, not independently verified",
+    "Capture ran reported library v54; current checkout v58 was not used to rebuild",
+    "No B1 recovery, authorized wrapping box, customer recovery rate or bilingual acceptance established"
+  ]
+}

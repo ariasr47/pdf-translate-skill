@@ -1,0 +1,2114 @@
+{
+  "runtime": {
+    "python": "3.14.0 (tags/v3.14.0:ebf955d, Oct  7 2025, 10:15:03) [MSC v.1944 64 bit (AMD64)]",
+    "pymupdf": [
+      "1.28.2",
+      "1.28.2",
+      null
+    ],
+    "library": "58"
+  },
+  "scope": "Selected constructed seed-corpus occurrences with diagnostic payloads, not representative translations or a customer recovery rate.",
+  "manifest_sha256": "fb013410ec057805fe94067dafa630da1617d036fbf9be615a82de6d5100fb11",
+  "font_sha256": {
+    "NotoSans-Regular.ttf": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823",
+    "NotoSansJP-VF-wght400.ttf": "6bd6db3e82e1821c4bc51af0f245a62dc442e74ba5c0917fa1d8f987ded45afb"
+  },
+  "census": [
+    {
+      "source": "ar_source.pdf",
+      "expected": "translate",
+      "status": "eligible",
+      "segments": 3,
+      "unextractable_pages": [],
+      "invisible_text_pages": []
+    },
+    {
+      "source": "choice_fields.pdf",
+      "expected": "translate",
+      "status": "eligible",
+      "segments": 1,
+      "unextractable_pages": [],
+      "invisible_text_pages": []
+    },
+    {
+      "source": "colored.pdf",
+      "expected": "translate",
+      "status": "eligible",
+      "segments": 3,
+      "unextractable_pages": [],
+      "invisible_text_pages": []
+    },
+    {
+      "source": "dense_table.pdf",
+      "expected": "translate",
+      "status": "eligible",
+      "segments": 25,
+      "unextractable_pages": [],
+      "invisible_text_pages": []
+    },
+    {
+      "source": "encrypted.pdf",
+      "expected": "translate",
+      "status": "eligible",
+      "segments": 2,
+      "unextractable_pages": [],
+      "invisible_text_pages": []
+    },
+    {
+      "source": "expansion.pdf",
+      "expected": "translate",
+      "status": "eligible",
+      "segments": 9,
+      "unextractable_pages": [],
+      "invisible_text_pages": []
+    },
+    {
+      "source": "image_only.pdf",
+      "expected": "refuse+OCR",
+      "status": "refuse+OCR",
+      "segments": 0,
+      "unextractable_pages": [
+        0
+      ],
+      "invisible_text_pages": []
+    },
+    {
+      "source": "ja_source.pdf",
+      "expected": "translate",
+      "status": "eligible",
+      "segments": 4,
+      "unextractable_pages": [],
+      "invisible_text_pages": []
+    },
+    {
+      "source": "multicolumn.pdf",
+      "expected": "translate",
+      "status": "eligible",
+      "segments": 7,
+      "unextractable_pages": [],
+      "invisible_text_pages": []
+    },
+    {
+      "source": "nested_xobject.pdf",
+      "expected": "translate",
+      "status": "eligible",
+      "segments": 3,
+      "unextractable_pages": [],
+      "invisible_text_pages": []
+    },
+    {
+      "source": "ocr_layer.pdf",
+      "expected": "refuse+ocr-layer",
+      "status": "refuse+ocr-layer",
+      "segments": 2,
+      "unextractable_pages": [],
+      "invisible_text_pages": [
+        [
+          0,
+          0.0
+        ]
+      ]
+    },
+    {
+      "source": "pale_blank.pdf",
+      "expected": "skip-ink",
+      "status": "empty",
+      "segments": 0,
+      "unextractable_pages": [],
+      "invisible_text_pages": []
+    },
+    {
+      "source": "rotated.pdf",
+      "expected": "translate",
+      "status": "eligible",
+      "segments": 3,
+      "unextractable_pages": [],
+      "invisible_text_pages": []
+    },
+    {
+      "source": "rotated_text.pdf",
+      "expected": "translate",
+      "status": "eligible",
+      "segments": 5,
+      "unextractable_pages": [],
+      "invisible_text_pages": []
+    },
+    {
+      "source": "rtl_source.pdf",
+      "expected": "translate",
+      "status": "eligible",
+      "segments": 5,
+      "unextractable_pages": [],
+      "invisible_text_pages": []
+    },
+    {
+      "source": "xobject_text.pdf",
+      "expected": "translate",
+      "status": "eligible",
+      "segments": 2,
+      "unextractable_pages": [],
+      "invisible_text_pages": []
+    }
+  ],
+  "historical": [
+    {
+      "job": "runs/gpt-6-2026-09-04",
+      "source_sha256": "d1b0120c81d0f46063002fec4ea7ac47a76ff3ad30d101b7eda9314a52dbe1a5",
+      "mapping_sha256": "3276bbc685b5295ed9cc9eefb7e0ae94f4ef484580ed442cb531e2f4b576d553",
+      "note": "Saved final mapping with existing merges; not an early refused draft.",
+      "result": {
+        "status": "built",
+        "scaled": [],
+        "shape": {
+          "pages": 2,
+          "rects": [
+            [
+              0.0,
+              0.0,
+              612.0,
+              792.0
+            ],
+            [
+              0.0,
+              0.0,
+              612.0,
+              792.0
+            ]
+          ],
+          "fields": [
+            [
+              0,
+              "StudentName",
+              7,
+              [
+                220.0,
+                169.0,
+                540.0,
+                183.0
+              ]
+            ],
+            [
+              0,
+              "Teacher",
+              7,
+              [
+                220.0,
+                197.0,
+                540.0,
+                211.0
+              ]
+            ],
+            [
+              0,
+              "Guardian",
+              7,
+              [
+                220.0,
+                225.0,
+                540.0,
+                239.0
+              ]
+            ],
+            [
+              0,
+              "Phone",
+              7,
+              [
+                220.0,
+                253.0,
+                540.0,
+                267.0
+              ]
+            ],
+            [
+              0,
+              "Emergency",
+              7,
+              [
+                220.0,
+                281.0,
+                540.0,
+                295.0
+              ]
+            ],
+            [
+              0,
+              "Allergies",
+              7,
+              [
+                220.0,
+                309.0,
+                540.0,
+                323.0
+              ]
+            ],
+            [
+              0,
+              "Grade",
+              3,
+              [
+                220.0,
+                347.0,
+                340.0,
+                361.0
+              ]
+            ],
+            [
+              0,
+              "Yes",
+              2,
+              [
+                72.0,
+                382.0,
+                84.0,
+                394.0
+              ]
+            ],
+            [
+              0,
+              "Bus",
+              2,
+              [
+                72.0,
+                404.0,
+                84.0,
+                416.0
+              ]
+            ],
+            [
+              0,
+              "Fee",
+              2,
+              [
+                72.0,
+                426.0,
+                84.0,
+                438.0
+              ]
+            ],
+            [
+              0,
+              "Amount",
+              7,
+              [
+                470.0,
+                463.0,
+                540.0,
+                477.0
+              ]
+            ],
+            [
+              0,
+              "SignatureDate",
+              7,
+              [
+                360.0,
+                506.0,
+                540.0,
+                520.0
+              ]
+            ],
+            [
+              0,
+              "PrintButton",
+              1,
+              [
+                470.0,
+                700.0,
+                540.0,
+                722.0
+              ]
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "job": "runs/fresh-canary-2026-09-05/job",
+      "source_sha256": "a27ad9cc35ce826205648a68107cbd07dc26332faf9c76c0a4b899fc4126f77d",
+      "mapping_sha256": "42034757e0f49deaac2cc83827c744309ab3b726c3eff7662b08487e571c7254",
+      "note": "Saved final mapping with existing merges; not an early refused draft.",
+      "result": {
+        "status": "built",
+        "scaled": [],
+        "shape": {
+          "pages": 2,
+          "rects": [
+            [
+              0.0,
+              0.0,
+              612.0,
+              792.0
+            ],
+            [
+              0.0,
+              0.0,
+              612.0,
+              792.0
+            ]
+          ],
+          "fields": [
+            [
+              0,
+              "StudentName",
+              7,
+              [
+                220.0,
+                169.0,
+                540.0,
+                183.0
+              ]
+            ],
+            [
+              0,
+              "Teacher",
+              7,
+              [
+                220.0,
+                197.0,
+                540.0,
+                211.0
+              ]
+            ],
+            [
+              0,
+              "Guardian",
+              7,
+              [
+                220.0,
+                225.0,
+                540.0,
+                239.0
+              ]
+            ],
+            [
+              0,
+              "Phone",
+              7,
+              [
+                220.0,
+                253.0,
+                540.0,
+                267.0
+              ]
+            ],
+            [
+              0,
+              "Emergency",
+              7,
+              [
+                220.0,
+                281.0,
+                540.0,
+                295.0
+              ]
+            ],
+            [
+              0,
+              "Allergies",
+              7,
+              [
+                220.0,
+                309.0,
+                540.0,
+                323.0
+              ]
+            ],
+            [
+              0,
+              "Grade",
+              3,
+              [
+                220.0,
+                347.0,
+                340.0,
+                361.0
+              ]
+            ],
+            [
+              0,
+              "Yes",
+              2,
+              [
+                72.0,
+                382.0,
+                84.0,
+                394.0
+              ]
+            ],
+            [
+              0,
+              "Bus",
+              2,
+              [
+                72.0,
+                404.0,
+                84.0,
+                416.0
+              ]
+            ],
+            [
+              0,
+              "Fee",
+              2,
+              [
+                72.0,
+                426.0,
+                84.0,
+                438.0
+              ]
+            ],
+            [
+              0,
+              "Amount",
+              7,
+              [
+                470.0,
+                463.0,
+                540.0,
+                477.0
+              ]
+            ],
+            [
+              0,
+              "SignatureDate",
+              7,
+              [
+                360.0,
+                506.0,
+                540.0,
+                520.0
+              ]
+            ],
+            [
+              0,
+              "PrintButton",
+              1,
+              [
+                470.0,
+                700.0,
+                540.0,
+                722.0
+              ]
+            ]
+          ]
+        }
+      }
+    }
+  ],
+  "stress": [
+    {
+      "case": {
+        "id": "table-cell",
+        "source": "dense_table.pdf",
+        "page": 0,
+        "text": "row1c0",
+        "payload": "latin",
+        "box": [
+          53,
+          103,
+          167,
+          119
+        ],
+        "reason": "Manually selected interior of row 1, column 0, above the rule at y=120 and left of x=170. No extra room is authorized."
+      },
+      "source_sha256": "2909e7269868155edc5264c6d15a652f248f6efd2fd78c649c666e0f662e2302",
+      "source_shape": {
+        "pages": 1,
+        "rects": [
+          [
+            0.0,
+            0.0,
+            595.0,
+            842.0
+          ]
+        ],
+        "fields": []
+      },
+      "selected": {
+        "id": 5,
+        "page": 0,
+        "bbox": [
+          53.0,
+          103.4,
+          78.78,
+          114.39
+        ],
+        "origin": [
+          53.0,
+          112.0
+        ],
+        "size": 8.0,
+        "color": 0,
+        "bold": false,
+        "italic": false,
+        "dir": [
+          1.0,
+          0.0
+        ],
+        "text": "row1c0",
+        "marker": "",
+        "gap": "",
+        "core": "row1c0",
+        "dots": "",
+        "tail": "",
+        "passthrough": false
+      },
+      "baseline": {
+        "status": "refused",
+        "error": {
+          "schema": 1,
+          "version": "58",
+          "error": "PlacementError",
+          "message": "1 overflow",
+          "console_line": "FAIL: 1 segments scaled below 0.7x (shorten the translation or add allow_scale):\n  p0 0.50x: row1c0",
+          "exit_code": 1,
+          "refusals": {
+            "untranslated": [],
+            "overflow": [
+              {
+                "page": 0,
+                "scale": 0.5,
+                "core": "row1c0"
+              }
+            ],
+            "glyph_misses": [],
+            "rotated_shaped": []
+          },
+          "page": 0,
+          "key": "row1c0",
+          "scale": 0.5
+        },
+        "output_exists": false
+      },
+      "wrapped": {
+        "status": "refused",
+        "error": {
+          "schema": 1,
+          "version": "58",
+          "error": "PlacementError",
+          "message": "1 overflow",
+          "console_line": "FAIL: 1 segments scaled below 0.7x (shorten the translation or add allow_scale):\n  p0 0.51x: row1c0",
+          "exit_code": 1,
+          "refusals": {
+            "untranslated": [],
+            "overflow": [
+              {
+                "page": 0,
+                "scale": 0.5099601593625498,
+                "core": "row1c0"
+              }
+            ],
+            "glyph_misses": [],
+            "rotated_shaped": []
+          },
+          "page": 0,
+          "key": "row1c0",
+          "scale": 0.5099601593625498
+        },
+        "output_exists": false
+      },
+      "observation": null
+    },
+    {
+      "case": {
+        "id": "left-column-tail",
+        "source": "multicolumn.pdf",
+        "page": 0,
+        "text": "and a third left line",
+        "payload": "latin",
+        "box": [
+          50,
+          132,
+          305,
+          215
+        ],
+        "reason": "Last line of left column; blank area below inspected in the source render; right edge stops before the column at x=330."
+      },
+      "source_sha256": "35d7ef5b91092d1e15085701ca4e0e1fb498520cc464e6661177efce1d9c844a",
+      "source_shape": {
+        "pages": 1,
+        "rects": [
+          [
+            0.0,
+            0.0,
+            595.0,
+            842.0
+          ]
+        ],
+        "fields": []
+      },
+      "selected": {
+        "id": 3,
+        "page": 0,
+        "bbox": [
+          50.0,
+          130.32,
+          123.54,
+          142.69
+        ],
+        "origin": [
+          50.0,
+          140.0
+        ],
+        "size": 9.0,
+        "color": 0,
+        "bold": false,
+        "italic": false,
+        "dir": [
+          1.0,
+          0.0
+        ],
+        "text": "and a third left line",
+        "marker": "",
+        "gap": "",
+        "core": "and a third left line",
+        "dots": "",
+        "tail": "",
+        "passthrough": false
+      },
+      "baseline": {
+        "status": "refused",
+        "error": {
+          "schema": 1,
+          "version": "58",
+          "error": "PlacementError",
+          "message": "1 overflow",
+          "console_line": "FAIL: 1 segments scaled below 0.7x (shorten the translation or add allow_scale):\n  p0 0.44x: and a third left line",
+          "exit_code": 1,
+          "refusals": {
+            "untranslated": [],
+            "overflow": [
+              {
+                "page": 0,
+                "scale": 0.4444444444444444,
+                "core": "and a third left line"
+              }
+            ],
+            "glyph_misses": [],
+            "rotated_shaped": []
+          },
+          "page": 0,
+          "key": "and a third left line",
+          "scale": 0.4444444444444444
+        },
+        "output_exists": false
+      },
+      "wrapped": {
+        "status": "built",
+        "scaled": [],
+        "shape": {
+          "pages": 1,
+          "rects": [
+            [
+              0.0,
+              0.0,
+              595.0,
+              842.0
+            ]
+          ],
+          "fields": []
+        }
+      },
+      "observation": {
+        "target_present_on_source_page": true,
+        "target_present_in_box": true,
+        "span_bounds_contained": false,
+        "ink_bounds_pt_at_216dpi": [
+          50.0,
+          132.66666666666666,
+          301.6666666666667,
+          163.0
+        ],
+        "ink_bounds_contained_at_216dpi": true,
+        "ink_tolerance_pt": 0.3333333333333333,
+        "ink_intersects_widget": false,
+        "first_origin_delta_pt": [
+          0.0,
+          -0.167999
+        ],
+        "baseline_preserved_to_0_01pt": false,
+        "output_sizes_pt": [
+          8.8
+        ],
+        "effective_scales": [
+          0.977778
+        ],
+        "line_origins": [
+          [
+            50.0,
+            139.83200073242188
+          ],
+          [
+            50.0,
+            150.21600341796875
+          ],
+          [
+            50.0,
+            160.60000610351562
+          ]
+        ],
+        "fonts": [
+          "NotoSans-Regular"
+        ],
+        "embedded_font_records": [
+          [
+            14,
+            "ttf",
+            "Type0",
+            "Noto Sans Regular"
+          ],
+          [
+            14,
+            "ttf",
+            "Type0",
+            "Noto Sans Regular"
+          ],
+          [
+            19,
+            "ttf",
+            "Type0",
+            "Noto Sans Regular"
+          ]
+        ],
+        "embedded_font_sha256": {
+          "14": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823",
+          "19": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823"
+        },
+        "expected_font_sha256": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823",
+        "font_attested": true,
+        "colors": [
+          0
+        ],
+        "source_color": 0,
+        "color_preserved": true,
+        "kinsoku": {
+          "status": null,
+          "lines": [],
+          "findings": 0
+        },
+        "verify_exit_code": 1,
+        "verify_nonpass": [
+          {
+            "name": "leak-running",
+            "status": "FAIL",
+            "message": "3",
+            "findings": [
+              {
+                "page": 1,
+                "where": "run",
+                "text": "COLUMN NOTICE Left column first line here continuing"
+              },
+              {
+                "page": 1,
+                "where": "run",
+                "text": "left column text Right column first line here continuing"
+              },
+              {
+                "page": 1,
+                "where": "run",
+                "text": "third right line"
+              }
+            ]
+          },
+          {
+            "name": "leak-isolated",
+            "status": "REVIEW",
+            "message": "2",
+            "findings": [
+              {
+                "page": 1,
+                "where": "token",
+                "text": "column"
+              },
+              {
+                "page": 1,
+                "where": "token",
+                "text": "right"
+              }
+            ]
+          }
+        ],
+        "shape_preserved": true,
+        "actual_shrink_unreported": true
+      }
+    },
+    {
+      "case": {
+        "id": "right-column-tail",
+        "source": "multicolumn.pdf",
+        "page": 0,
+        "text": "and a third right line",
+        "payload": "latin",
+        "box": [
+          330,
+          132,
+          550,
+          215
+        ],
+        "reason": "Last line of right column; blank area below inspected; box stays on page."
+      },
+      "source_sha256": "35d7ef5b91092d1e15085701ca4e0e1fb498520cc464e6661177efce1d9c844a",
+      "source_shape": {
+        "pages": 1,
+        "rects": [
+          [
+            0.0,
+            0.0,
+            595.0,
+            842.0
+          ]
+        ],
+        "fields": []
+      },
+      "selected": {
+        "id": 6,
+        "page": 0,
+        "bbox": [
+          330.0,
+          130.32,
+          409.04,
+          142.69
+        ],
+        "origin": [
+          330.0,
+          140.0
+        ],
+        "size": 9.0,
+        "color": 0,
+        "bold": false,
+        "italic": false,
+        "dir": [
+          1.0,
+          0.0
+        ],
+        "text": "and a third right line",
+        "marker": "",
+        "gap": "",
+        "core": "and a third right line",
+        "dots": "",
+        "tail": "",
+        "passthrough": false
+      },
+      "baseline": {
+        "status": "refused",
+        "error": {
+          "schema": 1,
+          "version": "58",
+          "error": "PlacementError",
+          "message": "1 overflow",
+          "console_line": "FAIL: 1 segments scaled below 0.7x (shorten the translation or add allow_scale):\n  p0 0.44x: and a third right line",
+          "exit_code": 1,
+          "refusals": {
+            "untranslated": [],
+            "overflow": [
+              {
+                "page": 0,
+                "scale": 0.4444444444444444,
+                "core": "and a third right line"
+              }
+            ],
+            "glyph_misses": [],
+            "rotated_shaped": []
+          },
+          "page": 0,
+          "key": "and a third right line",
+          "scale": 0.4444444444444444
+        },
+        "output_exists": false
+      },
+      "wrapped": {
+        "status": "built",
+        "scaled": [],
+        "shape": {
+          "pages": 1,
+          "rects": [
+            [
+              0.0,
+              0.0,
+              595.0,
+              842.0
+            ]
+          ],
+          "fields": []
+        }
+      },
+      "observation": {
+        "target_present_on_source_page": true,
+        "target_present_in_box": true,
+        "span_bounds_contained": false,
+        "ink_bounds_pt_at_216dpi": [
+          330.0,
+          132.66666666666666,
+          543.0,
+          171.33333333333334
+        ],
+        "ink_bounds_contained_at_216dpi": true,
+        "ink_tolerance_pt": 0.3333333333333333,
+        "ink_intersects_widget": false,
+        "first_origin_delta_pt": [
+          0.0,
+          -0.167999
+        ],
+        "baseline_preserved_to_0_01pt": false,
+        "output_sizes_pt": [
+          8.8
+        ],
+        "effective_scales": [
+          0.977778
+        ],
+        "line_origins": [
+          [
+            330.0,
+            139.83200073242188
+          ],
+          [
+            330.0,
+            150.21600341796875
+          ],
+          [
+            330.0,
+            160.60000610351562
+          ],
+          [
+            330.0,
+            170.9840087890625
+          ]
+        ],
+        "fonts": [
+          "NotoSans-Regular"
+        ],
+        "embedded_font_records": [
+          [
+            14,
+            "ttf",
+            "Type0",
+            "Noto Sans Regular"
+          ],
+          [
+            14,
+            "ttf",
+            "Type0",
+            "Noto Sans Regular"
+          ],
+          [
+            19,
+            "ttf",
+            "Type0",
+            "Noto Sans Regular"
+          ]
+        ],
+        "embedded_font_sha256": {
+          "14": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823",
+          "19": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823"
+        },
+        "expected_font_sha256": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823",
+        "font_attested": true,
+        "colors": [
+          0
+        ],
+        "source_color": 0,
+        "color_preserved": true,
+        "kinsoku": {
+          "status": null,
+          "lines": [],
+          "findings": 0
+        },
+        "verify_exit_code": 1,
+        "verify_nonpass": [
+          {
+            "name": "leak-running",
+            "status": "FAIL",
+            "message": "3",
+            "findings": [
+              {
+                "page": 1,
+                "where": "run",
+                "text": "COLUMN NOTICE Left column first line here continuing"
+              },
+              {
+                "page": 1,
+                "where": "run",
+                "text": "left column text"
+              },
+              {
+                "page": 1,
+                "where": "run",
+                "text": "third left line Right column first line here continuing"
+              }
+            ]
+          },
+          {
+            "name": "leak-isolated",
+            "status": "REVIEW",
+            "message": "2",
+            "findings": [
+              {
+                "page": 1,
+                "where": "token",
+                "text": "column"
+              },
+              {
+                "page": 1,
+                "where": "token",
+                "text": "right"
+              }
+            ]
+          }
+        ],
+        "shape_preserved": true,
+        "actual_shrink_unreported": true
+      }
+    },
+    {
+      "case": {
+        "id": "banner",
+        "source": "colored.pdf",
+        "page": 0,
+        "text": "WHITE ON DARK BANNER",
+        "payload": "latin",
+        "box": [
+          50,
+          42,
+          550,
+          108
+        ],
+        "reason": "White text must remain inside the existing dark banner ending at y=110."
+      },
+      "source_sha256": "64804ca31eddeabf49b6c171521a49967abd417380ceedddcf9895c52d57fa68",
+      "source_shape": {
+        "pages": 1,
+        "rects": [
+          [
+            0.0,
+            0.0,
+            595.0,
+            842.0
+          ]
+        ],
+        "fields": []
+      },
+      "selected": {
+        "id": 0,
+        "page": 0,
+        "bbox": [
+          50.0,
+          38.6,
+          304.42,
+          66.14
+        ],
+        "origin": [
+          50.0,
+          60.0
+        ],
+        "size": 20.0,
+        "color": 16777215,
+        "bold": true,
+        "italic": false,
+        "dir": [
+          1.0,
+          0.0
+        ],
+        "text": "WHITE ON DARK BANNER",
+        "marker": "",
+        "gap": "",
+        "core": "WHITE ON DARK BANNER",
+        "dots": "",
+        "tail": "",
+        "passthrough": false
+      },
+      "baseline": {
+        "status": "refused",
+        "error": {
+          "schema": 1,
+          "version": "58",
+          "error": "PlacementError",
+          "message": "1 overflow",
+          "console_line": "FAIL: 1 segments scaled below 0.7x (shorten the translation or add allow_scale):\n  p0 0.33x: WHITE ON DARK BANNER",
+          "exit_code": 1,
+          "refusals": {
+            "untranslated": [],
+            "overflow": [
+              {
+                "page": 0,
+                "scale": 0.3290870505839144,
+                "core": "WHITE ON DARK BANNER"
+              }
+            ],
+            "glyph_misses": [],
+            "rotated_shaped": []
+          },
+          "page": 0,
+          "key": "WHITE ON DARK BANNER",
+          "scale": 0.3290870505839144
+        },
+        "output_exists": false
+      },
+      "wrapped": {
+        "status": "built",
+        "scaled": [
+          {
+            "page": 0,
+            "key": "WHITE ON DARK BANNER",
+            "ratio": 0.8897
+          }
+        ],
+        "shape": {
+          "pages": 1,
+          "rects": [
+            [
+              0.0,
+              0.0,
+              595.0,
+              842.0
+            ]
+          ],
+          "fields": []
+        }
+      },
+      "observation": {
+        "target_present_on_source_page": true,
+        "target_present_in_box": true,
+        "span_bounds_contained": false,
+        "ink_bounds_pt_at_216dpi": [
+          50.0,
+          44.333333333333336,
+          548.3333333333334,
+          103.0
+        ],
+        "ink_bounds_contained_at_216dpi": true,
+        "ink_tolerance_pt": 0.3333333333333333,
+        "ink_intersects_widget": false,
+        "first_origin_delta_pt": [
+          -1.9e-05,
+          -2.480686
+        ],
+        "baseline_preserved_to_0_01pt": false,
+        "output_sizes_pt": [
+          17.437336
+        ],
+        "effective_scales": [
+          0.871867
+        ],
+        "line_origins": [
+          [
+            49.99998092651367,
+            57.51931381225586
+          ],
+          [
+            49.99998092651367,
+            78.09536743164062
+          ],
+          [
+            49.99998092651367,
+            98.67143249511719
+          ]
+        ],
+        "fonts": [
+          "NotoSans-Regular"
+        ],
+        "embedded_font_records": [
+          [
+            14,
+            "ttf",
+            "Type0",
+            "Noto Sans Regular"
+          ],
+          [
+            14,
+            "ttf",
+            "Type0",
+            "Noto Sans Regular"
+          ],
+          [
+            19,
+            "ttf",
+            "Type0",
+            "Noto Sans Regular"
+          ]
+        ],
+        "embedded_font_sha256": {
+          "14": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823",
+          "19": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823"
+        },
+        "expected_font_sha256": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823",
+        "font_attested": true,
+        "colors": [
+          16777215
+        ],
+        "source_color": 16777215,
+        "color_preserved": true,
+        "kinsoku": {
+          "status": null,
+          "lines": [],
+          "findings": 0
+        },
+        "verify_exit_code": 1,
+        "verify_nonpass": [
+          {
+            "name": "leak-running",
+            "status": "FAIL",
+            "message": "1",
+            "findings": [
+              {
+                "page": 1,
+                "where": "run",
+                "text": "warning text Blue hyperlink style"
+              }
+            ]
+          },
+          {
+            "name": "scaled-runs",
+            "status": "REVIEW",
+            "message": "1",
+            "findings": [
+              {
+                "page": 1,
+                "where": "0.89x",
+                "text": "WHITE ON DARK BANNER"
+              }
+            ]
+          }
+        ],
+        "shape_preserved": true,
+        "actual_shrink_unreported": false
+      }
+    },
+    {
+      "case": {
+        "id": "blue-tail",
+        "source": "colored.pdf",
+        "page": 0,
+        "text": "Blue hyperlink style",
+        "payload": "latin",
+        "box": [
+          50,
+          165,
+          350,
+          265
+        ],
+        "reason": "Last colored line; blank area below inspected. Source blue must survive."
+      },
+      "source_sha256": "64804ca31eddeabf49b6c171521a49967abd417380ceedddcf9895c52d57fa68",
+      "source_shape": {
+        "pages": 1,
+        "rects": [
+          [
+            0.0,
+            0.0,
+            595.0,
+            842.0
+          ]
+        ],
+        "fields": []
+      },
+      "selected": {
+        "id": 2,
+        "page": 0,
+        "bbox": [
+          50.0,
+          164.25,
+          136.14,
+          177.99
+        ],
+        "origin": [
+          50.0,
+          175.0
+        ],
+        "size": 10.0,
+        "color": 204,
+        "bold": false,
+        "italic": false,
+        "dir": [
+          1.0,
+          0.0
+        ],
+        "text": "Blue hyperlink style",
+        "marker": "",
+        "gap": "",
+        "core": "Blue hyperlink style",
+        "dots": "",
+        "tail": "",
+        "passthrough": false
+      },
+      "baseline": {
+        "status": "refused",
+        "error": {
+          "schema": 1,
+          "version": "58",
+          "error": "PlacementError",
+          "message": "1 overflow",
+          "console_line": "FAIL: 1 segments scaled below 0.7x (shorten the translation or add allow_scale):\n  p0 0.66x: Blue hyperlink style",
+          "exit_code": 1,
+          "refusals": {
+            "untranslated": [],
+            "overflow": [
+              {
+                "page": 0,
+                "scale": 0.6581741011678288,
+                "core": "Blue hyperlink style"
+              }
+            ],
+            "glyph_misses": [],
+            "rotated_shaped": []
+          },
+          "page": 0,
+          "key": "Blue hyperlink style",
+          "scale": 0.6581741011678288
+        },
+        "output_exists": false
+      },
+      "wrapped": {
+        "status": "built",
+        "scaled": [],
+        "shape": {
+          "pages": 1,
+          "rects": [
+            [
+              0.0,
+              0.0,
+              595.0,
+              842.0
+            ]
+          ],
+          "fields": []
+        }
+      },
+      "observation": {
+        "target_present_on_source_page": true,
+        "target_present_in_box": true,
+        "span_bounds_contained": false,
+        "ink_bounds_pt_at_216dpi": [
+          50.0,
+          166.0,
+          330.3333333333333,
+          199.66666666666666
+        ],
+        "ink_bounds_contained_at_216dpi": true,
+        "ink_tolerance_pt": 0.3333333333333333,
+        "ink_intersects_widget": false,
+        "first_origin_delta_pt": [
+          0.0,
+          -1.278
+        ],
+        "baseline_preserved_to_0_01pt": false,
+        "output_sizes_pt": [
+          9.8
+        ],
+        "effective_scales": [
+          0.98
+        ],
+        "line_origins": [
+          [
+            50.0,
+            173.7220001220703
+          ],
+          [
+            50.0,
+            185.28599548339844
+          ],
+          [
+            50.0,
+            196.85000610351562
+          ]
+        ],
+        "fonts": [
+          "NotoSans-Regular"
+        ],
+        "embedded_font_records": [
+          [
+            14,
+            "ttf",
+            "Type0",
+            "Noto Sans Regular"
+          ],
+          [
+            14,
+            "ttf",
+            "Type0",
+            "Noto Sans Regular"
+          ],
+          [
+            19,
+            "ttf",
+            "Type0",
+            "Noto Sans Regular"
+          ]
+        ],
+        "embedded_font_sha256": {
+          "14": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823",
+          "19": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823"
+        },
+        "expected_font_sha256": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823",
+        "font_attested": true,
+        "colors": [
+          204
+        ],
+        "source_color": 204,
+        "color_preserved": true,
+        "kinsoku": {
+          "status": null,
+          "lines": [],
+          "findings": 0
+        },
+        "verify_exit_code": 0,
+        "verify_nonpass": [
+          {
+            "name": "leak-isolated",
+            "status": "REVIEW",
+            "message": "5",
+            "findings": [
+              {
+                "page": 1,
+                "where": "token",
+                "text": "BANNER"
+              },
+              {
+                "page": 1,
+                "where": "token",
+                "text": "DARK"
+              },
+              {
+                "page": 1,
+                "where": "token",
+                "text": "WHITE"
+              },
+              {
+                "page": 1,
+                "where": "token",
+                "text": "text"
+              },
+              {
+                "page": 1,
+                "where": "token",
+                "text": "warning"
+              }
+            ]
+          }
+        ],
+        "shape_preserved": true,
+        "actual_shrink_unreported": true
+      }
+    },
+    {
+      "case": {
+        "id": "cjk-tail",
+        "source": "ja_source.pdf",
+        "page": 0,
+        "text": "署名",
+        "payload": "cjk",
+        "box": [
+          60,
+          160,
+          500,
+          260
+        ],
+        "reason": "Last CJK line; blank area below inspected. Diagnostic text, not a translation of signature."
+      },
+      "source_sha256": "acb87c30c14e9bbdc012464af186698bbc2fdd6ebc743879a8a8aa08e1a58b5c",
+      "source_shape": {
+        "pages": 1,
+        "rects": [
+          [
+            0.0,
+            0.0,
+            595.0,
+            842.0
+          ]
+        ],
+        "fields": []
+      },
+      "selected": {
+        "id": 3,
+        "page": 0,
+        "bbox": [
+          60.0,
+          158.54,
+          82.0,
+          172.91
+        ],
+        "origin": [
+          60.0,
+          170.0
+        ],
+        "size": 11.0,
+        "color": 0,
+        "bold": false,
+        "italic": false,
+        "dir": [
+          1.0,
+          0.0
+        ],
+        "text": "署名",
+        "marker": "",
+        "gap": "",
+        "core": "署名",
+        "dots": "",
+        "tail": "",
+        "passthrough": false
+      },
+      "baseline": {
+        "status": "refused",
+        "error": {
+          "schema": 1,
+          "version": "58",
+          "error": "PlacementError",
+          "message": "1 overflow",
+          "console_line": "FAIL: 1 segments scaled below 0.7x (shorten the translation or add allow_scale):\n  p0 0.56x: 署名",
+          "exit_code": 1,
+          "refusals": {
+            "untranslated": [],
+            "overflow": [
+              {
+                "page": 0,
+                "scale": 0.5559866962305987,
+                "core": "署名"
+              }
+            ],
+            "glyph_misses": [],
+            "rotated_shaped": []
+          },
+          "page": 0,
+          "key": "署名",
+          "scale": 0.5559866962305987
+        },
+        "output_exists": false
+      },
+      "wrapped": {
+        "status": "built",
+        "scaled": [],
+        "shape": {
+          "pages": 1,
+          "rects": [
+            [
+              0.0,
+              0.0,
+              595.0,
+              842.0
+            ]
+          ],
+          "fields": []
+        }
+      },
+      "observation": {
+        "target_present_on_source_page": true,
+        "target_present_in_box": true,
+        "span_bounds_contained": false,
+        "ink_bounds_pt_at_216dpi": [
+          61.0,
+          160.33333333333334,
+          491.6666666666667,
+          195.66666666666666
+        ],
+        "ink_bounds_contained_at_216dpi": true,
+        "ink_tolerance_pt": 0.3333333333333333,
+        "ink_intersects_widget": false,
+        "first_origin_delta_pt": [
+          0.0,
+          -0.388
+        ],
+        "baseline_preserved_to_0_01pt": false,
+        "output_sizes_pt": [
+          10.8
+        ],
+        "effective_scales": [
+          0.981818
+        ],
+        "line_origins": [
+          [
+            60.0,
+            169.61199951171875
+          ],
+          [
+            60.0,
+            182.3560028076172
+          ],
+          [
+            60.0,
+            195.10000610351562
+          ]
+        ],
+        "fonts": [
+          "NotoSansJP-Thin"
+        ],
+        "embedded_font_records": [
+          [
+            10,
+            "ttf",
+            "Type0",
+            "Noto Sans JP Thin"
+          ],
+          [
+            15,
+            "ttf",
+            "Type0",
+            "Noto Sans JP Thin"
+          ]
+        ],
+        "embedded_font_sha256": {
+          "10": "6bd6db3e82e1821c4bc51af0f245a62dc442e74ba5c0917fa1d8f987ded45afb",
+          "15": "6bd6db3e82e1821c4bc51af0f245a62dc442e74ba5c0917fa1d8f987ded45afb"
+        },
+        "expected_font_sha256": "6bd6db3e82e1821c4bc51af0f245a62dc442e74ba5c0917fa1d8f987ded45afb",
+        "font_attested": true,
+        "colors": [
+          0
+        ],
+        "source_color": 0,
+        "color_preserved": true,
+        "kinsoku": {
+          "status": "PASS",
+          "lines": [
+            "PASS kinsoku: 6 CJK line(s) break within the rules"
+          ],
+          "findings": 0
+        },
+        "verify_exit_code": 1,
+        "verify_nonpass": [
+          {
+            "name": "ink-ratio",
+            "status": "FAIL",
+            "message": "",
+            "findings": [
+              {
+                "page": 1,
+                "where": "page",
+                "text": "FAIL ink ratio 3.31"
+              }
+            ]
+          },
+          {
+            "name": "leak-scan",
+            "status": "REVIEW",
+            "message": "source and output share the spaceless CJK family",
+            "findings": [
+              {
+                "page": null,
+                "where": "script",
+                "text": "CJK"
+              }
+            ]
+          }
+        ],
+        "shape_preserved": true,
+        "actual_shrink_unreported": true
+      }
+    },
+    {
+      "case": {
+        "id": "two-page-room",
+        "source": "@constructed-room",
+        "page": 1,
+        "text": "Selected note",
+        "payload": "latin",
+        "box": [
+          40,
+          60,
+          255,
+          200
+        ],
+        "reason": "Author-created second page with a fixed roomy rectangle; page 1 and the neighboring widget must survive."
+      },
+      "source_sha256": "1bbe4f335c06a5f933b12911689a338c7346c8a9405be888b89e306a082b18dd",
+      "source_shape": {
+        "pages": 2,
+        "rects": [
+          [
+            0.0,
+            0.0,
+            300.0,
+            300.0
+          ],
+          [
+            0.0,
+            0.0,
+            300.0,
+            300.0
+          ]
+        ],
+        "fields": [
+          [
+            1,
+            "neighbor",
+            7,
+            [
+              140.0,
+              221.0,
+              270.0,
+              241.0
+            ]
+          ]
+        ]
+      },
+      "selected": {
+        "id": 1,
+        "page": 1,
+        "bbox": [
+          40.0,
+          57.1,
+          113.38,
+          73.59
+        ],
+        "origin": [
+          40.0,
+          70.0
+        ],
+        "size": 12.0,
+        "color": 0,
+        "bold": false,
+        "italic": false,
+        "dir": [
+          1.0,
+          0.0
+        ],
+        "text": "Selected note",
+        "marker": "",
+        "gap": "",
+        "core": "Selected note",
+        "dots": "",
+        "tail": "",
+        "passthrough": false
+      },
+      "baseline": {
+        "status": "refused",
+        "error": {
+          "schema": 1,
+          "version": "58",
+          "error": "PlacementError",
+          "message": "1 overflow",
+          "console_line": "FAIL: 1 segments scaled below 0.7x (shorten the translation or add allow_scale):\n  p1 0.33x: Selected note",
+          "exit_code": 1,
+          "refusals": {
+            "untranslated": [],
+            "overflow": [
+              {
+                "page": 1,
+                "scale": 0.3333333333333333,
+                "core": "Selected note"
+              }
+            ],
+            "glyph_misses": [],
+            "rotated_shaped": []
+          },
+          "page": 1,
+          "key": "Selected note",
+          "scale": 0.3333333333333333
+        },
+        "output_exists": false
+      },
+      "wrapped": {
+        "status": "built",
+        "scaled": [],
+        "shape": {
+          "pages": 2,
+          "rects": [
+            [
+              0.0,
+              0.0,
+              300.0,
+              300.0
+            ],
+            [
+              0.0,
+              0.0,
+              300.0,
+              300.0
+            ]
+          ],
+          "fields": [
+            [
+              1,
+              "neighbor",
+              7,
+              [
+                140.0,
+                221.0,
+                270.0,
+                241.0
+              ]
+            ]
+          ]
+        }
+      },
+      "observation": {
+        "target_present_on_source_page": true,
+        "target_present_in_box": true,
+        "span_bounds_contained": false,
+        "ink_bounds_pt_at_216dpi": [
+          40.0,
+          61.666666666666664,
+          245.0,
+          129.33333333333334
+        ],
+        "ink_bounds_contained_at_216dpi": true,
+        "ink_tolerance_pt": 0.3333333333333333,
+        "ink_intersects_widget": false,
+        "first_origin_delta_pt": [
+          0.0,
+          0.501999
+        ],
+        "baseline_preserved_to_0_01pt": false,
+        "output_sizes_pt": [
+          11.8
+        ],
+        "effective_scales": [
+          0.983333
+        ],
+        "line_origins": [
+          [
+            40.0,
+            70.50199890136719
+          ],
+          [
+            40.0,
+            84.4260025024414
+          ],
+          [
+            40.0,
+            98.35000610351562
+          ],
+          [
+            40.0,
+            112.27400207519531
+          ],
+          [
+            40.0,
+            126.19800567626953
+          ]
+        ],
+        "fonts": [
+          "NotoSans-Regular"
+        ],
+        "embedded_font_records": [
+          [
+            15,
+            "ttf",
+            "Type0",
+            "Noto Sans Regular"
+          ]
+        ],
+        "embedded_font_sha256": {
+          "15": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823"
+        },
+        "expected_font_sha256": "478c558ea716033cd60c03438f628dfa75694dcf6b5f6d505a2f05fd2b4f3823",
+        "font_attested": true,
+        "colors": [
+          0
+        ],
+        "source_color": 0,
+        "color_preserved": true,
+        "kinsoku": {
+          "status": null,
+          "lines": [],
+          "findings": 0
+        },
+        "verify_exit_code": 1,
+        "verify_nonpass": [
+          {
+            "name": "ink-ratio",
+            "status": "FAIL",
+            "message": "",
+            "findings": [
+              {
+                "page": 1,
+                "where": "page",
+                "text": "PASS ink ratio 0.88"
+              },
+              {
+                "page": 2,
+                "where": "page",
+                "text": "FAIL ink ratio 9.77"
+              }
+            ]
+          },
+          {
+            "name": "leak-running",
+            "status": "FAIL",
+            "message": "1",
+            "findings": [
+              {
+                "page": 1,
+                "where": "run",
+                "text": "First page unchanged"
+              }
+            ]
+          }
+        ],
+        "shape_preserved": true,
+        "actual_shrink_unreported": true
+      }
+    },
+    {
+      "case": {
+        "id": "last-page-full",
+        "source": "@constructed-full",
+        "page": 1,
+        "text": "Selected note",
+        "payload": "latin",
+        "box": [
+          40,
+          250,
+          138,
+          289
+        ],
+        "reason": "Author-created last-page footer with no continuation page or larger box allowed."
+      },
+      "source_sha256": "f8d1a869b89b2cb9814079cb75f581c7593e25f74551b81fa9e619c01ed60cc9",
+      "source_shape": {
+        "pages": 2,
+        "rects": [
+          [
+            0.0,
+            0.0,
+            300.0,
+            300.0
+          ],
+          [
+            0.0,
+            0.0,
+            300.0,
+            300.0
+          ]
+        ],
+        "fields": [
+          [
+            1,
+            "neighbor",
+            7,
+            [
+              140.0,
+              246.0,
+              270.0,
+              266.0
+            ]
+          ]
+        ]
+      },
+      "selected": {
+        "id": 1,
+        "page": 1,
+        "bbox": [
+          40.0,
+          247.1,
+          113.38,
+          263.59
+        ],
+        "origin": [
+          40.0,
+          260.0
+        ],
+        "size": 12.0,
+        "color": 0,
+        "bold": false,
+        "italic": false,
+        "dir": [
+          1.0,
+          0.0
+        ],
+        "text": "Selected note",
+        "marker": "",
+        "gap": "",
+        "core": "Selected note",
+        "dots": "",
+        "tail": "",
+        "passthrough": false
+      },
+      "baseline": {
+        "status": "refused",
+        "error": {
+          "schema": 1,
+          "version": "58",
+          "error": "PlacementError",
+          "message": "1 overflow",
+          "console_line": "FAIL: 1 segments scaled below 0.7x (shorten the translation or add allow_scale):\n  p1 0.33x: Selected note",
+          "exit_code": 1,
+          "refusals": {
+            "untranslated": [],
+            "overflow": [
+              {
+                "page": 1,
+                "scale": 0.3333333333333333,
+                "core": "Selected note"
+              }
+            ],
+            "glyph_misses": [],
+            "rotated_shaped": []
+          },
+          "page": 1,
+          "key": "Selected note",
+          "scale": 0.3333333333333333
+        },
+        "output_exists": false
+      },
+      "wrapped": {
+        "status": "refused",
+        "error": {
+          "schema": 1,
+          "version": "58",
+          "error": "PlacementError",
+          "message": "1 overflow",
+          "console_line": "FAIL: 1 segments scaled below 0.7x (shorten the translation or add allow_scale):\n  p1 0.52x: Selected note",
+          "exit_code": 1,
+          "refusals": {
+            "untranslated": [],
+            "overflow": [
+              {
+                "page": 1,
+                "scale": 0.5169106511862696,
+                "core": "Selected note"
+              }
+            ],
+            "glyph_misses": [],
+            "rotated_shaped": []
+          },
+          "page": 1,
+          "key": "Selected note",
+          "scale": 0.5169106511862696
+        },
+        "output_exists": false
+      },
+      "observation": null
+    }
+  ],
+  "duplicate_control": {
+    "intent": "Wrap only the second equal label; keep the first short.",
+    "result": {
+      "status": "built",
+      "scaled": [],
+      "shape": {
+        "pages": 1,
+        "rects": [
+          [
+            0.0,
+            0.0,
+            300.0,
+            300.0
+          ]
+        ],
+        "fields": []
+      }
+    },
+    "observation": {
+      "short_label_origins": [
+        [
+          40.0,
+          190.0
+        ]
+      ],
+      "expected_untouched_origin": [
+        40,
+        70
+      ],
+      "text": "Short label\nVeuillez lire attentivement toutes les\ninformations complémentaires avant de\nremplir et de signer ce document, puis\nconserver une copie complète pour vos\ndossiers.\n"
+    }
+  },
+  "summary": {
+    "stress_cases": 8,
+    "baseline_refused": 8,
+    "box_builds": 6,
+    "bounded_text_recoveries": 6,
+    "also_preserve_baseline_to_0_01pt": 0,
+    "warning": "Stress sample only. These counts do not estimate production recovery."
+  }
+}

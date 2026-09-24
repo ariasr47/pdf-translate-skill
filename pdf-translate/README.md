@@ -39,9 +39,16 @@ old scripts. The frontmatter also carries `license: MIT` and a
 
 ## Install
 
+From this directory, using the Python environment that will run the skill:
+
 ```bash
-pip install -r requirements.txt      # pymupdf, pikepdf, fonttools
+python3 -m pip install -r requirements.txt
 ```
+
+[requirements.txt](requirements.txt) declares the PyMuPDF, pikepdf and fontTools
+bounds. These are dependency constraints, not proof that every permitted version
+combination has been tested. Keep installation and execution on the same Python
+interpreter (use your environment's Python path on Windows).
 
 `pyftsubset` ships with fonttools. `prepare_font.py` finds it on PATH, in the
 interpreter's `Scripts` directory, or as `python -m fontTools.subset`.
@@ -84,14 +91,20 @@ change it. Font paths inside `translations.json` resolve beside that file
 (absolute paths also work). Older caller-relative font paths still work
 when no mapping-relative file exists, with a compatibility note.
 
-From `$SK`:
+From `$SK` in a repository checkout:
 
 ```bash
-python3 tools/fetch_test_fonts.py     # optional; stops the shaping tests skipping
-python3 -m unittest tests.test_pipeline tests.test_corpus_verdicts -v
+python3 tools/fetch_test_fonts.py
+python3 tools/fetch_test_fonts.py --check
+python3 -m unittest discover -s tests -t . -v
 ```
 
-drives the shipped stages on tiny constructed PDFs (fillable and non-form).
+Discovery selects all library test modules, including the API, verifier, review
+and script-specific tests, using constructed fillable and non-form PDFs. The
+fetcher configures **20 Noto font files**; `--check` checks their presence only.
+Missing fonts can cause skips, so inspect the test summary. These contributor
+commands require the checkout's tests and fixtures; they do not promise a
+complete test environment in a wheel or source distribution.
 
 Then **render every page next to the original and look at them.** The gates
 catch structural failures; roughly half of all real defects are visible only
@@ -104,7 +117,7 @@ right.
 SKILL.md                        the workflow, start here
 README.md                       this file
 LICENSE                         MIT
-requirements.txt                tested version ranges (upper bounds are deliberate)
+requirements.txt                declared dependency bounds (upper bounds are deliberate)
 references/
   failure-modes.md              14 silent failures and their fixes — read before you start
   translations-format.md        the translations.json contract

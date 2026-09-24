@@ -1,0 +1,543 @@
+{
+  "version": "60",
+  "pymupdf": "1.28.2",
+  "examples_per_case": 9,
+  "cases": 3,
+  "results": [
+    {
+      "case": "empty-target",
+      "document": "README.md",
+      "command": [
+        "<skill>\\scripts\\verify.py",
+        "original.pdf",
+        "out.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json",
+        "--report",
+        "verify_report.json"
+      ],
+      "exit_code": 1,
+      "failures": [
+        "empty-targets"
+      ],
+      "output": "out.pdf"
+    },
+    {
+      "case": "empty-target",
+      "document": "README.md",
+      "command": [
+        "<skill>\\scripts\\verify.py",
+        "original.pdf",
+        "final.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json",
+        "--report",
+        "final_verify_report.json"
+      ],
+      "exit_code": 1,
+      "failures": [
+        "empty-targets"
+      ],
+      "output": "final.pdf"
+    },
+    {
+      "case": "empty-target",
+      "document": "README.md",
+      "command": [
+        "<skill>\\scripts\\pipeline.py",
+        "rebuild",
+        "--work",
+        ".",
+        "original.pdf",
+        "out.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json"
+      ],
+      "exit_code": 1,
+      "failures": [
+        "empty-targets"
+      ],
+      "output": "out.pdf"
+    },
+    {
+      "case": "empty-target",
+      "document": "SKILL.md",
+      "command": [
+        "<skill>\\scripts\\pipeline.py",
+        "rebuild",
+        "--work",
+        ".",
+        "original.pdf",
+        "out.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json"
+      ],
+      "exit_code": 1,
+      "failures": [
+        "empty-targets"
+      ],
+      "output": "out.pdf"
+    },
+    {
+      "case": "empty-target",
+      "document": "SKILL.md",
+      "command": [
+        "<skill>\\scripts\\verify.py",
+        "original.pdf",
+        "out.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json",
+        "--report",
+        "verify_report.json"
+      ],
+      "exit_code": 1,
+      "failures": [
+        "empty-targets"
+      ],
+      "output": "out.pdf"
+    },
+    {
+      "case": "empty-target",
+      "document": "SKILL.md",
+      "command": [
+        "<skill>\\scripts\\verify.py",
+        "original.pdf",
+        "final.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json",
+        "--report",
+        "final_verify_report.json"
+      ],
+      "exit_code": 1,
+      "failures": [
+        "empty-targets"
+      ],
+      "output": "final.pdf"
+    },
+    {
+      "case": "empty-target",
+      "document": "references/gates.md",
+      "command": [
+        "<skill>\\scripts\\verify.py",
+        "original.pdf",
+        "out.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json",
+        "--report",
+        "verify_report.json"
+      ],
+      "exit_code": 1,
+      "failures": [
+        "empty-targets"
+      ],
+      "output": "out.pdf"
+    },
+    {
+      "case": "empty-target",
+      "document": "references/consumer-guide.md",
+      "exit_code": 1,
+      "failures": [
+        "empty-targets"
+      ],
+      "output": "out.pdf"
+    },
+    {
+      "case": "empty-target",
+      "document": "references/consumer-guide.md",
+      "exit_code": 1,
+      "failures": [
+        "empty-targets"
+      ],
+      "output": "final.pdf"
+    },
+    {
+      "case": "complete-targets",
+      "document": "README.md",
+      "command": [
+        "<skill>\\scripts\\verify.py",
+        "original.pdf",
+        "out.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json",
+        "--report",
+        "verify_report.json"
+      ],
+      "exit_code": 0,
+      "failures": [],
+      "output": "out.pdf"
+    },
+    {
+      "case": "complete-targets",
+      "document": "README.md",
+      "command": [
+        "<skill>\\scripts\\verify.py",
+        "original.pdf",
+        "final.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json",
+        "--report",
+        "final_verify_report.json"
+      ],
+      "exit_code": 0,
+      "failures": [],
+      "output": "final.pdf"
+    },
+    {
+      "case": "complete-targets",
+      "document": "README.md",
+      "command": [
+        "<skill>\\scripts\\pipeline.py",
+        "rebuild",
+        "--work",
+        ".",
+        "original.pdf",
+        "out.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json"
+      ],
+      "exit_code": 0,
+      "failures": [],
+      "output": "out.pdf"
+    },
+    {
+      "case": "complete-targets",
+      "document": "SKILL.md",
+      "command": [
+        "<skill>\\scripts\\pipeline.py",
+        "rebuild",
+        "--work",
+        ".",
+        "original.pdf",
+        "out.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json"
+      ],
+      "exit_code": 0,
+      "failures": [],
+      "output": "out.pdf"
+    },
+    {
+      "case": "complete-targets",
+      "document": "SKILL.md",
+      "command": [
+        "<skill>\\scripts\\verify.py",
+        "original.pdf",
+        "out.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json",
+        "--report",
+        "verify_report.json"
+      ],
+      "exit_code": 0,
+      "failures": [],
+      "output": "out.pdf"
+    },
+    {
+      "case": "complete-targets",
+      "document": "SKILL.md",
+      "command": [
+        "<skill>\\scripts\\verify.py",
+        "original.pdf",
+        "final.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json",
+        "--report",
+        "final_verify_report.json"
+      ],
+      "exit_code": 0,
+      "failures": [],
+      "output": "final.pdf"
+    },
+    {
+      "case": "complete-targets",
+      "document": "references/gates.md",
+      "command": [
+        "<skill>\\scripts\\verify.py",
+        "original.pdf",
+        "out.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json",
+        "--report",
+        "verify_report.json"
+      ],
+      "exit_code": 0,
+      "failures": [],
+      "output": "out.pdf"
+    },
+    {
+      "case": "complete-targets",
+      "document": "references/consumer-guide.md",
+      "exit_code": 0,
+      "failures": [],
+      "output": "out.pdf"
+    },
+    {
+      "case": "complete-targets",
+      "document": "references/consumer-guide.md",
+      "exit_code": 0,
+      "failures": [],
+      "output": "final.pdf"
+    },
+    {
+      "case": "fillable-complete",
+      "document": "README.md",
+      "command": [
+        "<skill>\\scripts\\verify.py",
+        "original.pdf",
+        "out.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json",
+        "--report",
+        "verify_report.json"
+      ],
+      "exit_code": 0,
+      "failures": [],
+      "output": "out.pdf"
+    },
+    {
+      "case": "fillable-complete",
+      "document": "README.md",
+      "command": [
+        "<skill>\\scripts\\verify.py",
+        "original.pdf",
+        "final.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json",
+        "--report",
+        "final_verify_report.json"
+      ],
+      "exit_code": 0,
+      "failures": [],
+      "output": "final.pdf"
+    },
+    {
+      "case": "fillable-complete",
+      "document": "README.md",
+      "command": [
+        "<skill>\\scripts\\pipeline.py",
+        "rebuild",
+        "--work",
+        ".",
+        "original.pdf",
+        "out.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json"
+      ],
+      "exit_code": 0,
+      "failures": [],
+      "output": "out.pdf"
+    },
+    {
+      "case": "fillable-complete",
+      "document": "SKILL.md",
+      "command": [
+        "<skill>\\scripts\\pipeline.py",
+        "rebuild",
+        "--work",
+        ".",
+        "original.pdf",
+        "out.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json"
+      ],
+      "exit_code": 0,
+      "failures": [],
+      "output": "out.pdf"
+    },
+    {
+      "case": "fillable-complete",
+      "document": "SKILL.md",
+      "command": [
+        "<skill>\\scripts\\verify.py",
+        "original.pdf",
+        "out.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json",
+        "--report",
+        "verify_report.json"
+      ],
+      "exit_code": 0,
+      "failures": [],
+      "output": "out.pdf"
+    },
+    {
+      "case": "fillable-complete",
+      "document": "SKILL.md",
+      "command": [
+        "<skill>\\scripts\\verify.py",
+        "original.pdf",
+        "final.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json",
+        "--report",
+        "final_verify_report.json"
+      ],
+      "exit_code": 0,
+      "failures": [],
+      "output": "final.pdf"
+    },
+    {
+      "case": "fillable-complete",
+      "document": "references/gates.md",
+      "command": [
+        "<skill>\\scripts\\verify.py",
+        "original.pdf",
+        "out.pdf",
+        "--fill-text",
+        "Prueba 123",
+        "--source-words-from",
+        "segments.json",
+        "--translations",
+        "translations.json",
+        "--segments",
+        "segments.json",
+        "--report",
+        "verify_report.json"
+      ],
+      "exit_code": 0,
+      "failures": [],
+      "output": "out.pdf"
+    },
+    {
+      "case": "fillable-complete",
+      "document": "references/consumer-guide.md",
+      "exit_code": 0,
+      "failures": [],
+      "output": "out.pdf"
+    },
+    {
+      "case": "fillable-complete",
+      "document": "references/consumer-guide.md",
+      "exit_code": 0,
+      "failures": [],
+      "output": "final.pdf"
+    }
+  ],
+  "python": "3.14.0",
+  "scope": "Verification/rebuild argv and run_verify calls extracted from docs; not a full quickstart or model-host evaluation.",
+  "default_rebuild_empty_target_exit_code": 0,
+  "version_lockstep": {
+    "tests": 1,
+    "passed": true
+  }
+}

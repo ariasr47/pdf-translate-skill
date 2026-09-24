@@ -3,6 +3,212 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 23 September 2026, evening: reconcile, A02 and A06 are built and green on CI; integration is Rodrigo's call
+
+**Verified state.** Remote `main` is still **`178a06f`** (v60). Three branches
+from `178a06f` were pushed for CI; nothing was merged or released and no PR
+was opened. Each local branch is ahead of its remote by docs-only commits that
+record the CI results below and, on A06, its independent pass. There is also a
+throwaway local merge of all three:
+
+| Branch | Head | Worktree | State |
+|---|---|---|---|
+| `chore/reconcile-b1-checkout` | pushed `8a98afc` | `C:/Dev/worktrees/pdf-translate-reconcile-b1` | Done. Full suite 670 OK locally and on CI. Independent review: approve, with two cosmetic nits. |
+| `fix/a02-page-count` | pushed `5348082` | `C:/Dev/worktrees/pdf-translate-a02` | Done. CI 687 OK on Linux and Windows. Boundary fix `d9efd44`. Independent verification: verified with findings, both handled. |
+| `fix/a06-rebuild-mapping-checks` | pushed `9f9365d` | `C:/Dev/worktrees/pdf-translate-a06` | Done. 30/30 documented examples behave as specified. CI 678 OK on Linux and Windows. Independent verification (real CLI runs, no suites): verified with findings, both existing behaviour, identical on main. |
+| `trial/integrate-reconcile-a02-a06` | local only | `C:/Dev/worktrees/pdf-translate-trial` | All three merged. Only `docs/DECISIONS.md` conflicted (tail appends; all 60 rows kept). Links, compilation and binary integrity pass. **Full suite not run.** |
+
+Evidence: `docs/reviews/2026-09-23-b1-checkout-reconciliation.md` (this
+branch), `docs/reviews/2026-09-23-a02-page-parity.md` (A02 branch) and
+`docs/reviews/2026-09-23-a06-rebuild-mapping-checks.md` (A06 branch). The old
+checkout at `C:\Dev\pdf-translate-skill` carries a pointer section at the top
+of its own handover; otherwise it is exactly as snapshotted.
+
+**The local machine crashed twice during full-suite runs** on 23 September,
+and one run ended in a native Python crash (exit 139). Heavy local runs were
+stopped.
+
+**Decision (Rodrigo, 23 September): run the owed full suites on GitHub CI.**
+The three branches were pushed as they stand here, and the workflow was started
+on each with `workflow_dispatch`: CI runs automatically only for pushes to
+`main` and for pull requests, and no PR was opened. Look up the runs with
+`gh run list --workflow tests.yml`. The trial branch was not pushed.
+
+| CI run | Branch | Linux | Windows | Canary | Other |
+|---|---|---|---|---|---|
+| 35935410494 | reconcile `8a98afc` | 670 OK | 670 OK, 1 skip | 15 OK both | new binary-integrity step 3 OK on both OSes; manifest green |
+| 35935412655 | A02 `5348082` | 687 OK | 687 OK, 1 skip | 15 OK both | manifest green |
+| 35935414545 | A06 `9f9365d` | 678 OK | 678 OK, 1 skip | 15 OK both | manifest green |
+
+The Windows skip is the existing cross-drive relative-path test. The only
+annotation is GitHub's notice that the `ubuntu-latest` label moves to Ubuntu 26
+on 19 October 2026.
+
+To integrate: merge in the order reconcile → A02 → A06, keep every DECISIONS
+row (the trial branch shows the result), and bump the version once, to v61.
+The release note should name two behaviour changes. Every verify run prints a
+`page parity` line and FAILs a missing, extra or reshaped page. A default
+legacy rebuild now runs the mapping checks and can exit 1 where it exited 0.
+
+**Still open, unchanged:** A04's process-isolated validation, A15's broader
+public wording, and the other A-rows in `dev/goals/PROGRAM.md`. B1 wrapping
+stays deferred.
+
+## Start here — 23 September 2026, old B1 checkout reconciled; A02 then A06
+
+**Verified state.** Remote `main` is **`178a06f`**, v60: PR #22 merged at
+17:15Z. Its post-merge CI run `35894389833` passed: Linux 670 tests OK and
+Windows 670 OK with one skip, 15/15 canary tests on each, and the manifest job.
+No PRs are open. Nothing in this section was pushed, merged or released.
+
+**The old checkout is reconciled, not merged, and B1 is not implemented.**
+`C:\Dev\pdf-translate-skill` stays on `codex/b1-design-canvas` at `d2b3395`.
+Its 17 edited and 39 untracked files are untouched; a byte snapshot is in its
+ignored `runs/b1-checkout-reconciliation-2026-09-23/`. Everything useful from it
+is now on the **local** branch `chore/reconcile-b1-checkout` in
+`C:/Dev/worktrees/pdf-translate-reconcile-b1`, based on `178a06f`:
+
+| Commit | What |
+|---|---|
+| `f7326cf` | `.gitattributes` + binary-integrity test + CI step (the three unique commits, reviewed together) |
+| `3860c66` | the separate local B1 baseline-anchor probe, cherry-picked from `12c730c` |
+| `d99320b` | 38 evidence files: B1 design canvas, dated reviews, probes, data, explainers |
+| `509c39e` | A04 concurrency guidance (docs and docstrings only) |
+| `0cd8bc2` | A15 README facts, re-measured on main (20 fonts, 670 tests) |
+| `498dec4` | backlog, DECISIONS (18 carried + 2 new rows), product inbox, brief, checklist |
+| next commit | the reconciliation report and this handover |
+
+Full discovery on the branch at `498dec4`: **670 tests OK in 484.230 s**, the
+same count as clean `178a06f` (578.251 s). Every item's disposition, with the
+commands that checked it:
+[`docs/reviews/2026-09-23-b1-checkout-reconciliation.md`](../../docs/reviews/2026-09-23-b1-checkout-reconciliation.md).
+In short: the uncommitted v61 label was dropped (main owns v59/v60), and the A06
+verification-examples slice moves with the A06 fix.
+
+**B1 stays deferred.** The design is approved and the synthetic, anchor and
+capture evidence is preserved. No genuine fit-refusal case exists, and no
+wrapping code was written. Reopen it only on such a case or an explicit change
+of scope.
+
+**Next: A02, then A06.** Each is a separate change from `178a06f`: A02 makes
+legacy verify and the inspection outputs fail on missing or extra pages, and A06
+stops the default legacy rebuild from skipping mapping-dependent checks. Their
+branches, results and review state are added to this section as they complete.
+
+**Before integrating.** Three local branches come off `178a06f`. Expect
+conflicts only at the tail of `docs/DECISIONS.md` and the top of this file; keep
+every row and section. Choose the next version once, at integration (DECISIONS,
+23 September); main's `178a06f` already reuses `b20fadd`'s v60. On a Windows
+clone with `core.autocrlf=true`, check the tracked files out again after pulling
+`.gitattributes`. Do not run `git add --renormalize .` first: it stages
+already-smudged binaries as they are.
+
+**Leave in place until Rodrigo decides:** the original checkout and its branch;
+`origin/codex/b1-design-canvas` (pushed at `6236be6`, no PR ever opened); and
+`probe/b1-baseline-anchor` (`12c730c`, local only, now carried).
+
+## Start here — 23 September 2026, PR #22 merged into main
+
+Rodrigo requested final coordination with the PDF Translator task and a scoped
+PR. Its independent final review passed another **88 focused tests** and both
+legacy/typography combined workflows; no blocker remained. Exact reviewed
+candidate **e2972cfc72c59cec2cdcec9c1299701b03042f01** was pushed on
+`codex/simplify-integration-review` and reviewed in:
+https://github.com/ariasr47/pdf-translate-skill/pull/22
+
+The final PR-readiness check found that CI omitted the A03/capture regression
+modules. Independently approved CI-only follow-up **b39079f** adds exactly those
+two modules to both platform jobs, retaining all previous modules. Linux CI
+then passed 670 tests plus 15 canary tests, but Windows found nine errors in
+UTF-8 JSON test readers using CP1252. Test-only fix **7eeccf2** adds explicit
+UTF-8 to the five affected reads, retaining all assertions and production code.
+The failure was reproduced locally with UTF-8 mode disabled; 99 focused tests
+then passed, plus an independent 27-test CP1252 run. **7eeccf2 is the final PR
+head**; CI run **35891927585 passed all jobs**. Linux: 670 tests OK plus 15
+canary tests; Windows: 670 discovered, OK with one existing cross-drive skip,
+plus 15 canary tests. Both fixture-generation steps and plugin/version checks
+passed. No remaining review/CI findings. Rodrigo then explicitly authorized
+the merge; the PDF Translator task merged PR #22 at **2026-09-23T17:15:44Z**,
+guarded against the exact reviewed head. GitHub's merged PR metadata and
+`git ls-remote origin refs/heads/main` independently confirm merge commit
+**178a06ffd4e45af30c0366c5f0fb995f8495cb5f** on remote main. Production code
+is unchanged from independently reviewed e2972cf. No release, version bump,
+deployment or consumer pin/runtime change was performed. The combined
+worktree remains clean; preserve the original dirty B1 checkout. Older
+sections below record historical states, including earlier no-merge status.
+Current review and PR evidence:
+`docs/reviews/2026-09-23-simplify-c828dd6-integration-review.md`.
+
+Separate next-work priority: **A02**, then **A06**. Final consumer coordination
+also corrected the earlier adoption shorthand: upstream metadata requires
+Python >=3.14 while the app remains on Python 3.12/library v54. Adoption needs
+an isolated supported Python 3.14/exact-candidate comparison with identical
+translation inputs and existing privacy/job-lifetime behavior. It is not a
+routine install into 3.12; no consumer runtime or pin change is authorized here.
+
+## Start here — 23 September 2026, cleanup and combined integration reviewed
+
+Independent Codex review closed the remaining capture JSON-null finding in
+`simplify/upstream-cleanup` at **c828dd606be40b7f18de67f1727fea1e596b722e**.
+Its full suite passed **656 tests**. The supplied A01 and A03 cleanup heads
+remain **c4484b7** and **2249171**, clean and unchanged in their separate
+`C:/Dev/worktrees/simplify-a01` and `simplify-a03` worktrees.
+
+A combined candidate now exists locally on **codex/simplify-integration-review**
+at **e2972cfc72c59cec2cdcec9c1299701b03042f01**, in:
+`C:/Users/rodri/.codex/worktrees/simplify-integration-review/pdf-translate-skill`.
+It contains all three reviewed heads; the worktree is clean. Documentation
+conflicts in both DECISIONS and HANDOVER were resolved by preserving all
+entries. Production code merged without manual changes.
+
+The combined full suite passed **670 tests**. Fresh CLI, nine-fixture verdict,
+serialized-result and API comparisons match b20fadd. Ten capture failure-path
+outcomes match baseline; consecutive rebuild/invalid-review/refusal/recovery
+workflows pass in both legacy and typography formats. No remaining actionable
+review findings. Evidence and exact commands:
+`docs/reviews/2026-09-23-simplify-c828dd6-integration-review.md` in this original
+checkout, with raw evidence under `runs/simplify-review-c828dd6/`.
+
+Next: use the existing combined candidate for upstream integration/release
+preparation, rather than recreate it. Remote main was verified at b20fadd/v60
+with no open PRs. No push, merge to main, release, deployment or consumer pin
+change was performed. The PDF Translator task was updated and recommends
+integration/release preparation; it reports no new upstream blocker. Adoption
+still needs separate Python 3.12 and same-input rendering comparisons in the
+consumer, and the pin remains unchanged. This original checkout remains dirty
+on the earlier B1 branch; do not merge it wholesale. The earlier sections below
+are historical.
+
+## Start here — 22 September 2026, A03 completed locally after A01
+
+Rodrigo authorized the next repair recommended by **Approve sandbox proposal**
+(`01a0ca6d-e3e3-7e31-84e8-2b53e80b5dd7`). A03 is now committed locally as
+**30c4805a3027fe3f2492edd4d2745c467646d68a** on
+`codex/a03-stale-rebuild-report`, based on main b20fadda/v60, in:
+`C:/Users/rodri/.codex/worktrees/pdf-translate-a03-stale-report/pdf-translate-skill`.
+That worktree is clean. This original checkout's earlier dirty work remains
+preserved. Main and the consumer pin are unchanged; nothing was pushed or
+published.
+
+Rebuild invalidates its default and selected verification reports before
+mapping load or stages can fail. Early failures/refusals preserve prior PDFs;
+current status plus a fresh report establish current verification evidence.
+Unsafe report paths and unrelated files are preserved/refused. No manifest,
+rendering/API change, or transactional PDF/sidecar redesign was introduced.
+Evidence and limits: that worktree's
+`docs/reviews/2026-09-22-a03-stale-rebuild-report.md`.
+
+Full **657 tests passed in 415.069s**, no failures/errors/skips. Final affected
+tests passed after test-only strengthening; independent review found no
+actionable issues, with 339 compatibility tests, four real process-kill
+sequences and two real locked-report refusals passing. Ordinary 12-command
+CLI parity matches v60. Existing resource warnings are documented.
+
+A01 remains separate at **41bdf99** below. Both are unpublished v60-based
+candidates ready for integration; pick a release version against current main.
+Then take A02/A06 separately unless consumer evidence changes priority.
+The app's approved sandbox work remains independent and on its existing pin.
+
 ## Start here — 22 September 2026, A03 completed locally
 
 Rodrigo authorized the next bounded upstream repair after coordination with
@@ -35,6 +241,35 @@ bounded candidates before separately taking A02, A06 or capture/B1 work.
 The original `codex/b1-design-canvas` checkout's dirty work remains intact.
 Do not merge that older branch wholesale or treat its v61 metadata as a release.
 
+## Start here — 22 September 2026, assigned A01 repair completed locally
+
+After the review below, the PDF Translator task assigned A01 on Rodrigo's
+behalf. It is now verified and committed **locally only** as
+**41bdf9911c81116ab282aa6e39ce3bee0ca82b04** on
+`codex/a01-invalid-review-refusal`, based on main b20fadda/v60, in:
+`C:/Users/rodri/.codex/worktrees/pdf-translate-a01-review-refusal/pdf-translate-skill`.
+That worktree is clean. This original checkout and its earlier dirty work were
+preserved; no fix was applied here. Main and the app pin have not changed.
+
+The fix propagates existing review validation/loading errors into delivery
+refusal, reports errors, and writes a failed review state. Resolved valid
+reviews deliver; explicit no-review remains disclosed. A prior final PDF is
+untouched on refusal and never serves as evidence this attempt succeeded.
+It does not redesign validation, rendering, or A03's artifact lifecycle.
+
+Evidence in that worktree:
+`docs/reviews/2026-09-22-a01-invalid-review-refusal.md`.
+Full suite **655 tests OK in 353.699s**, no failures/errors/skips. Independent
+review: no actionable issues; **81 focused tests OK**, plus **31 invalid-review
+CLI cases refused**, valid controls and typography stale-binding controls.
+12-invocation ordinary CLI parity matches v60. The existing NOTES.md resource
+warning remains. No push, merge, release, PR or consumer pin changes.
+
+The local candidate still declares version 60; select a release version
+against current main when preparing publication. Next work is integration of
+this bounded candidate, then separately A03/A02/A06. The app owns staging
+translation and Python 3.14/exact-pin adoption. Do not repeat or duplicate A01.
+
 ## Start here — 22 September 2026, A01 local repair verified
 
 This managed checkout is `codex/a01-invalid-review-refusal`, based on remote
@@ -62,6 +297,170 @@ near-floor capture omission and B1 evidence/containment work remain separate.
 The app task owns staging translation and Python 3.14/exact-pin adoption.
 Keep capture off for production customer jobs under its existing TTL promise.
 The earlier sections below describe historical work, not this branch.
+
+## Start here — 22 September 2026, review complete; A01 recommended next
+
+Fresh review: `docs/reviews/2026-09-22-yesterday-review.md`. GitHub main is
+**b20fadda, v60**, zero open PRs. This checkout remains **6236be6** on
+`codex/b1-design-canvas`, two unique commits and 36 behind main; its 37
+pre-existing dirty/untracked entries were preserved. Do not interpret the
+uncommitted v61 metadata as a complete release or merge this work wholesale.
+The earlier start-here sections below are historical, not current state.
+
+Eight PRs merged on 21 September local time, including typography, refusal
+capture and dependency diagnostics. Two local repository/CI commits remain
+unmerged here. Separate `probe/b1-baseline-anchor` at `12c730c` demonstrates
+six anchored synthetic successes, independently reproduced today; no B1
+wrapping implementation or customer recovery rate follows from that result.
+
+Fresh v60 checks reproduce A01 invalid-review delivery, A03 stale output/PASS
+report, A02 legacy page-count acceptance and A06 default mapping omission.
+New P2: successful typography builds ignore near-floor capture (0.7402 and
+0.7284 both miss capture_below=0.75). Full discovery exercised 649 tests;
+the sole test with errors used historical Git archives from the nested export
+and passed unchanged after correcting Git context. Six separate typography
+acceptance cases PASS, verify 0; three binary-integrity tests pass. See the
+review for exact commands, counts, evidence limits and logs.
+
+Rodrigo requested coordination with the PDF Translator task, **Boot Spire Tech
+web app** (`01a0bc1c-cdb2-7b93-8860-0154a450beb4`). It confirms app pin v54
+`9675c619`, Python 3.12 and legacy mappings, and recommends assigning **A01**
+as the next bounded upstream repair. The app owns staging validation and
+isolated Python 3.14/exact-pin adoption. Capture stays off in production;
+customer-PDF retention beyond job TTL is outside the product promise.
+
+**Next recommendation: A01 only, from clean current main.** Invalid review
+inputs must block delivery; resolved valid reviews succeed; explicit no-review
+remains disclosed; a stale final file is not success evidence. Include
+end-to-end finish checks for typography review-binding errors. Queue
+A03/A02/A06 separately. This review did not start implementation, change pins,
+push, merge, publish or mutate a PR. The report contains the handoff and
+observable acceptance checks; do not repeat the investigation first.
+
+## Start here — 21 September 2026, typography MERGED; B1 is the only thread left
+
+`main` = **`d4d85be`**, **v59**, **zero open PRs**. Six PRs landed today:
+#15 (scale ratio), #16 (NOTES.md ignore), #12 (terminology loop, v57),
+#13 (E3, v58), #18 (Python 3.14 only) and #17 (typography, v59, all nine
+tasks). The typography worktree at
+`C:/Users/rodri/.codex/worktrees/typography-preservation/pdf-translate-skill`
+is merged and can be removed whenever you like.
+
+This original checkout is still on `codex/b1-design-canvas` at `48dffcf`
+with its 37 dirty paths untouched, including the v61 metadata. That metadata
+now sits BELOW main: main is v59, so the dirty work renumbers to 60+ when it
+lands, which is what choosing 59 implied.
+
+**Python is 3.14 only.** `requires-python`, the `compatibility:` line, the
+README and the CI matrix all agree, and the matrix is two jobs. Checked
+before narrowing: no file used a 3.11+ construct and all 22 modules parsed
+under 3.10 rules, so the old floor was real and this locks out 3.10 to 3.13.
+
+**Still unverified on typography:** the Codex host leg. `codex-cli 0.147.0`
+reports its configured `gpt-6-astra` model needs a newer CLI. A host
+mismatch, not a result about the code. Also: the eight CJK slanted-role
+cells have no measured positive case, and language/emphasis semantics need
+a qualified reader.
+
+**Next action: rule on B1.** It is the only thread with no path forward.
+Blocked on genuine fit-refusal evidence after three attempts came back
+empty: the local archive had none, the web app reported none, and the
+authorized capture returned a known SUCCESS. Two of its three measured
+engineering blockers cleared today — the scale-report bug (#15) and
+occurrence addressing (typography). What remains is baseline anchoring,
+plus the evidence problem. Three options were put on the table: add a
+capture hook so future refusals are retained (recommended), rule that
+synthetic evidence is enough, or keep B1 parked. See
+`docs/design/B1-line-wrapping/README.md` and
+`docs/reviews/2026-09-19-b1-recovery-probe.md`.
+
+## Earlier — 21 September 2026, typography COMPLETE and awaiting your call
+
+All nine tasks of the approved typography plan are implemented and committed.
+Branch `codex/typography-preservation` at **`444a644`**, working tree clean, in
+`C:/Users/rodri/.codex/worktrees/typography-preservation/pdf-translate-skill`.
+**Local only.** The plan requires asking separately before any push, merge or
+release, and that has not been asked.
+
+The branch has `main` merged in, so it carries PRs #12, #13, #15 and #16.
+It ships as **version 59** in all four sources, chosen once v57 and v58 landed.
+The uncommitted v61 metadata in this original checkout renumbers when it lands;
+nothing on the branch touches it, and this checkout's dirty work is untouched.
+
+The capability announces itself through
+`pdf_translate.MAPPING_FORMATS == ('legacy', 'typography-1')`, not through the
+version number. `references/typography.md` documents it, with every example
+copied from a verified probe artifact.
+
+Measured on the branch, not inherited: full discovery **617 tests OK**; both
+parity runners byte-identical to the frozen baseline at version 59; the six-case
+acceptance probe exit 0 against an actual **installed copy** outside the
+checkout, with the probe's own artifact recording the task-local package path
+and version it measured.
+
+**Not done, and not claimed: the Codex host leg.** `codex-cli 0.147.0` reports
+that its configured `gpt-6-astra` model needs a newer CLI. That is a host
+mismatch, not a result about this code, and upgrading that install was outside
+the task. Dual-host acceptance is therefore incomplete. A01 and the other
+public-readiness blockers remain open, and B1 is still blocked on genuine
+fit-refusal evidence.
+
+**Next action: decide what happens to `444a644`.** Push and open a PR, keep it
+local, or ask for a review pass first. Merging `main` into it again is cheap if
+`main` moves.
+
+## Earlier — 20 September 2026, typography Task 8 committed; Task 9 PARKED
+
+A Codex session executing the approved typography plan stopped mid-run on a
+provider usage limit. A Claude session recovered it, re-verified every gate
+instead of trusting the unfinished notes, and committed Task 8.
+
+State: managed isolated checkout
+`C:/Users/rodri/.codex/worktrees/typography-preservation/pdf-translate-skill`,
+branch `codex/typography-preservation`, HEAD **`cf78555`**, working tree clean.
+Tasks 1–8 of nine are complete and committed; Task 9 has not started.
+The original checkout `C:/Dev/pdf-translate-skill` still holds its dirty
+v61/B1/public-readiness work untouched. No push, merge or PR change was made.
+
+Re-verified in this session, not inherited: full discovery **611 tests OK in
+441.631s**, no failures, errors or skips; canary 15 OK; both parity runners
+exit 0 with all four stdout/stderr captures `diff`-identical to
+`runs/typography/baseline-*`; the six-case acceptance probe exit 0 with
+`typography=PASS`, `verify=0` and equal source/final page counts. The
+interrupted session's own `runs/typography/task8-final-full.log` was found on
+disk at 611 OK / 442.695s and names an identical set of 598 test methods.
+
+One defect was found while reproducing: the acceptance probe's documented
+command relied on the ambient interpreter, so an editable venv installed from a
+different checkout imported the wrong package. The probe now documents the
+explicit `PYTHONPATH=<checkout>/pdf-translate` form and records
+`pdf_translate.__file__` and its version in `summary.json`.
+
+**PARKED — Rodrigo ruled on 20 September 2026: hold Task 9 for now.**
+Do not start it in a later session without a fresh ruling from him. Task 9
+exports `MAPPING_FORMATS`, bumps all four version sources in lockstep, writes
+`references/typography.md` and requires a bounded workflow run in **both**
+Claude and Codex hosts. It was parked because that version bump can collide
+with the local v61 metadata in the original checkout, and the plan forbids
+reserving a version now. What would restore it: a decision on which version
+this capability ships as, after the v61/B1 work in `C:/Dev/pdf-translate-skill`
+is reconciled or landed. Until then `MAPPING_FORMATS` stays unexported, so no
+installed runtime advertises `typography-1`. Nothing is published, no
+capability is claimed and A01 stays open.
+Eight genuine CJK slanted-role positive cells remain unmeasured; this candidate
+has no remote CI run. Push, merge and release remain the operator's.
+
+## Earlier — 20 September 2026, typography implementation active
+
+Rodrigo approved the written plan and recommended native execution. Work is
+active in the managed isolated checkout:
+`C:/Users/rodri/.codex/worktrees/typography-preservation/pdf-translate-skill`
+on `codex/typography-preservation`, starting at `48dffcf` (v58 runtime).
+Read that checkout's plan and
+`.superpowers/sdd/2026-09-20-typography-preservation/progress.md` before resuming.
+This original checkout's earlier dirty v61/B1/audit work remains preserved.
+Do not start a duplicate implementation here. No push/merge/PR changes are
+part of the approval; independent final rendering verification remains required.
 
 ## Start here — 20 September 2026, typography implementation active
 
@@ -92,7 +491,419 @@ Baseline setup needed the original repo's ignored FL-150 NOTES fixture; restored
 without runtime edits. Task 1 full suite: 503 OK, no skips. Both parity outputs
 match the preserved clean baseline. New fonts/evidence stay inside this checkout.
 
-## Earlier — 19 September 2026
+## Earlier — 20 September 2026, typography plan awaits review
+
+Rodrigo approved the written typography design. The implementation plan is now
+saved at `docs/plans/2026-09-20-typography-preservation.md`; start with the short
+`docs/plans/2026-09-20-typography-preservation-brief.md` for operator review.
+The design documents mark his approval and link to the plan. Local commit
+**`48dffcf`**, parent `ef52e5f`, contains exactly these four design/plan files.
+No runtime, version or earlier dirty file was included in that commit.
+
+**Next action: review the written plan and select an execution method.**
+Recommended: native implementation in one isolated checkout, with an independent
+real-run rendering/font/layout reviewer before completion. Alternative: a fresh
+implementer/reviewer per task, sequentially. The writing-plans skill requires
+plan review and method selection before implementation. No implementation has
+started. Preserve this boundary when the operator next replies.
+
+Nine stages cover source evidence, strict mapping, class/role fonts, fixed-line
+placement, actual final-PDF verification, occurrence-aware QA/review, pipeline,
+independent acceptance and installed Claude/Codex workflows. The approved same-
+page-count/baseline requirements and first-scope refusals remain. The plan uses
+clean v58 runtime ancestry via `ef52e5f`; its documentation commit `48dffcf` can
+be applied to that isolated branch. Do not import the dirty local v61/B1 work.
+A01 remains a separate public-readiness prerequisite; A03/A04/A05/A06/A14/E10
+retain their ownership. B1 and A21 remain unstarted by this request.
+
+Planning checks: 9 tasks, 14 Python blocks syntax-checked, 6 local document
+links resolved, balanced fences and CRLF, no placeholder markers, clean
+`git diff --check`. A source-only fixture generated one page with two `Pay NOW`
+lines and four explicitly asserted Times/Helvetica font identities; no new
+extraction/translation behavior was run. The fixture and before-images are in
+ignored `runs/typography-plan-2026-09-20/`. All 45 snapshotted runtime/configuration
+file hashes stayed unchanged. No full suite or host acceptance is newly claimed.
+
+Git/gh recheck before planning: main `a5629fb`, PRs #12/#13 OPEN at `abc4767` /
+`1d4f970`; branch `codex/b1-design-canvas`, now HEAD `48dffcf`. Local metadata
+remains v61; committed runtime remains v58. No push, merge, PR edit, app-task
+message or product-source access. The local commit has no attribution trailer.
+Request/decision/handover updates remain uncommitted alongside preserved prior
+work. Reverify actual state before execution.
+
+## Earlier — 20 September 2026, written typography design awaits review
+
+Rodrigo approved the recommended additive typography approach. The written
+proposal is now saved in `docs/design/typography-preservation/DESIGN.md`; open
+`docs/design/typography-preservation/README.md` for the short operator review.
+Local commit **`ef52e5f`** contains exactly those two new design documents,
+parent `1d4f970`. It does not include earlier dirty work or runtime changes.
+
+The design proposes source class/style runs, exact occurrence associations,
+a separate opt-in mapping format, class/role fonts, and shared QA/review/final
+verification context. First scope is horizontal, single-baseline Latin,
+Japanese and Simplified Chinese page text, one source size/color per segment.
+Unsupported constructs refuse; they remain ineligible for adoption under the
+unchanged product typography promise. Page count and source baseline stay fixed.
+The schema, scope details and future acceptance checks remain proposals.
+
+**Next action: operator review of the written design.** Do not start an
+implementation plan or code before that ruling. The architectural brainstorming
+skill requires written-design approval before planning; approval of the additive
+approach permitted writing this document, not approving its unwritten details.
+B1 remains separately deferred and A21 housekeeping was not started.
+
+Document self-review, balanced fences, JSON-example parsing, local-link checks
+and `git diff --check` passed. These are documentation checks; no typography
+implementation, rendering acceptance or new full-suite result is claimed.
+The request inbox and decision log reflect the new stage. Their updates and
+this handover remain uncommitted with the earlier local work.
+
+Fresh git/gh recheck: branch `codex/b1-design-canvas`, HEAD `ef52e5f`; remote main
+`a5629fb`; PRs #12/#13 OPEN at `abc4767` / `1d4f970`, unchanged. Local working-tree
+metadata remains v61; the design commit adds no version bump to the v58 runtime
+in its ancestry. No push, merge, PR edit, product-source access or app-task
+message. The design commit has no AI attribution. Preserve all prior dirty work.
+
+## Earlier — 20 September 2026, typography API approach proposed
+
+Rodrigo said “yes proceed” after the capability disposition. Typography API
+design exploration is active; A21 housekeeping was not started. The recommended
+approach is additive and opt-in: preserve source class/style runs, associate
+authored target runs with exact source occurrences, select class/role fonts per
+run, reuse placement where suitable, and expose the same information to QA and
+review. Ambiguous/unsupported associations must be reported. Proposed acceptance
+includes repeated labels with different styles, regular prefixes with emphasized
+tails, reordered translations, family distinction and independent output checks.
+
+Alternatives presented: replace the mapping format (breaking), or do extraction
+and diagnostics alone (does not meet the adoption prerequisite). The approach
+ruling is pending. No written final API design, implementation plan or code
+change was made. The architectural brainstorming skill requires staged design
+approval; do not interpret the preceding feature-scope approval as approval of
+a not-yet-written design. Preserve the product's requirement and B1 deferral.
+
+Read-only git/gh recheck: HEAD `1d4f970`, branch `codex/b1-design-canvas`, local
+metadata v61; main `a5629fb`; PRs #12/#13 OPEN at `abc4767` / `1d4f970`.
+Only the request inbox, decision and this handover changed in this turn. Prior
+work remains intact. No commit, push, merge, PR edit, product-source access or
+outbound message. Next stage after approach approval: a saved typography API
+design for review, using this repo's docs/design convention.
+
+## Earlier — 20 September 2026, typography adoption disposition returned
+
+The app task sent Rodrigo's approved, bounded requirements/evidence request:
+preserve source serif/sans class and meaningful within-line bold/italic for wider
+library adoption. No reduced promise, renderer work, B1 plan/build or PR changes
+were authorized. The response is saved in
+`docs/reviews/2026-09-20-typography-capability.md`, with sanitized evidence in
+`docs/reviews/data/2026-09-20-typography-capability.json` and an independently
+authored extraction probe at `dev/probes/typography_capability_probe.py`.
+
+**Disposition: blocked on a library capability gap.** At v54 app-reported pin
+`9675c619`, main v56 `a5629fb` and open-PR v58 `1d4f970`, the same one-page fixture
+produces four segment IDs / three unique cores, loses font class and source-span
+records, flattens mixed emphasis and emits zero extraction warnings. The
+`extract_segments` function AST is identical at all three commits. Existing
+four-role/inline controls do not establish end-to-end style retention; mapping
+and overrides do not select repeated occurrences by ID. This is an extraction
+measurement, not a translation/visual-quality or app-corpus acceptance run.
+
+The request inbox records the unprioritized typography prerequisite and the
+library/app ownership split. No implementation was started, no future delivery
+pin was assigned and no outbound message or extra data packet was requested.
+The app still reports v54 adoption and five open compatibility failures; product
+source and installation were not inspected. The typography requirement and B1
+separate deferral remain intact.
+
+Working tree remains local metadata v61 on `codex/b1-design-canvas`, committed
+HEAD `1d4f970`; extraction/retypeset implementations are unchanged from HEAD.
+Fresh GitHub checks: main `a5629fb`, PRs #12/#13 OPEN at `abc4767` / `1d4f970`,
+no releases/tags. Prior local work was preserved. No commit, push, merge, release
+or PR edit. A21 manifest validation remains the next small housekeeping
+recommendation; it was not started by this request.
+
+## Earlier — 20 September 2026, A15 README facts corrected
+
+Rodrigo approved the next recommended small item. Both READMEs now document
+full unittest discovery, 11 configured test-font files, presence-only checks,
+requirements-based installation through the chosen interpreter, and checkout-only
+contributor tests. Root navigation points to the canonical backlog and dated
+audit instead of a supposed live HTML tracker. Stale runtime promises were
+replaced with the identified 19 September v58 Windows/Python 3.14 measurement.
+
+Evidence: `docs/reviews/2026-09-20-readme-facts.md`. Both README commands collect
+**492 tests**, matching CI's test IDs, versus **230** selected before. This was
+collection only, not a full-suite rerun. All **11 fonts** are present; dependency
+constraints match package metadata and a no-network pip dry run succeeded.
+The shipped README instruction change advances all four versions to **v61
+locally**; its lockstep test passed. Python edits are version-only.
+
+A15 remains partial for broader public-support wording. A04/A06's larger fixes
+also remain open. Next smallest recommendation: A21's explicit validation of
+both Claude manifests, then its separate type-check configuration slice. The
+first small code fix remains A01's invalid-review refusal. None started here.
+
+Fresh git/gh: branch `codex/b1-design-canvas`; committed HEAD `1d4f970` (v58);
+remote main `a5629fb` (v56); PRs #12/#13 OPEN at `abc4767` / `1d4f970`.
+Previous local changes were preserved. No commit, push, merge, release, PR edit,
+product-source access or app-task message. B1 remains deferred.
+
+## Earlier — 20 September 2026, A06 verification examples corrected
+
+Rodrigo approved the recommended A06 documentation slice. Quickstart, hot-loop,
+SKILL and Python examples now pass the mapping, segments, source vocabulary and
+a target-script fill value. They verify the actual delivery PDF after field-font
+embedding or packaging and distinguish its verdict from the intermediate file.
+The shipped workflow correction advances the four version sources to **v60
+locally**; only version metadata/expectation changed in Python, not PDF logic.
+
+Evidence: `docs/reviews/2026-09-20-verification-examples.md` and its sanitized
+JSON companion. Seven CLI examples plus two Python calls, extracted from the
+updated docs, behaved correctly on three cases (**27 outcomes**): empty targets
+exit 1 with `empty-targets`; complete non-form and fillable controls exit 0.
+The fillable control passed the field round-trip; the v60 lockstep test passed.
+The unchanged default rebuild still returned 0 for the empty target, so **A06
+remains partial**. A04's process-validation work also remains open. No full
+suite, non-Latin visual quality or model-driven host validation is claimed.
+
+Next smallest recommendation: A15's small README facts. The first small code
+follow-up remains A01's invalid-review refusal. Neither is started here.
+Fresh git/gh: branch `codex/b1-design-canvas`, committed HEAD `1d4f970` (v58),
+remote main `a5629fb` (v56), PRs #12/#13 open at `abc4767` / `1d4f970`.
+Prior A04/B1/audit changes were preserved. No commit, push, merge, release, PR
+edit, product-source access or app-task message. B1 remains deferred.
+
+## Earlier — 20 September 2026, A04 concurrency documentation corrected
+
+Rodrigo approved proceeding with the recommended small work. Completed the first
+slice only: consumer guidance now distinguishes stdout/logging isolation from
+PyMuPDF thread safety and prescribes separate processes, one job at a time per
+worker, with private job/output/report paths. The skill reference and related
+docstrings agree. The shipped instruction change advances all four version
+sources to **v59 locally**; this is not a release or a PDF execution change.
+
+**A04 remains partial.** Two-process validation and replacement of unsupported
+thread-based PDF concurrency checks are still open; the current tests are
+qualified as fixture observations, not backend safety proof. App worker
+integration remains app-owned. Next smallest recommendation: A06's verification
+examples. Do not start it merely because it is listed here.
+
+Evidence and exact checks: `docs/reviews/2026-09-20-concurrency-guidance.md`.
+Fresh git/gh check: HEAD `1d4f970` (committed v58), remote main `a5629fb` (v56),
+PRs #12/#13 open at `abc4767` / `1d4f970`, unchanged. Working branch remains
+`codex/b1-design-canvas`; existing dirty B1/audit work was preserved. No commit,
+push, merge, release, PR edit, product-source access, or app-task message. B1
+remains deferred. Reverify state before the next item.
+
+## Earlier — 19 September 2026, audit findings added to backlog
+
+Rodrigo asked to add/update backlog items from the audit and save a list of the
+smallest/easiest work in `docs/`. Completed as documentation only:
+
+- `dev/goals/PROGRAM.md` now opens with the current **A01–A26** audit follow-ups,
+  mapped to existing E/C/P/32 work, priorities, estimated sizes, dependencies and
+  observable closing checks. Existing history is retained; these are recorded
+  candidates, not started implementation. P3's skill-length target is reopened.
+- `docs/PUBLIC-READINESS-QUICK-WINS-2026-09-19.md` is the short dated view. Start
+  with concurrency wording, mapping-aware verification examples and README
+  facts. The highest-value small code follow-up is A01's invalid-review refusal.
+  A docs slice does not close its larger behavior item.
+- `docs/REQUESTS-from-product.md` links the qualifications to earlier C3/C4/C5
+  assurances and existing packaging/dependency work. `docs/checklist.html` is
+  explicitly historical and links to the current backlog, avoiding competing
+  live status lists.
+
+No fixes, implementation plan, PR edits or app-task messages were performed.
+Library/skill work stays here; service integration stays app-owned. B1 remains
+deferred. Fresh git/gh check: HEAD `1d4f970` (v58), remote main `a5629fb` (v56),
+PRs #12/#13 open at `abc4767` / `1d4f970`. No commit/push/merge/release. Existing
+dirty B1/audit work was preserved. Recheck before starting a follow-up.
+
+## Earlier — 19 September 2026, dual-use public-readiness audit
+
+Rodrigo explicitly requested a comprehensive audit of the whole codebase as
+both the shared PDF engine and an installable Claude/Codex skill. That analysis
+is complete in `docs/reviews/2026-09-19-public-readiness.md`, with sanitized
+evidence in `docs/reviews/data/2026-09-19-public-readiness.json` and the synthetic
+reproduction script `dev/probes/public_readiness_probe.py`.
+
+The assessment is a capable supervised tool requiring release hardening before
+an unrestricted public/production-readiness claim. This is a recommendation,
+not an operator-approved implementation plan. Reproduced findings include invalid
+review data permitting delivery, stale PDF/PASS artifacts after a failed rebuild,
+and verification accepting both missing and added pages. The consumer guide's
+thread-safety statement also conflicts with PyMuPDF's documented restriction.
+Packaging, dependency bounds/licensing, public sanitation, skill onboarding,
+documentation, API consistency, and maintainability are covered in the report.
+
+Fresh local verification: **492 tests passed, zero skips, 202.730 seconds**;
+**15 canary-scorer tests passed**. Wheel/sdist builds and clean-wheel installation
+passed; Codex 0.147.0 discovered a staged local skill without a model turn; Claude
+Code 2.1.270 validated both manifests separately. These checks do not constitute
+a complete model-driven host evaluation or fresh Linux/macOS coverage. The audit
+was recovered from saved files after the user reported a Codex crash.
+
+Reviewed HEAD remains `1d4f970` (v58); remote `main` was freshly verified at
+`a5629fb` (v56). PRs #12/#13 remain open at `abc4767` / `1d4f970`, untouched.
+Hosted checks were not started because of GitHub billing/spending limits.
+Re-verify git and gh before acting. Existing B1 work was preserved; no library
+implementation, commit, push, merge, release, product-source access, or app-task
+message resulted from this audit. B1 remains deferred under the earlier ruling.
+
+Rodrigo also reported raw HTML fold tags in replies. Use plain Markdown with a
+link to the longer saved report instead of `<details>` folds in chat. Preserve
+the compact Status / Do / Recommend / Know / Ask reply format.
+
+## Earlier — 19 September 2026, further B1 work deferred
+
+Rodrigo approved the recommendation to defer further B1 work until a genuine
+fit-refusal case is available. The canvas and its exact-page-count ruling remain
+approved. The synthetic probe and single real-job capture are complete; the
+capture was a known success and supplies no B1 recovery evidence.
+
+There is no outstanding capture request or further B1 action pending now.
+Resume evidence measurement with an unchanged failed mapping, source PDF,
+fonts, version/options, and occurrence-level refusal evidence; testing wrapping
+also requires an explicitly permitted fixed box. Replaying the known success
+or constructing a failure does not meet that prerequisite. No implementation
+plan, build, or background monitoring was started. Do not advance to another
+work item without a new user instruction. The ruling is in `docs/DECISIONS.md`.
+
+Work remains local and uncommitted. PRs #12/#13 were rechecked open at
+`abc4767` and `1d4f970`, untouched. Re-verify git and gh before future work.
+
+**Roadmap coordination:** Rodrigo asked who owns the product roadmap and how to
+avoid collisions. He selected A, approving the split and sending it to the app
+task. `docs/REQUESTS-from-product.md` records the approved split:
+Rodrigo sets priorities; the app task coordinates one product roadmap and owns
+app/integration work; this repo owns shared engine delivery. The coordination
+message was sent to **Boot Spire Tech web app**, which confirmed the alignment
+is recorded in its canonical roadmap:
+`C:/Dev/pdf-translator/.spire/clusters/tech/context/ROADMAP.md`.
+The app's final coordination update reports N1's seven approved screenshot
+reference updates complete with fresh independent **331/331, zero skips**.
+Known frontend baseline and historical process records remain separate N1
+closure obligations. Its next available product action is app-owned preparation
+of a reviewable CI authentication arrangement for the private library dependency;
+credentials and push/merge/deploy remain operator-controlled. This assigns no
+new library work. No unresolved duplicate assignment was found in the bounded
+alignment. Old N2 save/subset and N6/E5 product-rendering assignments
+are superseded by library ownership of reusable behavior; app ownership is
+integration, product policy and evidence. Adoption reportedly remains v54 at
+`9675c6196c14eb2a2d37d34e371391eb1955a386`. These are the owning task's status
+reports; product files were not opened here. Full confirmation is recorded in
+`docs/REQUESTS-from-product.md`. Coordination is complete. No new implementation
+was commissioned here; N1 is not a library assignment. Stale B1 entries were
+corrected to match the approved design and deferral.
+
+## Earlier — 19 September 2026, B1 original-input search and capture
+
+Following the operator's “okay proceed with the recommended,” the local
+archive search found 12 saved mapping paths: three school-permission finals
+(including one duplicate), one reviewed FL-150 final, and eight one-core
+regression fixtures. No complete representative original failed-job bundle was
+found. Details and hashes: `docs/reviews/2026-09-19-b1-local-inputs.md` and its
+linked JSON. This establishes local availability only, not that failures never
+occurred. No customer recovery rate can yet be measured.
+
+A concrete data-only request for the web-app task **Boot Spire Tech web app**
+is saved at `docs/design/B1-line-wrapping/FAILED-JOB-REQUEST.md`. It asks for
+source PDFs, unchanged failed mappings, shareable fonts, refusal evidence,
+versions, and explicitly permitted boxes; no product code. Rodrigo subsequently
+said **“yes send it”**; the request was sent to task
+`01a0bc1c-cdb2-7b93-8860-0154a450beb4`. Its data-only reply reports no eligible
+replayable real failed-job bundle and no exported cases. Older-path form records
+report source-retaining no-room blocks, but lack the exact failed mapping and
+occurrence evidence; permitted boxes are unknown. These are reported claims,
+not reproduced failures or a recovery denominator. The reply and provenance
+are saved in `docs/reviews/2026-09-19-b1-product-inputs.md`. Product files remain
+unread. The archive request is answered; no batch was returned.
+
+**Authorized follow-up:** Rodrigo approved option A to ask the web-app task to
+capture one genuine form/invoice translation attempt, preserving exact inputs
+and results before retries or wording fixes. That request was sent and accepted;
+the capture is now complete. The bundle in
+`runs/b1-real-jobs/20260919-webapp-fl150-page1-opus-01/` replays a known successful
+one-page FL-150 mapping on recorded library v54, not this checkout's v58.
+Independent read-only checks passed all 27 file hashes, the font-path-only mapping
+change, one-page parity, and all 61 widget names/types/rectangles. Both pages
+were rendered and inspected. The logs record 8 shrinks (minimum reported 0.844),
+13 PASS / 3 REVIEW, and regular-face role fallbacks. All wrapping permissions
+remain unknown; no B1 wrapping was attempted. This is distinct from the earlier
+two-page school-permission fixtures, but still a known success, not a new failure
+or recovery sample. See `docs/reviews/2026-09-19-b1-captured-case.md` and its raw
+audit. The capture request is fulfilled; recovery evidence remains unavailable.
+No plan or library implementation has started. Work remains local and
+uncommitted; PR #12/#13 heads were rechecked unchanged.
+
+## Earlier — 19 September 2026, B1 probe complete; no plan or build
+
+**Approved:** exact source page count, same-page placement, explicit permission
+per occurrence, fixed caller-authored box, downward flow from the original
+first baseline; source-size wrapping before shrink within existing limits,
+then refusal if impossible. See `docs/design/B1-line-wrapping/README.md`.
+
+**Measured:** `dev/probes/b1_recovery_probe.py` with `b1_cases.json`, repo venv
+PyMuPDF/MuPDF 1.28.2. All 8 synthetic stress cases refused on the ordinary-line
+path; 6 placed their full targets inside the explicit boxes via existing
+one-member merges, keeping page counts, page sizes and widget rectangles.
+The tight cell and last-page footer still refused. **All six moved the first
+baseline** (−2.481 to +0.502 pt). Five shrank about 2% without a scale-report
+entry. A repeated-label control removed the first occurrence while drawing
+into the second one's box, leaving the second original placement overlapping.
+
+This is **not a customer recovery rate**. The 16-file seed corpus has source
+PDFs and extraction verdicts, not translations. The two saved final translation
+jobs rebuilt without refusal, so they supply no failed-job denominator.
+Representative refused inputs with permissible boxes are still needed before
+sizing customer coverage. Evidence and reproducible command:
+`docs/reviews/2026-09-19-b1-recovery-probe.md`; durable raw data beside it in
+`data/2026-09-19-b1-recovery.json`. An independent agent reran the probe and
+audited raw PDF fonts, positions, widgets, and unclipped target ink at 432 dpi;
+both commands exited 0 with the same counts. The reusable independent audit
+is `dev/probes/b1_recovery_audit.py`; raw results are in
+`docs/reviews/data/2026-09-19-b1-independent-audit.json`.
+Scratch PDFs/renders remain under
+`runs/b1-recovery-probe-2026-09-19/`. The short web-app note is updated.
+
+Work remains local and uncommitted on `codex/b1-design-canvas` at `1d4f970`.
+PR heads #12 `abc4767` and #13 `1d4f970` were rechecked and untouched.
+No pipeline/library code, corpus fixtures, versions, or implementation plan
+changed. No push/merge. Product repo never opened. Re-verify state next session.
+
+## Earlier — 19 September 2026, B1 direction approved
+
+**Rodrigo approved the recommended B1 direction, including exact source page
+count. Design only: no corpus recovery probe, plan, or build has run.**
+Open `docs/design/B1-line-wrapping/canvas.png` and its `README.md`. Approved:
+explicit permission per occurrence, a caller-authored fixed box, and downward
+flow from the original first baseline, preserving exact page count and keeping
+text on its source page. An impossible fit refuses; it never adds a continuation
+page. The user requested the artifact be saved in docs; the PNG and notes are
+there; the PNG preserves the pre-ruling sketch, so its pending labels are
+historical. The ruling is appended to `docs/DECISIONS.md`. The requested short
+note for the web-app session is `docs/design/B1-line-wrapping/WEB-APP-NOTE.md`;
+it was saved for Rodrigo to relay, not sent to another session.
+**Next prerequisite:** corpus recovery measurement, before a plan or build.
+No later stage was performed in this canvas-and-ruling delivery. Evidence:
+`docs/reviews/2026-09-19-b1-design-canvas.md`.
+
+Re-verified with git and gh: checkout began clean on `feat/consumer-surface`
+at `1d4f970`. Work is local and uncommitted on `codex/b1-design-canvas` from
+that commit. #12 (`abc4767` → `main`) and #13 (`1d4f970` →
+`feat/terminology-loop`) remain open, MERGEABLE, with failing checks; neither
+was modified. **Correction to the previous handover:** remote `main` is
+`a5629fb`, CI concurrency only (#14); local `main` remains `bacc436`.
+No commit, push or merge was made. Re-verify these facts on the next session.
+
+The source also corrects two shorthand claims: ordinary lines may shrink to
+0.7× (with explicit exceptions), and a library build refusal does not itself
+restore source-language text. Explicit merges already reflow. The canvas is
+schematic and asserts no measured recovery benefit. The product repo was not
+opened.
+
+## Previous start here — 19 September 2026 (superseded by the canvas entry)
 
 **Both branches are pushed and both PRs are open: [#12](https://github.com/ariasr47/pdf-translate-skill/pull/12) (row 32, v57, base `main`) and [#13](https://github.com/ariasr47/pdf-translate-skill/pull/13) (E3, v58, stacked on #12). Merge #12 first; GitHub retargets #13.** Both MERGEABLE. **CI has not run on either** — every job failed in 1–5 seconds with *"The job was not started because recent account payments have failed or your spending limit needs to be increased"*. That is GitHub account billing, not the code; the only workflow change is three test-module names on one `run:` line. After billing is fixed: `gh run rerun 35432185828 && gh run rerun 35432191241`. Do not merge on a red that never ran — both suites are green locally (Windows / Python 3.14, 492 and 15), but the Ubuntu and 3.10 legs are unverified.
 

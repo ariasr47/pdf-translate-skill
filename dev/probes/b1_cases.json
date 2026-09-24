@@ -1,0 +1,15 @@
+{
+  "scope": "Selected constructed seed-corpus occurrences with diagnostic payloads, not representative translations or a customer recovery rate.",
+  "latin_payload": "Veuillez lire attentivement toutes les informations complémentaires avant de remplir et de signer ce document, puis conserver une copie complète pour vos dossiers.",
+  "cjk_payload": "申請書を提出する前に、記載された内容を確認してください。必要な情報をすべて記入し、添付書類を確認してください。提出した書類の控えは、お手元で大切に保管してください。",
+  "cases": [
+    {"id": "table-cell", "source": "dense_table.pdf", "page": 0, "text": "row1c0", "payload": "latin", "box": [53, 103, 167, 119], "reason": "Manually selected interior of row 1, column 0, above the rule at y=120 and left of x=170. No extra room is authorized."},
+    {"id": "left-column-tail", "source": "multicolumn.pdf", "page": 0, "text": "and a third left line", "payload": "latin", "box": [50, 132, 305, 215], "reason": "Last line of left column; blank area below inspected in the source render; right edge stops before the column at x=330."},
+    {"id": "right-column-tail", "source": "multicolumn.pdf", "page": 0, "text": "and a third right line", "payload": "latin", "box": [330, 132, 550, 215], "reason": "Last line of right column; blank area below inspected; box stays on page."},
+    {"id": "banner", "source": "colored.pdf", "page": 0, "text": "WHITE ON DARK BANNER", "payload": "latin", "box": [50, 42, 550, 108], "reason": "White text must remain inside the existing dark banner ending at y=110."},
+    {"id": "blue-tail", "source": "colored.pdf", "page": 0, "text": "Blue hyperlink style", "payload": "latin", "box": [50, 165, 350, 265], "reason": "Last colored line; blank area below inspected. Source blue must survive."},
+    {"id": "cjk-tail", "source": "ja_source.pdf", "page": 0, "text": "署名", "payload": "cjk", "box": [60, 160, 500, 260], "reason": "Last CJK line; blank area below inspected. Diagnostic text, not a translation of signature."},
+    {"id": "two-page-room", "source": "@constructed-room", "page": 1, "text": "Selected note", "payload": "latin", "box": [40, 60, 255, 200], "reason": "Author-created second page with a fixed roomy rectangle; page 1 and the neighboring widget must survive."},
+    {"id": "last-page-full", "source": "@constructed-full", "page": 1, "text": "Selected note", "payload": "latin", "box": [40, 250, 138, 289], "reason": "Author-created last-page footer with no continuation page or larger box allowed."}
+  ]
+}

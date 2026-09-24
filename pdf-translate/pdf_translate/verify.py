@@ -2253,6 +2253,9 @@ def run_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
     the whole PROCESS for the duration — a service running two jobs lost the
     other one's output entirely, which is C5's defect and is pinned by
     `test_two_threads_running_run_verify_do_not_swallow_each_other`.
+    That regression checks stdout isolation, not PyMuPDF thread safety. Use
+    separate processes and job directories for concurrent PDF jobs; see
+    `references/consumer-guide.md`.
     """
     rc, gates = _execute_verify(
         orig, trans, fill_text=fill_text, allow=allow, min_ink=min_ink,

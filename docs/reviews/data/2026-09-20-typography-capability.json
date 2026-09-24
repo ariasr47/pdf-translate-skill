@@ -1,0 +1,463 @@
+{
+  "pymupdf": "1.28.2",
+  "source_lines": [
+    [
+      {
+        "text": "Heading",
+        "font": "Times-Roman",
+        "flags": 4
+      }
+    ],
+    [
+      {
+        "text": "Label",
+        "font": "Helvetica",
+        "flags": 0
+      }
+    ],
+    [
+      {
+        "text": "Pay ",
+        "font": "Helvetica",
+        "flags": 0
+      },
+      {
+        "text": "NOW",
+        "font": "Helvetica-Oblique",
+        "flags": 2
+      }
+    ],
+    [
+      {
+        "text": "Pay ",
+        "font": "Helvetica",
+        "flags": 0
+      },
+      {
+        "text": "NOW",
+        "font": "Helvetica-Bold",
+        "flags": 16
+      }
+    ]
+  ],
+  "snapshots": [
+    {
+      "label": "app-pin-v54",
+      "commit": "9675c6196c14eb2a2d37d34e371391eb1955a386",
+      "version": "54",
+      "api": "extract_segments",
+      "segments": [
+        {
+          "id": 0,
+          "page": 0,
+          "bbox": [
+            72.0,
+            59.36,
+            112.66,
+            75.37
+          ],
+          "origin": [
+            72.0,
+            72.0
+          ],
+          "size": 12.0,
+          "color": 0,
+          "bold": false,
+          "italic": false,
+          "dir": [
+            1.0,
+            0.0
+          ],
+          "text": "Heading",
+          "marker": "",
+          "gap": "",
+          "core": "Heading",
+          "dots": "",
+          "tail": "",
+          "passthrough": false
+        },
+        {
+          "id": 1,
+          "page": 0,
+          "bbox": [
+            72.0,
+            95.1,
+            101.35,
+            111.59
+          ],
+          "origin": [
+            72.0,
+            108.0
+          ],
+          "size": 12.0,
+          "color": 0,
+          "bold": false,
+          "italic": false,
+          "dir": [
+            1.0,
+            0.0
+          ],
+          "text": "Label",
+          "marker": "",
+          "gap": "",
+          "core": "Label",
+          "dots": "",
+          "tail": "",
+          "passthrough": false
+        },
+        {
+          "id": 2,
+          "page": 0,
+          "bbox": [
+            72.0,
+            131.1,
+            125.34,
+            147.59
+          ],
+          "origin": [
+            72.0,
+            144.0
+          ],
+          "size": 12.0,
+          "color": 0,
+          "bold": false,
+          "italic": true,
+          "dir": [
+            1.0,
+            0.0
+          ],
+          "text": "Pay NOW",
+          "marker": "",
+          "gap": "",
+          "core": "Pay NOW",
+          "dots": "",
+          "tail": "",
+          "passthrough": false
+        },
+        {
+          "id": 3,
+          "page": 0,
+          "bbox": [
+            72.0,
+            167.1,
+            125.34,
+            183.68
+          ],
+          "origin": [
+            72.0,
+            180.0
+          ],
+          "size": 12.0,
+          "color": 0,
+          "bold": true,
+          "italic": false,
+          "dir": [
+            1.0,
+            0.0
+          ],
+          "text": "Pay NOW",
+          "marker": "",
+          "gap": "",
+          "core": "Pay NOW",
+          "dots": "",
+          "tail": "",
+          "passthrough": false
+        }
+      ],
+      "cores": [
+        {
+          "text": "Heading",
+          "count": 1
+        },
+        {
+          "text": "Label",
+          "count": 1
+        },
+        {
+          "text": "Pay NOW",
+          "count": 2
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "label": "main-v56",
+      "commit": "a5629fbd6bc084f9ab849ae3db74992c15807fcc",
+      "version": "56",
+      "api": "extract_segments",
+      "segments": [
+        {
+          "id": 0,
+          "page": 0,
+          "bbox": [
+            72.0,
+            59.36,
+            112.66,
+            75.37
+          ],
+          "origin": [
+            72.0,
+            72.0
+          ],
+          "size": 12.0,
+          "color": 0,
+          "bold": false,
+          "italic": false,
+          "dir": [
+            1.0,
+            0.0
+          ],
+          "text": "Heading",
+          "marker": "",
+          "gap": "",
+          "core": "Heading",
+          "dots": "",
+          "tail": "",
+          "passthrough": false
+        },
+        {
+          "id": 1,
+          "page": 0,
+          "bbox": [
+            72.0,
+            95.1,
+            101.35,
+            111.59
+          ],
+          "origin": [
+            72.0,
+            108.0
+          ],
+          "size": 12.0,
+          "color": 0,
+          "bold": false,
+          "italic": false,
+          "dir": [
+            1.0,
+            0.0
+          ],
+          "text": "Label",
+          "marker": "",
+          "gap": "",
+          "core": "Label",
+          "dots": "",
+          "tail": "",
+          "passthrough": false
+        },
+        {
+          "id": 2,
+          "page": 0,
+          "bbox": [
+            72.0,
+            131.1,
+            125.34,
+            147.59
+          ],
+          "origin": [
+            72.0,
+            144.0
+          ],
+          "size": 12.0,
+          "color": 0,
+          "bold": false,
+          "italic": true,
+          "dir": [
+            1.0,
+            0.0
+          ],
+          "text": "Pay NOW",
+          "marker": "",
+          "gap": "",
+          "core": "Pay NOW",
+          "dots": "",
+          "tail": "",
+          "passthrough": false
+        },
+        {
+          "id": 3,
+          "page": 0,
+          "bbox": [
+            72.0,
+            167.1,
+            125.34,
+            183.68
+          ],
+          "origin": [
+            72.0,
+            180.0
+          ],
+          "size": 12.0,
+          "color": 0,
+          "bold": true,
+          "italic": false,
+          "dir": [
+            1.0,
+            0.0
+          ],
+          "text": "Pay NOW",
+          "marker": "",
+          "gap": "",
+          "core": "Pay NOW",
+          "dots": "",
+          "tail": "",
+          "passthrough": false
+        }
+      ],
+      "cores": [
+        {
+          "text": "Heading",
+          "count": 1
+        },
+        {
+          "text": "Label",
+          "count": 1
+        },
+        {
+          "text": "Pay NOW",
+          "count": 2
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "label": "branch-v58",
+      "commit": "1d4f9707c4d9934fbc88d8f25576ac304b9bb139",
+      "version": "58",
+      "api": "run_extract",
+      "segments": [
+        {
+          "id": 0,
+          "page": 0,
+          "bbox": [
+            72.0,
+            59.36,
+            112.66,
+            75.37
+          ],
+          "origin": [
+            72.0,
+            72.0
+          ],
+          "size": 12.0,
+          "color": 0,
+          "bold": false,
+          "italic": false,
+          "dir": [
+            1.0,
+            0.0
+          ],
+          "text": "Heading",
+          "marker": "",
+          "gap": "",
+          "core": "Heading",
+          "dots": "",
+          "tail": "",
+          "passthrough": false
+        },
+        {
+          "id": 1,
+          "page": 0,
+          "bbox": [
+            72.0,
+            95.1,
+            101.35,
+            111.59
+          ],
+          "origin": [
+            72.0,
+            108.0
+          ],
+          "size": 12.0,
+          "color": 0,
+          "bold": false,
+          "italic": false,
+          "dir": [
+            1.0,
+            0.0
+          ],
+          "text": "Label",
+          "marker": "",
+          "gap": "",
+          "core": "Label",
+          "dots": "",
+          "tail": "",
+          "passthrough": false
+        },
+        {
+          "id": 2,
+          "page": 0,
+          "bbox": [
+            72.0,
+            131.1,
+            125.34,
+            147.59
+          ],
+          "origin": [
+            72.0,
+            144.0
+          ],
+          "size": 12.0,
+          "color": 0,
+          "bold": false,
+          "italic": true,
+          "dir": [
+            1.0,
+            0.0
+          ],
+          "text": "Pay NOW",
+          "marker": "",
+          "gap": "",
+          "core": "Pay NOW",
+          "dots": "",
+          "tail": "",
+          "passthrough": false
+        },
+        {
+          "id": 3,
+          "page": 0,
+          "bbox": [
+            72.0,
+            167.1,
+            125.34,
+            183.68
+          ],
+          "origin": [
+            72.0,
+            180.0
+          ],
+          "size": 12.0,
+          "color": 0,
+          "bold": true,
+          "italic": false,
+          "dir": [
+            1.0,
+            0.0
+          ],
+          "text": "Pay NOW",
+          "marker": "",
+          "gap": "",
+          "core": "Pay NOW",
+          "dots": "",
+          "tail": "",
+          "passthrough": false
+        }
+      ],
+      "cores": [
+        {
+          "text": "Heading",
+          "count": 1
+        },
+        {
+          "text": "Label",
+          "count": 1
+        },
+        {
+          "text": "Pay NOW",
+          "count": 2
+        }
+      ],
+      "warnings": []
+    }
+  ],
+  "extract_segments_function_identical_across_refs": true
+}
