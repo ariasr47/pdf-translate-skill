@@ -102,7 +102,44 @@ are committed.
 the documentation; no rendering, shaping, font or layout code. The independent
 pass is recorded below regardless.
 
-**Independent verification: not yet complete.** A separate pass on another model was started with the acceptance criteria only, and crashes of the local machine cut it off twice on 23 September. Its partial artifacts are in this worktree's ignored `runs/a06-verifier/`. Until it completes, the checks above are this author's own.
+**Independent verification (a separate pass on another model, with real CLI
+runs only, against the baseline export and `55bb44d`): verified with
+findings, neither a defect.** It built fresh one-page jobs and ran
+`scripts/pipeline.py rebuild` and `scripts/verify.py` as subprocesses. Every
+clause of the behaviour defined above held:
+
+| Case | Baseline | Fix |
+|---|---|---|
+| target `""` or `"   "`, default flags | 0, no mapping gate | 1, `empty-targets` FAIL |
+| complete mapping, default flags | 0, no mapping gate | 0, `empty-targets` and `placement` PASS |
+| caller's `--translations` pointing at a mapping with an empty target | 1 | 1 (honoured, unchanged) |
+| empty target, `--segments` forwarded alone | 0 | 1 |
+| empty target, `--translations=VALUE` spelling | 0 | 1 |
+| target `null` or core absent | 1, build refused, no PDF | the same |
+| direct `verify.py` without a mapping | — | 0, the structure-only mode `gates.md` states |
+
+Seven break-it runs gave no false PASS and no false FAIL: `--work` after the
+positional arguments, `--work .`, relative paths, a space in the path, a
+custom `--report`, an override that keeps the source's marker, and a `skip`
+entry. It read the log of CI run 35935414545 instead of re-running tests. All
+eight new tests ran on both operating systems, and the log has no failure,
+error or traceback. Two findings, both existing behaviour, identical on the
+baseline:
+
+- **Informational.** A custom `--report` removes the job directory's default
+  `verify_report.json` rather than leaving it stale. That is A03's report
+  invalidation (`_prepare_rebuild_reports`) working as its comment says.
+- **Informational.** A core listed under `skip` is exempt from
+  `empty-targets` and `placement` by design. The mapping is still supplied
+  and every other check runs.
+
+Its report and case directories are in this worktree's ignored
+`runs/a06-verifier-2/`; the two earlier attempts, cut off by crashes of the
+local machine, left `runs/a06-verifier/`. The first case's own default report
+was not kept, because later custom-report runs in the same job directory
+removed it (the first finding). Six kept rebuild reports from that same
+empty-target job show the fix's exit 1 with `empty-targets` FAIL, and two show
+the baseline's exit 0.
 
 ## Limits
 
