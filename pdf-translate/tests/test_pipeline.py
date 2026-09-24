@@ -2256,6 +2256,28 @@ class PageRotationTests(unittest.TestCase):
             rc, log, out = self._rebuild(tmp, 0, drop_geometry=True)
             self.assertEqual(rc, 0, msg=log)
 
+    def test_stale_extraction_line_marks_a_cut_page_list(self):
+        """The console line names at most CONSOLE_LIST pages and says when
+        it stops; the refusal data lists every page."""
+        pages = retypeset.CONSOLE_LIST + 2
+        with tempfile.TemporaryDirectory() as tmp:
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            doc = pymupdf.open()
+            for _ in range(pages):
+                doc.new_page(width=612, height=792).set_rotation(90)
+            doc.save(stripped)
+            doc.close()
+            segd = {'segments': [{'page': p} for p in range(pages)]}
+            with self.assertRaises(retypeset.MappingError) as caught:
+                retypeset._refuse_stale_geometry(segd, stripped)
+            line = caught.exception.console_line
+            self.assertIn(f'and {pages} rotated page(s) carry segments', line)
+            last = retypeset.CONSOLE_LIST - 1
+            self.assertIn(f'p{last} /Rotate 90, …); it was extracted', line)
+            self.assertNotIn(f'p{last + 1} /Rotate', line)
+            self.assertEqual(
+                len(caught.exception.refusals['stale_extraction']), pages)
+
     def test_width_budgets_use_the_unrotated_frame(self):
         doc = pymupdf.open()
         try:

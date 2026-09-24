@@ -780,6 +780,8 @@ def _refuse_stale_geometry(segd, stripped):
     if not stale:
         return
     shown = ', '.join(f'p{p} /Rotate {r}' for p, r in stale[:CONSOLE_LIST])
+    if len(stale) > CONSOLE_LIST:
+        shown += ', …'   # the count says how many; refusals lists them all
     raise MappingError(
         f'stale extraction: {len(stale)} rotated page(s) in the old space',
         console_line=(f'FAIL: stale extraction: segments.json names no '
