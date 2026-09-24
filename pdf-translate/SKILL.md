@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "61"
+  version: "62"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -184,12 +184,12 @@ Rewrite pushbutton captions in place with `--captions` (field count stays
 exact; the caption must fit the widget); hide a button only when it should
 disappear, and never draw a second widget. Tooltips, dropdown labels and
 field defaults never reach a content stream: `extract_segments.py` writes
-`widget_text.json`, you author every `target`, `--widget-text` applies it.
-A `null` target is a refusal, not a skip. **Export values stay** — only
-the display half of an `/Opt` entry is translated — and a value that is
-data (a barcode payload, an ID) gets its source string back as the target.
-A rendered dropdown still shows the export value in MuPDF; the file is
-right.
+`widget_text.json` by full field name; you author every `target`, and
+`--widget-text` applies it. A `null` target is a refusal, not a skip.
+**Export values stay** — only the display half of an `/Opt` entry is
+translated — and a value that is data (a barcode payload, an ID) gets
+its source string back as the target. A rendered dropdown still shows
+the export value in MuPDF; the file is right.
 
 **Encryption, usage rights and certification** — `references/compliance.md`
 §4. Strip always deletes `/Perms` and says what was there; signature

@@ -32,16 +32,36 @@ author each `target`, then pass it back with `strip_text.py --widget-text`
 (or `pipeline.py init … --widget-text`). A `null` target is a refusal, not
 a skip — author it or delete the key.
 
+**Keys are full field names.**
+- The scaffold names each field by its fully qualified name: every `/T` up
+  the `/Parent` chain, joined with dots, such as
+  `form1[0].#pageSet[0].Page1[1].PDF417BarCode1[0]`. XFA-derived forms
+  repeat a partial name such as `Name[0]` under many parents. Keyed by the
+  partial name, one field's tooltip or value used to land on all of them.
+- A mapping keyed by a partial name, as scaffolds before v62 wrote, still
+  applies when that name belongs to exactly one field. When it belongs to
+  several, strip refuses and lists their full names.
+- Two keys that name the same field are refused.
+- When distinct widgets share one full name but not their text, one entry
+  is refused rather than copied onto all of them. This happens on a
+  malformed form that repeats a name, or with a `/T` containing a dot that
+  spells a nested field's name. Delete the key to leave those widgets as
+  they are.
+- Captions (`--captions`) and `--hide-buttons` still take the partial
+  name.
+
 **Export values stay.** An `/Opt` entry becomes `[export, display]` and
 only the display half is translated, so `/V` and everything the form
 submits keep working. A spec that asks to translate a choice field's `/V`
 is refused; verify's `/Opt` parity gate fails any output whose export
 values moved.
 
-**Values that are data.** A `value` or `default` that is data — a
-2D-barcode payload such as USCIS's `PDF417BarCode1` (`I-864|08/24/26|1`),
-an ID, a date stamp — gets its source string back as the target, never a
-translation: `null` refuses the build, and a translation corrupts what the
+**Values that are data.** A `value` or `default` that is data gets its
+source string back as the target, never a translation. That covers a
+2D-barcode payload, an ID and a date stamp. USCIS forms carry a
+`PDF417BarCode1` on every page, each with its own payload
+(`I-864|08/24/26|2` on page 2), and each is its own scaffold entry. A
+`null` target refuses the build, and a translation corrupts what the
 form submits. Nothing guesses which values are data; you decide, and the
 scaffold takes the identity target.
 

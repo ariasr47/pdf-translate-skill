@@ -396,6 +396,146 @@ def retranslate_opt_exports(src, dst, mapping):
         pdf.close()
 
 
+BARCODE_PAGES = 3
+SAME_LEAF_TIPS = {'Applicant[0].Name[0]': "Applicant's full name",
+                  'Spouse[0].Name[0]': "Spouse's full name",
+                  'Applicant[0].Phone[0]': 'Daytime phone'}
+SAME_LEAF_VALUES = {'Applicant[0].Name[0]': 'Ana Ruiz',
+                    'Spouse[0].Name[0]': 'Luis Ruiz'}
+SAME_LEAF_OPTS = {'A[0].Pick[0]': [('a1', 'Apple'), ('a2', 'Pear')],
+                  'B[0].Pick[0]': [('b1', 'Plum'), ('b2', 'Fig')]}
+
+
+def barcode_name(i):
+    return f'form1[0].#pageSet[0].Page1[{i}].PDF417BarCode1[0]'
+
+
+def barcode_value(i):
+    return f'X-1|01/01/26|{i + 1}'
+
+
+def build_same_leaf_widgets_pdf(path):
+    """Fields that share a partial name under different parents (R-03).
+
+    The shape of the XFA-derived government forms: every widget carries its
+    own /T, nested under parent fields, so only the fully qualified name
+    tells two of them apart. Two text fields are both "Name[0]", two
+    dropdowns are both "Pick[0]", and a barcode on every page is
+    "PDF417BarCode1[0]" with that page's own value, as on USCIS forms.
+    """
+    doc = pymupdf.open()
+    for i in range(BARCODE_PAGES):
+        page = doc.new_page(width=400, height=300)
+        page.insert_text((50, 40), f'Form page {i + 1} label.', fontsize=11)
+    doc.save(path)
+    doc.close()
+
+    pdf = pikepdf.open(path, allow_overwriting_input=True)
+    try:
+        fields = pikepdf.Array()
+
+        def widget(page_no, rect, **keys):
+            w = pdf.make_indirect(pikepdf.Dictionary(
+                Type=pikepdf.Name('/Annot'), Subtype=pikepdf.Name('/Widget'),
+                Rect=pikepdf.Array(rect), F=4, **keys))
+            page = pdf.pages[page_no]
+            if '/Annots' not in page:
+                page.Annots = pdf.make_indirect(pikepdf.Array())
+            page.Annots.append(w)
+            return w
+
+        def parent(name, kids, into=None):
+            p = pdf.make_indirect(pikepdf.Dictionary(
+                T=pikepdf.String(name), Kids=pikepdf.Array(kids)))
+            for k in kids:
+                k.Parent = p
+            (into if into is not None else fields).append(p)
+            return p
+
+        name_a = widget(0, [50, 200, 250, 220], T=pikepdf.String('Name[0]'),
+                        FT=pikepdf.Name('/Tx'),
+                        TU=pikepdf.String(SAME_LEAF_TIPS['Applicant[0].Name[0]']),
+                        V=pikepdf.String(SAME_LEAF_VALUES['Applicant[0].Name[0]']))
+        phone = widget(0, [260, 200, 380, 220], T=pikepdf.String('Phone[0]'),
+                       FT=pikepdf.Name('/Tx'),
+                       TU=pikepdf.String(SAME_LEAF_TIPS['Applicant[0].Phone[0]']))
+        parent('Applicant[0]', [name_a, phone])
+        name_s = widget(0, [50, 170, 250, 190], T=pikepdf.String('Name[0]'),
+                        FT=pikepdf.Name('/Tx'),
+                        TU=pikepdf.String(SAME_LEAF_TIPS['Spouse[0].Name[0]']),
+                        V=pikepdf.String(SAME_LEAF_VALUES['Spouse[0].Name[0]']))
+        parent('Spouse[0]', [name_s])
+        for key, page_no, y in (('A[0].Pick[0]', 0, 140), ('B[0].Pick[0]', 0, 110)):
+            opts = SAME_LEAF_OPTS[key]
+            pick = widget(page_no, [50, y, 250, y + 20],
+                          T=pikepdf.String('Pick[0]'), FT=pikepdf.Name('/Ch'),
+                          Ff=1 << 17,
+                          Opt=pikepdf.Array([pikepdf.Array(
+                              [pikepdf.String(e), pikepdf.String(d)])
+                              for e, d in opts]),
+                          V=pikepdf.String(opts[0][0]))
+            parent(key.split('.')[0], [pick])
+
+        page_set = pikepdf.Array()
+        for i in range(BARCODE_PAGES):
+            bar = widget(i, [300, 20, 380, 60],
+                         T=pikepdf.String('PDF417BarCode1[0]'),
+                         FT=pikepdf.Name('/Tx'),
+                         TU=pikepdf.String('Barcode'),
+                         V=pikepdf.String(barcode_value(i)))
+            parent(f'Page1[{i}]', [bar], into=page_set)
+        ps = pdf.make_indirect(pikepdf.Dictionary(
+            T=pikepdf.String('#pageSet[0]'), Kids=page_set))
+        for p in page_set:
+            p.Parent = ps
+        parent('form1[0]', [ps])
+
+        pdf.Root.AcroForm = pdf.make_indirect(pikepdf.Dictionary(
+            Fields=fields, NeedAppearances=True))
+        pdf.save(path)
+    finally:
+        pdf.close()
+
+
+def widget_text_by_full_name(path):
+    """{fully qualified name: (tooltip, value, [(export, display)])}."""
+    out = {}
+    pdf = pikepdf.open(path)
+    try:
+        for page in pdf.pages:
+            for a in page.get('/Annots', []):
+                if a.get('/FT') is None:
+                    continue
+                parts, node = [], a
+                while node is not None:
+                    if node.get('/T') is not None:
+                        parts.append(str(node.T))
+                    node = node.get('/Parent')
+                opts = [(str(e[0]), str(e[1])) if isinstance(e, pikepdf.Array)
+                        else (str(e), str(e)) for e in a.get('/Opt', [])]
+                out['.'.join(reversed(parts))] = (
+                    str(a.TU) if a.get('/TU') is not None else None,
+                    str(a.V) if a.get('/V') is not None else None, opts)
+    finally:
+        pdf.close()
+    return out
+
+
+def identity_widget_text(scaffold):
+    """Every scaffold entry authored with its own source as the target."""
+    spec = {}
+    for field, entry in scaffold.items():
+        spec[field] = {}
+        for key, val in entry.items():
+            if key == 'type':
+                continue
+            if key == 'options':
+                spec[field][key] = [dict(o, target=o['source']) for o in val]
+            else:
+                spec[field][key] = dict(val, target=val['source'])
+    return spec
+
+
 ROT_ROWS = [
     # (x, y, text, rotate, expected line dir)
     (60, 60, 'Application for benefits', 0, (1.0, 0.0)),
@@ -1257,6 +1397,187 @@ class WidgetTextTests(unittest.TestCase):
             with redirect_stdout(buf):
                 verify.verify(src, out)
             self.assertNotIn('/Opt export', buf.getvalue())
+
+
+class WidgetTextFullNameTests(unittest.TestCase):
+    """R-03: widget text belongs to one field, named in full.
+
+    Keyed by the partial /T, the scaffold kept the first "Name[0]" and
+    strip wrote its text onto every other "Name[0]": fields announced
+    another field's name, and page 1's barcode value overwrote every page.
+    """
+
+    def test_scaffold_keys_every_field_by_its_full_name(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            build_same_leaf_widgets_pdf(src)
+            scaffold = strip_text.widget_text_scaffold(src)
+            for name, tip in SAME_LEAF_TIPS.items():
+                self.assertEqual(scaffold[name]['tooltip']['source'], tip)
+            for i in range(BARCODE_PAGES):
+                self.assertEqual(scaffold[barcode_name(i)]['value']['source'],
+                                 barcode_value(i))
+            for name, opts in SAME_LEAF_OPTS.items():
+                self.assertEqual([(o['export'], o['source'])
+                                  for o in scaffold[name]['options']], opts)
+            self.assertNotIn('Name[0]', scaffold)
+            self.assertNotIn('Pick[0]', scaffold)
+
+    def test_identity_widget_text_keeps_every_field_its_own_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            dst = os.path.join(tmp, 'stripped.pdf')
+            build_same_leaf_widgets_pdf(src)
+            spec = identity_widget_text(strip_text.widget_text_scaffold(src))
+            report = strip_text.strip_text(src, dst, widget_text=spec)
+            self.assertEqual(report['leftover_text'], [])
+            before, after = (widget_text_by_full_name(src),
+                             widget_text_by_full_name(dst))
+            self.assertEqual(set(after), set(before))
+            for name in before:
+                self.assertEqual(after[name], before[name], msg=name)
+            # Each page keeps its own barcode payload.
+            for i in range(BARCODE_PAGES):
+                self.assertEqual(after[barcode_name(i)][1], barcode_value(i))
+            self.assertEqual(
+                sorted(r['name'] for r in report['rewritten_widget_text']),
+                sorted(spec))
+
+    def test_a_partial_name_is_accepted_only_when_it_is_unique(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            dst = os.path.join(tmp, 'stripped.pdf')
+            build_same_leaf_widgets_pdf(src)
+            for key in ('Phone[0]', 'Phone'):
+                strip_text.strip_text(src, dst, widget_text={
+                    key: {'tooltip': 'Teléfono de día'}})
+                after = widget_text_by_full_name(dst)
+                self.assertEqual(after['Applicant[0].Phone[0]'][0],
+                                 'Teléfono de día')
+                self.assertEqual(after['Applicant[0].Name[0]'][0],
+                                 SAME_LEAF_TIPS['Applicant[0].Name[0]'])
+            for key, names in (
+                    ('Name[0]', ['Applicant[0].Name[0]', 'Spouse[0].Name[0]']),
+                    ('Pick', ['A[0].Pick[0]', 'B[0].Pick[0]']),
+                    ('PDF417BarCode1[0]',
+                     [barcode_name(i) for i in range(BARCODE_PAGES)])):
+                with self.assertRaises(strip_text.WidgetTextError) as ctx:
+                    strip_text.strip_text(src, dst, widget_text={
+                        key: {'tooltip': 'x'}})
+                message = str(ctx.exception)
+                self.assertIn('names more than one field', message)
+                for name in names:
+                    self.assertIn(name, message)
+
+    @staticmethod
+    def _page_with_annots(path, build):
+        doc = pymupdf.open()
+        doc.new_page(width=400, height=300).insert_text(
+            (50, 40), 'Form label.', fontsize=11)
+        doc.save(path)
+        doc.close()
+        pdf = pikepdf.open(path, allow_overwriting_input=True)
+        try:
+            annots, fields = build(pdf)
+            pdf.pages[0].Annots = pdf.make_indirect(pikepdf.Array(annots))
+            pdf.Root.AcroForm = pdf.make_indirect(pikepdf.Dictionary(
+                Fields=pikepdf.Array(fields), NeedAppearances=True))
+            pdf.save(path)
+        finally:
+            pdf.close()
+
+    @staticmethod
+    def _tx(pdf, t, tu, y):
+        return pdf.make_indirect(pikepdf.Dictionary(
+            Type=pikepdf.Name('/Annot'), Subtype=pikepdf.Name('/Widget'),
+            Rect=pikepdf.Array([50, y, 250, y + 20]), F=4,
+            T=pikepdf.String(t), FT=pikepdf.Name('/Tx'),
+            TU=pikepdf.String(tu)))
+
+    def test_widgets_that_share_a_full_name_but_not_their_text_are_refused(self):
+        # A /T with a '.' in it spells the same full name as a nested field.
+        for top_tip, nested_tip, refused in (('Top tip', 'Nested tip', True),
+                                             ('Same tip', 'Same tip', False)):
+            with tempfile.TemporaryDirectory() as tmp:
+                src = os.path.join(tmp, 'orig.pdf')
+                dst = os.path.join(tmp, 'stripped.pdf')
+
+                def build(pdf):
+                    top = self._tx(pdf, 'A.B', top_tip, 200)
+                    kid = self._tx(pdf, 'B', nested_tip, 160)
+                    parent = pdf.make_indirect(pikepdf.Dictionary(
+                        T=pikepdf.String('A'), Kids=pikepdf.Array([kid])))
+                    kid.Parent = parent
+                    return [top, kid], [top, parent]
+
+                self._page_with_annots(src, build)
+                spec = {'A.B': {'tooltip': 'Traducido'}}
+                if refused:
+                    with self.assertRaises(strip_text.WidgetTextError) as ctx:
+                        strip_text.strip_text(src, dst, widget_text=spec)
+                    self.assertIn('share the full name "A.B"', str(ctx.exception))
+                    self.assertFalse(os.path.exists(dst))
+                else:
+                    # Same source text: one entry is right for both.
+                    strip_text.strip_text(src, dst, widget_text=spec)
+                    pdf = pikepdf.open(dst)
+                    try:
+                        tips = [str(a.TU) for a in pdf.pages[0].Annots]
+                    finally:
+                        pdf.close()
+                    self.assertEqual(tips, ['Traducido', 'Traducido'])
+
+    def test_a_comment_author_is_not_a_field_name(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            dst = os.path.join(tmp, 'stripped.pdf')
+
+            def build(pdf):
+                field = self._tx(pdf, 'Applicant', 'Field tip', 200)
+                note = pdf.make_indirect(pikepdf.Dictionary(
+                    Type=pikepdf.Name('/Annot'), Subtype=pikepdf.Name('/Text'),
+                    Rect=pikepdf.Array([300, 200, 320, 220]),
+                    T=pikepdf.String('Applicant'),  # the comment's author
+                    Contents=pikepdf.String('A reviewer comment')))
+                return [field, note], [field]
+
+            self._page_with_annots(src, build)
+            strip_text.strip_text(src, dst, widget_text={
+                'Applicant': {'tooltip': 'Nombre'}})
+            pdf = pikepdf.open(dst)
+            try:
+                by_type = {str(a.Subtype): a for a in pdf.pages[0].Annots}
+                self.assertEqual(str(by_type['/Widget'].TU), 'Nombre')
+                self.assertNotIn('/TU', by_type['/Text'])
+            finally:
+                pdf.close()
+
+    def test_opt_parity_names_the_field_whose_export_changed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            bad = os.path.join(tmp, 'bad.pdf')
+            build_same_leaf_widgets_pdf(src)
+            # Only the FIRST of the two same-named dropdowns is broken: its
+            # export 'a1' is translated, which is what the gate is for.
+            pdf = pikepdf.open(src)
+            try:
+                for a in pdf.pages[0].Annots:
+                    if (a.get('/FT') == pikepdf.Name('/Ch')
+                            and str(a.Parent.T) == 'A[0]'):
+                        a.Opt[0] = pikepdf.Array([pikepdf.String('Manzana'),
+                                                  pikepdf.String('Apple')])
+                pdf.save(bad)
+            finally:
+                pdf.close()
+            self.assertEqual(sorted(strip_text.choice_exports(src)),
+                             sorted(SAME_LEAF_OPTS))
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, bad)
+            log = buf.getvalue()
+            self.assertNotEqual(rc, 0, msg=log)
+            self.assertIn('FAIL /Opt export values changed (1)', log)
+            self.assertIn('A[0].Pick[0]', log)
 
 
 class RetypesetTests(unittest.TestCase):
