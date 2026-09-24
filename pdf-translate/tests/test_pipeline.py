@@ -4461,7 +4461,9 @@ class PlacementTests(unittest.TestCase):
             self.assertIn('PASS fill round-trip', log)
             self.assertIn('PASS page 1 ink ratio', log)
             self.assertIn('PASS no untranslated running text', log)
-            self.assertNotIn('authored translations present', log)
+            # A06: without the flag, rebuild verifies against its own mapping,
+            # so the placement check runs, and passes on this correct job.
+            self.assertIn('PASS authored translations present', log)
             self.assertNotIn('missing translation targets', log)
 
 
@@ -4633,7 +4635,11 @@ class ChromeTests(unittest.TestCase):
             self.assertNotIn('Print', text)
             self.assertIn('Imprimir', text)
 
-    def test_omit_translations_does_not_run_chrome_gate(self):
+    def test_verify_without_translations_does_not_run_chrome_gate(self):
+        """The chrome gate needs the mapping: a verify run without
+        --translations must not run it. Since A06 a default rebuild supplies
+        its work directory's mapping, so the rebuild runs it and the direct
+        verify is where the opt-in still shows."""
         font = find_test_font()
         with tempfile.TemporaryDirectory() as tmp:
             src = os.path.join(tmp, 'orig.pdf')
@@ -4645,18 +4651,23 @@ class ChromeTests(unittest.TestCase):
             self.assertEqual(rc, 0, msg=buf.getvalue())
             write_mapping(os.path.join(tmp, 'translations.json'),
                           form_translations(), font)
+            flags = ['--fill-text', 'Niño Pérez',
+                     '--source-words-from', os.path.join(tmp, 'segments.json'),
+                     '--allow', 'form,schedule,question,vease']
             buf = io.StringIO()
             with redirect_stdout(buf):
-                rc = pipeline.main([
-                    'rebuild', '--work', tmp, src, out,
-                    '--fill-text', 'Niño Pérez',
-                    '--source-words-from', os.path.join(tmp, 'segments.json'),
-                    '--allow', 'form,schedule,question,vease',
-                ])
+                rc = pipeline.main(['rebuild', '--work', tmp, src, out] + flags)
             log = buf.getvalue()
             self.assertEqual(rc, 0, msg=log)
             self.assertIn('PASS field parity', log)
             self.assertIn('PASS fill round-trip', log)
+            self.assertIn('PASS button captions', log)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.main([src, out] + flags)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('PASS field parity', log)
             self.assertNotIn('button captions', log)
 
 

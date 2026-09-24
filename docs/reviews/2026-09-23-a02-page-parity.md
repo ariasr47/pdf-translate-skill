@@ -1,7 +1,7 @@
 # A02: a translation keeps exactly the original's pages
 
-23 September 2026 · local branch `fix/a02-page-count`, from main `178a06f` ·
-pushed for CI on 23 September; not merged or released · version unchanged (v60)
+23 September 2026 · branch `fix/a02-page-count`, from main `178a06f` ·
+merged as PR #24; shipped in v61
 
 ## Outcome
 

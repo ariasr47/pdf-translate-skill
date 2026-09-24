@@ -3,6 +3,40 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 23 September 2026, night: reconcile, A02 and A06 merged; main is v61
+
+**Verified state.** On Rodrigo's instruction the three PRs were merged into
+`main` in order, each after its CI passed on the merged result: #23
+(reconcile, merge `7af5d84`), #24 (A02, merge `fdbcd82`) and #25 (A06, this
+change, which also carries the version bump). `main` declares **v61** in all
+four version sources, and `VersionLockstepTests` pins it. No GitHub release or
+tag was made; the repository has none.
+
+v61 changes two things a consumer can see:
+
+- Every verify run prints one `page parity` line, and a missing, extra,
+  rotated or resized page FAILs the new `page-parity` gate. `compare` and
+  `render` show every page and exit 1 when the page counts differ, and
+  `finish` returns compare's code.
+- A default legacy `pipeline.py rebuild` verifies against the mapping it
+  built from. An empty target, a dropped marker or a translated identifier
+  now fails it: exit 1 where it used to exit 0.
+
+The next section ("evening") is the state just before the merges. Its branch
+table, CI runs and independent passes describe what landed.
+
+**Left standing on purpose; delete only on Rodrigo's word:** the three merged
+branches on GitHub and their worktrees under `C:/Dev/worktrees/`
+(`pdf-translate-reconcile-b1`, `pdf-translate-a02`, `pdf-translate-a06`); the
+throwaway `trial/integrate-reconcile-a02-a06` worktree, now superseded by
+`main`; the old checkout `C:\Dev\pdf-translate-skill` with its snapshot; its
+remote branch `codex/b1-design-canvas`; and `probe/b1-baseline-anchor`.
+
+**Next:** the backlog in `dev/goals/PROGRAM.md`. A21's manifest validation is
+the smallest item; A04's process validation and A15's broader wording stay
+open. B1 wrapping stays deferred. The separate web app keeps its own pin until
+it chooses to adopt v61.
+
 ## Start here — 23 September 2026, evening: reconcile, A02 and A06 are built and green on CI; integration is Rodrigo's call
 
 **Verified state.** Remote `main` is still **`178a06f`** (v60). Three branches

@@ -45,13 +45,16 @@ re-derive.
 
 ## The six calls
 
-Every path is explicit. Nothing resolves against the process's working
-directory.
+Pass each job's mapping and extracted segments to verification. Relative input
+paths in this example resolve against the process's working directory; `work`
+is an explicit directory you provide. The example is a fillable Spanish job;
+choose `target_fill` in your job's target script and a font that covers it.
 
 ```python
 import pdf_translate
 
 work = '/tmp/job'                      # a directory you own
+target_fill = 'Prueba 123'             # Spanish example; use the job's script
 
 strip = pdf_translate.run_strip('source.pdf', f'{work}/stripped.pdf')
 extract = pdf_translate.run_extract('source.pdf', work)
@@ -63,10 +66,32 @@ built = pdf_translate.run_retypeset(f'{work}/stripped.pdf',
                                     extract.segments_path,
                                     f'{work}/translations.json',
                                     f'{work}/out.pdf')
-verdict = pdf_translate.run_verify('source.pdf', f'{work}/out.pdf')
-final = pdf_translate.run_field_fonts(f'{work}/out.pdf', 'NotoSans.ttf',
+verdict = pdf_translate.run_verify(
+    'source.pdf', built.output, fill_text=target_fill,
+    translations=f'{work}/translations.json', segments=extract.segments_path,
+    source_words_from=extract.segments_path)
+final = pdf_translate.run_field_fonts(built.output, 'NotoSans.ttf',
                                       f'{work}/final.pdf')
+final_verdict = pdf_translate.run_verify(
+    'source.pdf', final.output, fill_text=target_fill,
+    translations=f'{work}/translations.json', segments=extract.segments_path,
+    source_words_from=extract.segments_path)
 ```
+
+Read `final_verdict.exit_code` and every FAIL/REVIEW finding before reporting
+the delivery's verification state. A verdict for `out.pdf` does not attest
+`final.pdf` after field-font embedding. For a non-form job, omit `run_field_fonts`
+and verify `built.output` as the delivery path. Repeat verification after any
+later modification to the delivered PDF.
+
+`translations=` enables mapping-dependent checks, including empty targets and
+authored-target placement. Omitting it can produce exit 0 without checking
+those properties. `segments=` supplies override-marker context;
+`source_words_from=` supplies the leak scan's source vocabulary. For a Japanese
+job, a fill value such as `山田太郎 123` must be paired with an appropriate full
+field font. Structural findings remain advisory on the library surface; visual
+inspection and language review are still required. (The CLI's `pipeline.py
+rebuild` passes its work directory's mapping to verification itself.)
 
 Two more are advisory rather than structural:
 

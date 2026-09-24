@@ -55,16 +55,27 @@ interpreter's `Scripts` directory, or as `python -m fontTools.subset`.
 
 ## Quickstart
 
+Example for a fillable PDF. Set `TARGET_FILL` to a value in the target script;
+`Prueba 123` below is Spanish. For a Japanese job, use a value such as
+`山田太郎 123` and a font that covers it. For a non-form PDF, skip `field_fonts`
+and use `out.pdf` wherever the delivery examples below say `final.pdf`.
+
 ```bash
 SK=/path/to/pdf-translate            # this directory
+TARGET_FILL="Prueba 123"             # replace for your target language/script
 
 python3 $SK/scripts/strip_text.py      original.pdf stripped.pdf
 python3 $SK/scripts/extract_segments.py original.pdf          # -> segments.json, to_translate.json
 #   ... author translations.json from to_translate.json ...
 python3 $SK/scripts/prepare_font.py    FONT.ttf translations.json font-sub.ttf --instance wght=400
 python3 $SK/scripts/retypeset.py       stripped.pdf segments.json translations.json out.pdf
-python3 $SK/scripts/verify.py          original.pdf out.pdf --source-words-from segments.json
+python3 $SK/scripts/verify.py          original.pdf out.pdf \
+    --fill-text "$TARGET_FILL" --source-words-from segments.json \
+    --translations translations.json --segments segments.json --report verify_report.json
 python3 $SK/scripts/field_fonts.py     out.pdf FULL_FONT.ttf final.pdf     # fillable PDFs only
+python3 $SK/scripts/verify.py          original.pdf final.pdf \
+    --fill-text "$TARGET_FILL" --source-words-from segments.json \
+    --translations translations.json --segments segments.json --report final_verify_report.json
 #   ... second reader: review_pairs.md + review_prompt.md -> review.json ...
 python3 $SK/scripts/pipeline.py review --work . --ingest review.json
 python3 $SK/scripts/compare.py         original.pdf final.pdf comparison.html \
@@ -82,9 +93,21 @@ the font, and do not run compare until you are delivering):
 
 ```bash
 python3 $SK/scripts/pipeline.py rebuild --work . original.pdf out.pdf \
-    --source-words-from segments.json
+    --fill-text "$TARGET_FILL" --source-words-from segments.json
 python3 $SK/scripts/pipeline.py render original.pdf out.pdf renders/
 ```
+
+`rebuild` verifies against the work directory's `translations.json` and
+`segments.json`, so mapping-dependent checks such as empty targets and
+authored-target placement run on every build; pass your own `--translations` or
+`--segments` to verify against different files. A direct `verify.py` run
+without `--translations` skips those checks, and its zero exit code then cannot
+establish that every authored translation was checked. Read REVIEW findings as
+well as the exit code; finish with visual and language review.
+
+After `field_fonts` or `pipeline.py finish`, verify the actual delivery PDF
+again, using a separate report such as `final_verify_report.json`. An earlier
+verdict describes `out.pdf`; `finish` does not verify the final file itself.
 
 Command-line paths resolve from the caller's directory; `rebuild` does not
 change it. Font paths inside `translations.json` resolve beside that file
