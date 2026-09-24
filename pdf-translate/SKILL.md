@@ -472,6 +472,9 @@ Every gate — what it reads, what fails, and why — is in
   the wording is the right term.
 - **`/Opt` export parity** (always on): the export half of every dropdown
   entry byte-identical to the original's, in order.
+- **Page parity** (always on): exactly the original's pages, each with the
+  same boxes and rotation; a missing or extra page FAILs by number. `compare`
+  and `render` then show every page of both and exit 1 on a count mismatch.
 - **Conjunct shaping** (always on): every embedded face on a page that
   draws Devanagari, Bengali, Tamil, Khmer or Myanmar is probed from the
   font program inside the output; a face whose probe cluster does not

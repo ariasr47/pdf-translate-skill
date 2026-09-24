@@ -1,0 +1,295 @@
+{
+ "probe": "dev/probes/a02_page_parity_probe.py",
+ "source_pages": 2,
+ "before_178a06f": {
+  "version": "60",
+  "pymupdf": "1.28.2",
+  "cases": {
+   "equal": {
+    "output_pages": 2,
+    "cli_verify_exit": 0,
+    "api_exit": 0,
+    "api_fail_gates": [],
+    "api_nomapping_exit": 0,
+    "api_nomapping_fail_gates": [],
+    "report_page_findings": [],
+    "compare_exit": 0,
+    "compare_page_sections": 2,
+    "render_exit": 0,
+    "render_files": [
+     "orig_p1.png",
+     "orig_p2.png",
+     "out_p1.png",
+     "out_p2.png"
+    ]
+   },
+   "missing_page_2": {
+    "output_pages": 1,
+    "cli_verify_exit": 1,
+    "api_exit": 1,
+    "api_fail_gates": [
+     "placement"
+    ],
+    "api_nomapping_exit": 0,
+    "api_nomapping_fail_gates": [],
+    "report_page_findings": [],
+    "compare_exit": 0,
+    "compare_page_sections": 1,
+    "render_exit": 0,
+    "render_files": [
+     "orig_p1.png",
+     "out_p1.png"
+    ]
+   },
+   "extra_page_3": {
+    "output_pages": 3,
+    "cli_verify_exit": 0,
+    "api_exit": 0,
+    "api_fail_gates": [],
+    "api_nomapping_exit": 0,
+    "api_nomapping_fail_gates": [],
+    "report_page_findings": [],
+    "compare_exit": 0,
+    "compare_page_sections": 2,
+    "render_exit": 0,
+    "render_files": [
+     "orig_p1.png",
+     "orig_p2.png",
+     "out_p1.png",
+     "out_p2.png"
+    ]
+   },
+   "page2_rotated": {
+    "output_pages": 2,
+    "cli_verify_exit": 0,
+    "api_exit": 0,
+    "api_fail_gates": [],
+    "api_nomapping_exit": 0,
+    "api_nomapping_fail_gates": [],
+    "report_page_findings": [],
+    "compare_exit": 0,
+    "compare_page_sections": 2,
+    "render_exit": 0,
+    "render_files": [
+     "orig_p1.png",
+     "orig_p2.png",
+     "out_p1.png",
+     "out_p2.png"
+    ]
+   },
+   "page2_resized": {
+    "output_pages": 2,
+    "cli_verify_exit": 0,
+    "api_exit": 0,
+    "api_fail_gates": [],
+    "api_nomapping_exit": 0,
+    "api_nomapping_fail_gates": [],
+    "report_page_findings": [],
+    "compare_exit": 0,
+    "compare_page_sections": 2,
+    "render_exit": 0,
+    "render_files": [
+     "orig_p1.png",
+     "orig_p2.png",
+     "out_p1.png",
+     "out_p2.png"
+    ]
+   }
+  }
+ },
+ "after_fix": {
+  "version": "60",
+  "pymupdf": "1.28.2",
+  "cases": {
+   "equal": {
+    "output_pages": 2,
+    "cli_verify_exit": 0,
+    "api_exit": 0,
+    "api_fail_gates": [],
+    "api_nomapping_exit": 0,
+    "api_nomapping_fail_gates": [],
+    "report_page_findings": [
+     []
+    ],
+    "compare_exit": 0,
+    "compare_page_sections": 2,
+    "render_exit": 0,
+    "render_files": [
+     "orig_p1.png",
+     "orig_p2.png",
+     "out_p1.png",
+     "out_p2.png"
+    ]
+   },
+   "missing_page_2": {
+    "output_pages": 1,
+    "cli_verify_exit": 1,
+    "api_exit": 1,
+    "api_fail_gates": [
+     "page-parity",
+     "placement"
+    ],
+    "api_nomapping_exit": 1,
+    "api_nomapping_fail_gates": [
+     "page-parity"
+    ],
+    "report_page_findings": [
+     [
+      {
+       "page": 2,
+       "where": "missing",
+       "text": "no page in the translation"
+      }
+     ]
+    ],
+    "compare_exit": 1,
+    "compare_page_sections": 2,
+    "render_exit": 1,
+    "render_files": [
+     "orig_p1.png",
+     "orig_p2.png",
+     "out_p1.png"
+    ]
+   },
+   "extra_page_3": {
+    "output_pages": 3,
+    "cli_verify_exit": 1,
+    "api_exit": 1,
+    "api_fail_gates": [
+     "page-parity"
+    ],
+    "api_nomapping_exit": 1,
+    "api_nomapping_fail_gates": [
+     "page-parity"
+    ],
+    "report_page_findings": [
+     [
+      {
+       "page": 3,
+       "where": "extra",
+       "text": "no page in the original"
+      }
+     ]
+    ],
+    "compare_exit": 1,
+    "compare_page_sections": 3,
+    "render_exit": 1,
+    "render_files": [
+     "orig_p1.png",
+     "orig_p2.png",
+     "out_p1.png",
+     "out_p2.png",
+     "out_p3.png"
+    ]
+   },
+   "page2_rotated": {
+    "output_pages": 2,
+    "cli_verify_exit": 1,
+    "api_exit": 1,
+    "api_fail_gates": [
+     "page-parity"
+    ],
+    "api_nomapping_exit": 1,
+    "api_nomapping_fail_gates": [
+     "page-parity"
+    ],
+    "report_page_findings": [
+     [
+      {
+       "page": 2,
+       "where": "rotation",
+       "text": "original 0, translation 90"
+      }
+     ]
+    ],
+    "compare_exit": 0,
+    "compare_page_sections": 2,
+    "render_exit": 0,
+    "render_files": [
+     "orig_p1.png",
+     "orig_p2.png",
+     "out_p1.png",
+     "out_p2.png"
+    ]
+   },
+   "page2_resized": {
+    "output_pages": 2,
+    "cli_verify_exit": 1,
+    "api_exit": 1,
+    "api_fail_gates": [
+     "page-parity"
+    ],
+    "api_nomapping_exit": 1,
+    "api_nomapping_fail_gates": [
+     "page-parity"
+    ],
+    "report_page_findings": [
+     [
+      {
+       "page": 2,
+       "where": "media-box",
+       "text": "original [0, 0, 595, 842], translation [0, 0, 612, 792]"
+      },
+      {
+       "page": 2,
+       "where": "crop-box",
+       "text": "original [0, 0, 595, 842], translation [0, 0, 612, 792]"
+      }
+     ]
+    ],
+    "compare_exit": 0,
+    "compare_page_sections": 2,
+    "render_exit": 0,
+    "render_files": [
+     "orig_p1.png",
+     "orig_p2.png",
+     "out_p1.png",
+     "out_p2.png"
+    ]
+   }
+  }
+ },
+ "false_fail_sweep": {
+  "probe": "dev/probes/a02_page_parity_sweep.py",
+  "corpus_stripped_findings": {
+   "ar_source.pdf": [],
+   "choice_fields.pdf": [],
+   "colored.pdf": [],
+   "dense_table.pdf": [],
+   "encrypted.pdf": [],
+   "expansion.pdf": [],
+   "image_only.pdf": [],
+   "ja_source.pdf": [],
+   "multicolumn.pdf": [],
+   "nested_xobject.pdf": [],
+   "ocr_layer.pdf": [],
+   "pale_blank.pdf": [],
+   "rotated.pdf": [],
+   "rotated_text.pdf": [],
+   "rtl_source.pdf": [],
+   "xobject_text.pdf": []
+  },
+  "retained_real_delivery": {
+   "source.pdf vs stripped.pdf": {
+    "pages": [
+     1,
+     1
+    ],
+    "findings": []
+   },
+   "source.pdf vs output.pdf": {
+    "pages": [
+     1,
+     1
+    ],
+    "findings": []
+   },
+   "run_verify page-parity": [
+    [
+     "PASS",
+     "1 page(s)"
+    ]
+   ]
+  }
+ }
+}
