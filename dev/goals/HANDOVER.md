@@ -7,14 +7,15 @@ Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 
 **Verified state.** Remote `main` is still **`178a06f`** (v60). Three branches
 from `178a06f` were pushed for CI; nothing was merged or released and no PR
-was opened. Each local branch is one docs commit ahead of its remote, recording
-the CI results below. There is also a throwaway local merge of all three:
+was opened. Each local branch is ahead of its remote by docs-only commits that
+record the CI results below and, on A06, its independent pass. There is also a
+throwaway local merge of all three:
 
 | Branch | Head | Worktree | State |
 |---|---|---|---|
 | `chore/reconcile-b1-checkout` | pushed `8a98afc` | `C:/Dev/worktrees/pdf-translate-reconcile-b1` | Done. Full suite 670 OK locally and on CI. Independent review: approve, with two cosmetic nits. |
 | `fix/a02-page-count` | pushed `5348082` | `C:/Dev/worktrees/pdf-translate-a02` | Done. CI 687 OK on Linux and Windows. Boundary fix `d9efd44`. Independent verification: verified with findings, both handled. |
-| `fix/a06-rebuild-mapping-checks` | pushed `9f9365d` | `C:/Dev/worktrees/pdf-translate-a06` | Built and probed; 30/30 documented examples behave as specified. CI 678 OK on Linux and Windows. **Still owed:** the independent pass, which machine crashes cut off. |
+| `fix/a06-rebuild-mapping-checks` | pushed `9f9365d` | `C:/Dev/worktrees/pdf-translate-a06` | Done. 30/30 documented examples behave as specified. CI 678 OK on Linux and Windows. Independent verification (real CLI runs, no suites): verified with findings, both existing behaviour, identical on main. |
 | `trial/integrate-reconcile-a02-a06` | local only | `C:/Dev/worktrees/pdf-translate-trial` | All three merged. Only `docs/DECISIONS.md` conflicted (tail appends; all 60 rows kept). Links, compilation and binary integrity pass. **Full suite not run.** |
 
 Evidence: `docs/reviews/2026-09-23-b1-checkout-reconciliation.md` (this
