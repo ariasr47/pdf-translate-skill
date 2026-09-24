@@ -16,9 +16,9 @@ twice. Nested uses share the outermost handler instead.
 
 **CLI entry points only.** This mutates process-global logging state and is not
 thread-safe. A service calls the silent `run_*` twins and attaches its own
-handler; it never calls this. That is stated again in
-`references/consumer-guide.md`, because a docstring is not where a consumer
-looks.
+handler; it never calls this. Silent calls avoid stdout interference but do
+not make PyMuPDF thread-safe. Concurrent PDF jobs need separate processes and
+job directories; see `references/consumer-guide.md`.
 """
 import contextlib
 import logging

@@ -48,6 +48,7 @@ Usage:
       attempt. An older PDF may remain after failure; check this run's result.
 
   python3 pipeline.py render ORIGINAL.pdf TRANSLATED.pdf renders/ [--dpi 110]
+      every page of both files; exits 1 when the page counts differ.
 
   python3 pipeline.py review --work DIR [--ingest review.json] [--notes NOTES.md]
       the second-reader step. Bare, it writes DIR/review_pairs.md (every
@@ -63,7 +64,8 @@ Usage:
       field_fonts + compare (delivery only). Refuses while DIR/review.json
       is absent or any finding is still open; --no-review delivers anyway
       and marks the delivery. Writes review_state.json beside FINAL.pdf on
-      every run, refused or not.
+      every run, refused or not. Exits 1, with every file written, when
+      FINAL.pdf's page count differs from the original's.
 
   python3 pipeline.py bilingual ORIGINAL.pdf FINAL.pdf BOTH.pdf
       optional reading copy with source and target pages interleaved.
@@ -80,7 +82,7 @@ from dataclasses import replace
 from .extract_segments import main as extract_main
 from .field_fonts import field_fonts
 from .compare import compare
-from .render_pages import render_pages
+from .render_pages import page_count_mismatch, render_pages
 from .retypeset import retypeset
 from .strip_text import strip_text, WidgetTextError
 from .bilingual import main as bilingual_main
@@ -534,7 +536,7 @@ def cmd_render(argv):
     t0 = time.perf_counter()
     render_pages(orig, trans, outdir, dpi=dpi)
     log.info(f'elapsed {time.perf_counter()-t0:.2f}s')
-    return 0
+    return 1 if page_count_mismatch(orig, trans) else 0
 
 
 def _finding_line(severity, kind, core, detail):
@@ -672,10 +674,13 @@ def cmd_finish(argv):
     if rc != 0:
         _write_review_state(final, verdict)
         return rc
-    compare(orig, final, html)
+    # A02: compare returns 1 when the delivery's page count differs from the
+    # original's. Everything is still written (finish packages, it does not
+    # withhold); the exit code is what stops it reading as a clean delivery.
+    rc = compare(orig, final, html)
     _write_review_state(final, verdict)
     log.info(f'elapsed {time.perf_counter()-t0:.2f}s')
-    return 0
+    return rc
 
 
 def _write_review_state(final, verdict):

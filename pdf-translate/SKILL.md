@@ -482,6 +482,9 @@ Every gate — what it reads, what fails, and why — is in
   the wording is the right term.
 - **`/Opt` export parity** (always on): the export half of every dropdown
   entry byte-identical to the original's, in order.
+- **Page parity** (always on): exactly the original's pages, each with the
+  same boxes and rotation; a missing or extra page FAILs by number. `compare`
+  and `render` then show every page of both and exit 1 on a count mismatch.
 - **Conjunct shaping** (always on): every embedded face on a page that
   draws Devanagari, Bengali, Tamil, Khmer or Myanmar is probed from the
   font program inside the output; a face whose probe cluster does not
@@ -615,7 +618,7 @@ optional model first pass are in `references/review.md`.
 - `references/consumer-guide.md` — running one document end to end **from
   Python**, with no CLI: the six calls, what each returns, every file on disk
   and which call wrote it, refusals as typed exceptions, progress and
-  cancellation, and what is safe to call from a thread.
+  cancellation, process isolation for concurrent PDF jobs, and logging.
   Read during recon, before touching the file.
 - `references/gates.md` — every verify gate: what it reads, what fails, and
   why. Read when a gate fails, or before promising what verify checks.

@@ -53,10 +53,17 @@ jobs:
         run: python tools/fetch_test_fonts.py --check
 
       - name: Run the suite
-        run: python -m unittest tests.test_pipeline tests.test_corpus_verdicts tests.test_import_surface tests.test_shaping_probe tests.test_verify_report tests.test_cjk tests.test_han_forms tests.test_cjk_leak tests.test_review tests.test_rebuild_attempt tests.test_retypeset_capture tests.test_results tests.test_consumer_contract tests.test_typography_extract tests.test_typography_mapping tests.test_typography_fonts tests.test_typography_retypeset tests.test_typography_verify tests.test_typography_review tests.test_typography_pipeline tests.test_typography_acceptance -v
+        run: python -m unittest tests.test_pipeline tests.test_corpus_verdicts tests.test_import_surface tests.test_shaping_probe tests.test_verify_report tests.test_page_parity tests.test_cjk tests.test_han_forms tests.test_cjk_leak tests.test_review tests.test_rebuild_attempt tests.test_retypeset_capture tests.test_results tests.test_consumer_contract tests.test_typography_extract tests.test_typography_mapping tests.test_typography_fonts tests.test_typography_retypeset tests.test_typography_verify tests.test_typography_review tests.test_typography_pipeline tests.test_typography_acceptance -v
 
       - name: Test canary output selection and scoring
         run: python -m unittest discover -s ../dev/canary -p test_score.py -v
+
+      # A binary git mistakes for text gets rewritten on a Windows checkout:
+      # corpus/pale_blank.pdf carries no NUL byte, so it was smudged to CRLF
+      # and its xref offsets moved. .gitattributes pins that now, and this
+      # runs on the Windows leg, where the smudge is the one that happens.
+      - name: Committed binaries survive the checkout
+        run: python -m unittest discover -s ../dev/repo -p test_binary_integrity.py -v
 
       - name: Build the eval fixtures
         run: python evals/make_fixtures.py --outdir "${{ runner.temp }}/fixtures"

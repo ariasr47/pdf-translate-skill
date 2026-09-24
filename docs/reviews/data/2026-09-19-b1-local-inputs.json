@@ -1,0 +1,232 @@
+[
+  {
+    "mapping": "dev/jobs/fl150-ja-2026-09-17/translations.json",
+    "sha256": "46d52862cc47afe5ffd4746b05e2cad60f70ad4e5bc143d39858c0c0b1c34917",
+    "cores": 247,
+    "merges": 13,
+    "core_examples": [
+      "Page 1 of 4",
+      "Form Adopted for Mandatory Use",
+      "Judicial Council of California"
+    ],
+    "pdfs_beside_mapping": [],
+    "font_files_present": {
+      "regular": false,
+      "bold": false
+    }
+  },
+  {
+    "mapping": "runs/determinism-probe/translations.json",
+    "sha256": "3353b97f2c3e59e5af424b81a37e11e03baadab51afbc81f86feed12c52a433d",
+    "cores": 1,
+    "merges": 0,
+    "core_examples": [
+      "Income and Expense Declaration"
+    ],
+    "pdfs_beside_mapping": [
+      "orig.pdf",
+      "out_a.pdf",
+      "out_c.pdf",
+      "out_e.pdf",
+      "stripped.pdf"
+    ],
+    "font_files_present": {
+      "regular": true,
+      "bold": true,
+      "italic": true,
+      "bold_italic": true
+    }
+  },
+  {
+    "mapping": "runs/fresh-canary-2026-09-05/evaluation/reviewer/directory with spacesh0rej3gv/translations.json",
+    "sha256": "beb72681d5e1d1c7a85332ebb0d3072dc97a77f9cb36951ab8799891b938b3b4",
+    "cores": 1,
+    "merges": 0,
+    "core_examples": [
+      "The applicant must file this form today."
+    ],
+    "pdfs_beside_mapping": [
+      "original.pdf",
+      "out.pdf",
+      "stripped.pdf"
+    ],
+    "font_files_present": {
+      "regular": true,
+      "bold": true,
+      "italic": true,
+      "bold_italic": true
+    }
+  },
+  {
+    "mapping": "runs/fresh-canary-2026-09-05/evaluation/reviewer/plainpath288s6une/translations.json",
+    "sha256": "beb72681d5e1d1c7a85332ebb0d3072dc97a77f9cb36951ab8799891b938b3b4",
+    "cores": 1,
+    "merges": 0,
+    "core_examples": [
+      "The applicant must file this form today."
+    ],
+    "pdfs_beside_mapping": [
+      "original.pdf",
+      "out.pdf",
+      "stripped.pdf"
+    ],
+    "font_files_present": {
+      "regular": true,
+      "bold": true,
+      "italic": true,
+      "bold_italic": true
+    }
+  },
+  {
+    "mapping": "runs/fresh-canary-2026-09-05/job/translations.json",
+    "sha256": "42034757e0f49deaac2cc83827c744309ab3b726c3eff7662b08487e571c7254",
+    "cores": 25,
+    "merges": 1,
+    "core_examples": [
+      "Riverside Elementary School",
+      "Field Trip Permission Slip",
+      "Please complete this form and return it to the school office by"
+    ],
+    "pdfs_beside_mapping": [
+      "fields-ready.pdf",
+      "final.pdf",
+      "original.pdf",
+      "out.pdf",
+      "stripped.pdf"
+    ],
+    "font_files_present": {
+      "regular": true,
+      "bold": true,
+      "italic": false,
+      "bold_italic": false
+    }
+  },
+  {
+    "mapping": "runs/gpt-6-2026-09-04/translations.json",
+    "sha256": "3276bbc685b5295ed9cc9eefb7e0ae94f4ef484580ed442cb531e2f4b576d553",
+    "cores": 25,
+    "merges": 1,
+    "core_examples": [
+      "Riverside Elementary School",
+      "Field Trip Permission Slip",
+      "Please complete this form and return it to the school office by"
+    ],
+    "pdfs_beside_mapping": [
+      "fields-ready.pdf",
+      "final.pdf",
+      "original.pdf",
+      "out.pdf",
+      "stripped.pdf"
+    ],
+    "font_files_present": {
+      "regular": true,
+      "bold": true
+    }
+  },
+  {
+    "mapping": "runs/public-skill-review-2026-09-05/reviewer/active-final-nagxvamk/job/translations.json",
+    "sha256": "c0a4037e3e1067ae666d442dba7b174d20b9ad4c247fadb54fd0d2b750a67797",
+    "cores": 1,
+    "merges": 0,
+    "core_examples": [
+      "Please submit the application soon."
+    ],
+    "pdfs_beside_mapping": [
+      "final.pdf",
+      "out.pdf",
+      "stripped.pdf"
+    ],
+    "font_files_present": {
+      "regular": true
+    }
+  },
+  {
+    "mapping": "runs/public-skill-review-2026-09-05/reviewer/inherited-choice-5qmcmxov/translations.json",
+    "sha256": "9d6b2f6d3ed60f9a32a7b26bd9cfbd7a5bbb4979f6df54fcd52a1615393e43ae",
+    "cores": 1,
+    "merges": 0,
+    "core_examples": [
+      "Please submit the application soon."
+    ],
+    "pdfs_beside_mapping": [
+      "changed-export.pdf",
+      "changed-export.raw.pdf",
+      "original.pdf",
+      "original.raw.pdf"
+    ],
+    "font_files_present": {}
+  },
+  {
+    "mapping": "runs/public-skill-review-2026-09-05/reviewer/structural-4py_cp14/encrypted-job/translations.json",
+    "sha256": "c544ccb4b8a87c10aa4c41ff49b3d9bfaccb0b52c90a6445fdd4bd09eb25b499",
+    "cores": 1,
+    "merges": 0,
+    "core_examples": [
+      "Please submit the application soon."
+    ],
+    "pdfs_beside_mapping": [
+      "out.pdf",
+      "stripped.pdf"
+    ],
+    "font_files_present": {
+      "regular": true
+    }
+  },
+  {
+    "mapping": "runs/public-skill-review-2026-09-05/reviewer/structural-4py_cp14/translations.json",
+    "sha256": "9d6b2f6d3ed60f9a32a7b26bd9cfbd7a5bbb4979f6df54fcd52a1615393e43ae",
+    "cores": 1,
+    "merges": 0,
+    "core_examples": [
+      "Please submit the application soon."
+    ],
+    "pdfs_beside_mapping": [
+      "encrypted.pdf",
+      "plain.pdf",
+      "source-field.pdf",
+      "source2.pdf",
+      "target-moved-field.pdf",
+      "target1.pdf"
+    ],
+    "font_files_present": {}
+  },
+  {
+    "mapping": "runs/scorer-fixes-2026-09-05/tmp/tmp8_0cp6mh/job/translations.json",
+    "sha256": "616b1c125b3de0aa35365f3496ed0864cf69cbb3e286040d706048cdc8cd129e",
+    "cores": 1,
+    "merges": 0,
+    "core_examples": [
+      "The applicant must file this form today."
+    ],
+    "pdfs_beside_mapping": [
+      "out.pdf",
+      "stripped.pdf"
+    ],
+    "font_files_present": {
+      "regular": true,
+      "bold": true,
+      "italic": true,
+      "bold_italic": true
+    }
+  },
+  {
+    "mapping": "runs/scorer-fixes-2026-09-05/validation/translations.json",
+    "sha256": "3276bbc685b5295ed9cc9eefb7e0ae94f4ef484580ed442cb531e2f4b576d553",
+    "cores": 25,
+    "merges": 1,
+    "core_examples": [
+      "Riverside Elementary School",
+      "Field Trip Permission Slip",
+      "Please complete this form and return it to the school office by"
+    ],
+    "pdfs_beside_mapping": [
+      "draft.pdf",
+      "final.pdf",
+      "original.pdf"
+    ],
+    "font_files_present": {
+      "regular": true,
+      "bold": true
+    }
+  }
+]

@@ -31,6 +31,7 @@ step, the file may still be `out.pdf`.
 |---|---|
 | field parity | the set of (fully-qualified name, type) differs from the original; extra fields only with `--allow-extra-prefix` |
 | fill round-trip | a text value in the target script, or a checkbox, does not survive save and reopen (SKIPped when the PDF has no fields) |
+| page parity | the translation does not have exactly the original's pages: one is missing or added, or a page's media box, crop box or rotation changed (boxes compared to 0.01 pt). Every other page gate compares only the pages both files have, so this is the gate that sees a lost or extra page. One status line; each difference is an indented line and a finding |
 | ink density | a page's dark-pixel ratio against the original leaves `[--min-ink, 3×]`; SKIPped when the original has negligible ink |
 | text layer | a page has visible ink or an image but no extractable text: a scan, out of scope |
 | invisible text | stripping a page changes under 3% of its text-span pixels: an OCR layer over a scan, or text under an image — a refusal, not a fix |
@@ -230,6 +231,7 @@ and never split a target by hand across source lines — declare a merge
 | field-parity | `missing` / `type-mismatch` / `unexpected-extra` | the field name |
 | opt-export-parity | the field name | `old -> new` |
 | fill-roundtrip | the field name | what did not survive save and reopen |
+| page-parity | `missing` (the original's page number) / `extra` (the translation's) / `media-box` / `crop-box` / `rotation` | `no page in the translation`, `no page in the original`, or `original …, translation …` |
 | extractable-text, ink-ratio, visible-text, arabic-letterforms | `page` | the detail (`PASS ink ratio 1.05`, `images=1, ink=200 px`, …) |
 | canonical-text | `U+XXXX` | the character name and count |
 | conjunct-shaping | the face's PostScript name, or the script when it could not be judged | the probe line, or the reason |

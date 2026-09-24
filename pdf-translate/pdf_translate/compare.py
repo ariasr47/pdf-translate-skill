@@ -23,7 +23,13 @@ log = logging.getLogger(__name__)
 
 
 def compare(orig, trans, html_path, labels=None, lang='en'):
-    """Write a self-contained side-by-side comparison HTML. Returns 0."""
+    """Write a self-contained side-by-side comparison HTML.
+
+    Every page of both files is shown. Returns 0, or 1 when the page counts
+    differ: a page one file lacks gets a placeholder on that side and the
+    comparison opens with a banner, because the common pages alone read as a
+    complete comparison (A02).
+    """
     src_label, dst_label = 'Original', 'Translated'
     if labels:
         parts = labels.split('|')
@@ -33,19 +39,29 @@ def compare(orig, trans, html_path, labels=None, lang='en'):
     lang = lang or 'en'
 
     o, j = pymupdf.open(orig), pymupdf.open(trans)
+    n_orig, n_trans = len(o), len(j)
     rows = []
-    n = min(len(o), len(j))
-    for i in range(n):
+    for i in range(max(n_orig, n_trans)):
         cells = []
         for doc, cap in [(o, src_label), (j, dst_label)]:
-            b64 = base64.b64encode(doc[i].get_pixmap(dpi=120).tobytes('png')).decode()
             cap_esc = htmlmod.escape(cap)
+            if i >= len(doc):
+                cells.append(f'<figure><figcaption>{cap_esc}</figcaption>'
+                             f'<p style="color:#9b1c1c;font-weight:600">No page {i+1} in this file.</p>'
+                             f'</figure>')
+                continue
+            b64 = base64.b64encode(doc[i].get_pixmap(dpi=120).tobytes('png')).decode()
             cells.append(f'<figure><figcaption>{cap_esc}</figcaption>'
                          f'<img src="data:image/png;base64,{b64}"></figure>')
         rows.append(f'<section class="page"><h2>Page {i+1}</h2>'
                     f'<div class="pair">{"".join(cells)}</div></section>')
     o.close()
     j.close()
+    banner = '' if n_orig == n_trans else (
+        f'<p role="alert" style="margin:10px 0 0;padding:8px 12px;background:#fde8e8;'
+        f'color:#9b1c1c;border-radius:4px;font-weight:600">Page count differs: the '
+        f'original has {n_orig} page(s), the translation {n_trans}. Every page of both '
+        f'is shown; a page one file lacks is marked.</p>')
 
     lang_esc = htmlmod.escape(lang)
     page = f"""<!DOCTYPE html><html lang="{lang_esc}"><head><meta charset="utf-8">
@@ -60,13 +76,17 @@ figcaption{{font-size:12px;color:#666;margin-bottom:6px}}
 img{{width:100%;display:block;cursor:zoom-in}}
 img.zoomed{{position:fixed;inset:0;width:auto;height:100vh;margin:auto;max-width:100vw;z-index:9;cursor:zoom-out;background:#fff;box-shadow:0 0 60px rgba(0,0,0,.5)}}
 @media(max-width:900px){{.pair{{grid-template-columns:1fr}}}}
-</style></head><body><header><h1>Translation comparison — click any page to zoom</h1></header>
+</style></head><body><header><h1>Translation comparison — click any page to zoom</h1>{banner}</header>
 {''.join(rows)}
 <script>document.querySelectorAll('img').forEach(im=>im.addEventListener('click',()=>im.classList.toggle('zoomed')))</script>
 </body></html>"""
     with open(html_path, 'w', encoding='utf-8') as f:
         f.write(page)
     log.info(f'wrote {html_path}')
+    if n_orig != n_trans:
+        log.info(f'FAIL page count: {n_orig} original / {n_trans} translated; '
+                 f'{html_path} shows every page of both')
+        return 1
     return 0
 
 

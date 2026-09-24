@@ -249,7 +249,11 @@ class ProgressAndCancellationTests(unittest.TestCase):
 
 
 class ConcurrencyTests(unittest.TestCase):
-    """C5: two jobs at once, neither treading on the other."""
+    """Historical C5 fixtures for output/report interference.
+
+    A pass does not establish native-backend thread safety. PyMuPDF does not
+    support multithreaded use; process-isolated validation remains open in A04.
+    """
 
     def _job(self, tmp):
         src = build_source(Path(tmp) / 'orig.pdf')
