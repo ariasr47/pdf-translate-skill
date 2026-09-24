@@ -1,7 +1,7 @@
 # A06: the default legacy rebuild verifies against the mapping it built from
 
 23 September 2026 · local branch `fix/a06-rebuild-mapping-checks`, from main
-`178a06f` · nothing pushed or released · version unchanged (v60)
+`178a06f` · pushed for CI on 23 September; not merged or released · version unchanged (v60)
 
 ## The defect, reproduced on main
 
@@ -86,7 +86,7 @@ is added.
 | Check | Result |
 |---|---|
 | New tests, `tests.test_rebuild_attempt.DefaultMappingVerificationTests` (8, as real rebuild subprocesses) | RED on `178a06f`: 6 failed for the missing feature, and 2 controls passed (a caller's explicit mapping is honoured; a null target refuses the build). GREEN after the fix: the module's 16 tests, including A03's 8, pass. |
-| Full discovery on the fix | **Not completed on `55bb44d`.** Two runs were cut off by crashes of the local machine, one of them a native crash of the Python process (exit 139) about 110 tests in. The run on the fix before the two test updates completed: 678 tests, and only those two tests failed, because they pinned the old default. After their update they pass on their own (`tests.test_pipeline.ChromeTests` and `PlacementTests`: 14 OK), and `tests.test_rebuild_attempt` passes (16 OK). A complete run on `55bb44d` is still owed; it runs on GitHub CI (Rodrigo's decision, 23 September). |
+| Full discovery on the fix | **GitHub CI, run 35935414545 at `9f9365d` (the fix `55bb44d` plus docs), dispatched after the push:** Linux 678 tests OK in 763.086 s, Windows 678 OK with the existing cross-drive skip in 856.040 s, the canary 15 OK on both, the plugin manifest job green. Two earlier local runs on `55bb44d` had been cut off by crashes of the local machine. The one local run that completed (before the two test updates) failed only on those two tests. |
 | Probe after the fix (`dev/probes/a06_rebuild_mapping_probe.py`, fresh directory) | complete default: 0, all eight mapping gates present; empty `""` and `"   "`: 1, `empty-targets` FAIL; dropped marker: 1, `placement` and `override-markers` FAIL; null and absent: 1, build refused, no report (unchanged); explicit flags: 1 (unchanged); explicit mapping elsewhere: 0 (unchanged) |
 | Documented examples (`dev/probes/a06_doc_examples_probe.py`, adapted from the 20 September harness) | 7 CLI commands read from README, SKILL and gates (2 rebuild, 5 verify) and 2 `run_verify` calls from the consumer guide, over an empty-target, a complete and a fillable job: 30 expected outcomes, including 3 bare default rebuilds (empty: 1; complete and fillable: 0, with field round-trip PASS) |
 | CLI ratchet (`cli_parity_runner.py`, eleven CLIs, `178a06f` vs fix) | byte-identical. Its rebuild already passes `--translations`, which shows explicit callers are untouched. |
