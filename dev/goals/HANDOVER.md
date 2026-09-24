@@ -3,6 +3,35 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 24 September 2026, evening: R-03 and R-01 shipped (v63); item 3 next
+
+**Main is v63 at `0819091`.** Rodrigo merged three PRs in order, each with
+a merge commit, and every CI check passed on each exact head:
+- #29, the review (docs only);
+- #30, R-03 (v62);
+- #31, R-01 (v63).
+
+Their branches are still on GitHub. Two local-only refs hold the tips from
+before the stacking rebase: `backup-local/r03-before-stack` and
+`backup-local/r01-before-stack`. Ask before deleting any of them. The
+inbox's status section and rows record the delivery.
+
+**Next: item 3, the `/Rotate` blank page, with R-64.**
+- **Cause.** Extract reads text through a display list, which keeps the page
+  rotation, so segment origin, bbox and dir are in the rotated (visible)
+  space. Retypeset draws with `TextWriter`, `insert_htmlbox` and the Story
+  engine in the unrotated page space. The two differ by
+  `page.derotation_matrix`.
+- **Evidence.** Every extract, retypeset and verify site has been measured
+  for which space it uses. That map, and the fix design, go into item 3's
+  evidence doc when it ships; until then they exist only in this session.
+- **Also found.** Legacy verify reads no segment geometry. It catches this
+  defect only when the text leaves the page entirely: ink 0.00 and missing
+  targets.
+
+**R-94:** Rodrigo said "not yet" on 24 September, so the repository stays
+public for now.
+
 ## Start here — 24 September 2026, later: review delivered; its findings assigned, R-03 first
 
 **The review.** While E12 waits on the product's six rulings, Rodrigo
