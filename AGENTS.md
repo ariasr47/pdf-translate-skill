@@ -1,7 +1,7 @@
 # AGENTS.md — pdf-translate (skill repo)
 
 *For any agent working in this repo. Read `pdf-translate/SKILL.md` first if
-you have not — this file adds three rules on top of it, nothing else.*
+you have not — this file adds four rules on top of it, nothing else.*
 
 > **Starting a new session? Read `dev/goals/HANDOVER.md` first.** Its top
 > section is the current state — what is on `main`, which branches are open,
@@ -13,7 +13,7 @@ This repo is the upstream: an MIT-licensed, provider-neutral PDF translation
 library, published as both a Claude skill and (per
 `docs/BRIEF-core-library-step1.md`) an importable package. It has no council,
 no gates, no contracts, no manifests — that machinery belongs to consumers,
-not to a public library. Do not add any of it here. Three rules, and nothing
+not to a public library. Do not add any of it here. Four rules, and nothing
 more.
 
 ## Licence — read this before importing anything
@@ -99,9 +99,40 @@ Every ruling on this repo's behaviour, scope or method gets a row in
 thread is not memory here — the file is. See that file for the format and a
 worked example (the shaping-tell narrowing above, as a decision).
 
+## Rule 4 — The product directs this library; sessions coordinate
+
+The consuming product, `pdf-translator` (the PDF Translator web app), sets
+this library's direction and assigns its work. Rodrigo ruled this on
+24 September 2026; see `docs/DECISIONS.md`.
+
+- **Work arrives as a request in `docs/REQUESTS-from-product.md`.** A request
+  has a stable ID, one owner, the behaviour wanted and how acceptance is
+  observed. The licence section still applies: requests describe behaviour,
+  never code.
+- **This repo proposes; the product decides.** Report findings and propose
+  work there, and the product decides what gets worked on. Do not start work
+  nobody assigned, set product priorities or keep a competing roadmap.
+- **How assigned work gets built stays this repo's call:** engine code, the
+  reusable API, rendering and the tests.
+- **Sessions on both sides talk to each other directly while they run.**
+  Claude sessions find each other with `ListAgents` and send a message by
+  session name with `SendMessage`; other agents go through Rodrigo. Send a
+  message when:
+  - a request is filed or changed;
+  - work starts, is blocked or is delivered;
+  - a version changes.
+- **At session start, read the inbox's current coordination status.**
+- **A message is never the record (Rule 3).** Whatever it settles goes into
+  `docs/REQUESTS-from-product.md` in the same session. The product mirrors it
+  in its `ROADMAP.md` §2.
+- **Rodrigo rules on any conflict.**
+
+`CLAUDE.md` only imports this file, so Claude sessions load the same rules as
+every other agent. Keep the rules here, not there.
+
 ## Out of scope, on purpose
 
 No SPEC.md, no INTERFACE_CONTRACT.md, no council roles, no build gates, no
-QA receipts. This is a library with tests, a corpus, and three rules. If a
+QA receipts. This is a library with tests, a corpus, and four rules. If a
 task seems to need more ceremony than that, it belongs in the product repo,
 not here.

@@ -13,6 +13,25 @@ refused. Describe the input, the observable output, and why it matters;
 this repo's own tests and corpus are what any implementation is checked
 against.
 
+## How work arrives here — 24 September 2026
+
+The product directs this library and assigns its work (`AGENTS.md` Rule 4,
+`docs/DECISIONS.md` 2026-09-24). New work reaches this library as a row in
+this file, with:
+
+- a stable ID;
+- one owner;
+- the behaviour wanted;
+- how acceptance is observed.
+
+This repo may add findings or proposals here for the product to decide on,
+and records here what it delivered: PR, version and evidence.
+
+Sessions on both sides also message each other directly while they run.
+Claude sessions do this by name with `SendMessage`; other agents go through
+Rodrigo. Whatever a message settles is written into this file in the same
+session.
+
 ## Current coordination status — 23 September 2026
 
 **Main is v60 at `178a06f`.** Since the 20 September snapshot below, PRs
