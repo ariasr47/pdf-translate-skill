@@ -3,6 +3,77 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 24 September 2026, on the Mac: set up and verified; E12 assigned, blocked on rulings
+
+**Verified state.** `origin/main` is `0542dc2` (v61). CI passed on it (run
+35981365585), and there is no release or tag. PR #27 (Rule 4: the product
+directs this library; the app calls it GOV-2026-09-24) passed all three
+checks on `b24f03a` (run 35978209544). It was merged on Rodrigo's word as
+`0542dc2`, whose tree is `b24f03a`'s. It changed only docs, so the version
+stays 61. Its branch `docs/app-directs-skill` is still on GitHub.
+
+**This Mac's checkout.** Local `main` held two commits from 12 September
+that were on no remote. `ca2dd06` adds `dev/canary/GPT6_PROMPT.md`, which its
+message calls the only copy. `c1d9c93` is the Mac's own lane B row P9
+restructure (root `AGENTS.md`, `dev/STATUS.md`, `dev/DECISIONS.md`); the
+Windows line has its own `AGENTS.md` and `docs/DECISIONS.md` instead. `main`
+and `origin/main` had diverged (2 and 206 commits), so `git pull --ff-only`
+exited 128. On Rodrigo's word both commits are now on GitHub as
+`backup/mac-main-2026-09-12` (at `c1d9c93`) and local `main` was reset to
+`origin/main`; whether either commit belongs on `main` is a separate
+decision. Everything below ran on `221a86f`; #27 changed no code.
+
+**Setup, as `pdf-translate/README.md` says.** `pdf-translate/.venv` is
+CPython 3.14.6. uv created it without pip, so dependencies go in with
+`uv pip install --python .venv/bin/python -r requirements.txt`, which gives
+PyMuPDF 1.28.2, pikepdf 10.12.0 and fontTools 4.64.0.
+`tools/fetch_test_fonts.py` and its `--check` both exit 0, with 20 faces.
+`pdf_translate.__file__` resolves into this checkout and `__version__` is 61.
+
+**The suite on macOS.** CI's four test steps, run locally on `221a86f` in
+about seven minutes: the 22 unittest modules ran 695 tests, CI's count on the
+same commit, with 1 failure, no errors and no skips; the canary's 15 tests
+and the binary-integrity 3 passed; the eval fixtures built. The failure is in
+the test, not the library, and only on a Mac:
+`HotLoopTests.test_rebuild_resolves_verify_arguments_from_the_callers_directory`
+compares `os.getcwd()` with the temporary path as strings
+(`pdf-translate/tests/test_pipeline.py:3958`), and macOS reports
+`/var/folders/…` as `/private/var/folders/…`. Run by hand with the paths
+compared by `realpath`, the same rebuild exits 0 and prints its PASS line.
+Nobody assigned the fix, so it is proposed in the inbox rather than made.
+
+**Next: E12, the one assignment.** Under Rule 4, work comes from
+`docs/REQUESTS-from-product.md`. This session sent the app's session the v61
+notice and asked what to prioritize. The app received v61, and its pin stays
+v54 on Python 3.12. It put the priority to Rodrigo, who ruled on 24
+September (option C). The library's priority 1 of 1 is E12, a compact,
+deterministic output save; nothing else is assigned, and Rodrigo directs
+library tech debt himself (`docs/DECISIONS.md`, 2026-09-24).
+
+The E12 row carries the behaviour and seven observable acceptance checks.
+Checks 1 and 2 are shown red on the unfixed shape before the change lands,
+and Rule 1 applies. Tell the app's session when E12 starts, is blocked or is
+delivered. If E12 as written proves unbuildable or wrong for this code, stop
+and report the measurement rather than substituting a different design.
+
+**E12 is blocked, as of 24 September.** It was measured before any build:
+`docs/reviews/2026-09-24-e12-measurement.md`, with the raw evidence in the
+ignored `runs/2026-09-24-e12-measurement/` on the Mac. Three acceptance
+checks conflict:
+- check 1's 2.5× ceiling fails on the three base-14 fixtures unless
+  hinting is dropped, which breaks a strict check 3;
+- check 2 contradicts the full field face on forms;
+- the corpus is all one-page fixtures, so checks 1, 2 and 6 go red only on
+  constructed multi-page fixtures.
+
+Six rulings went to the app's session. Build nothing until they come
+back.
+
+The backlog in `dev/goals/PROGRAM.md` (A21 and the rest) and this library's
+own proposals (the macOS test, A04, A05, A14) stay unassigned; this
+supersedes the "Next" of the section below. Merged PRs #22, #26 and #27
+still have their branches on GitHub; deleting them is Rodrigo's call.
+
 ## Start here — 23 September 2026, night: reconcile, A02 and A06 merged; main is v61
 
 **Verified state.** On Rodrigo's instruction the three PRs were merged into
