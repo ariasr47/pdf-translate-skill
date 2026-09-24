@@ -25,12 +25,28 @@ v61 changes two things a consumer can see:
 The next section ("evening") is the state just before the merges. Its branch
 table, CI runs and independent passes describe what landed.
 
-**Left standing on purpose; delete only on Rodrigo's word:** the three merged
-branches on GitHub and their worktrees under `C:/Dev/worktrees/`
-(`pdf-translate-reconcile-b1`, `pdf-translate-a02`, `pdf-translate-a06`); the
-throwaway `trial/integrate-reconcile-a02-a06` worktree, now superseded by
-`main`; the old checkout `C:\Dev\pdf-translate-skill` with its snapshot; its
-remote branch `codex/b1-design-canvas`; and `probe/b1-baseline-anchor`.
+**Cleanup.** After the merges, the three merged branches were deleted on GitHub
+on Rodrigo's word; each PR page can restore its branch. `main` is the only
+branch this work needs. The old checkout's remote branch
+`codex/b1-design-canvas` is still on GitHub.
+
+**Only on the Windows machine where this was built, left standing on purpose
+(delete only on Rodrigo's word):** the three local branches and their worktrees
+under `C:/Dev/worktrees/` (`pdf-translate-reconcile-b1`, `pdf-translate-a02`,
+`pdf-translate-a06`), whose ignored `runs/` folders hold the raw evidence the
+23 September reviews cite; the throwaway `trial/integrate-reconcile-a02-a06`
+worktree, superseded by `main`; the old checkout `C:\Dev\pdf-translate-skill`
+with its snapshot; and `probe/b1-baseline-anchor`. Nothing open depends on
+any of them.
+
+**Continuing on any machine.** Clone or pull `main`, then set up from
+`pdf-translate/` as its README says: Python 3.14,
+`python -m pip install -r requirements.txt`, `python tools/fetch_test_fonts.py`
+(test fonts are never committed) and `python tools/fetch_test_fonts.py --check`.
+Before trusting a test result, confirm `pdf_translate.__file__` points into the
+checkout under test. A full suite took 7 to 15 minutes per runner on CI; GitHub
+CI runs it on every PR and every push to `main`, and `workflow_dispatch` covers
+other branches.
 
 **Next:** the backlog in `dev/goals/PROGRAM.md`. A21's manifest validation is
 the smallest item; A04's process validation and A15's broader wording stay
