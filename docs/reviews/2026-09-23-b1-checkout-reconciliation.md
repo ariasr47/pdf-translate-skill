@@ -10,7 +10,7 @@ sits on the local branch `chore/reconcile-b1-checkout`, based on main
 `178a06f`. Every item is accounted for below: carried, adapted, routed to
 another change, dropped, or left in place. The original checkout was not
 reset, cleaned, stashed, switched or merged. The branch was pushed for CI on
-23 September at Rodrigo's instruction; nothing was merged or released.
+23 September at Rodrigo's instruction and merged as PR #23; it shipped in v61.
 
 | Branch commit | Content |
 |---|---|

@@ -1,7 +1,7 @@
 # A06: the default legacy rebuild verifies against the mapping it built from
 
-23 September 2026 · local branch `fix/a06-rebuild-mapping-checks`, from main
-`178a06f` · pushed for CI on 23 September; not merged or released · version unchanged (v60)
+23 September 2026 · branch `fix/a06-rebuild-mapping-checks`, from main
+`178a06f` · merged as PR #25; shipped in v61
 
 ## The defect, reproduced on main
 
