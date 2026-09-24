@@ -3,6 +3,25 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 24 September 2026, later still: R-02 built (v65), not yet pushed
+
+**One local branch waits for Rodrigo's go to push:**
+`fix/r02-small-print-clamp`, from `main` (`154f842`). It carries:
+- `4fd6b64`, the v64 delivery record;
+- R-02 (v65).
+
+**R-02.** A shrunk run is drawn at the size that fits its room, never
+larger than its source, and the 0.7× gate sees that ratio, at all four
+legacy shrink sites. The 4.0 pt lift is gone. Small print below the floor
+now refuses with the existing line, and `allow_scale` ships it at the
+fitted size. The details are in `docs/reviews/2026-09-24-r02-small-print.md`
+and its DECISIONS row. Rule 1 passed on Sonnet.
+
+**Next** in the assignment order: the quick wins, XS each (R-05, R-06, R-04,
+R-27, R-47, R-69 with R-97, R-33, R-40, R-42, R-110, R-100, R-99, then the
+docs items R-79, R-80, R-82, R-83). E12 comes first the moment its rulings
+arrive.
+
 ## Start here — 24 September 2026, late: item 3 shipped (v64); R-02 next
 
 **Main is v64 at `154f842`.** Rodrigo merged two PRs in order, each with a
