@@ -32,7 +32,29 @@ Claude sessions do this by name with `SendMessage`; other agents go through
 Rodrigo. Whatever a message settles is written into this file in the same
 session.
 
-## Current coordination status — 25 September 2026, early afternoon
+## Current coordination status — 25 September 2026, afternoon
+
+**Main is v71 at `62e87bf`.** Four things are in flight, each stacked on
+the one before:
+- **#42,** R-42 at v72;
+- **#43,** R-110 at v73;
+- **#44,** R-100 at v74;
+- **R-99 at v75,** on `fix/r99-resource-warnings`. It waits for Rodrigo's
+  go to push.
+
+The app's session merges in order and retargets each to `main` first.
+
+**For a consumer, v75 changes nothing observable:** files and faces are
+closed after use.
+
+**Adoption:** none yet. The app stays on v54.
+
+**Proposed:** typography verify's units-per-em drift, and `field_fonts`'s
+`/FT` lookup.
+
+**Unchanged:** E12 is blocked on its six rulings, and R-94 is "not yet".
+
+## Coordination status — 25 September 2026, early afternoon (historical snapshot)
 
 **Main is v71 at `62e87bf`.** Three things are in flight, each stacked on
 the one before:
@@ -677,7 +699,12 @@ deleting anything.
 - a duplicate path helper;
 - `verify.load_segments_for`.
 
-None of the app's five names is touched. A tripwire on the late pass never fired across the suite, corpus rebuilds and eleven adversarial jobs; an adversarial independent pass: PASS. Evidence: `docs/reviews/2026-09-25-r100-dead-code.md`. |
+None of the app's five names is touched. A tripwire on the late pass never fired across the suite, corpus rebuilds and eleven adversarial jobs; an adversarial independent pass: PASS. Evidence: `docs/reviews/2026-09-25-r100-dead-code.md`. Rodrigo approved in this session: R-100 is PR #44, stacked on #43. **R-99 built** 25 September, v75, branch `fix/r99-resource-warnings`, stacked on #44. The suite's ResourceWarnings go from 45 to 0.
+- 43 were the `NOTES.md` that `run_review` read with a bare `open().read()`.
+- 2 were a lazily loaded face in the test suite's own `han_forms` helper.
+- The review's two library sites held no file handle: fontTools reads a face opened by path into memory. They now close their fonts anyway.
+
+Evidence: `docs/reviews/2026-09-25-r99-resource-warnings.md`. |
 
 | 2026-09-24 | **Review performance items** (review priority 6). R-51: test CJK faces instanced once, not per test. R-48 with R-49: the pixel and character loops in extract and verify replaced by exact equivalents. R-50: `prepare_font` subsets before instancing. **Acceptance:** the shared bar, and output identical by a render or byte diff. | R-51 is about 79% of Linux CI time; the loops are about half of extract and verify time. | **accepted** — priority 6 (the app's `REQUEST-to-skill-review-2026-09-24`). |
 
