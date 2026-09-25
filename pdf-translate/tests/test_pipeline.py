@@ -4242,9 +4242,25 @@ class FieldAppearanceKeptTests(unittest.TestCase):
         pdf.save(src)
         return src
 
+    def test_every_font_operator_is_swapped(self):
+        """The last Tf is the one a viewer draws with, so none may keep the
+        Latin font (Rule 1 on R-33)."""
+        self.assertEqual(field_fonts.field_da('/Helv 10 Tf 1 0 0 rg /Helv 8 Tf', 'TransFF'),
+                         '/TransFF 10 Tf 1 0 0 rg /TransFF 8 Tf')
+
+    def test_a_chain_of_direct_objects_is_followed(self):
+        """Direct dictionaries all report objgen (0, 0); that is not a cycle
+        (Rule 1 on R-33)."""
+        widget, parent = pikepdf.Dictionary(), pikepdf.Dictionary(DA=pikepdf.String('0 1 0 rg /Helv 15 Tf'))
+        widget.Parent = parent
+        self.assertEqual(str(field_fonts.inherited_da(widget, pikepdf.String('/Helv 0 Tf 0 g'))),
+                         '0 1 0 rg /Helv 15 Tf')
+
     @staticmethod
     def _rendered(path):
-        """Per field: its most frequent ink colour and the height of its ink."""
+        """Per field: its most frequent ink colour and the height of its ink.
+        Sound on this blank page only: on a real form the field's border and
+        background can outnumber the ink."""
         out = {}
         with pymupdf.open(path) as doc:
             page = doc[0]

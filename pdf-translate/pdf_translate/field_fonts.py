@@ -56,7 +56,8 @@ def field_da(da, name):
     `/name 12 Tf 0 g`, as before.
     """
     da = str(da or '').strip()
-    swapped, found = _FONT_OPERANDS.subn(lambda m: f'/{name}{m.group(1)}', da, count=1)
+    # Every Tf: a viewer draws with the last one.
+    swapped, found = _FONT_OPERANDS.subn(lambda m: f'/{name}{m.group(1)}', da)
     if not found:
         swapped = f'/{name} 0 Tf' + (f' {da}' if da else '')
     if not _FILL_COLOUR & set(swapped.split()):
@@ -68,10 +69,15 @@ def inherited_da(obj, acroform_da):
     """The /DA that applies to `obj`: its own, else the nearest ancestor's,
     else the form's default."""
     node, seen = obj, set()
-    while node is not None and node.objgen not in seen:
+    while node is not None:
         if '/DA' in node:
             return node.DA
-        seen.add(node.objgen)
+        # Only an indirect object can close a cycle; every direct one
+        # reports objgen (0, 0) and is not a repeat.
+        if node.is_indirect:
+            if node.objgen in seen:
+                break
+            seen.add(node.objgen)
         node = node.get('/Parent')
     return acroform_da
 
