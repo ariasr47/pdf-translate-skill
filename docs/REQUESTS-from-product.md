@@ -51,8 +51,30 @@ the version stays 76.
 
 **Next:** R-48 with R-49, then R-50. E12 goes first if its rulings arrive.
 The product advises R-48 with R-49 next, with added evidence on its call
-shape (the performance row). Its review of PRs #9–#46 and of R-51 is under
-way.
+shape (the performance row).
+
+**The product reviewed #9–#46 and R-51 on 25 September: no blockers.** Its
+review is advice for Rodrigo, not approval.
+- **Nothing breaks the app on its v54 pin or its planned upgrade.** It ran
+  16 cases shaped like the app's calls, v71 against v76. Return codes,
+  stdout, exceptions, refusals and `scale_report.json` were identical in
+  all 16. Its 73 files on disk were byte-identical once the trailer `/ID`
+  was masked.
+- **#46:** one doc ask before merge, now fixed locally in `7c91b4a`. The
+  refusal table's exception column now says a glyph miss makes the drawing
+  group's refusal a `GlyphError`.
+- **R-51:** no reason to hold. Its optional suggestion, keying the memo on
+  the file's bytes rather than its declared checksums, is adopted in
+  `7274ee2`, locally. `4f7f62d` then closes a file that commit's new test
+  left open.
+- **#42:** it found the recorded position is the start of the text line,
+  not of the offending text. Filed as a row below.
+- **#19:** it asks for capture's off switch and contents to be documented.
+  Filed as a row below.
+- **#30 and #33:** it confirms both fix defects that are live in the app
+  today on v54.
+- **#15:** it measured no ratio shift on FL-150.
+- **#43:** it found the SPDX build clean under uv.
 
 **Adoption:** none yet. The app stays on v54.
 
@@ -782,6 +804,10 @@ Evidence: `docs/reviews/2026-09-25-r99-resource-warnings.md`. Rodrigo approved i
 | 2026-09-25 | **Proposal from this library: typography verify accepts the widths MuPDF actually embeds.** MuPDF writes each glyph's width to the PDF's `/W` array in whole thousandths of an em, rounded down. Typography verify predicts each glyph's position from the font program's exact advance. In a face whose units-per-em is not 1,000, every glyph is drawn a little left of the prediction, and the gap passes the 0.05 pt tolerance within about 10–15 glyphs. Verify then FAILs a correct line with "Run N is not at its ordered, uniformly scaled position". Arial, Times New Roman and most TrueType faces use 2,048. | Found while measuring R-47. On an identity typography-1 build in Arial, verify FAILed all 150 of 150 correct lines. In Noto Sans, which uses 1,000 units, the same job PASSes. For Arial Regular's P, 1366/2048 em is 666.99 thousandths and is embedded as 666. All 20 embedded widths equal the rounded-down value, and 9 of them differ from normal rounding. The typography-1 tests and probes use only 1,000-unit Noto faces. | **proposed** 25 September. Typography-1 is group E, which is held, and the app has not adopted it. A fix would be one of: (a) verify predicts positions from the embedded `/W` widths, (b) retypeset embeds exact widths, if MuPDF can be made to, or (c) the tolerance scales with the run's length. Each needs Rule 1. |
 
 | 2026-09-25 | **Proposal from this library: `field_fonts` finds a field's type however far up it is inherited.** It decides whether a widget is a text or choice field from the widget's `/FT` or its parent's. A field whose `/FT` is set only on a grandparent or higher is skipped: its `/DA` is never pointed at the embedded font, so typed target-script text can still fall back or vanish. | Found by R-33's Rule 1 pass, and reproduced here: a text field typed only on its grandparent gets 0 fields rewritten and stays on `/Helv`, on v69 and v70 alike. None of the 17 wild PDFs is built that way. The fix would walk the whole `/Parent` chain for `/FT`, as `inherited_da` already does for `/DA`. | **proposed** 25 September. |
+
+| 2026-09-25 | **Request from the product: capture's off switch and contents are documented.** Three facts. `capture_dir=""` is an explicit off switch that wins over `PDF_TRANSLATE_CAPTURE_DIR`. A bundle holds every source string and the form's fields even without `original=`. With `PDF_TRANSLATE_CAPTURE_BELOW` set, a successful build writes a bundle too. **Acceptance:** each fact is stated in `references/consumer-guide.md`, and `""` beating the environment variable is locked by a test. | From the product's review of #19 (merged). Today `""` works as off only because it is falsy: `resolve_capture_dir("")` returns `""`, which beats the variable, and callers test it with `if`. Its docstring says the return is `None` either way, which is not true for `""`. The app will pass `""` and never set either variable in production. | **requested** 25 September, by the app's session in its PR review. Rodrigo decides when. |
+
+| 2026-09-25 | **From the product's review: a typography content refusal names the occurrence where its offending text starts, even on a split line.** R-42 records the line matrix's start, not the start of the offending text. So when a line holds more than one occurrence, and the offending text follows other text, the refusal names the wrong one. **Acceptance:** a test where the offending text follows other text on the same line names the right occurrence. The fix locates the offending show's first glyph from the MuPDF text trace, as the occluded-text branch already does. Alternatively, the `ContentIssue.at` comment, the R-42 evidence and its DECISIONS row say "start of the text line". | Reported by the product's review of #42, on the typography-1 path, which the app never reaches. It has not been reproduced here yet. It is low priority. | **proposed** 25 September. Rodrigo decides whether to fix it or reword it, and when. |
 
 Add new rows at the bottom. Do not delete a row when its status changes —
 update the status column in place so the history of what was asked for

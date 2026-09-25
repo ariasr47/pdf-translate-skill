@@ -52,8 +52,10 @@ the saved bytes; a repeat gets a copy.
 - **What it reuses:** only a font that is still its file. It was read into
   memory, as `TTFont(path)` reads it, and every table it has read compiles
   back to the file's bytes.
-- **The key:** the table directory's checksums, the axis values as floats,
-  and every other option. Axis ranges, arguments it cannot read, and fonts
+- **The key:** a SHA-256 of the bytes the font was read from, the table
+  directory, the axis values as floats, and every other option. Until
+  `7274ee2` it used the checksums the file declares, which a changed file
+  need not update. Axis ranges, arguments it cannot read, and fonts
   on an open file go straight to the instancer.
 - **What a reuse replaces:** only what the font is: its reader, tables and
   glyph order. The caller's own settings stay, as a real call leaves them.
@@ -79,7 +81,8 @@ the saved bytes; a repeat gets a copy.
 | `test_han_forms.InstancingTests`: two identical `prepare_font` runs instance at most once (a spy on `instancer.instantiateFvar` counts real runs), and their subsets are the same | v76: `2 not less than or equal to 1` | `aade52b` and later |
 | `test_instancing`: a reuse keeps the caller's settings | `2392e5d` | `b08f4d6` and later |
 | `test_instancing`: a font on an open file is not reused | `2392e5d` | `b08f4d6` and later |
-| `test_instancing`: a reuse leaves the caller's own buffer open | `b08f4d6` | `1d2a8e1` |
+| `test_instancing`: a reuse leaves the caller's own buffer open | `b08f4d6` | `1d2a8e1` and later |
+| `test_instancing`: a file whose bytes changed without its checksums is a different font | `1d2a8e1` | `7274ee2` |
 
 The rest of `test_instancing` guards the memo against handing back the
 wrong font:
@@ -99,9 +102,13 @@ where it ran 18.
 **CI:** not measured yet. This PR's first CI run gives the after column
 for the table above, and it is added here then.
 
-**CI's commands on macOS, on `1d2a8e1`:**
-- **Suite:** 766 tests, which is 756 plus the 10 new ones, with 0
-  ResourceWarnings. The one failure is the known macOS-only
+**CI's commands on macOS, on `4f7f62d`:**
+- **Suite:** 767 tests, which is 756 plus the 11 new ones, with 0
+  ResourceWarnings. On `1d2a8e1` it was 766 tests, which is 756 plus
+  the 10 new ones then, with 0 ResourceWarnings.
+- **A slip, fixed:** `7274ee2`'s new test read its font with a bare
+  `open().read()`, which printed one ResourceWarning in the full suite:
+  the kind R-99 removed. Fixed in `4f7f62d`. The one failure is the known macOS-only
   `HotLoopTests.test_rebuild_resolves_verify_arguments_from_the_callers_directory`,
   and there is item 3's expected failure.
 - **Canary:** 15, OK.
@@ -152,3 +159,14 @@ refute them by running code.
   left `recalcTimestamp` on. `save()` then wrote the clock back, so two
   saves either side of a second boundary differed; it failed once live.
   Fixed in `1d2a8e1`: the helpers turn it off.
+
+**The product's review, on `1c767ee`.** The app's session reviewed
+`e72e8f1..1c767ee` and read `0359d92`. Its verdict: no reason to hold R-51.
+- **Tests only:** nothing under `pdf_translate/`, `pyproject.toml`,
+  `.claude-plugin/`, `SKILL.md`, `references/` or `scripts/` changes, and
+  the built v76 wheel holds no test files.
+- **Timing:** it reproduced the cold timing independently, 142.6 s to
+  63.6 s, exit 0 both times.
+- **Suggestion, taken:** it suggested keying on the file's bytes rather
+  than the checksums the file declares. Adopted in `7274ee2`, with a test
+  that fails on `1d2a8e1`. It has not reviewed `7274ee2`.
