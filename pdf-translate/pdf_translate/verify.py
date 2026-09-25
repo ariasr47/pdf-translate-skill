@@ -178,6 +178,7 @@ from dataclasses import dataclass
 import pymupdf
 
 from ._console import console, _arg
+from ._pixels import INK_SKIP, VISIBLE_INK, dark_pixels
 from .extract_segments import write_find_say_hits
 from .strip_text import choice_exports, invisible_text_pages
 
@@ -408,10 +409,8 @@ def source_words_from_text(text, allow, script='Latin'):
 
 WORD = re.compile(r"[A-Za-z][A-Za-z'\-]*")
 RUN = re.compile(r"[A-Za-z][A-Za-z'\-]*(?:\s+[A-Za-z][A-Za-z'\-]*){2,}")
-# Dark-pixel floor at 72 dpi. Below this, a page is "no ink" for the ratio
-# gate. At-or-above, combined with empty get_text(), it is a scan suspect.
-VISIBLE_INK = 50
-INK_SKIP = 20
+# VISIBLE_INK and INK_SKIP, the dark-pixel floors at 72 dpi, live in
+# _pixels with the count they apply to; extract and strip use the same ones.
 
 
 def source_words_from_segments(path, allow, script='Latin'):
@@ -1622,10 +1621,7 @@ def page_unextractable(page):
 
 def ink(page):
     px = page.get_pixmap(dpi=72)
-    # Hoist the buffer: indexing px.samples inside the loop re-materializes
-    # the whole buffer on every access (~45 s/page instead of instant).
-    buf = bytes(px.samples)
-    return sum(1 for k in range(0, len(buf), px.n) if buf[k] < 100)
+    return dark_pixels(px.samples, px.n)
 
 
 # Boxes are compared to a hundredth of a point: a stage that re-serialises a

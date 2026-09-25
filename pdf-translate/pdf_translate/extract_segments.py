@@ -98,6 +98,7 @@ import sys
 import pymupdf
 
 from ._console import console, _arg
+from ._pixels import VISIBLE_INK, dark_pixels
 from .results import ExtractResult
 from .strip_text import (
     GEOMETRY_SPACE, invisible_text_pages, page_textdict_without_annots,
@@ -115,9 +116,8 @@ DOTS = re.compile(r'^(.*?)([.…]{3,})(\s*[$€£¥]?\s*)$')
 # itself in translations.json so the decision is explicit and reviewable.
 PASS = re.compile(r'^[^\w]*$|^[\d\s.,:;$€£¥%–—\-()/§*+=&#\'"°]*$', re.UNICODE)
 INNER_GAP = re.compile(r'\S(\s{6,})\S')
-# A page with this many dark pixels (72 dpi, channel < 100) counts as
-# "has visible ink" even if get_text() is empty — the scanned-PDF case.
-VISIBLE_INK = 50
+# A page with VISIBLE_INK dark pixels (_pixels) counts as "has visible ink"
+# even if get_text() is empty: the scanned-PDF case.
 
 
 def page_has_visible_content(page):
@@ -125,9 +125,7 @@ def page_has_visible_content(page):
     if page.get_images():
         return True
     pix = page.get_pixmap(dpi=72)
-    buf = bytes(pix.samples)
-    dark = sum(1 for k in range(0, len(buf), pix.n) if buf[k] < 100)
-    return dark >= VISIBLE_INK
+    return dark_pixels(pix.samples, pix.n) >= VISIBLE_INK
 # Write/find/say candidates: the reader may have to write, hand over, or
 # search for these. Flag them; do not auto-passthrough (that decision is
 # the mapping author's).
@@ -740,7 +738,9 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None, *, typography=False)
     warnings.extend(narrow_column_warnings(segments))
     warnings.extend(right_alignment_warnings(segments, obstacles))
 
-    invisible = [(p, f) for p, f in invisible_text_pages(src) if p in wanted]
+    # Only the pages asked for are judged; the strip it compares against is
+    # still of the whole document, which is what makes the verdicts the same.
+    invisible = invisible_text_pages(src, pages=wanted)
     for pno, fraction in invisible:
         warnings.append({
             'page': pno,

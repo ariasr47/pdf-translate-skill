@@ -135,10 +135,17 @@ class ProbeResult:
         return f'{self.status} conjunct shaping {self.script}: {self.reason}'
 
 
+# Every character any SCRIPT_RANGES entry covers, as one class: scripts_in
+# looks only at the characters it matches (R-48).
+_ANY_SCRIPT = re.compile('[' + ''.join(f'{re.escape(chr(a))}-{re.escape(chr(b))}'
+                                       for ranges in SCRIPT_RANGES.values()
+                                       for a, b in ranges) + ']')
+
+
 def scripts_in(text):
     """Names from SCRIPT_RANGES whose characters appear in text."""
     found = set()
-    for ch in text or '':
+    for ch in set(_ANY_SCRIPT.findall(text or '')):
         o = ord(ch)
         for name, ranges in SCRIPT_RANGES.items():
             if any(a <= o <= b for a, b in ranges):
