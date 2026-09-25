@@ -129,6 +129,35 @@ def job_charset(conf):
     return chars
 
 
+def name_static_instance(font, wght):
+    """Rename a face instanced at weight `wght` after that weight.
+
+    A variable font's default instance may be a different weight than the
+    one asked for (Noto Sans JP defaults to Thin), and instancing does not
+    rewrite the name table. /BaseFont would then advertise "Thin" for
+    Regular outlines. Cosmetic, but it misleads anyone inspecting the PDF.
+    """
+    try:
+        fam = (font['name'].getDebugName(16)
+               or font['name'].getDebugName(1) or 'Subset')
+        style = {100: 'Thin', 200: 'ExtraLight', 300: 'Light',
+                 400: 'Regular', 500: 'Medium', 600: 'SemiBold',
+                 700: 'Bold', 800: 'ExtraBold',
+                 900: 'Black'}.get(int(wght), str(int(wght)))
+        fam = fam.split(' Thin')[0].strip()
+        for rec in font['name'].names:
+            if rec.nameID == 1:
+                rec.string = fam
+            elif rec.nameID == 2:
+                rec.string = style
+            elif rec.nameID in (4, 6):
+                full = f'{fam} {style}'
+                rec.string = (full if rec.nameID == 4
+                              else full.replace(' ', ''))
+    except Exception as e:
+        log.info(f'  (name-table touch-up skipped: {e})')
+
+
 def prepare_font(font_in, trf, font_out, instance=None, sample=None,
                  allow_restricted=False, reference_fonts=None, *,
                  font_class=None, font_role=None):
@@ -241,29 +270,7 @@ def run_prepare_font(font_in, trf, font_out, instance=None, sample=None,
         from fontTools.varLib.instancer import instantiateVariableFont
         font = ttLib.TTFont(font_in)
         instantiateVariableFont(font, {tag: float(val)}, inplace=True)
-        # A variable font's default instance may be a different weight than the
-        # one you asked for (Noto Sans JP defaults to Thin), and instancing does
-        # not rewrite the name table — leaving /BaseFont advertising "Thin" for
-        # Regular outlines. Cosmetic, but it misleads anyone inspecting the PDF.
-        try:
-            fam = (font['name'].getDebugName(16)
-                   or font['name'].getDebugName(1) or 'Subset')
-            style = {100: 'Thin', 200: 'ExtraLight', 300: 'Light',
-                     400: 'Regular', 500: 'Medium', 600: 'SemiBold',
-                     700: 'Bold', 800: 'ExtraBold',
-                     900: 'Black'}.get(int(float(val)), str(int(float(val))))
-            fam = fam.split(' Thin')[0].strip()
-            for rec in font['name'].names:
-                if rec.nameID == 1:
-                    rec.string = fam
-                elif rec.nameID == 2:
-                    rec.string = style
-                elif rec.nameID in (4, 6):
-                    full = f'{fam} {style}'
-                    rec.string = (full if rec.nameID == 4
-                                  else full.replace(' ', ''))
-        except Exception as e:
-            log.info(f'  (name-table touch-up skipped: {e})')
+        name_static_instance(font, float(val))
         src = font_out + '.instanced.ttf'
         font.save(src)
 

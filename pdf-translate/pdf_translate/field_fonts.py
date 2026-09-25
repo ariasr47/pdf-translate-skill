@@ -9,7 +9,9 @@ ASCII, so test with real target-script input.
 
 What this does:
   1. embeds a FULL-coverage target-script font (NOT the translation subset —
-     users type arbitrary names containing characters the document never used)
+     users type arbitrary names containing characters the document never used),
+     pinning a variable face to its Regular instance first, since a viewer
+     draws a variable font's default outlines (Thin, for Noto Sans JP)
   2. registers it in /AcroForm /DR /Font, creating /DR and /Font if absent
      (many forms ship a /DA referencing /Helv with no /DR at all)
   3. rewrites every text AND choice field's /DA to that font, preserving the
@@ -38,6 +40,50 @@ from .results import FieldFontsResult, PdfTranslateError
 log = logging.getLogger(__name__)
 
 
+def static_face(font, path):
+    """(face to embed, pinned axes): `font` itself and '' when it is static;
+    otherwise a copy at `path` with every axis pinned, and those values.
+
+    A PDF embeds a variable font's default outlines, so a viewer draws typed
+    text at the default instance. For Noto Sans JP that is Thin (wght 100),
+    and the variation tables carry megabytes nobody uses (R-27). The pins
+    are the face's "Regular" named instance. Without one, the axes stay at
+    their defaults and wght is set to 400, within the axis's range.
+    """
+    from fontTools import ttLib
+    from fontTools.varLib.instancer import instantiateVariableFont
+    from .prepare_font import name_static_instance
+
+    face = ttLib.TTFont(font)
+    try:
+        if 'fvar' not in face:
+            return font, ''
+        axes = {a.axisTag: a.defaultValue for a in face['fvar'].axes}
+        regular = next((i.coordinates for i in face['fvar'].instances
+                        if face['name'].getDebugName(i.subfamilyNameID)
+                        == 'Regular'), None)
+        if regular:
+            axes.update(regular)
+        elif 'wght' in axes:
+            wght = next(a for a in face['fvar'].axes if a.axisTag == 'wght')
+            axes['wght'] = min(max(400.0, wght.minValue), wght.maxValue)
+        instantiateVariableFont(face, axes, inplace=True)
+        if 'wght' in axes:
+            name_static_instance(face, axes['wght'])
+        face.save(path)
+        return path, ','.join(f'{tag}={value:g}'
+                              for tag, value in sorted(axes.items()))
+    finally:
+        face.close()
+
+
+def _remove_quietly(path):
+    try:
+        os.remove(path)
+    except OSError as e:
+        log.info(f'(temp cleanup skipped: {e})')
+
+
 def field_fonts(inp, font, out, name='TransFF'):
     """Embed a full-coverage field font and rewrite text-field /DA. Returns 0.
 
@@ -60,12 +106,19 @@ def run_field_fonts(inp, font, out, name='TransFF'):
     Silent. Returns a FieldFontsResult. Raises on refusal.
     """
     tmp = out + '.tmp_withfont.pdf'
+    static = out + '.tmp_static.ttf'
+    face, instance = static_face(font, static)
+    if instance:
+        log.info(f'field font is variable: embedded its static instance '
+                 f'{instance}, not the default outlines a viewer would draw')
     doc = pymupdf.open(inp)
     try:
-        doc[0].insert_font(fontname='TransFieldFont', fontfile=font)
+        doc[0].insert_font(fontname='TransFieldFont', fontfile=face)
         doc.save(tmp)
     finally:
         doc.close()
+        if instance:
+            _remove_quietly(static)
 
     pdf = pikepdf.open(tmp)
     try:
@@ -75,7 +128,7 @@ def run_field_fonts(inp, font, out, name='TransFF'):
             log.info('no /AcroForm — nothing to do (non-form PDF); copying through')
             pdf.save(out)
             return FieldFontsResult(output=out, fields=0, face=name,
-                                    acroform=False)
+                                    acroform=False, instance=instance)
         af = pdf.Root.AcroForm
 
         if '/DR' not in af:
@@ -146,7 +199,7 @@ def run_field_fonts(inp, font, out, name='TransFF'):
         log.info('  (no text or choice fields found — checkboxes and buttons '
                  'are unaffected by design)')
     return FieldFontsResult(output=out, fields=count, face=name,
-                            acroform=True)
+                            acroform=True, instance=instance)
 
 
 def main(argv=None):

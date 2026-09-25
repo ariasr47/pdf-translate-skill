@@ -27,6 +27,11 @@ whose original is serif. Bold in CJK forms is often better served by the
 
 For field input (field_fonts.py) use the FULL instanced font, not the
 translation subset — users type names with characters outside the document.
+Given a variable face, field_fonts pins it to its Regular instance before
+embedding (the result's `instance` says so, e.g. `wght=400`). Embedded as-is,
+a viewer would draw typed text from the default outlines: Thin for Noto Sans
+JP. Instancing the full JP face takes about 5 s, so a service that fills
+many forms should pass a static instance it made once.
 
 `verify`'s `han-forms` gate (20) compares the delivered face with the Noto
 Sans JP and SC references at the same weight, exactly. Use the same builds

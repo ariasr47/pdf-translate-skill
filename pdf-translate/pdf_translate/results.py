@@ -223,8 +223,11 @@ class RetypesetResult(_Result):
 
 @dataclass(frozen=True)
 class FieldFontsResult(_Result):
-    """The delivery copy with a field font embedded."""
+    """The delivery copy with a field font embedded. `instance` names the
+    axis values a variable face was pinned to before embedding, e.g.
+    'wght=400'; it is '' for a static face."""
     output: str = ''
     fields: int = 0
     face: str = ''
     acroform: bool = True
+    instance: str = ''

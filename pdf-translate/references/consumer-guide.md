@@ -123,7 +123,7 @@ Every result is a frozen dataclass whose `to_dict()` carries `schema` and
 | `run_prepare_font` | `FontResult` | `output`, `glyphs_added`, `subset_bytes` |
 | `run_retypeset` | `RetypesetResult` | `output`, `cancelled`, `scaled`, `scale_report_path` |
 | `run_verify` | `VerifyVerdict` | `exit_code`, `gates` (each a `GateResult` with `status` and `findings`) |
-| `run_field_fonts` | `FieldFontsResult` | `output`, `fields`, `acroform` |
+| `run_field_fonts` | `FieldFontsResult` | `output`, `fields`, `acroform`, `instance` (the axis values a variable face was pinned to, or `''`) |
 | `run_qa` | `QAVerdict` | `findings`, `exit_code` |
 | `run_review` | `ReviewVerdict` | `present`, `blocks_delivery`, `open_findings`, `review_line`, `counts` |
 
