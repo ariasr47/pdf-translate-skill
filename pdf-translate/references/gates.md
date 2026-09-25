@@ -2,7 +2,7 @@
 
 Contents: the always-on gates · the leak scan · what `--translations`
 adds (placement, canonical text layer, chrome and caption width,
-identifiers, override markers) · `/Opt` export parity · document metadata
+identifiers, override markers) · `/Opt` export parity · widget text · document metadata
 · shaped scripts · flags.
 
 `verify.py` checks the **file** — structure, placement, the text layer. Exit 0
@@ -190,13 +190,37 @@ must be byte-identical to the original's, in the same order. Translate the
 display half (`references/widget-text.md`), never the export — the export
 is what the form submits.
 
+## Widget text
+
+Gate 22, always on. Tooltips (`/TU`), dropdown display labels and
+text-field values and defaults live in the annotation dictionaries, never in
+a content stream, so the leak scan cannot see them. A strip without
+`--widget-text`, such as a bare `pipeline.py init`, ships them in the source
+language. The gate compares each field's strings in the output with the
+original's, by full field name and, for a dropdown, by export value. A
+string that has a letter in it and is unchanged is REVIEW, listed by field.
+
+Not every unchanged string is a miss: a label that is data (a code, an ID)
+stays in the source language on purpose. The widget-text mapping says
+which. Verify reads `--widget-text PATH`, else the `widget_text.json`
+beside `--translations`, as it reads `segments.json`. A string is kept on
+purpose, and not reported, when:
+- the mapping has no key for its field (deleted to leave the field as it
+  is);
+- the field's entry leaves that slot out;
+- the slot's target equals its source (data returned as itself).
+
+A null target is not a decision, so an unauthored scaffold excuses nothing.
+REVIEW, never FAIL. Silent when no field carries widget text with a letter
+in it. PASS names how many strings were checked.
+
 ## As a library
 
 `pdf_translate.verify.run_verify(...)` takes the same arguments as the
 CLI, prints nothing, and returns a `VerifyVerdict`: `exit_code` and
 `gates`, one `GateResult(name, status, message)` per PASS/FAIL/REVIEW/SKIP
 line the CLI would print, same status, same order. Names are the closed
-list `verify.GATE_NAMES`: field-parity, opt-export-parity, fill-roundtrip,
+list `verify.GATE_NAMES`: field-parity, opt-export-parity, widget-text, fill-roundtrip,
 extractable-text, ink-ratio, visible-text, canonical-text,
 arabic-letterforms, conjunct-shaping, kinsoku, han-forms, leak-scan, leak-cjk, leak-running,
 leak-isolated, empty-targets, placement, shaped-actualtext,
@@ -236,6 +260,7 @@ and never split a target by hand across source lines — declare a merge
 |---|---|---|
 | field-parity | `missing` / `type-mismatch` / `unexpected-extra` | the field name |
 | opt-export-parity | the field name | `old -> new` |
+| widget-text | the field's full name | `tooltip: …`, `value: …`, `default: …` or `option EXPORT: …`, with the unchanged string |
 | fill-roundtrip | the field name | what did not survive save and reopen |
 | page-parity | `missing` (the original's page number) / `extra` (the translation's) / `media-box` / `crop-box` / `rotation` | `no page in the translation`, `no page in the original`, or `original …, translation …` |
 | extractable-text, ink-ratio, visible-text, arabic-letterforms | `page` | the detail (`PASS ink ratio 1.05`, `images=1, ink=200 px`, …) |
@@ -264,7 +289,8 @@ and never split a target by hand across source lines — declare a merge
 `--allow WORD,"Multi Word Name"` (leak-scan allowlist; a phrase matches a
 whole run), `--source-words-from segments.json`, `--translations
 translations.json`, `--segments segments.json`, `--allow-extra-prefix`,
-`--min-ink`, `--report verify_report.json`, `--fail-on-review`, `--reference-fonts DIR` (the
+`--min-ink`, `--widget-text widget_text.json` (gate 22's mapping; default: beside
+`--translations`), `--report verify_report.json`, `--fail-on-review`, `--reference-fonts DIR` (the
 `NotoSansJP-VF.ttf` and `NotoSansSC-VF.ttf` faces gate 20 compares against; default `tests/fonts/`
 of a checkout — an installed package has none, so a service passes its own; with
 `--fail-on-review`, a CJK job exits 1 until they are shipped). Without
@@ -275,10 +301,10 @@ target placement are absent; exit 0 then does not attest translation coverage.
 
 ## The review loop is not a gate
 
-`pipeline.py review` and the refusal inside `finish` are **not** gates, and
-nobody should look for a gate 22. They produce no `GateResult`, they record
-nothing in `VerifyVerdict`, they do not appear in `GATE_NAMES`, and
-`verify.py`'s twenty-one gates are unchanged by them.
+`pipeline.py review` and the refusal inside `finish` are **not** gates.
+They produce no `GateResult`, they record nothing in `VerifyVerdict`, they
+do not appear in `GATE_NAMES`, and `verify.py`'s gates are unchanged by
+them. (Gate 22, widget text, came later, in v81, and is unrelated.)
 
 The distinction is the point. A gate is a structural check a script can make
 about a file. The review loop exists precisely because the failure it addresses
@@ -298,7 +324,7 @@ next job of the same class is gated on what this one learned.
 The consumer surface (v58) changed how every stage is *called* — a silent
 `run_*` twin returning a schema-versioned result, typed exceptions instead of
 printed refusals, output through the package logger — and changed nothing about
-what is checked. There are still twenty-one gates, with the same names, the
+what is checked. There were still twenty-one gates, with the same names, the
 same statuses and the same console lines; `dev/probes/cli_parity_runner.py` and
 `dev/probes/verdict_parity_runner.py` both diff empty across the change.
 

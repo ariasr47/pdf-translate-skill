@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "80"
+  version: "81"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -473,6 +473,10 @@ Every gate — what it reads, what fails, and why — is in
   share is invisible to the tell, and the PASS line says so; without
   `lang`, or for a Traditional Chinese source into Japanese, one REVIEW
   line remains.
+- **Widget text** (always on, gate 22): a tooltip, dropdown label or field
+  default that still reads as in the original is REVIEW. Verify reads
+  `widget_text.json` beside `--translations` (or `--widget-text`): a
+  deleted key or a target equal to its source is kept on purpose.
 - **`--translations`**: every authored non-passthrough target appears
   **verbatim** in the output text layer (retypeset canonicalizes
   `/ToUnicode`; NBSP, soft-hyphen and compatibility-ideograph drift

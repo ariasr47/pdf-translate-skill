@@ -492,7 +492,8 @@ def cmd_rebuild(argv):
     t0 = time.perf_counter()
     default_report = os.path.join(work, 'verify_report.json')
     report = extra[extra.index('--report') + 1] if '--report' in extra else default_report
-    value_flags = ('--translations', '--segments', '--original', '--source-words-from', '--reference-fonts')
+    value_flags = ('--translations', '--segments', '--original', '--source-words-from', '--reference-fonts',
+                   '--widget-text')
     inputs = [orig, stripped, segs, tr]
     inputs.extend(value for flag, value in zip(extra, extra[1:]) if flag in value_flags)
     # verify reads only `--flag value`, but `--flag=value` still names a file
