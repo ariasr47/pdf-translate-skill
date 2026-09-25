@@ -687,4 +687,21 @@ class VersionLockstepTests(unittest.TestCase):
         self.assertEqual(plugin, f'{skill}.0.0')
         self.assertEqual(pyproject, plugin)
         self.assertEqual(pdf_translate.__version__, skill)
-        self.assertEqual(skill, '72')
+        self.assertEqual(skill, '73')
+
+
+class PackagingMetadataTests(unittest.TestCase):
+    """R-110: the licence is a PEP 639 SPDX expression with its file named.
+    The TOML table form (`{text = "MIT"}`) is deprecated, and setuptools
+    stops accepting it on 2027-02-18; the string form needs setuptools>=77."""
+
+    def test_the_licence_is_an_spdx_expression_with_its_file(self):
+        import tomllib
+        conf = tomllib.loads((SKILL / 'pyproject.toml').read_text(encoding='utf-8'))
+        project = conf['project']
+        self.assertEqual(project['license'], 'MIT')
+        self.assertEqual(project['license-files'], ['LICENSE'])
+        self.assertTrue((SKILL / 'LICENSE').is_file())
+        self.assertIn('setuptools>=77', conf['build-system']['requires'])
+        # A licence classifier beside an expression is an error under PEP 639.
+        self.assertFalse(any(c.startswith('License ::') for c in project.get('classifiers', [])))

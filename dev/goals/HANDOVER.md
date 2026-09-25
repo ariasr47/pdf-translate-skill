@@ -3,6 +3,18 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 25 September 2026, midday: #42 open (v72); R-110 built (v73), not pushed
+
+**Main is v71 at `62e87bf`.** Two things are in flight:
+- **#42** is open against `main`, with R-42 at v72.
+- **`chore/r110-spdx-licence`** sits on #42, with R-110 at v73. It is local
+  and waits for Rodrigo's go.
+  - `pyproject.toml` uses the SPDX licence form and `setuptools>=77`.
+  - Evidence: `docs/reviews/2026-09-25-r110-spdx-licence.md`.
+
+**Next quick win: R-100**, dead code removed. Then R-99 (ResourceWarnings
+closed), and the docs items R-79, R-80, R-82 and R-83.
+
 ## Start here — 25 September 2026, later morning: main is v71; R-42 built (v72), not pushed
 
 **Main is v71 at `62e87bf`.** Rodrigo merged #40 (R-33, v70, merge
