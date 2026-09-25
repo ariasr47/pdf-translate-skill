@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "73"
+  version: "74"
 ---
 
 # pdf-translate: high-fidelity PDF translation

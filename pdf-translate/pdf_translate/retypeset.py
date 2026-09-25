@@ -1054,7 +1054,7 @@ def _content_segment(segments, issue):
     return {'page': issue.page}
 
 
-def _run_typography(stripped, document, out, *, original, progress, cancel, scale_report, resource_root):
+def _run_typography(stripped, document, out, *, original, progress, cancel, scale_report):
     """Preflight every occurrence, then use the existing one-line TextWriter path."""
     data, expected = document.extraction, document.extraction['typography']
     try:
@@ -1265,8 +1265,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
             refuse('invalid-style-reference', 'PDF and report paths must differ')
         try:
             return _run_typography(stripped, document, out, original=original,
-                                   progress=progress, cancel=cancel, scale_report=scale_report,
-                                   resource_root=resource_root)
+                                   progress=progress, cancel=cancel, scale_report=scale_report)
         except PdfTranslateError as exc:
             # Only a run that actually scaled below the floor is evidence for
             # B1; every other typography refusal (an impossible baseline, two
@@ -1470,16 +1469,10 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
     # The fallback itself is right — a job with one face must still build —
     # but it is silent, so an author can ask for bold, get regular, and
     # report a faithful page (row 31, measured on canary run 3).
-    def _same_file(a, b):
-        try:
-            return os.path.samefile(a, b)
-        except OSError:
-            return os.path.abspath(a) == os.path.abspath(b)
-
     alias_roles = {name for name, path in (('bold', f_bold),
                                            ('italic', f_italic),
                                            ('bold-italic', f_bold_italic))
-                   if _same_file(path, f_regular)}
+                   if _same_path(path, f_regular)}
     role_asks = {}
 
     def note_role(name, key):
@@ -1603,7 +1596,6 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                     lim = max(lim, wr.x1)
         return lim + 1.5
 
-    missing = []
     rotated_shaped = []
     glyph_misses = []
     seen_glyph_miss = set()
@@ -1745,9 +1737,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                     return marker_adv(f, fsz)
                 return f.text_length(t, fsz)
             jp = T.get(core)
-            if jp is None:
-                if not seg['passthrough']:
-                    missing.append((pno, core))
+            if jp is None:  # passthrough: an untranslated core refused above
                 f = helv_role(seg['bold'], seg.get('italic'))
                 raw = seg['text'].rstrip()
                 check_glyphs(pno, f, raw, raw, 'Helvetica (pass-through)')
@@ -2021,11 +2011,6 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
     # of them as data so a consumer fixes the mapping in one pass instead of
     # rebuilding to discover the next reason.
     block = []
-    if missing:
-        block.append(f'FAIL: {len(missing)} untranslated segments:')
-        for p, c in missing[:CONSOLE_LIST]:
-            block.append(f'  p{p}: {c}')
-        block.extend(more_not_shown(missing))
     if overflow:
         block.append(f'FAIL: {len(overflow)} segments scaled below '
                      f'{SCALE_MIN}x (shorten the translation or add '
@@ -2057,11 +2042,13 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
         for p, c in rotated_shaped[:30]:
             block.append(f'  p{p}: {c}')
         block.extend(more_not_shown(rotated_shaped))
-    block.extend(refusal_tail(missing, overflow, glyph_misses, rotated_shaped))
-    if missing or overflow or rotated_shaped or glyph_misses:
+    block.extend(refusal_tail(overflow, glyph_misses, rotated_shaped))
+    if overflow or rotated_shaped or glyph_misses:
         doc.close()
         refusals = {
-            'untranslated': [{'page': p, 'core': c} for p, c in missing],
+            # Always empty here: an untranslated core refused before drawing.
+            # The key stays, so every refusal from this site has one shape.
+            'untranslated': [],
             'overflow': [{'page': p, 'scale': r, 'core': c}
                          for p, r, c in overflow],
             'glyph_misses': [{'page': p, 'role': label, 'char': ch,
@@ -2082,10 +2069,6 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
             raise GlyphError(summary, console_line='\n'.join(block),
                              exit_code=1, page=pno, char=ch, face=label,
                              refusals=refusals)
-        if missing:
-            raise MappingError(summary, console_line='\n'.join(block),
-                               exit_code=1, core=missing[0][1],
-                               refusals=refusals)
         first = (overflow[0] if overflow else None)
         placement_exc = PlacementError(
             summary, console_line='\n'.join(block), exit_code=1,

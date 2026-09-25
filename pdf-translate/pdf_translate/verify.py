@@ -1010,14 +1010,6 @@ def load_segments_file(translations_path, segments_path=None):
         return json.load(f)
 
 
-def load_segments_for(translations_path, segments_path=None):
-    """segments.json segments for the override gate."""
-    data = load_segments_file(translations_path, segments_path)
-    if data is None:
-        return None
-    return data.get('segments') if isinstance(data, dict) else data
-
-
 def document_only_cores(segfile):
     """Cores that are document metadata and never page text.
 
