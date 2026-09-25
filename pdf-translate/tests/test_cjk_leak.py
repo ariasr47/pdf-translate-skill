@@ -17,10 +17,15 @@ from pathlib import Path
 import pymupdf
 
 from pdf_translate import cjk_tell, han_forms
+from tests import _instancing
 from tests.test_han_forms import FONTS, JP_FACE, SC_FACE, _face
 
 verify_mod = importlib.import_module('pdf_translate.verify')
 from pdf_translate.verify import GATE_NAMES, run_verify, verify
+
+# The han-forms references this module instances are the faces test_han_forms
+# asks for next; built once for both (R-51).
+setUpModule, tearDownModule = _instancing.install, _instancing.uninstall
 
 # The eleven texts of the brief, with (tells for a ja target, for zh-Hans, for zh-Hant), exact.
 TEXTS = [
