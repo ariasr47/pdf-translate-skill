@@ -562,6 +562,32 @@ def widget_text_scaffold(src):
     return out
 
 
+def widget_text_is_authored(path):
+    """True when the file at `path` holds text an author wrote.
+
+    A scaffold's only strings are each entry's `type` and each slot's
+    `source` and `export`; every `target` is null. Anything else — a target,
+    a string shorthand, a file that is not JSON — is someone's work, and
+    extract must not write a fresh scaffold over it. A missing file is not.
+    """
+    try:
+        with open(path, encoding='utf-8') as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        return False
+    except (OSError, ValueError):
+        return True
+    return not _scaffold_only(data)
+
+
+def _scaffold_only(node, key=None):
+    if isinstance(node, dict):
+        return all(_scaffold_only(v, k) for k, v in node.items())
+    if isinstance(node, list):
+        return all(_scaffold_only(v, key) for v in node)
+    return node is None or key in ('type', 'source', 'export')
+
+
 def choice_exports(path):
     """{field name: [export values]} for every choice widget in a PDF.
 

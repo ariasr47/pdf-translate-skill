@@ -32,6 +32,13 @@ author each `target`, then pass it back with `strip_text.py --widget-text`
 (or `pipeline.py init … --widget-text`). A `null` target is a refusal, not
 a skip — author it or delete the key.
 
+Extract never writes a fresh scaffold over a `widget_text.json` that holds
+authored text: a non-null target, a string shorthand, or a file that is not
+JSON. It keeps the file, says so, and sets `widget_text_kept` on the
+result. A file whose every target is still null is refreshed, so a work
+directory reused for another PDF gets that PDF's scaffold. Delete the file
+to get a fresh one.
+
 **Keys are full field names.**
 - The scaffold names each field by its fully qualified name: every `/T` up
   the `/Parent` chain, joined with dots, such as

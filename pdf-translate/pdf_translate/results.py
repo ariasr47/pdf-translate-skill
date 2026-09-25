@@ -191,6 +191,7 @@ class ExtractResult(_Result):
     segments_path: str = ''
     to_translate_path: str = ''
     widget_text_path: str = ''
+    widget_text_kept: bool = False
     typography: dict | None = None
 
 

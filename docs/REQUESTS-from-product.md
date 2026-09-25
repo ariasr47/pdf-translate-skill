@@ -32,7 +32,44 @@ Claude sessions do this by name with `SendMessage`; other agents go through
 Rodrigo. Whatever a message settles is written into this file in the same
 session.
 
-## Current coordination status — 25 September 2026, late night
+## Current coordination status — 25 September 2026, end of day
+
+**Main is v71 at `62e87bf`.** Nine things are in flight, each stacked on
+the one before:
+- **#42,** R-42 at v72;
+- **#43,** R-110 at v73;
+- **#44,** R-100 at v74;
+- **#45,** R-99 at v75;
+- **#46,** the docs items at v76;
+- **#47,** R-51, tests only;
+- **#48,** R-48 with R-49 at v77;
+- **#49,** R-50 at v78, with canary run 4's records;
+- **the widget_text fix at v79,** on `fix/widget-text-init-keeps-authored`.
+  It waits for Rodrigo's go to push.
+
+**For a consumer, v79:** extract never writes a fresh scaffold over a
+`widget_text.json` that holds authored text; `ExtractResult` gains
+`widget_text_kept`. The app is unaffected, and its session checked.
+
+**Canary run 4, compared:** the rubric ties, 5/5 each. On the Spanish
+itself Opus 5.5 is narrowly ahead, chiefly on a deadline. The evaluator is
+on Opus 5.5, was not blind, and says so.
+
+**Next:** filed rows wait for Rodrigo's order:
+- `/Lang` region, which the product calls a quick win;
+- the `document` block;
+- a verify gate for widget text left in the source language, filed today;
+- #19's capture docs;
+- #42's line-start position.
+
+**Adoption:** none yet. The app stays on v54.
+
+**Also proposed:** typography verify's units-per-em drift, and `field_fonts`'s
+`/FT` lookup.
+
+**Unchanged:** E12 is blocked on its six rulings, and R-94 is "not yet".
+
+## Coordination status — 25 September 2026, late night (historical snapshot)
 
 **Main is v71 at `62e87bf`.** Eight things are in flight, each stacked on
 the one before:
@@ -887,11 +924,13 @@ Evidence: `docs/reviews/2026-09-25-r99-resource-warnings.md`. Rodrigo approved i
 
 | 2026-09-25 | **From the product's review: a typography content refusal names the occurrence where its offending text starts, even on a split line.** R-42 records the line matrix's start, not the start of the offending text. So when a line holds more than one occurrence, and the offending text follows other text, the refusal names the wrong one. **Acceptance:** a test where the offending text follows other text on the same line names the right occurrence. The fix locates the offending show's first glyph from the MuPDF text trace, as the occluded-text branch already does. Alternatively, the `ContentIssue.at` comment, the R-42 evidence and its DECISIONS row say "start of the text line". | Reported by the product's review of #42, on the typography-1 path, which the app never reaches. It has not been reproduced here yet. It is low priority. | **proposed** 25 September. Rodrigo decides whether to fix it or reword it, and when. |
 
-| 2026-09-25 | **Proposal from this library: `pipeline.py init --widget-text` never overwrites the file it reads.** SKILL.md says to run `init` bare for the `widget_text.json` scaffold, author the targets, then run it again with `--widget-text`. The second run applies the targets, then extract writes a fresh scaffold over `WORK/widget_text.json`, the file the author just filled in. **Acceptance:** after `init --widget-text WORK/widget_text.json`, the authored targets are still in that file, and the stripped PDF carries them; a test on `corpus/choice_fields.pdf`. | Found by canary run 4: Opus 5.5 reported it, and Opus 5 avoided it by authoring into a separate file. Reproduced here: on `corpus/choice_fields.pdf`, 5 authored targets became 5 nulls. An author who re-runs from the empty file ships untranslated tooltips; the model avoided it by keeping a copy. | **proposed** 25 September. Product advice (25 September, for Rodrigo to schedule): first, after R-50. It is silent data loss in the workflow SKILL.md prescribes. No effect on the app, which passes its mapping to `strip_text` in memory and never runs `init`. |
+| 2026-09-25 | **Proposal from this library: `pipeline.py init --widget-text` never overwrites the file it reads.** SKILL.md says to run `init` bare for the `widget_text.json` scaffold, author the targets, then run it again with `--widget-text`. The second run applies the targets, then extract writes a fresh scaffold over `WORK/widget_text.json`, the file the author just filled in. **Acceptance:** after `init --widget-text WORK/widget_text.json`, the authored targets are still in that file, and the stripped PDF carries them; a test on `corpus/choice_fields.pdf`. | Found by canary run 4: Opus 5.5 reported it, and Opus 5 avoided it by authoring into a separate file. Reproduced here: on `corpus/choice_fields.pdf`, 5 authored targets became 5 nulls. An author who re-runs from the empty file ships untranslated tooltips; the model avoided it by keeping a copy. | **proposed** 25 September. Product advice (25 September, for Rodrigo to schedule): first, after R-50. It is silent data loss in the workflow SKILL.md prescribes. No effect on the app, which passes its mapping to `strip_text` in memory and never runs `init`. **Assigned** 25 September: Rodrigo said yes in this session, taking the product's advice to do it first after R-50. **Correction to this row's reason:** re-applying the emptied file is refused ("target is null"), so the work is lost loudly, not shipped. The silent path is a bare re-run of `init`, which ships source-language widget text that verify has no gate for (proposal below). **Built** 25 September, v79, branch `fix/widget-text-init-keeps-authored`, stacked on #49. Extract never writes a fresh scaffold over a `widget_text.json` that holds authored text: a non-null target, a string shorthand, or a file that is not JSON. It keeps the file, says so, and sets `ExtractResult.widget_text_kept`. A file whose every target is null is still refreshed. On `corpus/choice_fields.pdf`, `init --widget-text WORK/widget_text.json` now leaves the file byte-identical and the stripped PDF carries all 5 targets. `tests/test_widget_text_authored.py` has 6 tests, all failing on `ef03a75`. The app's session checked its code read-only: it never writes a `widget_text.json`, reads the extract result only by `cores`, `segments` and `warnings`, and its call shape stays byte for byte as before. Evidence: `docs/reviews/2026-09-25-widget-text-kept.md`. |
 
 | 2026-09-25 | **Proposal from this library: `/Lang` keeps the whole language tag.** Retypeset sets `/Lang` with PyMuPDF's `set_language`, which drops a region subtag: `es-US` becomes `es` and `pt-BR` becomes `pt`, while `zh-Hans` is kept. Retypeset's log still says `/Lang -> es-US`. **Acceptance:** a mapping `lang` of `es-US` gives `/Lang (es-US)` in the output, and the log names what was written. | Found by canary run 4; both models noted it. Reproduced here with PyMuPDF 1.28.2. Verify's metadata gate compares the primary subtag, so it passes today. Screen readers and hyphenation read the region. | **proposed** 25 September. Product advice (25 September, for Rodrigo to schedule): a quick win. At least make the log truthful; better, write the full tag, with verify's comparison unchanged. No effect on the app, whose 16 tags carry no region subtag. |
 
 | 2026-09-25 | **Proposal from this library: document the mapping's `document` block.** `review.py` fills the reviewer prompt's identity slots from a `document` block in `translations.json` (`class`, `issuer`, `parallel_text`, …), at line 665. `references/translations-format.md` does not mention it, so an author cannot know to write it. **Acceptance:** the format reference documents the block and its keys, and SKILL.md's identity step says where the record goes for the review prompt. | Found by canary run 4 and confirmed in the code. The run filled the block by reading `review.py`. | **proposed** 25 September. Product advice (25 September, for Rodrigo to schedule): docs only, with a docs guard like R-79's; no effect on the app, which never runs `review.py`. Canary run 4 also saw page 1's ink ratio read 1.18 on `out.pdf` and 1.32 on `final.pdf`, for pages the model rendered pixel-identical. It is recorded, not reproduced or diagnosed here. Product advice: reproduce it before any work. Two pixel-identical renders should not give different ink ratios, so this bears on verify's trustworthiness. |
+
+| 2026-09-25 | **Proposal from this library: verify flags widget text left in the source language.** Verify's leak scan reads page text, and its `/Opt` gate checks only that export values did not move. Nothing checks tooltips (`/TU`), dropdown display labels or text-field defaults. A bare `init`, or a strip without `--widget-text`, ships them in the source language, and no gate reads them: `verify.py` never reads `/TU`, and reads `/Opt` only for export parity (checked in the code, not by a verify run). **Acceptance:** on `corpus/choice_fields.pdf` stripped without `--widget-text`, verify reports the untranslated dropdown labels by field. With them translated, or deleted from the mapping on purpose, it does not. Verify by a test on that file. | Found while building the `widget_text` overwrite fix: after a bare re-run, stripped.pdf carried the English dropdown labels. The app's session suggested filing it. A label that is data (a code, an ID) stays in the source language on purpose, so the verdict is likely REVIEW, not FAIL. | **proposed** 25 September. The app's session suggested it; its advice on priority has not been asked. |
 
 Add new rows at the bottom. Do not delete a row when its status changes —
 update the status column in place so the history of what was asked for

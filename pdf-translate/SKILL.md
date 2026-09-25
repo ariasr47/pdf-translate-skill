@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "78"
+  version: "79"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -186,6 +186,8 @@ disappear, and never draw a second widget. Tooltips, dropdown labels and
 field defaults never reach a content stream: `extract_segments.py` writes
 `widget_text.json` by full field name; you author every `target`, and
 `--widget-text` applies it. A `null` target is a refusal, not a skip.
+Author the file in place: extract never writes a fresh scaffold over one
+that holds authored text.
 **Export values stay** — only the display half of an `/Opt` entry is
 translated — and a value that is data (a barcode payload, an ID) gets
 its source string back as the target. A rendered dropdown still shows
