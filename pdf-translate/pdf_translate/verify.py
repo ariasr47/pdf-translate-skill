@@ -178,6 +178,7 @@ from dataclasses import dataclass
 import pymupdf
 
 from ._console import console, _arg
+from ._lang import declared_language
 from ._pixels import INK_SKIP, VISIBLE_INK, dark_pixels
 from .extract_segments import write_find_say_hits
 from .strip_text import choice_exports, invisible_text_pages
@@ -588,8 +589,9 @@ def document_metadata_misses(odoc, jdoc, conf):
     from .mapping import MappingDocument
     if isinstance(conf, MappingDocument) and conf.format == 'typography-1':
         misses = []
-        if (jdoc.language or '').lower() != conf.lang.lower():
-            misses.append(('lang', f'expected {conf.lang}; output declares {jdoc.language or "nothing"}'))
+        got = declared_language(jdoc)
+        if got.lower() != conf.lang.lower():
+            misses.append(('lang', f'expected {conf.lang}; output declares {got or "nothing"}'))
         title = (odoc.metadata or {}).get('title') or ''
         if title in conf.document_targets and (jdoc.metadata or {}).get('title') != conf.document_targets[title]:
             misses.append(('title', 'document title does not match its authored target'))
@@ -604,10 +606,7 @@ def document_metadata_misses(odoc, jdoc, conf):
     misses = []
 
     want_lang = (conf.get('lang') or '').strip()
-    try:
-        got_lang = (jdoc.language or '').strip()
-    except Exception:
-        got_lang = ''
+    got_lang = declared_language(jdoc)
     if want_lang:
         if not got_lang or not want_lang.lower().startswith(got_lang.lower()):
             misses.append(('lang', f'translations.json asks for '
@@ -1951,10 +1950,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
                findings=kinsoku_findings)
 
     mapping_lang = (document.lang or '').strip() if document is not None else ''
-    try:
-        output_lang = (jc.language or '').strip()
-    except Exception:
-        output_lang = ''
+    output_lang = declared_language(jc)
     han_lines, han_status, han_findings = han_forms_report(jc, mapping_lang, output_lang,
                                                            reference_fonts)
     for line in han_lines:

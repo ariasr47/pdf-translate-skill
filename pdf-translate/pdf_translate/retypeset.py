@@ -87,6 +87,7 @@ import pymupdf
 
 from . import capture
 from ._console import console, _arg
+from ._lang import write_language
 from .results import (FontError, GlyphError, MappingError, PdfTranslateError,
                       PlacementError, RetypesetResult)
 from .mapping import FORMAT, charset_for, load_mapping, refuse
@@ -489,9 +490,11 @@ def apply_document_metadata(doc, document, translations, lang):
     document = document or {}
 
     if lang:
+        # The whole tag, as the mapping spells it: PyMuPDF's set_language
+        # keeps only part of it (es-US as es). The report is what the file
+        # now holds, so the console line is what a reader will get.
         try:
-            doc.set_language(lang)
-            report['lang'] = lang
+            report['lang'] = write_language(doc, lang) or None
         except Exception:
             pass
         xml = doc.get_xml_metadata() or ''

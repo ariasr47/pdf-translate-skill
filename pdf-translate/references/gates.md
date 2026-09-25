@@ -134,6 +134,12 @@ translated `/Title` and translated outline titles must be in the output;
 the orphaned `/StructTreeRoot` must be gone. No `lang` in the mapping is a
 REVIEW line, not a failure.
 
+`/Lang` is read as the file stores it, not as PyMuPDF's `doc.language`
+shortens it (`zh-Hant-TW` to `zh`). A legacy mapping also passes an output
+whose `/Lang` is the start of its tag (`es` for `es-US`, as outputs before
+v80 were written); a typography mapping needs the exact tag. Han-forms
+reads the same whole `/Lang` when the mapping has no `lang`.
+
 **Shaped marks.** Every target whose script needs shaping (Arabic family,
 Indic, Thai, Lao, Khmer, Myanmar, Tibetan) must appear in an `/ActualText`
 span; retypeset marks every Story-engine run that way, so a shaped target

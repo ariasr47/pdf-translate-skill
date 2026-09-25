@@ -39,7 +39,10 @@ segment).
 ## Document metadata
 
 Set `"lang"` in translations.json to the target BCP-47 tag: retypeset
-writes it to `/Lang` and to `dc:language`, and without it the output
+writes it to `/Lang` and to `dc:language` exactly as spelled, region and
+script included (`es-US`, `zh-Hant-TW`; before v80 `/Lang` kept only
+`es` and `zh`). The console's `/Lang ->` line names what the file holds.
+Without it the output
 still tells screen readers, hyphenation and search that it is in the
 source language. The `/Title` and every outline title are translated from
 the mapping like any other core. The orphaned `/StructTreeRoot` is

@@ -3,7 +3,23 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 25 September 2026, end of day: #42–#49 open; the widget_text fix built (v79), not pushed
+## Start here — 25 September 2026, close of day: #42–#50 open; the /Lang fix built (v80), not pushed
+
+**Main is v71 at `62e87bf`.** A stack waits, to be merged in order:
+- **#42** to **#49,** as below. #49 now also carries canary run 4's
+  translation comparison (`ef03a75`).
+- **#50,** the `widget_text` fix at v79. The product checked it and found
+  no reason to hold it.
+- **`fix/lang-keeps-region`,** v80, on #50. It is local and waits for
+  Rodrigo's go.
+  - `/Lang` is written and read as the whole tag, via
+    `pdf_translate/_lang.py`.
+  - Evidence: `docs/reviews/2026-09-25-lang-keeps-region.md`.
+
+**Next:** the product advises the verify gate for widget text left in the
+source language, at medium priority. Rodrigo orders it.
+
+## Start here — 25 September 2026, end of day (historical): #42–#49 open; the widget_text fix built (v79), not pushed
 
 **Main is v71 at `62e87bf`.** A stack waits, to be merged in order:
 - **#42** to **#48,** as below.
