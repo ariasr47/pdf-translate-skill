@@ -472,6 +472,8 @@ def _without_timestamp(path):
     the same subset differ in."""
     from fontTools.ttLib import TTFont
     with TTFont(path) as font:
+        # A save stamps the time unless told not to; zeroing it is not enough.
+        font.recalcTimestamp = False
         font['head'].modified = 0
         buffer = io.BytesIO()
         font.save(buffer)

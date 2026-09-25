@@ -16,6 +16,8 @@ from tests.test_pipeline import small_variable_face
 
 
 def _saved(font):
+    # A save stamps the time unless told not to; zeroing the field is not enough.
+    font.recalcTimestamp = False
     font['head'].modified = 0
     buffer = io.BytesIO()
     font.save(buffer)
@@ -104,6 +106,19 @@ class InstancingMemoTests(unittest.TestCase):
                 self.assertEqual(settings(font), settings(real))
                 font.close()
         real.close()
+
+    def test_a_reuse_leaves_the_callers_own_buffer_open(self):
+        with TTFont(self.face) as font:
+            instancer.instantiateVariableFont(font, {'wght': 700}, inplace=True)   # the first run
+        with open(self.face, 'rb') as f:
+            buffer = io.BytesIO(f.read())
+        font = TTFont(buffer, lazy=True)
+        reused = _instancing.counts['reused']
+        instancer.instantiateVariableFont(font, {'wght': 700}, inplace=True)
+        self.assertEqual(_instancing.counts['reused'], reused + 1)
+        self.assertFalse(buffer.closed)
+        self.assertEqual(buffer.getvalue()[:4], b'\x00\x01\x00\x00')
+        font.close()
 
     def test_a_font_on_an_open_file_goes_to_the_instancer(self):
         with TTFont(self.face, lazy=True) as font:

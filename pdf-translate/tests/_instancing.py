@@ -85,7 +85,8 @@ def instantiate(*args, **kwargs):
     instance = TTFont(io.BytesIO(data))
     if inplace:
         # The font the caller holds becomes the instance; its settings stay.
-        varfont.reader.close()
+        # Its old reader is left open, as a real call leaves it: over a
+        # buffer, it may be the caller's own.
         _take_content(varfont, instance)
         return varfont
     # A real call returns a deep copy of the caller's font, settings included.
