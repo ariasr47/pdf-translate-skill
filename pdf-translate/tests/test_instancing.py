@@ -7,6 +7,7 @@ import io
 import os
 import tempfile
 import unittest
+from pathlib import Path
 
 from fontTools.ttLib import TTFont
 from fontTools.varLib import instancer
@@ -66,11 +67,10 @@ class InstancingMemoTests(unittest.TestCase):
     def test_a_file_changed_without_its_checksums_is_a_different_font(self):
         with TTFont(self.face) as font:
             name = font.reader.tables['name']
-        data = bytearray(open(self.face, 'rb').read())
+        data = bytearray(Path(self.face).read_bytes())
         data[name.offset + name.length - 1] ^= 0x01     # a name string's last byte
         patched = self.face + '.patched.ttf'
-        with open(patched, 'wb') as f:
-            f.write(data)
+        Path(patched).write_bytes(data)
         for path in (self.face, patched):
             with TTFont(path) as font:
                 instancer.instantiateVariableFont(font, {'wght': 700}, inplace=True)
@@ -125,8 +125,7 @@ class InstancingMemoTests(unittest.TestCase):
     def test_a_reuse_leaves_the_callers_own_buffer_open(self):
         with TTFont(self.face) as font:
             instancer.instantiateVariableFont(font, {'wght': 700}, inplace=True)   # the first run
-        with open(self.face, 'rb') as f:
-            buffer = io.BytesIO(f.read())
+        buffer = io.BytesIO(Path(self.face).read_bytes())
         font = TTFont(buffer, lazy=True)
         reused = _instancing.counts['reused']
         instancer.instantiateVariableFont(font, {'wght': 700}, inplace=True)
