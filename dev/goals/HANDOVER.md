@@ -3,6 +3,21 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 25 September 2026, later that night: #38 open (v69); R-69 with R-97 built
+
+**Main is v68 at `aa54158`.** Two things are in flight:
+- **#38** is open against `main`, with R-47 at v69.
+- **`ci/r69-r97-discover-and-font-cache`** sits on #38. CI discovers its
+  tests, and the font cache is keyed on the fetcher and saved before the
+  suite. It is CI only, so there is no version bump. The evidence
+  (`docs/reviews/2026-09-25-r69-r97-ci-discovery-and-font-cache.md`) still
+  needs the PR's own two CI runs: a cache miss that saves, then a hit that
+  fetches nothing.
+
+**Next quick win: R-33**, `field_fonts` keeping a field's colour and size.
+Then R-40, R-42, R-110, R-100, R-99, and the docs items R-79, R-80, R-82 and
+R-83.
+
 ## Start here — 25 September 2026, night: main is v68; R-47 built (v69), not pushed
 
 **Main is v68 at `aa54158`.** Rodrigo merged #36 (R-04, v67, merge
