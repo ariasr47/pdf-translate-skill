@@ -392,6 +392,8 @@ def invisible_text_pages(src, pages=None):
     document: text left anywhere refuses the file, and a form XObject two
     pages share is stripped once, so a partial strip could judge differently.
     """
+    # A set, once: `in` on a one-shot iterable would use it up after one page.
+    pages = None if pages is None else set(pages)
     with tempfile.TemporaryDirectory() as tmp:
         stripped = os.path.join(tmp, 'stripped.pdf')
         report = strip_text(src, stripped)

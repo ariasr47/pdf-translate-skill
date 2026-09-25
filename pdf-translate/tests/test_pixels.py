@@ -159,6 +159,15 @@ class OracleScopeTests(unittest.TestCase):
                 self.assertEqual(some, [(p, f) for p, f in everything if p in pages])
                 self.assertEqual(judged, len(pages))
 
+    def test_pages_may_be_any_iterable_even_a_one_shot_one(self):
+        everything = strip_text.invisible_text_pages(self.src)
+        for make in (lambda: [0, 2], lambda: (0, 2), lambda: range(0, 3, 2),
+                     lambda: iter([2, 0]), lambda: (p for p in (0, 2))):
+            with self.subTest(pages=type(make()).__name__):
+                some, judged = self.judged(lambda: strip_text.invisible_text_pages(self.src, pages=make()))
+                self.assertEqual(some, [(p, f) for p, f in everything if p in (0, 2)])
+                self.assertEqual(judged, 2)
+
     def test_extract_judges_only_its_pages(self):
         _, judged = self.judged(lambda: extract_segments.run_extract(
             self.src, os.path.join(self.tmp, 'out'), pages='2-3'))
