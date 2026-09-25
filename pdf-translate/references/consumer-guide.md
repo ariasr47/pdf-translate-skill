@@ -223,7 +223,8 @@ mapping the refusal is a `MappingError` whose `refusals['output_aliases']`
 lists `{writes, path, input}`; typography-1 refuses the same thing as
 `invalid-style-reference`. Until v66 a legacy build wrote straight over the
 input and returned 0. `pipeline.py rebuild` also refuses, with exit 2, an
-OUT that names the original PDF or a work-directory input.
+OUT that names the original PDF, a work-directory input, or a file passed to
+an input flag, as `--flag path` or as `--flag=path`.
 
 **Do not parse the console.** A printed format is an undeclared API: it
 changes without a version bump, and a consumer whose regex stops matching

@@ -493,6 +493,10 @@ def cmd_rebuild(argv):
     value_flags = ('--translations', '--segments', '--original', '--source-words-from', '--reference-fonts')
     inputs = [orig, stripped, segs, tr]
     inputs.extend(value for flag, value in zip(extra, extra[1:]) if flag in value_flags)
+    # verify reads only `--flag value`, but `--flag=value` still names a file
+    # the caller meant as an input, and OUT must not replace it either.
+    inputs.extend(arg.split('=', 1)[1] for arg in extra
+                  if any(arg.startswith(flag + '=') for flag in value_flags))
     # R-05: a legacy retypeset is never told the original, so only this
     # check stops OUT from replacing it; the mapping and segments are
     # checked again inside retypeset, fonts only there.

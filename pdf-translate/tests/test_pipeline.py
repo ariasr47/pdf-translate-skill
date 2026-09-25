@@ -6708,6 +6708,37 @@ class OutputAliasTests(unittest.TestCase):
                 self.assertIn('output path must not overwrite an input', log)
                 self.assertEqual(file_digest(target), before)
 
+    def test_rebuild_refuses_an_output_naming_a_forwarded_input(self):
+        """Either spelling of a forwarded input flag names a file the caller
+        meant as an input; verify reads only `--flag value`, but OUT must not
+        replace the file in either case."""
+        for spelling in ('separate', 'equals'):
+            with self.subTest(spelling=spelling), \
+                    tempfile.TemporaryDirectory() as tmp:
+                src = os.path.join(tmp, 'orig.pdf')
+                work = os.path.join(tmp, 'work')
+                build_small_print_pdf(src, 11)
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    self.assertEqual(
+                        pipeline.main(['init', src, '--work', work]), 0)
+                write_mapping(os.path.join(work, 'translations.json'),
+                              {SMALL_LABEL: 'Nombre', 'Date': 'Fecha'},
+                              find_test_font())
+                words = os.path.join(tmp, 'words.json')
+                shutil.copyfile(os.path.join(work, 'segments.json'), words)
+                flag = (['--source-words-from', words] if spelling == 'separate'
+                        else [f'--source-words-from={words}'])
+                before = file_digest(words)
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    rc = pipeline.main(['rebuild', '--work', work, src, words]
+                                       + flag)
+                log = buf.getvalue()
+                self.assertEqual(rc, 2, msg=log)
+                self.assertIn('output path must not overwrite an input', log)
+                self.assertEqual(file_digest(words), before)
+
     def test_a_distinct_output_still_builds(self):
         with tempfile.TemporaryDirectory() as tmp:
             src, stripped, segs, tr, _ = self._job(tmp)
