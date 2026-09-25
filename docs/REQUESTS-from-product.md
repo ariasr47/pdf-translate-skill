@@ -32,7 +32,31 @@ Claude sessions do this by name with `SendMessage`; other agents go through
 Rodrigo. Whatever a message settles is written into this file in the same
 session.
 
-## Current coordination status — 24 September 2026, late
+## Current coordination status — 25 September 2026
+
+**Main is v65 at `a9fd0a9`.** Rodrigo merged #34, with a merge commit, and
+the app's session relayed it. The merge was pinned to the reviewed head
+`4cf1054` after the ubuntu and windows py3.14 jobs and the plugin manifest
+job passed. It carried two things:
+- the v64 delivery record;
+- R-02, whose row below records the evidence.
+
+**For a consumer, v65 changes this:**
+- A shrunk run is drawn at the size that fits its room, never larger than
+  its source, and the 0.7× gate sees that ratio.
+- Small print that needs less than 0.7× refuses with the existing line, and
+  `allow_scale` ships it at the fitted size.
+
+**Adoption:** none yet. The app stays on v54 until its Python 3.14
+migration.
+
+**In progress, not pushed:** the quick wins R-05 and R-06, on
+`fix/r05-legacy-output-alias` as v66. How they are grouped into PRs is
+Rodrigo's call.
+
+**Unchanged:** E12 is blocked on its six rulings, and R-94 is "not yet".
+
+## Coordination status — 24 September 2026, late (historical snapshot)
 
 **Main is v64 at `154f842`.** Rodrigo merged two PRs in order, each with a
 merge commit, and the app's session relayed the merges. Each merge came
@@ -447,7 +471,7 @@ deleting anything.
 
 | 2026-09-24 | **The `/Rotate 90` blank page, and R-64 — a corpus test that builds outputs** (review priority 3). A translate fixture on a `/Rotate 90` page rebuilds with its text visible; the cause is diagnosed first. The corpus suite gains a test that builds each translate fixture's output and checks it, so this class of defect cannot pass CI again. **Acceptance:** the shared bar. | `corpus/rotated.pdf` rebuilds to a page with no ink and no text layer; verify FAILs it, but the app's route runs no verify, and the corpus suite never builds an output (E12 measurement; review R-64). | **accepted** — priority 3 (the app's `REQUEST-to-skill-review-2026-09-24`). **started** 24 September. Diagnosed: on a `/Rotate` page, extract records text geometry in the rotated (visible) space, but retypeset draws in the unrotated page space. **built** 24 September, v64, branch `fix/rotate-pages-unrotated-space`, awaiting review. `segments.json` is now in the unrotated space, with a `geometry` key; retypeset measures against the unrotated frame; a stale extraction on a rotated page is refused by a stable, documented line. Rule 1 passed: three independent passes on another model. The pixel pass found 0 differing pixels against the rotated control at 90, 180 and 270, where v63 differed by 7,142 to 9,351. One layout saved at `/Rotate` 0/90/180/270 now extracts and rebuilds identically at every rotation: 0 of 13 runs were placed right on rotated pages before, and all are now. The R-64 test identity-rebuilds all 13 `translate` fixtures and checks where each run starts. The app answered the design questions on 24 September. Q1: it reads no segment geometry. Q2: the stale-extraction refusal is acceptable, because extract and retypeset run in one job at one version; keep its text stable. Q3: the row below. Evidence: `docs/reviews/2026-09-24-rotate-pages.md`. **done** — v64, PR #33 (merge `154f842`, 24 September). |
 
-| 2026-09-24 | **R-02 — small print is not drawn over its neighbour** (review priority 4). The 4.0 pt clamp no longer bypasses the 0.7× floor, the gate sees the true ratio, and a run under 4 pt is never enlarged. **Acceptance:** the shared bar. | A 5 pt run needing 0.54× is drawn at 4 pt over its neighbour while verify exits 0; a 3 pt run is drawn larger. | **accepted** — priority 4 (the app's `REQUEST-to-skill-review-2026-09-24`). **started** 24 September. **built** 24 September, v65, branch `fix/r02-small-print-clamp`, awaiting Rule 1 and review. A shrunk run is drawn at the size that fits its room, never larger than its source, and the gate sees that ratio, at all four legacy shrink sites. On 10 wild PDFs rebuilt with longer text (median 1.37× the source's characters), the only change is 33 runs `main` had lifted to exactly 4 pt, and no run got larger. On the IRS 1040-ES, the 5.25 pt "CAUTION" with a doubled target had reported 0.76× and passed the floor; it needs 0.66×. Rule 1 passed: two independent passes on another model, with 0 pixels of the run past its room, where `main` drew 108 to 236. Evidence: `docs/reviews/2026-09-24-r02-small-print.md`. |
+| 2026-09-24 | **R-02 — small print is not drawn over its neighbour** (review priority 4). The 4.0 pt clamp no longer bypasses the 0.7× floor, the gate sees the true ratio, and a run under 4 pt is never enlarged. **Acceptance:** the shared bar. | A 5 pt run needing 0.54× is drawn at 4 pt over its neighbour while verify exits 0; a 3 pt run is drawn larger. | **accepted** — priority 4 (the app's `REQUEST-to-skill-review-2026-09-24`). **started** 24 September. **built** 24 September, v65, branch `fix/r02-small-print-clamp`, awaiting Rule 1 and review. A shrunk run is drawn at the size that fits its room, never larger than its source, and the gate sees that ratio, at all four legacy shrink sites. On 10 wild PDFs rebuilt with longer text (median 1.37× the source's characters), the only change is 33 runs `main` had lifted to exactly 4 pt, and no run got larger. On the IRS 1040-ES, the 5.25 pt "CAUTION" with a doubled target had reported 0.76× and passed the floor; it needs 0.66×. Rule 1 passed: two independent passes on another model, with 0 pixels of the run past its room, where `main` drew 108 to 236. Evidence: `docs/reviews/2026-09-24-r02-small-print.md`. **done** — v65, PR #34 (merge `a9fd0a9`, 25 September). |
 
 | 2026-09-24 | **Review quick wins, XS each** (review priority 5, in this order). R-05: an output path that names an input mapping or segments file is refused on the legacy path too. R-06: text between inline tags is escaped. R-04: every role face is canonicalized, so italic jobs verify. R-27: `field_fonts` refuses a variable face (or instances it). R-47: typography verify reads page rects once. R-69 with R-97: CI discovers its tests and keys the font cache on the fetcher. R-33: `field_fonts` keeps a field's colour and size. R-40: legacy capture bundles record `source_pdf`. R-42: a typography preflight refusal names the offending text. R-110: SPDX licence form in `pyproject.toml`. R-100: dead code removed. R-99: ResourceWarnings closed. Docs: R-79, R-80, R-82, R-83. **Acceptance:** the shared bar. | `docs/REVIEW-2026-09-24.md` has each item's evidence. | **accepted** — priority 5 (the app's `REQUEST-to-skill-review-2026-09-24`). **R-05 built** 24 September, v66, branch `fix/r05-legacy-output-alias`, stacked on #34. A legacy build refuses an output or scale-report path that names one of its inputs, and `rebuild` refuses an OUT that names the original or a work-directory input. On v65 every one of those cases replaced the input, and the build exited 0; for `stripped.pdf` it raised a bare `ValueError`. **R-06 built** 24 September, on the same branch and version. Text between inline tags lands as written. So does a notice's text, which had the same defect. MuPDF 1.28.2's Story engine decodes character references twice, so `&` is escaped twice, and a test pins that. |
 
