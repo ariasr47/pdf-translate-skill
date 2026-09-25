@@ -70,7 +70,7 @@ tables:
   - `head` `unitsPerEm` and `macStyle`.
 - **GPOS positioning:** compared per glyph and per pair for every single
   and pair adjustment, and as rule sets for the contextual lookups, with
-  extension wrappers unwrapped (`gpos_eq.py`).
+  extension wrappers unwrapped (`dev/probes/r50_gpos_equal.py`).
 
 Those whole-face values could only be kept by instancing every glyph,
 which is the cost R-50 removes.
