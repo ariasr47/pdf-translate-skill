@@ -3,6 +3,40 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 24 September 2026, later still: R-02 built (v65), not yet pushed
+
+**One local branch waits for Rodrigo's go to push:**
+`fix/r02-small-print-clamp`, from `main` (`154f842`). It carries:
+- `4fd6b64`, the v64 delivery record;
+- R-02 (v65).
+
+**R-02.** A shrunk run is drawn at the size that fits its room, never
+larger than its source, and the 0.7× gate sees that ratio, at all four
+legacy shrink sites. The 4.0 pt lift is gone. Small print below the floor
+now refuses with the existing line, and `allow_scale` ships it at the
+fitted size. The details are in `docs/reviews/2026-09-24-r02-small-print.md`
+and its DECISIONS row. Rule 1 passed on Sonnet.
+
+**Next** in the assignment order: the quick wins, XS each (R-05, R-06, R-04,
+R-27, R-47, R-69 with R-97, R-33, R-40, R-42, R-110, R-100, R-99, then the
+docs items R-79, R-80, R-82, R-83). E12 comes first the moment its rulings
+arrive.
+
+## Start here — 24 September 2026, late: item 3 shipped (v64); R-02 next
+
+**Main is v64 at `154f842`.** Rodrigo merged two PRs in order, each with a
+merge commit, and every CI check passed on each tested head:
+- #32, the R-03 and R-01 delivery record (`c0d49e9`);
+- #33, item 3 with R-64 (`154f842`).
+
+The section below was written before the push; its branches are now
+merged, and they are still on GitHub. This delivery record is on the
+branch `docs/delivered-item3`.
+
+**Next: R-02, the 4.0 pt clamp.** Review priority 4 in
+`docs/REQUESTS-from-product.md`. E12 comes first the moment its six
+rulings arrive.
+
 ## Start here — 24 September 2026, night: item 3 built (v64), not yet pushed
 
 **Two local branches, stacked, waiting for Rodrigo's go to push:**

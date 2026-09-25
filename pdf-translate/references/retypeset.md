@@ -86,6 +86,13 @@ as in the mapping.
 
 The ratio is **source-relative**: it is the size the page actually shows
 divided by the source's size, so you can measure it off the delivered PDF.
+A shrunk line, leader label or override part is drawn at exactly the size
+that fits its room, and never larger than its source. There is no minimum:
+small print can go below 4 pt, and the gate sees that ratio. Until v65
+every shrink was lifted to 4 pt. So a source of 5.71 pt or less was drawn
+past its room onto its neighbour and passed the 0.7× floor it had failed,
+and a source under 4 pt came out larger than it was (`failure-modes.md`
+§15).
 For a merge that means two things multiplied. A merge is always drawn at a
 fit allowance of `0.98` of source size, rounded to the one decimal the CSS
 carries, so the Story engine rarely has to shrink a paragraph that already
