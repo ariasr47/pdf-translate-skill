@@ -10,7 +10,8 @@ Both change only `.github/workflows/tests.yml` and a test under `dev/repo/`.
 Nothing shipped changes, so there is **no version bump**; the branch stays
 at v69. That follows the precedent of the earlier CI-only commits `b39079f`
 and `f7326cf`. The bump rule covers shipped behaviour, and an installed
-plugin sees no difference from a CI change. It is stacked on #38 (R-47).
+plugin sees no difference from a CI change. It sits on `7e04250`, the head of #38 (R-47), which merged into
+`main` as `19252b7`.
 
 ## The defects
 

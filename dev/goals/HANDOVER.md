@@ -3,6 +3,20 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 25 September 2026, late night: main is v69; R-69 with R-97 built, not pushed
+
+**Main is v69 at `19252b7`.** Rodrigo merged #38 (R-47), and GitHub
+confirms it.
+
+**`ci/r69-r97-discover-and-font-cache`** sits on `7e04250`, which is in
+`main`. It carries R-69 with R-97. It is local, waits for Rodrigo's go, and
+its PR targets `main`. The evidence doc still needs the PR's two CI runs: a
+cache miss that saves, then a hit that fetches nothing.
+
+**Next quick win: R-33**, `field_fonts` keeping a field's colour and size.
+Then R-40, R-42, R-110, R-100, R-99, and the docs items R-79, R-80, R-82 and
+R-83.
+
 ## Start here — 25 September 2026, later that night: #38 open (v69); R-69 with R-97 built
 
 **Main is v68 at `aa54158`.** Two things are in flight:
