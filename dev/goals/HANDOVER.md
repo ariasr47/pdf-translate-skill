@@ -3,6 +3,23 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 25 September 2026, later morning: main is v71; R-42 built (v72), not pushed
+
+**Main is v71 at `62e87bf`.** Rodrigo merged #40 (R-33, v70, merge
+`314e1f6`) and #41 (R-40, v71, merge `62e87bf`).
+
+- **`fix/r42-typography-preflight-names-text`,** R-42 at v72, sits on
+  `beb4c06`, which is in `main`. It is local and waits for Rodrigo's go, and
+  its PR targets `main`.
+  - A typography source-content refusal names the occurrence that holds the
+    offending text, not the page's first.
+  - Two independent passes: PASS. One major finding, a malformed
+    `/CropBox` crashing the check, is fixed.
+  - Evidence: `docs/reviews/2026-09-25-r42-content-refusal-names-text.md`.
+
+**Next quick win: R-110**, the SPDX licence form in `pyproject.toml`. Then
+R-100, R-99, and the docs items R-79, R-80, R-82 and R-83.
+
 ## Start here — 25 September 2026, morning: #40 open (v70); R-40 built (v71), not pushed
 
 **Main is v69 at `b504821`** (#39, R-69 and R-97, CI only). Two things are
