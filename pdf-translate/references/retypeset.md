@@ -2,7 +2,7 @@
 
 Contents: glyph coverage · alignment and weight (`center`, `right`, the
 four font roles, inline markup) · document metadata (`lang`, `/Title`,
-outline, the structure tree) · rotated lines · the two ways a build fails.
+outline, the structure tree) · rotated lines · every way a build fails.
 
 `python3 scripts/retypeset.py stripped.pdf segments.json translations.json
 out.pdf`. Every layout decision lives here so every document gets the same
@@ -68,21 +68,54 @@ vertical in the PDF. So every run on it takes this rotated-run path, with
 its limits. `failure-modes.md` §13 has the history and the stale-extraction
 refusal.
 
-## The two ways a build fails
+## Every way a build fails
 
-It fails loudly if any segment lacks a translation — fix and re-run until
-it passes; that exit code is your coverage gate, and missing text must
-never ship silently. It also **fails** (does not save) if any run scales
-below 0.7× versus the original size — a note is not a ship. Shorten the
-translation, or list that core (or merge first line) in `allow_scale` if
-the cell must stay tiny.
+A legacy build refuses for nine kinds of reason. A refused build exits 1
+and saves nothing, not even `scale_report.json`, so the output and report
+from an earlier build stay on disk as they were: read the exit code, not
+whether the file exists. The console prints a `FAIL:` block naming every
+refused item; an unmatched merge prints one `!!` line instead. Called from
+Python, the refusal is a typed exception whose `refusals` holds every
+refused item by kind (`references/consumer-guide.md`).
 
-Between those two, a run that shipped below source size is **reported**.
+The checks run in the table's order, and the build stops at the first one
+that refuses. Two groups are checked together, and every item of every kind
+in them is listed at once: `untranslated` with `unauthored_merges`, and
+`overflow` with `glyph_misses` and `rotated_shaped`.
+
+| `refusals` kind | exception | what refused | fix |
+|---|---|---|---|
+| `output_aliases` | `MappingError` | the output PDF or scale report would overwrite an input: the stripped PDF, `segments.json`, the mapping, the original or a font | write it somewhere else |
+| `stale_extraction` | `MappingError` | `segments.json` names no geometry space and a `/Rotate` page carries segments: it was extracted before v64 (`failure-modes.md` §13) | run extract again |
+| `merges` | `MappingError` | a merge's `lines` are not found on its page in order, or its `box` is not four numbers or is empty | copy the lines from `segments.json`; fix the box |
+| `untranslated` | `MappingError` | a segment's core has no translation | author it |
+| `unauthored_merges` | `MappingError` | a merge's `html` is still `null`, as `propose-merges --accept` leaves it | author the paragraph, or delete the entry |
+| `notices` | `PlacementError` | a notice's text is empty, its page is not in the document, or its box is not four numbers or is empty | fix the notice |
+| `overflow` | `PlacementError` | a run scaled below 0.7× of its source size | shorten it; see below |
+| `glyph_misses` | `GlyphError` | the face that draws a run lacks one of its characters (glyph coverage, above) | use a font that covers the script |
+| `rotated_shaped` | `PlacementError` | a rotated run's target needs shaping (rotated lines, above) | none draws it rotated: `skip` the span, which drops it, and say so in the delivery |
+
+A missing translation fails loudly: that exit code is your coverage gate,
+and missing text must never ship silently. A run below 0.7× is refused
+too, because a note is not a ship. Shorten the translation, or list that
+core (or a merge's first line) in `allow_scale` if the cell must stay
+tiny. A mapping that does not load refuses before any of these, and a
+typography-1 mapping has its own refusals (`references/typography.md`).
+
+Short of a refusal, a run that shipped below source size is **reported**.
 Every run the fit or the Story engine shrank — a line, a dot-leader label,
 a shaped run, a merge, an override part — is printed after the build as
 `scaled runs (N)` with its ratio and key, and written to
-`scale_report.json` beside the output: `[{page, key, ratio}]`, page 0-based
-as in the mapping.
+`scale_report.json` beside the output:
+
+```json
+{"schema": 1, "version": "…", "runs": [{"page": 0, "key": "…", "ratio": 0.9778}]}
+```
+
+`version` is the library version that wrote the file, and `page` is
+0-based, as in the mapping. A build before v58 wrote the bare `runs` list,
+and `verify --translations` still reads it. A typography-1 build writes
+schema 2, with a `typography` block (`references/typography.md`).
 
 The ratio is **source-relative**: it is the size the page actually shows
 divided by the source's size, so you can measure it off the delivered PDF.

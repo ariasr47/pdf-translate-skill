@@ -555,8 +555,8 @@ def cmd_render(argv):
 
 
 def _finding_line(severity, kind, core, detail):
-    """qa_check.main's column shape (qa_check.py:386), reused verbatim so a
-    reader who knows one command can read the other."""
+    """qa_check.main's column shape, reused verbatim so a reader who knows
+    one command can read the other."""
     return f'{severity:5} {kind:13} {core[:48]!r}: {detail}'
 
 

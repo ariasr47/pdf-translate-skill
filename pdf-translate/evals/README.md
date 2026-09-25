@@ -26,9 +26,9 @@ The `regex` graders here assert the same five — but from the run's own
 trace, not by invoking `score.py`. The harness's grader types are
 `regex | tool_order | tool_used | file_exists | llm | baseline`; none of
 them runs a script. Reading the trace works because the skill's workflow
-already requires the author to run `pipeline.py verify`, so a run with no
-`PASS field parity` line either skipped the gate or failed it — the same
-verdict either way.
+already requires the author to run `verify.py`, directly or through
+`pipeline.py rebuild`, so a run with no `PASS field parity` line either
+skipped the gate or failed it — the same verdict either way.
 
 **The judgement half.** Two `llm` graders cover the axes the canary rubric
 keeps for a person: the identity record (class, issuer, parallel text,

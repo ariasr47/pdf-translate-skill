@@ -10,7 +10,7 @@ unchanged. A consumer imports from here:
     from pdf_translate import run_verify, run_qa
 """
 
-__version__ = '75'
+__version__ = '76'
 
 # The mapping formats this engine can READ, so a consumer can ask before it
 # authors rather than after. `legacy` is translations.json as it has always

@@ -8,11 +8,12 @@ A consumer importing the library gets silence and a result object, and attaches
 whatever handler its own service uses.
 
 **Re-entrant, and that is not a nicety.** `pipeline.py` calls five library
-functions directly — `strip_text` (:87), `retypeset` (:337), `render_pages`
-(:354), `field_fonts` (:362), `compare` (:365). Once each of those is a loud
-wrapper that opens `console()` itself, `pipeline.main()`'s handler and the
-wrapper's would both be attached to the same logger and every line would print
-twice. Nested uses share the outermost handler instead.
+functions directly — `strip_text` (in `cmd_init`), `retypeset`
+(`cmd_rebuild`), `render_pages` (`cmd_render`), and `field_fonts` and
+`compare` (`cmd_finish`). Once each of those is a loud wrapper that opens
+`console()` itself, `pipeline.main()`'s handler and the wrapper's would both be
+attached to the same logger and every line would print twice. Nested uses
+share the outermost handler instead.
 
 **CLI entry points only.** This mutates process-global logging state and is not
 thread-safe. A service calls the silent `run_*` twins and attaches its own
