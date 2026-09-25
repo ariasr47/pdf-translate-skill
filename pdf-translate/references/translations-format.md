@@ -39,7 +39,9 @@ this file is where your judgment lives.
     // A single-line target may carry inline <b>/<i> (or <strong>/<em>),
     // the way a merge's html can; it is then placed through the Story
     // engine against the four font roles. Only those four tags count as
-    // markup, so a translation that really contains "<" is left alone.
+    // markup: everything else on the line, a literal "<" or "&", an
+    // address in angle brackets, "&copy;" or another tag, is drawn as
+    // written. The same holds for a notice's text.
     "Read the notice.": "Lea el <b>aviso</b> con <i>atencion</i>.",
     // '‖' splits a bold lead-in from a regular remainder, for lines that
     // mix weights (bold heading + regular parenthetical):

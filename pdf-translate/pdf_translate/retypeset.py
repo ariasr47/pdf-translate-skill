@@ -310,7 +310,7 @@ def place_story_line(page, x, baseline, inner_html, bold, italic, fs,
 def place_shaped(page, x, baseline, text, bold, fs, color_int, avail, css,
                  arch, italic=False):
     """Draw one shaped run with the Story engine; returns the scale applied."""
-    return place_story_line(page, x, baseline, htmlmod.escape(text), bold,
+    return place_story_line(page, x, baseline, story_text(text), bold,
                             italic, fs, color_int, avail, css, arch,
                             logical=text)
 
@@ -380,6 +380,34 @@ def has_inline_markup(text):
 
 def strip_inline_markup(text):
     return INLINE_TAGS.sub('', text or '')
+
+
+def story_text(text):
+    """`text` escaped for a Story text node, so it lands as written.
+
+    MuPDF 1.28.2's Story engine decodes character references twice:
+    `&amp;copy;` is drawn as ©, and `&amp;amp;` as &. So `&` is escaped
+    twice and `<` and `>` once. tests.test_pipeline pins this with a round
+    trip, so a MuPDF that decodes once fails loudly instead of drawing
+    `&amp;` (R-06).
+    """
+    return htmlmod.escape(text or '', quote=False).replace('&amp;', '&amp;amp;')
+
+
+def inline_markup_html(text):
+    """`text` as HTML for the Story engine: the tags INLINE_TAGS names stay
+    markup and everything between them is escaped, so a literal `<`, `&` or
+    an unlisted tag reaches the page as the author wrote it. Sent raw, an
+    address in angle brackets vanished, `&copy;` became ©, and `<span>` was
+    swallowed (R-06)."""
+    text = text or ''
+    out, last = [], 0
+    for m in INLINE_TAGS.finditer(text):
+        out.append(story_text(text[last:m.start()]))
+        out.append(m.group(0))
+        last = m.end()
+    out.append(story_text(text[last:]))
+    return ''.join(out)
 
 
 def _role_name(bold, italic):
@@ -1733,7 +1761,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                     tw.append((bx, oy), mk, font=mfont, fontsize=fs)
                     bx += marker_adv(mfont, fs)
                 avail = right_limit(pno, seg, segs) - bx
-                inline_jobs.append((bx, oy, jp.replace('‖', ''),
+                inline_jobs.append((bx, oy, inline_markup_html(jp.replace('‖', '')),
                                     bool(seg['bold']), bool(seg.get('italic')),
                                     fs, int(seg.get('color', 0)), avail, core,
                                     plain))
@@ -1954,11 +1982,11 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
         if n.get('bold_lead'):
             note_role('bold', key)
             check_glyphs(pno, font_b, parts[0], key, 'bold')
-            body = (f'<b>{htmlmod.escape(parts[0].strip())}</b> '
-                    + ' '.join(htmlmod.escape(p.strip())
+            body = (f'<b>{story_text(parts[0].strip())}</b> '
+                    + ' '.join(story_text(p.strip())
                                for p in parts[1:] if p.strip()))
         else:
-            body = ' '.join(htmlmod.escape(p.strip())
+            body = ' '.join(story_text(p.strip())
                             for p in parts if p.strip())
         r = pymupdf.Rect(*(float(v) for v in n['box']))
         if mirror:
