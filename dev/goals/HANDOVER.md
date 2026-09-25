@@ -3,6 +3,23 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 25 September 2026, late afternoon: #42–#45 open; docs items built (v76), not pushed
+
+**Main is v71 at `62e87bf`.** A stack waits, to be merged in order:
+- **#42,** R-42 at v72.
+- **#43,** R-110 at v73.
+- **#44,** R-100 at v74.
+- **#45,** R-99 at v75, with Auto-fix on.
+- **`docs/r79-r83-docs-quick-wins`,** R-79, R-80, R-82 and R-83 at v76, on
+  #45. It is local and waits for Rodrigo's go.
+  - The shipped docs and comments match the code, and
+    `tests/test_shipped_docs.py` keeps them matched.
+  - Evidence: `docs/reviews/2026-09-25-r79-r83-docs-quick-wins.md`.
+
+**Every review quick win is built.** Next come the performance items
+R-51, then R-48 with R-49, then R-50, unless E12's rulings arrive first.
+Each must show identical output by a render or byte diff.
+
 ## Start here — 25 September 2026, afternoon: #42, #43 and #44 open; R-99 built (v75), not pushed
 
 **Main is v71 at `62e87bf`.** A stack waits, to be merged in order:
