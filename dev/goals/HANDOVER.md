@@ -3,14 +3,13 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 25 September 2026, after close: #42–#51 open; verify gate 22 built (v81), not pushed
+## Start here — 25 September 2026, after close: #42–#52 open
 
 **Main is v71 at `62e87bf`.** A stack waits, to be merged in order:
 - **#42** to **#50,** as below.
 - **#51,** the `/Lang` fix at v80. The product checked its 13 tags:
   identical.
-- **`feat/verify-widget-text-language`,** v81, on #51. It is local and
-  waits for Rodrigo's go.
+- **#52,** verify gate 22 at v81, on #51.
   - Gate 22, `widget-text`, is REVIEW-only: widget text the output still
     shows as in the original. The mapping (`--widget-text`, or
     `widget_text.json` beside `--translations`) marks keeps.
