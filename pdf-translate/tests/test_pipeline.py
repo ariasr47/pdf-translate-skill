@@ -4196,6 +4196,91 @@ class VariableFieldFontTests(unittest.TestCase):
             self.assertEqual(result.instance, '')
 
 
+class FieldAppearanceKeptTests(unittest.TestCase):
+    """R-33: field_fonts swaps only the font in a field's /DA. It used to write
+    `/TransFF <size> Tf 0 g`, so 153 navy IRS fields and 7 red USCIS signature
+    fields typed in black. A /DA that set its colour first (`1 0 0 rg /Helv 14
+    Tf`), or a widget inheriting its parent's /DA, also lost its size and
+    auto-sized (2 fields on the I-9)."""
+
+    FIELDS = [  # name, rect, own /DA (None: inherits its parent's)
+        ('navy', [20, 230, 380, 260], '/Helv 14 Tf 0 0 0.5 rg'),
+        ('red_first', [20, 180, 380, 210], '1 0 0 rg /Helv 14 Tf'),
+        ('kid', [20, 130, 380, 160], None),
+        ('plain', [20, 80, 380, 110], '/Helv 12 Tf 0 g'),
+    ]
+    PARENT_DA = '/Helv 14 Tf 0 0.5 0 rg'
+
+    def _form(self, tmp):
+        src = os.path.join(tmp, 'form.pdf')
+        pdf = pikepdf.new()
+        page = pdf.add_blank_page(page_size=(400, 300))
+        helv = pdf.make_indirect(pikepdf.Dictionary(
+            Type=pikepdf.Name.Font, Subtype=pikepdf.Name.Type1,
+            BaseFont=pikepdf.Name.Helvetica, Encoding=pikepdf.Name.WinAnsiEncoding))
+        acro = pikepdf.Dictionary(Fields=pikepdf.Array(), DA=pikepdf.String('/Helv 0 Tf 0 g'),
+                                  DR=pikepdf.Dictionary(Font=pikepdf.Dictionary(Helv=helv)))
+        pdf.Root.AcroForm = acro
+        annots = pikepdf.Array()
+        for name, rect, da in self.FIELDS:
+            widget = pdf.make_indirect(pikepdf.Dictionary(
+                Type=pikepdf.Name.Annot, Subtype=pikepdf.Name.Widget, F=4,
+                Rect=pikepdf.Array(rect), P=page.obj))
+            field = dict(FT=pikepdf.Name.Tx, T=pikepdf.String(name), V=pikepdf.String('WWWWWWWW'))
+            if da is None:
+                parent = pdf.make_indirect(pikepdf.Dictionary(
+                    DA=pikepdf.String(self.PARENT_DA), Kids=pikepdf.Array([widget]), **field))
+                widget.Parent = parent
+                acro.Fields.append(parent)
+            else:
+                for key, value in field.items():
+                    widget[pikepdf.Name('/' + key)] = value
+                widget.DA = pikepdf.String(da)
+                acro.Fields.append(widget)
+            annots.append(widget)
+        page.obj.Annots = annots
+        pdf.save(src)
+        return src
+
+    @staticmethod
+    def _rendered(path):
+        """Per field: its most frequent ink colour and the height of its ink."""
+        out = {}
+        with pymupdf.open(path) as doc:
+            page = doc[0]
+            for widget in page.widgets():
+                pix = page.get_pixmap(dpi=144, clip=widget.rect, annots=True)
+                colours, rows = {}, []
+                for y in range(pix.height):
+                    for x in range(pix.width):
+                        p = pix.pixel(x, y)
+                        if p != (255, 255, 255):
+                            colours[p] = colours.get(p, 0) + 1
+                            rows.append(y)
+                out[widget.field_name] = (max(colours, key=colours.get),
+                                          max(rows) - min(rows) + 1)
+        return out
+
+    def test_a_field_keeps_its_colour_and_size(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = self._form(tmp)
+            out = os.path.join(tmp, 'out.pdf')
+            result = field_fonts.run_field_fonts(src, str(find_test_font()), out)
+            self.assertEqual(result.fields, 5)  # four widgets and the kid's parent
+            with pikepdf.open(out) as pdf:
+                acro = pdf.Root.AcroForm
+                das = {str(f.T): str(f.get('/DA') or f.Kids[0].DA) for f in acro.Fields}
+                self.assertEqual(str(acro.Fields[2].Kids[0].DA), '/TransFF 14 Tf 0 0.5 0 rg')
+                self.assertEqual(str(acro.DA), '/TransFF 0 Tf 0 g')
+            self.assertEqual(das, {'navy': '/TransFF 14 Tf 0 0 0.5 rg',
+                                   'red_first': '1 0 0 rg /TransFF 14 Tf',
+                                   'kid': '/TransFF 14 Tf 0 0.5 0 rg',
+                                   'plain': '/TransFF 12 Tf 0 g'})
+            # Drawn from /DA under NeedAppearances: each value renders in the
+            # colour and at the height the source form gave it.
+            self.assertEqual(self._rendered(out), self._rendered(src))
+
+
 class SmallGuardTests(unittest.TestCase):
     """Three guards the audit called out: images, choice /DA, font licence."""
 
