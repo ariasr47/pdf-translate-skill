@@ -216,6 +216,16 @@ match), `GlyphError` (`page`, `char`, `face`), `PlacementError` (`page`,
 `key`, `scale`), `FontError` (`face`, `reason`), `WidgetTextError`. All
 descend from `PdfTranslateError`, so one `except` catches every refusal.
 
+An output PDF or scale-report path that names one of the build's own inputs
+is refused before anything is written. The inputs are the stripped PDF,
+`segments.json`, the mapping, the original and any font. For a legacy
+mapping the refusal is a `MappingError` whose `refusals['output_aliases']`
+lists `{writes, path, input}`; typography-1 refuses the same thing as
+`invalid-style-reference`. Until v66 a legacy build wrote straight over the
+input and returned 0. `pipeline.py rebuild` also refuses, with exit 2, an
+OUT that names the original PDF, a work-directory input, or a file passed to
+an input flag, as `--flag path` or as `--flag=path`.
+
 **Do not parse the console.** A printed format is an undeclared API: it
 changes without a version bump, and a consumer whose regex stops matching
 fails silently, which is the worst way to fail.

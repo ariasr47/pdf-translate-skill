@@ -3,6 +3,28 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 25 September 2026: R-02 shipped (v65); R-05 and R-06 built (v66), not pushed
+
+**Main is v65 at `a9fd0a9`** (#34, R-02). Its tree is the reviewed
+`4cf1054`.
+
+**Local branch `fix/r05-legacy-output-alias`** sits on `main` and waits for
+Rodrigo's go to push, and for how the quick wins are grouped into PRs. It
+carries:
+- **R-05.** A legacy build refuses an output or scale-report path that names
+  one of its inputs, and `rebuild` protects its inputs, including a file
+  forwarded as `--flag=value`. Evidence:
+  `docs/reviews/2026-09-24-r05-output-alias.md`.
+- **R-06.** Text handed to the Story engine lands as written, `&` escaped
+  twice because MuPDF 1.28.2 decodes twice, and notices are fixed too.
+  Rule 1 passed. Evidence: `docs/reviews/2026-09-24-r06-story-escaping.md`.
+- The v65 delivery record, and the product's hold on the verify
+  `--flag=value` proposal.
+
+**Next quick win: R-04**, canonicalizing every role face so italic jobs
+verify. Then R-27, R-47, R-69 with R-97, R-33, R-40, R-42, R-110, R-100,
+R-99, and the docs items R-79, R-80, R-82 and R-83.
+
 ## Start here — 24 September 2026, later still: R-02 built (v65), not yet pushed
 
 **One local branch waits for Rodrigo's go to push:**

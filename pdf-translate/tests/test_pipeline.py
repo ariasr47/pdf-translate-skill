@@ -3068,6 +3068,98 @@ class AlignmentAndFontRoleTests(unittest.TestCase):
             self.assertEqual(rc, 0, msg=log)
             self.assertIn('PASS authored translations present', log)
 
+    def test_text_between_inline_tags_lands_as_written(self):
+        """R-06: on a line that carries <b>/<i>, everything that is not one
+        of those tags reaches the page as the author wrote it. Sent to the
+        Story engine unescaped, an address in angle brackets vanished,
+        `&copy;` became ©, and an unlisted tag was swallowed."""
+        font = find_test_font()
+        marked = ('Escriba a <usuario@ejemplo.com> sobre el <b>aviso</b> '
+                  '&copy; <span>')
+        plain = 'Escriba a <usuario@ejemplo.com> sobre el aviso &copy; <span>'
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_plain_pdf(src)
+            extract_segments.extract_segments(src, outdir=tmp)
+            segs = os.path.join(tmp, 'segments.json')
+            strip_text.strip_text(src, stripped)
+            write_mapping(tr, {SOURCE_SENTENCE: marked}, font,
+                          allow_scale=[SOURCE_SENTENCE])
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(stripped, segs, tr, out)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            doc = pymupdf.open(out)
+            try:
+                layer = verify.normalize_ws_nbsp(doc[0].get_text())
+            finally:
+                doc.close()
+            self.assertIn(plain, layer)
+            self.assertNotIn('©', layer)
+            self.assertNotIn('<b>', layer)   # the listed tags stay markup
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = verify.verify(src, out, translations=tr,
+                                   source_words_from=segs)
+            log = buf.getvalue()
+            self.assertEqual(rc, 0, msg=log)
+            self.assertIn('PASS authored translations present', log)
+
+    def test_story_text_lands_as_written(self):
+        """MuPDF 1.28.2's Story engine decodes character references twice:
+        `&amp;copy;` draws ©. story_text escapes `&` twice so the text lands
+        as written. A MuPDF that decodes once would draw `&amp;` here, so
+        this fails loudly then instead of drawing it."""
+        cases = ['&copy;', 'R&D', '&lt;b&gt;', '&amp;', '&#169;', 'a & b',
+                 '&unknown;', '<x>', 'a < b > c', '&nbsp;', '<span>']
+        for text in cases:
+            with self.subTest(text=text):
+                buf = io.BytesIO()
+                writer = pymupdf.DocumentWriter(buf)
+                story = pymupdf.Story(
+                    html=f'<div>{retypeset.story_text(text)}</div>')
+                device = writer.begin_page(pymupdf.Rect(0, 0, 500, 100))
+                story.place(pymupdf.Rect(10, 10, 490, 90))
+                story.draw(device)
+                writer.end_page()
+                writer.close()
+                doc = pymupdf.open('pdf', buf.getvalue())
+                try:
+                    self.assertEqual(doc[0].get_text().rstrip('\n'), text)
+                finally:
+                    doc.close()
+
+    def test_notice_text_lands_as_written(self):
+        notice = 'Aviso &copy; 2026 <www.ejemplo.org> R&D'
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, 'orig.pdf')
+            stripped = os.path.join(tmp, 'stripped.pdf')
+            out = os.path.join(tmp, 'out.pdf')
+            tr = os.path.join(tmp, 'translations.json')
+            build_titled_pdf(src)
+            extract_segments.extract_segments(src, outdir=tmp)
+            strip_text.strip_text(src, stripped)
+            write_mapping(tr, dict(NOTICE_TARGETS), find_test_font())
+            data = json.loads(Path(tr).read_text(encoding='utf-8'))
+            data['notices'] = [{'page': 0, 'text': notice,
+                                'box': [40, 250, 380, 290], 'size': 8}]
+            Path(tr).write_text(json.dumps(data, ensure_ascii=False),
+                                encoding='utf-8')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(
+                    stripped, os.path.join(tmp, 'segments.json'), tr, out)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            doc = pymupdf.open(out)
+            try:
+                layer = verify.normalize_ws_nbsp(doc[0].get_text())
+            finally:
+                doc.close()
+            self.assertIn(notice, layer)
+
     def test_inline_markup_helpers_are_narrow(self):
         self.assertTrue(retypeset.has_inline_markup('a <b>x</b>'))
         self.assertTrue(retypeset.has_inline_markup('<em>x</em>'))
@@ -6621,6 +6713,133 @@ def words_needing(font, size, width, words=SMALL_WORDS):
     while face.text_length(' '.join(out), size) < width:
         out.append(words[len(out) % len(words)])
     return ' '.join(out)
+
+
+def file_digest(path):
+    import hashlib
+    with open(path, 'rb') as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+class OutputAliasTests(unittest.TestCase):
+    """R-05: a legacy build never writes over one of its own inputs.
+
+    typography-1 refused an output or scale-report path that named one of
+    its inputs; a legacy mapping went straight to the save. The CLI then
+    exited 0 having replaced translations.json or segments.json with PDF
+    bytes, an output named stripped.pdf raised a bare ValueError, and
+    `rebuild`, which never passes the original to a legacy retypeset, could
+    write over the original PDF."""
+
+    def _job(self, tmp):
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        # A private copy: if the guard failed, the vendored face would be
+        # the file overwritten.
+        font = os.path.join(tmp, 'face.ttf')
+        shutil.copyfile(find_test_font(), font)
+        build_small_print_pdf(src, 11)
+        extract_segments.extract_segments(src, outdir=tmp)
+        strip_text.strip_text(src, stripped)
+        write_mapping(tr, {SMALL_LABEL: 'Nombre', 'Date': 'Fecha'}, font)
+        return src, stripped, os.path.join(tmp, 'segments.json'), tr, font
+
+    def test_output_naming_an_input_is_refused_and_the_input_kept(self):
+        for role, index in (('mapping', 3), ('segments', 2),
+                            ('stripped PDF', 1), ('font', 4)):
+            # A fresh job each time: a guard that fails destroys the input,
+            # and every later case would then fail to read it.
+            with self.subTest(role=role), tempfile.TemporaryDirectory() as tmp:
+                src, stripped, segs, tr, font = self._job(tmp)
+                target = (src, stripped, segs, tr, font)[index]
+                before = file_digest(target)
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    rc = retypeset.retypeset(stripped, segs, tr, target)
+                log = buf.getvalue()
+                self.assertEqual(rc, 1, msg=log)
+                self.assertIn('would overwrite one of its inputs', log)
+                self.assertIn(role, log)
+                self.assertEqual(file_digest(target), before)
+
+    def test_scale_report_naming_an_input_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, stripped, segs, tr, _ = self._job(tmp)
+            before = file_digest(tr)
+            out = os.path.join(tmp, 'out.pdf')
+            with self.assertRaises(retypeset.MappingError) as caught:
+                retypeset.run_retypeset(stripped, segs, tr, out,
+                                        scale_report=tr)
+            self.assertEqual(caught.exception.refusals['output_aliases'],
+                             [{'writes': 'scale report', 'path': tr,
+                               'input': 'mapping'}])
+            self.assertEqual(file_digest(tr), before)
+            self.assertFalse(os.path.exists(out))
+
+    def test_rebuild_refuses_an_output_naming_an_input(self):
+        for name in ('translations.json', 'orig.pdf', 'segments.json'):
+            with self.subTest(target=name), tempfile.TemporaryDirectory() as tmp:
+                src = os.path.join(tmp, 'orig.pdf')
+                work = os.path.join(tmp, 'work')
+                build_small_print_pdf(src, 11)
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    self.assertEqual(
+                        pipeline.main(['init', src, '--work', work]), 0)
+                write_mapping(os.path.join(work, 'translations.json'),
+                              {SMALL_LABEL: 'Nombre', 'Date': 'Fecha'},
+                              find_test_font())
+                target = src if name == 'orig.pdf' else os.path.join(work, name)
+                before = file_digest(target)
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    rc = pipeline.main(['rebuild', '--work', work, src, target])
+                log = buf.getvalue()
+                self.assertEqual(rc, 2, msg=log)
+                self.assertIn('output path must not overwrite an input', log)
+                self.assertEqual(file_digest(target), before)
+
+    def test_rebuild_refuses_an_output_naming_a_forwarded_input(self):
+        """Either spelling of a forwarded input flag names a file the caller
+        meant as an input; verify reads only `--flag value`, but OUT must not
+        replace the file in either case."""
+        for spelling in ('separate', 'equals'):
+            with self.subTest(spelling=spelling), \
+                    tempfile.TemporaryDirectory() as tmp:
+                src = os.path.join(tmp, 'orig.pdf')
+                work = os.path.join(tmp, 'work')
+                build_small_print_pdf(src, 11)
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    self.assertEqual(
+                        pipeline.main(['init', src, '--work', work]), 0)
+                write_mapping(os.path.join(work, 'translations.json'),
+                              {SMALL_LABEL: 'Nombre', 'Date': 'Fecha'},
+                              find_test_font())
+                words = os.path.join(tmp, 'words.json')
+                shutil.copyfile(os.path.join(work, 'segments.json'), words)
+                flag = (['--source-words-from', words] if spelling == 'separate'
+                        else [f'--source-words-from={words}'])
+                before = file_digest(words)
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    rc = pipeline.main(['rebuild', '--work', work, src, words]
+                                       + flag)
+                log = buf.getvalue()
+                self.assertEqual(rc, 2, msg=log)
+                self.assertIn('output path must not overwrite an input', log)
+                self.assertEqual(file_digest(words), before)
+
+    def test_a_distinct_output_still_builds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, stripped, segs, tr, _ = self._job(tmp)
+            out = os.path.join(tmp, 'out.pdf')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = retypeset.retypeset(stripped, segs, tr, out)
+            self.assertEqual(rc, 0, msg=buf.getvalue())
+            self.assertTrue(os.path.isfile(out))
 
 
 class SmallPrintClampTests(unittest.TestCase):

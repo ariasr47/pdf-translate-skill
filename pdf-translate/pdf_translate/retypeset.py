@@ -310,7 +310,7 @@ def place_story_line(page, x, baseline, inner_html, bold, italic, fs,
 def place_shaped(page, x, baseline, text, bold, fs, color_int, avail, css,
                  arch, italic=False):
     """Draw one shaped run with the Story engine; returns the scale applied."""
-    return place_story_line(page, x, baseline, htmlmod.escape(text), bold,
+    return place_story_line(page, x, baseline, story_text(text), bold,
                             italic, fs, color_int, avail, css, arch,
                             logical=text)
 
@@ -380,6 +380,34 @@ def has_inline_markup(text):
 
 def strip_inline_markup(text):
     return INLINE_TAGS.sub('', text or '')
+
+
+def story_text(text):
+    """`text` escaped for a Story text node, so it lands as written.
+
+    MuPDF 1.28.2's Story engine decodes character references twice:
+    `&amp;copy;` is drawn as ©, and `&amp;amp;` as &. So `&` is escaped
+    twice and `<` and `>` once. tests.test_pipeline pins this with a round
+    trip, so a MuPDF that decodes once fails loudly instead of drawing
+    `&amp;` (R-06).
+    """
+    return htmlmod.escape(text or '', quote=False).replace('&amp;', '&amp;amp;')
+
+
+def inline_markup_html(text):
+    """`text` as HTML for the Story engine: the tags INLINE_TAGS names stay
+    markup and everything between them is escaped, so a literal `<`, `&` or
+    an unlisted tag reaches the page as the author wrote it. Sent raw, an
+    address in angle brackets vanished, `&copy;` became ©, and `<span>` was
+    swallowed (R-06)."""
+    text = text or ''
+    out, last = [], 0
+    for m in INLINE_TAGS.finditer(text):
+        out.append(story_text(text[last:m.start()]))
+        out.append(m.group(0))
+        last = m.end()
+    out.append(story_text(text[last:]))
+    return ''.join(out)
 
 
 def _role_name(bold, italic):
@@ -769,6 +797,55 @@ def _same_path(first, second):
         return os.path.samefile(first, second)
     except OSError:
         return os.path.normcase(os.path.realpath(first)) == os.path.normcase(os.path.realpath(second))
+
+
+def _legacy_fonts(conf, trf):
+    """{role: path} for a legacy mapping's fonts, resolved as retypeset
+    opens them. Mapping-relative paths work for both the direct command and
+    rebuild. Old caller-relative mappings stay usable, but the fallback is
+    made visible."""
+    font_dir = os.path.dirname(os.path.abspath(trf))
+    fonts = {}
+    for role_name, path in conf['fonts'].items():
+        if path and not os.path.isabs(path):
+            local = os.path.join(font_dir, path)
+            if not os.path.isfile(local) and os.path.isfile(path):
+                log.info(f'NOTE font {role_name}: legacy caller-relative path {path}; '
+                      'prefer a path relative to translations.json')
+                local = os.path.abspath(path)
+            path = local
+        fonts[role_name] = path
+    return fonts
+
+
+def _refuse_output_aliases(out, report, inputs):
+    """Refuse a legacy build whose output or scale report names an input.
+
+    typography-1 refuses this before it builds; a legacy mapping used to go
+    straight to the save. It then replaced translations.json or
+    segments.json with PDF or report bytes and exited 0, or raised a bare
+    ValueError for stripped.pdf (R-05). `inputs` is [(role, path)]; a path
+    of None is skipped.
+    """
+    hits = []
+    for writes, destination in (('output', out), ('scale report', report)):
+        if not destination:
+            continue
+        for role, path in inputs:
+            if path and _same_path(destination, path):
+                hits.append({'writes': writes, 'path': destination,
+                             'input': role})
+    if report and _same_path(out, report):
+        hits.append({'writes': 'output', 'path': out, 'input': 'scale report'})
+    if not hits:
+        return
+    lines = [f'FAIL: {len(hits)} path(s) of this build would overwrite one of '
+             f'its inputs; write them somewhere else:']
+    lines += [f'  the {h["writes"]} {h["path"]} is the {h["input"]}'
+              for h in hits]
+    raise MappingError('an output path names an input of this build',
+                       console_line='\n'.join(lines), exit_code=1,
+                       refusals={'output_aliases': hits})
 
 
 def _refuse_stale_geometry(segd, stripped):
@@ -1189,9 +1266,16 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                     mapping_format=document.format, legacy_conf=None,
                     scale_report=scale_report, resource_root=resource_root)
             raise
+    conf = document.legacy
+    fonts = _legacy_fonts(conf, trf)
+    _refuse_output_aliases(
+        out, (os.path.join(os.path.dirname(os.path.abspath(out)), SCALE_REPORT)
+              if scale_report is _DEFAULT else scale_report),
+        [('stripped PDF', stripped), ('segments', segf), ('mapping', trf),
+         ('original PDF', original)]
+        + [(f'{role_name} font', path) for role_name, path in fonts.items()])
     segd = _load_json(segf)
     _refuse_stale_geometry(segd, stripped)
-    conf = document.legacy
     T = conf['translations']
     merges = conf.get('merges', [])
     center = set(conf.get('center', []))
@@ -1200,19 +1284,6 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
     allow_scale = set(conf.get('allow_scale') or [])
     overrides = conf.get('overrides', [])
     notices = conf.get('notices') or []
-    # Mapping-relative paths work for both the direct command and rebuild.
-    # Keep old caller-relative mappings usable, but make the fallback visible.
-    font_dir = os.path.dirname(os.path.abspath(trf))
-    fonts = {}
-    for role_name, path in conf['fonts'].items():
-        if path and not os.path.isabs(path):
-            local = os.path.join(font_dir, path)
-            if not os.path.isfile(local) and os.path.isfile(path):
-                log.info(f'NOTE font {role_name}: legacy caller-relative path {path}; '
-                      'prefer a path relative to translations.json')
-                local = os.path.abspath(path)
-            path = local
-        fonts[role_name] = path
     overflow = []
     scaled = []
     mirror = bool(conf.get('mirror'))
@@ -1690,7 +1761,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                     tw.append((bx, oy), mk, font=mfont, fontsize=fs)
                     bx += marker_adv(mfont, fs)
                 avail = right_limit(pno, seg, segs) - bx
-                inline_jobs.append((bx, oy, jp.replace('‖', ''),
+                inline_jobs.append((bx, oy, inline_markup_html(jp.replace('‖', '')),
                                     bool(seg['bold']), bool(seg.get('italic')),
                                     fs, int(seg.get('color', 0)), avail, core,
                                     plain))
@@ -1911,11 +1982,11 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
         if n.get('bold_lead'):
             note_role('bold', key)
             check_glyphs(pno, font_b, parts[0], key, 'bold')
-            body = (f'<b>{htmlmod.escape(parts[0].strip())}</b> '
-                    + ' '.join(htmlmod.escape(p.strip())
+            body = (f'<b>{story_text(parts[0].strip())}</b> '
+                    + ' '.join(story_text(p.strip())
                                for p in parts[1:] if p.strip()))
         else:
-            body = ' '.join(htmlmod.escape(p.strip())
+            body = ' '.join(story_text(p.strip())
                             for p in parts if p.strip())
         r = pymupdf.Rect(*(float(v) for v in n['box']))
         if mirror:

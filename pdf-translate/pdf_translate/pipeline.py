@@ -490,9 +490,21 @@ def cmd_rebuild(argv):
     t0 = time.perf_counter()
     default_report = os.path.join(work, 'verify_report.json')
     report = extra[extra.index('--report') + 1] if '--report' in extra else default_report
-    protected = [orig, out, stripped, segs, tr]
     value_flags = ('--translations', '--segments', '--original', '--source-words-from', '--reference-fonts')
-    protected.extend(value for flag, value in zip(extra, extra[1:]) if flag in value_flags)
+    inputs = [orig, stripped, segs, tr]
+    inputs.extend(value for flag, value in zip(extra, extra[1:]) if flag in value_flags)
+    # verify reads only `--flag value`, but `--flag=value` still names a file
+    # the caller meant as an input, and OUT must not replace it either.
+    inputs.extend(arg.split('=', 1)[1] for arg in extra
+                  if any(arg.startswith(flag + '=') for flag in value_flags))
+    # R-05: a legacy retypeset is never told the original, so only this
+    # check stops OUT from replacing it; the mapping and segments are
+    # checked again inside retypeset, fonts only there.
+    from .retypeset import _same_path
+    if any(_same_path(out, path) for path in inputs):
+        log.info(f'rebuild: output path must not overwrite an input: {out}')
+        return 2
+    protected = [out] + inputs
     # The work directory's default report must not claim success after the
     # caller switches to a custom report. Other custom paths are caller-owned.
     reports = list(dict.fromkeys((default_report, os.path.abspath(report))))
