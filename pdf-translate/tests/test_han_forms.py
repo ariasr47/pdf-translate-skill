@@ -187,10 +187,13 @@ def _subset(src, text, out):
     from fontTools import subset
     options = subset.Options()
     font = subset.load_font(str(src), options)
-    subsetter = subset.Subsetter(options)
-    subsetter.populate(text=text)
-    subsetter.subset(font)
-    subset.save_font(font, str(out), options)
+    try:
+        subsetter = subset.Subsetter(options)
+        subsetter.populate(text=text)
+        subsetter.subset(font)
+        subset.save_font(font, str(out), options)
+    finally:
+        font.close()
 
 
 class JudgeTests(unittest.TestCase):

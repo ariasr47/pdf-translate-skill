@@ -211,11 +211,11 @@ def draw_story_output(path, text, fontfile, size=12):
 def subset_to(src, dst, text):
     """A subset carrying only text's glyphs (so the probe cluster is absent)."""
     from fontTools import subset
-    font = TTFont(src)
-    subsetter = subset.Subsetter(subset.Options())
-    subsetter.populate(text=text)
-    subsetter.subset(font)
-    font.save(dst)
+    with TTFont(src) as font:
+        subsetter = subset.Subsetter(subset.Options())
+        subsetter.populate(text=text)
+        subsetter.subset(font)
+        font.save(dst)
     return dst
 
 

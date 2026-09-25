@@ -268,11 +268,11 @@ def run_prepare_font(font_in, trf, font_out, instance=None, sample=None,
         tag, val = instance.split('=')
         from fontTools import ttLib
         from fontTools.varLib.instancer import instantiateVariableFont
-        font = ttLib.TTFont(font_in)
-        instantiateVariableFont(font, {tag: float(val)}, inplace=True)
-        name_static_instance(font, float(val))
         src = font_out + '.instanced.ttf'
-        font.save(src)
+        with ttLib.TTFont(font_in) as font:
+            instantiateVariableFont(font, {tag: float(val)}, inplace=True)
+            name_static_instance(font, float(val))
+            font.save(src)
 
     if typography:
         validate_font(src, font_class, font_role, chars)
