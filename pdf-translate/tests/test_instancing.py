@@ -63,6 +63,21 @@ class InstancingMemoTests(unittest.TestCase):
                 self.assertEqual(_saved(font), self.real(axes, **options), (axes, options))
         self.assertEqual(len(_instancing._results), 3)
 
+    def test_a_file_changed_without_its_checksums_is_a_different_font(self):
+        with TTFont(self.face) as font:
+            name = font.reader.tables['name']
+        data = bytearray(open(self.face, 'rb').read())
+        data[name.offset + name.length - 1] ^= 0x01     # a name string's last byte
+        patched = self.face + '.patched.ttf'
+        with open(patched, 'wb') as f:
+            f.write(data)
+        for path in (self.face, patched):
+            with TTFont(path) as font:
+                instancer.instantiateVariableFont(font, {'wght': 700}, inplace=True)
+                with TTFont(path) as fresh:
+                    self.assertEqual(_saved(font), _saved(_instancing._REAL(fresh, {'wght': 700})))
+        self.assertEqual(len(_instancing._results), 2)
+
     def test_a_table_only_read_is_still_the_file(self):
         for _ in range(2):
             with TTFont(self.face) as font:

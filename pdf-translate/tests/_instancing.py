@@ -12,8 +12,7 @@ first result.
 
 Only a font that is still its file is reused: read into memory, as
 `TTFont(path)` reads it, and every table it has read compiles back to the
-file's bytes, so the table directory's checksums identify its content
-exactly. Anything else, and any axis limit that is not a single value, goes
+file's bytes, so a hash of those bytes identifies its content exactly. Anything else, and any axis limit that is not a single value, goes
 straight to the instancer. A reuse replaces only what the font is (its reader,
 tables and glyph order); the caller's own settings on the TTFont, such as
 recalcTimestamp, stay as a real call leaves them. The first call's result
@@ -21,6 +20,7 @@ has been saved once to keep a copy, so its bounding boxes and timestamp are
 already recalculated in memory, as the caller's own save would do.
 """
 import copy as _copy
+import hashlib
 import inspect
 import io
 
@@ -54,9 +54,12 @@ def _key(varfont, axis_limits, options):
         limits = tuple(sorted((tag, float(value)) for tag, value in dict(axis_limits).items()))
     except (TypeError, ValueError):
         return None
-    directory = tuple(sorted((tag, entry.checkSum, entry.length)
-                             for tag, entry in reader.tables.items()))
-    return varfont.sfntVersion, directory, limits, tuple(sorted(options.items()))
+    # The file's own bytes, hashed: a file can declare checksums its tables
+    # no longer match, so they are not trusted to tell two fonts apart.
+    with reader.file.getbuffer() as data:
+        digest = hashlib.sha256(data).hexdigest()
+    directory = tuple(sorted((tag, entry.offset, entry.length) for tag, entry in reader.tables.items()))
+    return varfont.sfntVersion, digest, directory, limits, tuple(sorted(options.items()))
 
 
 def instantiate(*args, **kwargs):
