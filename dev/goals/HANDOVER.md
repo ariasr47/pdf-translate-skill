@@ -3,6 +3,27 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 25 September 2026, before dawn: #39 open (CI only); R-33 built (v70), not pushed
+
+**Main is v69 at `19252b7`.** Two things are in flight:
+- **#39** is open against `main`, with R-69 and R-97. It is CI only, with no
+  version bump. Its two runs proved the cache fix: a miss that saved, then a
+  hit with 0 KB fetched.
+- **`fix/r33-field-fonts-keep-appearance`** sits on #39, with R-33 at v70.
+  It is local and waits for Rodrigo's go to push.
+  - `field_fonts` keeps each field's colour and size: on the wild forms,
+    160 fields no longer turn black and 2 no longer auto-size.
+  - Rule 1 passed. It found two minor latent bugs in the new code, both
+    fixed with tests.
+  - Evidence: `docs/reviews/2026-09-25-r33-field-appearance.md`.
+
+**Filed in passing:** `field_fonts` skips a field whose `/FT` is set only
+two or more levels up (the last REQUESTS row).
+
+**Next quick win: R-40**, legacy capture bundles recording `source_pdf`.
+Then R-42, R-110, R-100, R-99, and the docs items R-79, R-80, R-82 and
+R-83.
+
 ## Start here — 25 September 2026, late night: main is v69; R-69 with R-97 built, not pushed
 
 **Main is v69 at `19252b7`.** Rodrigo merged #38 (R-47), and GitHub

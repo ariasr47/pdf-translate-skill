@@ -127,5 +127,17 @@ on the plugin manifest. The key was
 - These entries belong to the PR's ref. After the merge, `main`'s first run
   misses once and saves its own.
 
-**The next run** restores this key and should fetch nothing: this commit's
-run. It is recorded with the next item.
+**The PR's second run**, 36094105442 on `d1f8a30`, passed on both legs.
+This record is carried by the next item's branch.
+
+| | ubuntu | windows |
+|---|---|---|
+| restore | "Cache hit for: noto-fonts-bbc69b99…", then restored | the same |
+| fetch | `have` for all 20 faces, 0 fetched, 0 KB | the same |
+| save | skipped: a hit | skipped |
+| suite | 736 tests, OK (1 expected failure) | 736 tests, OK (1 skipped, 1 expected failure) |
+| canary | 15, OK | 15, OK |
+| repository | 6, OK | 6, OK |
+
+So a run with the fetcher unchanged now downloads no fonts. Before this,
+both legs downloaded 42,585 KB on every run.

@@ -32,6 +32,10 @@ embedding (the result's `instance` says so, e.g. `wght=400`). Embedded as-is,
 a viewer would draw typed text from the default outlines: Thin for Noto Sans
 JP. Instancing the full JP face takes about 5 s, so a service that fills
 many forms should pass a static instance it made once.
+Only the font changes in each field's `/DA`: the size, the colour and any
+other operator the form set there stay, so a navy IRS field or a red
+signature field still types in its colour. A widget with no `/DA` of its own
+gets the one it inherited from its parent field or the form.
 
 `verify`'s `han-forms` gate (20) compares the delivered face with the Noto
 Sans JP and SC references at the same weight, exactly. Use the same builds

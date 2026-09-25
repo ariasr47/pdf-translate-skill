@@ -14,9 +14,10 @@ What this does:
      draws a variable font's default outlines (Thin, for Noto Sans JP)
   2. registers it in /AcroForm /DR /Font, creating /DR and /Font if absent
      (many forms ship a /DA referencing /Helv with no /DR at all)
-  3. rewrites every text AND choice field's /DA to that font, preserving the
-     original size (a combo box renders its selection from /DA the same way a
-     text field renders a typed value)
+  3. swaps that font into every text AND choice field's /DA, keeping the size,
+     colour and anything else the form set there; a widget with no /DA of its
+     own gets the one it inherited (a combo box renders its selection from /DA
+     the same way a text field renders a typed value)
   4. adds /Helv and /ZaDb alongside it: NeedAppearances makes viewers rebuild
      appearance streams, and a rebuilt checkbox draws its tick from ZapfDingbats
   5. sets an AcroForm-level /DA fallback and /NeedAppearances
@@ -38,6 +39,47 @@ from ._console import console, _arg
 from .results import FieldFontsResult, PdfTranslateError
 
 log = logging.getLogger(__name__)
+
+_NUMBER = r'[-+]?(?:\d+\.?\d*|\.\d+)'
+# A name runs to the next white space or delimiter (ISO 32000-1, 7.2.2).
+_FONT_OPERANDS = re.compile(rf'/[^\s()<>\[\]{{}}/%]+(\s+{_NUMBER}\s+Tf)(?![^\s()<>\[\]{{}}/%])')
+_FILL_COLOUR = {'g', 'rg', 'k', 'sc', 'scn'}
+
+
+def field_da(da, name):
+    """`da` with only its font swapped for /`name`: its size, colour and every
+    other operator stay as the form set them (R-33).
+
+    With no Tf, the font goes first at size 0 (auto); with no fill colour,
+    ` 0 g` is added, which is what a viewer assumes anyway. A missing /DA
+    therefore gives `/name 0 Tf 0 g`, and `/Helv 12 Tf 0 g` gives
+    `/name 12 Tf 0 g`, as before.
+    """
+    da = str(da or '').strip()
+    # Every Tf: a viewer draws with the last one.
+    swapped, found = _FONT_OPERANDS.subn(lambda m: f'/{name}{m.group(1)}', da)
+    if not found:
+        swapped = f'/{name} 0 Tf' + (f' {da}' if da else '')
+    if not _FILL_COLOUR & set(swapped.split()):
+        swapped += ' 0 g'
+    return swapped
+
+
+def inherited_da(obj, acroform_da):
+    """The /DA that applies to `obj`: its own, else the nearest ancestor's,
+    else the form's default."""
+    node, seen = obj, set()
+    while node is not None:
+        if '/DA' in node:
+            return node.DA
+        # Only an indirect object can close a cycle; every direct one
+        # reports objgen (0, 0) and is not a repeat.
+        if node.is_indirect:
+            if node.objgen in seen:
+                break
+            seen.add(node.objgen)
+        node = node.get('/Parent')
+    return acroform_da
 
 
 def static_face(font, path):
@@ -155,16 +197,11 @@ def run_field_fonts(inp, font, out, name='TransFF'):
                     BaseFont=pikepdf.Name(base), **extra))
 
         count, seen = 0, set()
+        form_da = af.get('/DA')
 
         def fix_da(obj):
             nonlocal count
-            da = obj.get('/DA')
-            size = '0'
-            if da is not None:
-                m = re.match(r'/\S+\s+([\d.]+)\s+Tf', str(da))
-                if m:
-                    size = m.group(1)
-            obj.DA = pikepdf.String(f'/{name} {size} Tf 0 g')
+            obj.DA = pikepdf.String(field_da(inherited_da(obj, form_da), name))
             count += 1
 
         for page in pdf.pages:
@@ -182,7 +219,7 @@ def run_field_fonts(inp, font, out, name='TransFF'):
                             fix_da(parent)
                             seen.add(key)
 
-        af.DA = pikepdf.String(f'/{name} 0 Tf 0 g')
+        af.DA = pikepdf.String(field_da(form_da, name))
         af.NeedAppearances = True
         pdf.save(out)
     finally:

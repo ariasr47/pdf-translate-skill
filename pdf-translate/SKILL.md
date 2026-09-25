@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "69"
+  version: "70"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -538,7 +538,8 @@ python3 scripts/verify.py original.pdf final.pdf \
 
 Users type arbitrary names — characters outside your translation's subset —
 so this embeds a FULL-coverage font, points every text **and choice** field's
-default appearance at it, and sets NeedAppearances. A combo box renders its
+default appearance at it (keeping each field's size and colour), and sets
+NeedAppearances. A combo box renders its
 selection from `/DA` exactly as a text field renders a typed value, so
 leaving choice fields on a Latin default is the same tofu one widget over.
 Skip font embedding only for non-form PDFs; their delivery file remains
