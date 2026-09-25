@@ -2176,7 +2176,10 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                        seg.get('tail') or ''))
         if seg.get('passthrough'):
             placed.append(seg.get('text') or '')
-    fontfiles = [fonts['regular'], fonts.get('bold', fonts['regular'])]
+    # Every role face that can have drawn a run (R-04). Only regular and
+    # bold used to be rewritten, so an italic cut of Arial or Times, whose
+    # space and NBSP share a glyph, reported NBSP for every space.
+    fontfiles = list(dict.fromkeys([f_regular, f_bold, f_italic, f_bold_italic]))
     n = canonicalize_text_layer(out, fontfiles, placed)
     if n:
         log.info(f'canonical text layer: rewrote /ToUnicode on {n} font object(s)')

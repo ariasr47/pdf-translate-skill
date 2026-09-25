@@ -234,7 +234,11 @@ font, so it was always one delivery away.
 
 After saving, `retypeset.py` rewrites `/ToUnicode` for the glyphs it
 placed to the code points you authored (a CMap is executed in order, so an
-appended `bfchar` block overrides an earlier `bfrange`). Where two authored
+appended `bfchar` block overrides an earlier `bfrange`). It does this for
+every role face: regular, bold, italic and bold-italic. Until v67 only the
+regular and bold faces were rewritten, so an italic cut of Arial or Times,
+whose space and NBSP share a glyph, drew a correct page that verify
+failed. Where two authored
 characters share a glyph the lower code point wins — in every drift pair
 the canonical character is the lower one. A ligature glyph is nobody's
 character, so it is read from the font's GSUB table and mapped to its

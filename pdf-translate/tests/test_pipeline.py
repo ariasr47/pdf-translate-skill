@@ -8116,6 +8116,80 @@ class JobCharsetTests(unittest.TestCase):
 
 
 
+def shared_space_face(src, dst):
+    """A copy of `src` whose cmap also sends U+00A0 to the space glyph, as
+    the italic and bold-italic cuts of Arial and Times do. MuPDF's
+    reverse-mapped /ToUnicode can then report every space as NBSP."""
+    from fontTools.ttLib import TTFont
+    with TTFont(str(src)) as font:
+        for cmap in font['cmap'].tables:
+            if cmap.isUnicode() and 0x20 in cmap.cmap:
+                cmap.cmap[0xa0] = cmap.cmap[0x20]
+        font.save(dst)
+    return dst
+
+
+class RoleFaceCanonicalTests(unittest.TestCase):
+    """R-04 (REVIEW-2026-09-04 F4): the canonical text layer covers every
+    role face. Legacy retypeset rewrote /ToUnicode for the regular and bold
+    faces only, so an italic or bold-italic face that shares glyphs between
+    code points drew a correct page whose text layer reported NBSP for
+    every space, and verify FAILed it."""
+
+    SOURCE = 'Read the notice carefully today.'
+    TARGET = 'Lea el aviso con cuidado hoy.'
+
+    def _build(self, tmp, fontname):
+        src = os.path.join(tmp, 'orig.pdf')
+        stripped = os.path.join(tmp, 'stripped.pdf')
+        out = os.path.join(tmp, 'out.pdf')
+        tr = os.path.join(tmp, 'translations.json')
+        doc = pymupdf.open()
+        doc.new_page(width=612, height=792).insert_text(
+            (72, 100), self.SOURCE, fontname=fontname, fontsize=11)
+        doc.save(src)
+        doc.close()
+        extract_segments.extract_segments(src, outdir=tmp)
+        strip_text.strip_text(src, stripped)
+        italic = shared_space_face(vendored('NotoSans-Italic.ttf'),
+                                   os.path.join(tmp, 'italic.ttf'))
+        bold_italic = shared_space_face(vendored('NotoSans-BoldItalic.ttf'),
+                                        os.path.join(tmp, 'bold-italic.ttf'))
+        conf = {'fonts': {'regular': str(vendored('NotoSans-Regular.ttf')),
+                          'bold': str(vendored('NotoSans-Bold.ttf')),
+                          'italic': italic, 'bold_italic': bold_italic},
+                'translations': {self.SOURCE: self.TARGET}, 'lang': 'es',
+                'merges': [], 'overrides': [], 'center': [], 'skip': []}
+        Path(tr).write_text(json.dumps(conf), encoding='utf-8')
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = retypeset.retypeset(
+                stripped, os.path.join(tmp, 'segments.json'), tr, out)
+        self.assertEqual(rc, 0, msg=buf.getvalue())
+        return src, out, tr
+
+    def test_italic_and_bold_italic_faces_are_canonicalized(self):
+        for fontname, face in (('tiit', 'NotoSans-Italic'),
+                               ('tibi', 'NotoSans-BoldItalic')):
+            with self.subTest(face=face), tempfile.TemporaryDirectory() as tmp:
+                src, out, tr = self._build(tmp, fontname)
+                doc = pymupdf.open(out)
+                try:
+                    fonts = {sp['font'] for b in doc[0].get_text('dict')['blocks']
+                             for line in b.get('lines', [])
+                             for sp in line['spans']}
+                    layer = doc[0].get_text()
+                finally:
+                    doc.close()
+                self.assertEqual(fonts, {face})
+                self.assertNotIn(' ', layer)
+                self.assertIn(self.TARGET, layer)
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    rc = verify.verify(src, out, translations=tr)
+                self.assertEqual(rc, 0, msg=buf.getvalue())
+
+
 class FontRoleFallbackTests(unittest.TestCase):
     """Row 31: `fonts` falls back to the nearest role the mapping named,
     which is right and was silent. On canary run 3 Sonnet 5 set

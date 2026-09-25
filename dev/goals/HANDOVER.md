@@ -3,6 +3,20 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 25 September 2026, later: #35 open (v66); R-04 built (v67), not pushed
+
+**Main is v65 at `a9fd0a9`.** Two things are in flight:
+- **#35** is open against `main`, with R-05 and R-06 at v66. Rodrigo asked
+  for them to ship together.
+- **`fix/r04-canonicalize-role-faces`** sits on #35, with R-04 at v67. It
+  is local and waits for Rodrigo's go to push. The canonical text layer now
+  covers the italic and bold-italic faces. Rule 1 passed. Evidence:
+  `docs/reviews/2026-09-24-r04-role-faces.md`.
+
+**Next quick win: R-27**, `field_fonts` refusing a variable face or
+instancing it. Then R-47, R-69 with R-97, R-33, R-40, R-42, R-110, R-100,
+R-99, and the docs items R-79, R-80, R-82 and R-83.
+
 ## Start here — 25 September 2026: R-02 shipped (v65); R-05 and R-06 built (v66), not pushed
 
 **Main is v65 at `a9fd0a9`** (#34, R-02). Its tree is the reviewed
