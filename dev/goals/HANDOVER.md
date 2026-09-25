@@ -3,6 +3,22 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 25 September 2026, evening: #36 open (v67); R-27 built (v68), not pushed
+
+**Main is v66 at `637e291`** (#35, R-05 and R-06). Two things are in
+flight:
+- **#36** is open against `main`, with R-04 at v67 and the v66 delivery
+  record.
+- **`fix/r27-field-fonts-variable-face`** sits on #36, with R-27 at v68. It
+  is local and waits for Rodrigo's go to push. `field_fonts` embeds a
+  variable face as its Regular instance, and Rule 1 passed after one fix: a
+  temp file left behind on a failed input. Evidence:
+  `docs/reviews/2026-09-25-r27-field-font-instance.md`.
+
+**Next quick win: R-47**, typography verify reading page rects once. Then
+R-69 with R-97, R-33, R-40, R-42, R-110, R-100, R-99, and the docs items
+R-79, R-80, R-82 and R-83.
+
 ## Start here — 25 September 2026, later: #35 open (v66); R-04 built (v67), not pushed
 
 **Main is v65 at `a9fd0a9`.** Two things are in flight:

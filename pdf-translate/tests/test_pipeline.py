@@ -4082,6 +4082,120 @@ def patch_fstype(src, dst, value):
     raise unittest.SkipTest('test font has no OS/2 table')
 
 
+FIELD_CHARS = 'Name 山田太郎 0123'
+
+
+def small_variable_face(path):
+    """Noto Sans JP's variable face cut down to FIELD_CHARS. It keeps fvar and
+    gvar, so it is still variable, and instancing it takes milliseconds
+    rather than the seconds the full face takes."""
+    from fontTools import subset
+    from fontTools.ttLib import TTFont
+    options = subset.Options()
+    options.name_IDs = ['*']
+    options.notdef_outline = True
+    with TTFont(str(vendored('NotoSansJP-VF.ttf'))) as font:
+        subsetter = subset.Subsetter(options)
+        subsetter.populate(text=FIELD_CHARS)
+        subsetter.subset(font)
+        font.save(path)
+    return path
+
+
+def embedded_field_face(pdf_path):
+    """The field font program field_fonts embedded, as a TTFont."""
+    import io as _io
+    from fontTools.ttLib import TTFont
+    doc = pymupdf.open(pdf_path)
+    try:
+        for xref, *_rest, name, _enc in doc.get_page_fonts(0, full=False):
+            if name == 'TransFieldFont':
+                return TTFont(_io.BytesIO(doc.extract_font(xref)[3]))
+    finally:
+        doc.close()
+    return None
+
+
+def glyph_box(font, char):
+    from fontTools.pens.boundsPen import BoundsPen
+    glyph = font.getBestCmap()[ord(char)]
+    pen = BoundsPen(font.getGlyphSet())
+    font.getGlyphSet()[glyph].draw(pen)
+    # A saved face has integer coordinates; an in-memory instance may not.
+    return tuple(round(v) for v in pen.bounds)
+
+
+class VariableFieldFontTests(unittest.TestCase):
+    """R-27: a variable face given to field_fonts is embedded as its Regular
+    instance. Embedded as-is, a viewer draws typed text from the default
+    outlines, which for Noto Sans JP are Thin (wght 100), and the variation
+    tables add megabytes: a 1 KB form became 5.9 MB."""
+
+    def _form(self, tmp):
+        src = os.path.join(tmp, 'form.pdf')
+        doc = pymupdf.open()
+        page = doc.new_page()
+        w = pymupdf.Widget()
+        w.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+        w.field_name = 'name'
+        w.rect = pymupdf.Rect(72, 72, 300, 92)
+        w.text_fontsize = 11
+        page.add_widget(w)
+        doc.save(src)
+        doc.close()
+        return src
+
+    def test_a_variable_face_is_embedded_as_its_regular_instance(self):
+        from fontTools.ttLib import TTFont
+        from fontTools.varLib.instancer import instantiateVariableFont
+        with tempfile.TemporaryDirectory() as tmp:
+            vf = small_variable_face(os.path.join(tmp, 'vf.ttf'))
+            out = os.path.join(tmp, 'out.pdf')
+            result = field_fonts.run_field_fonts(self._form(tmp), vf, out)
+            embedded = embedded_field_face(out)
+            self.assertIsNotNone(embedded)
+            self.assertNotIn('fvar', embedded)
+            with TTFont(vf) as default, TTFont(vf) as regular:
+                instantiateVariableFont(regular, {'wght': 400}, inplace=True)
+                self.assertEqual(glyph_box(embedded, '山'),
+                                 glyph_box(regular, '山'))
+                self.assertNotEqual(glyph_box(embedded, '山'),
+                                    glyph_box(default, '山'))
+            self.assertEqual(embedded['name'].getDebugName(2), 'Regular')
+            self.assertEqual(result.instance, 'wght=400')
+            self.assertFalse(any(name.endswith('.ttf')
+                                 for name in os.listdir(tmp)
+                                 if name.startswith('out.pdf')),
+                             msg=os.listdir(tmp))
+
+    def test_a_failed_call_leaves_no_temporary_face(self):
+        """The pinned copy is written before the input is opened, so a call
+        that fails on the input must still remove it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            vf = small_variable_face(os.path.join(tmp, 'vf.ttf'))
+            out_dir = os.path.join(tmp, 'out')
+            os.makedirs(out_dir)
+            with self.assertRaises(Exception):
+                field_fonts.run_field_fonts(os.path.join(tmp, 'missing.pdf'),
+                                            vf, os.path.join(out_dir, 'out.pdf'))
+            self.assertEqual(os.listdir(out_dir), [])
+
+    def test_a_static_face_is_embedded_as_it_is(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, 'out.pdf')
+            face = str(find_test_font())
+            result = field_fonts.run_field_fonts(self._form(tmp), face, out)
+            embedded = embedded_field_face(out)
+            self.assertNotIn('fvar', embedded)
+            from fontTools.ttLib import TTFont
+            with TTFont(face) as source:
+                self.assertEqual(embedded['name'].getDebugName(6),
+                                 source['name'].getDebugName(6))
+                self.assertEqual(embedded['maxp'].numGlyphs,
+                                 source['maxp'].numGlyphs)
+            self.assertEqual(result.instance, '')
+
+
 class SmallGuardTests(unittest.TestCase):
     """Three guards the audit called out: images, choice /DA, font licence."""
 
