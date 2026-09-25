@@ -103,7 +103,29 @@ configuration. Its observable outcome is CI's own log, recorded below.
 
 ## On CI
 
-*Pending: the PR's first run, and the run after it.* The first run should
-miss the new key, fetch all 20 faces and save them before the suite. The
-next run should restore that key and fetch nothing. Both legs should run
-the same 736 tests as the local run.
+**The PR's first run**, 36091040027 on `e7e2492`, passed on both legs and
+on the plugin manifest. The key was
+`noto-fonts-bbc69b99550b07be847137a860c9d46547327cd15887fe4cfb686536ffe4fb37`.
+
+| | ubuntu | windows |
+|---|---|---|
+| restore | "Cache not found for input keys" | the same |
+| fetch | 20 faces, 70,964 KB | the same |
+| save | "Cache saved with key", after the fetch check and before the suite | the same |
+| suite | 736 tests, OK (1 expected failure) | 736 tests, OK (1 skipped, 1 expected failure) |
+| canary | 15, OK | 15, OK |
+| repository | 6, OK | 6, OK |
+
+- **The suite count is the local run's 736.** Main's last run on `aa54158`
+  had 733, before R-47's three tests.
+- **The Windows skip** ("temp dir on another drive") is the same one main
+  has.
+- **The saved entries** are 42.9 MB (ubuntu) and 42.7 MB (windows)
+  compressed. That is the 20 fetched faces, 71 MB raw. The old
+  `noto-fonts-v3` entries were 17.4 MB for 11 faces. The instanced faces the
+  suite writes came after the save, so they are not in the entries.
+- These entries belong to the PR's ref. After the merge, `main`'s first run
+  misses once and saves its own.
+
+**The next run** restores this key and should fetch nothing: this commit's
+run. It is recorded with the next item.
