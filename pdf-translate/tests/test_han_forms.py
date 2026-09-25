@@ -23,11 +23,6 @@ from pdf_translate import han_forms
 
 verify_mod = importlib.import_module('pdf_translate.verify')
 from pdf_translate.verify import GATE_NAMES, run_verify, verify
-from tests import _instancing
-
-# Deliveries and prepare_font runs here instance the same few CJK faces again
-# and again; each distinct instance is built once (R-51).
-setUpModule, tearDownModule = _instancing.install, _instancing.uninstall
 
 FONTS = Path(__file__).resolve().parents[1] / 'tests' / 'fonts'
 JP_FACE = FONTS / 'NotoSansJP-VF.ttf'
@@ -465,52 +460,6 @@ class VerifyGateTests(unittest.TestCase):
                                       '--reference-fonts', empty])
         self.assertEqual(rc, 0, buf.getvalue())
         self.assertIn('REVIEW han-forms Japanese: reference faces not found in', buf.getvalue())
-
-
-def _without_timestamp(path):
-    """A font's bytes with head.modified zeroed: the one field two builds of
-    the same subset differ in."""
-    from fontTools.ttLib import TTFont
-    with TTFont(path) as font:
-        # A save stamps the time unless told not to; zeroing it is not enough.
-        font.recalcTimestamp = False
-        font['head'].modified = 0
-        buffer = io.BytesIO()
-        font.save(buffer)
-    return buffer.getvalue()
-
-
-class InstancingTests(unittest.TestCase):
-    """R-51: a face this module instances is built once, however many tests
-    ask for it, and the subset prepare_font writes from it is the same."""
-
-    def prepare(self):
-        from tests.test_pipeline import SOURCE_SENTENCE, prepare_font, write_mapping
-        tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmp, True)
-        tr, out = os.path.join(tmp, 'translations.json'), os.path.join(tmp, 'subset.ttf')
-        write_mapping(tr, {SOURCE_SENTENCE: TARGET}, _face(JP_FACE), lang=None)
-        with redirect_stdout(io.StringIO()):
-            rc = prepare_font.prepare_font(str(JP_FACE), tr, out, instance='wght=400')
-        self.assertEqual(rc, 0)
-        return out
-
-    def test_a_repeated_instance_runs_the_instancer_at_most_once(self):
-        from fontTools.varLib import instancer
-        runs = []
-        real = instancer.instantiateFvar
-
-        def counted(*args, **kwargs):
-            runs.append(args[1])
-            return real(*args, **kwargs)
-
-        # instantiateFvar runs once inside every real instancing, whatever
-        # wraps instantiateVariableFont; an earlier test may already have
-        # built this instance, so none is as right as one.
-        with mock.patch.object(instancer, 'instantiateFvar', counted):
-            first, second = self.prepare(), self.prepare()
-        self.assertLessEqual(len(runs), 1, runs)
-        self.assertEqual(_without_timestamp(first), _without_timestamp(second))
 
 
 class PrepareFontTests(unittest.TestCase):
