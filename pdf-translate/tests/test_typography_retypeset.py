@@ -127,6 +127,25 @@ class TypographyRetypesetTests(unittest.TestCase):
         self.assertEqual((page_level['page'], page_level['occurrence_id'], page_level['source_text']),
                          (0, None, None))
 
+    def test_a_malformed_crop_box_leaves_the_position_unknown(self):
+        """The crop only places the offending text, so a /CropBox that is not
+        four numbers must not fail the check that v71 passed (R-42's review)."""
+        from pdf_translate.typography_content import inspect_content
+        for box in ('[0 0 100]', '[]', '[0 0 /A 100]'):
+            with self.subTest(box=box):
+                def shear_and_break(doc, box=box):
+                    doc[0].insert_text((30, 200), 'Slanted words', fontname='helv', fontsize=12,
+                                       morph=(pymupdf.Point(30, 200), pymupdf.Matrix(1, 0, -0.3, 1, 0, 0)))
+                    doc.xref_set_key(doc[0].xref, 'CropBox', box)
+                path = self.work / 'broken-crop.pdf'
+                with pymupdf.open(self.job['original']) as doc:
+                    shear_and_break(doc)
+                    path.write_bytes(doc.tobytes())
+                issues = inspect_content(str(path), source=True).issues
+                sheared = [i for i in issues if i.kind == 'transformed-text']
+                self.assertEqual(len(sheared), 1, issues)
+                self.assertIsNone(sheared[0].at)
+
     def test_partial_extraction_cannot_drop_an_unselected_blank_page(self):
         self.mutate_pdf('original', lambda d: d.new_page(width=400, height=240))
         self.reextract(pages='1')

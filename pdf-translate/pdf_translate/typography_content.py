@@ -74,6 +74,19 @@ def later_paint_intersects(paints, sequence, box, annotation_start=None):
                for index, (kind, bounds, *_) in enumerate(paints[sequence + 1:], sequence + 1))
 
 
+def _crop_box(page):
+    """The page's CropBox (else MediaBox) as (x0, y0, x1, y1), or None when it
+    is not four finite numbers. It only places offending text (R-42), so no
+    malformed box may fail a check that never read it before."""
+    try:
+        box = [float(v) for v in page.cropbox]
+    except Exception:  # pikepdf raises several types on a malformed box
+        return None
+    if len(box) != 4 or not all(math.isfinite(v) for v in box):
+        return None
+    return (min(box[0], box[2]), min(box[1], box[3]), max(box[0], box[2]), max(box[1], box[3]))
+
+
 def inspect_content(path, *, source=False):
     """Name unsupported text drawing state; graphics-only state is irrelevant.
 
@@ -179,12 +192,7 @@ def inspect_content(path, *, source=False):
             initial = {'ctm': IDENTITY, 'text': IDENTITY, 'line': IDENTITY, 'leading': 0., 'placed': True, 'horizontal': 1., 'mode': 0,
                        'clip': False, 'fill_alpha': 1., 'stroke_alpha': 1., 'blend': '/Normal', 'mask': False, 'font': None}
             try:
-                box = [float(v) for v in page.cropbox]
-                crop = (min(box[0], box[2]), min(box[1], box[3]), max(box[0], box[2]), max(box[1], box[3]))
-            except (pikepdf.PdfError, ValueError, TypeError, KeyError):
-                crop = None
-            try:
-                walk(page, page.get('/Resources', {}), initial, index, crop=crop)
+                walk(page, page.get('/Resources', {}), initial, index, crop=_crop_box(page))
             except (pikepdf.PdfError, ValueError, TypeError, KeyError, RuntimeError) as exc:
                 record(index, 'unreadable-content', f'Cannot resolve text drawing state: {type(exc).__name__}.')
     if source:
