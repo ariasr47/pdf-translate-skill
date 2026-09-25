@@ -68,6 +68,8 @@ import pikepdf
 import pymupdf
 from pikepdf import Name, parse_content_stream, unparse_content_stream
 
+from ._pixels import INK_SKIP, changed_channels, dark_pixels
+
 
 def encryption_report(pdf):
     """What the source's encryption and permissions are, for the recon note.
@@ -347,7 +349,7 @@ def leftover_page_text(path):
 # there is no anti-aliasing noise to absorb.
 INVISIBLE_TEXT_MAX_CHANGED = 0.03
 CHANGED_CHANNEL_DELTA = 16   # per-channel difference that counts as a change
-INK_SKIP = 20                # same floor as verify: below this the page is blank
+# INK_SKIP, the floor below which a page is blank, is verify's own (_pixels).
 
 
 def text_span_area(page):
@@ -364,13 +366,18 @@ def text_span_area(page):
     return area
 
 
-def _changed_pixels(a, b, n, delta=CHANGED_CHANNEL_DELTA):
-    """Approximate number of pixels whose colour differs between two renders."""
-    changed = sum(1 for x, y in zip(a, b) if abs(x - y) > delta)
-    return changed / max(n, 1)
+def _changed_pixels(a, b, n, delta=CHANGED_CHANNEL_DELTA, stop=None):
+    """Approximate number of pixels whose colour differs between two renders.
+
+    `stop(pixels)` may end the count early once it says True (see
+    _pixels.changed_channels).
+    """
+    n = max(n, 1)
+    channels_stop = None if stop is None else (lambda channels: stop(channels / n))
+    return changed_channels(a, b, delta, stop=channels_stop) / n
 
 
-def invisible_text_pages(src):
+def invisible_text_pages(src, pages=None):
     """[(page_index, changed_fraction)] for pages whose text is not what the reader sees.
 
     Strips a temporary copy and compares 72-dpi renders. If removing the
@@ -379,7 +386,14 @@ def invisible_text_pages(src):
     scanned image, or text hidden under an image. Pages with negligible ink
     are skipped (a pale blank page is not a scan). If strip itself refuses
     the file, nothing is judged; that refusal already blocks the pipeline.
+
+    `pages`, a collection of 0-based page indexes, limits which pages are
+    judged; None judges them all. The strip is always of the whole
+    document: text left anywhere refuses the file, and a form XObject two
+    pages share is stripped once, so a partial strip could judge differently.
     """
+    # A set, once: `in` on a one-shot iterable would use it up after one page.
+    pages = None if pages is None else set(pages)
     with tempfile.TemporaryDirectory() as tmp:
         stripped = os.path.join(tmp, 'stripped.pdf')
         report = strip_text(src, stripped)
@@ -389,6 +403,8 @@ def invisible_text_pages(src):
         out = []
         try:
             for i in range(min(len(o), len(s))):
+                if pages is not None and i not in pages:
+                    continue
                 area = text_span_area(o[i])
                 if area <= 0:
                     continue
@@ -396,10 +412,13 @@ def invisible_text_pages(src):
                 if (po.width, po.height, po.n) != (ps.width, ps.height, ps.n):
                     continue
                 bo, bs = bytes(po.samples), bytes(ps.samples)
-                dark = sum(1 for k in range(0, len(bo), po.n) if bo[k] < 100)
-                if dark < INK_SKIP:
+                if dark_pixels(bo, po.n) < INK_SKIP:
                     continue
-                fraction = _changed_pixels(bo, bs, po.n) / area
+                # The count only grows, so once it reaches the threshold the
+                # page cannot be flagged and the rest need not be counted.
+                fraction = _changed_pixels(
+                    bo, bs, po.n,
+                    stop=lambda changed, area=area: changed / area >= INVISIBLE_TEXT_MAX_CHANGED) / area
                 if fraction < INVISIBLE_TEXT_MAX_CHANGED:
                     out.append((i, round(fraction, 4)))
         finally:

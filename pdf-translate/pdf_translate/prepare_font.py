@@ -44,6 +44,7 @@ import pymupdf
 
 from . import han_forms, shaping_probe
 from ._console import console, _arg
+from ._pixels import dark_pixels
 from .results import FontError, FontResult, PdfTranslateError
 from .mapping import CLASSES, FORMAT, ROLES, charset_for, load_mapping
 from .typography import validate_font
@@ -308,8 +309,7 @@ def run_prepare_font(font_in, trf, font_out, instance=None, sample=None,
         tw.append((72, 100), sample, font=font, fontsize=14)
         tw.write_text(p)
         pix = p.get_pixmap(dpi=100, clip=pymupdf.Rect(60, 80, 560, 120))
-        dark = sum(1 for i in range(0, len(pix.samples), pix.n)
-                   if pix.samples[i] < 128)
+        dark = dark_pixels(pix.samples, pix.n, below=128)
     except Exception as exc:
         # MuPDF raises rather than returning when it cannot even build a
         # face for the sample. That is the same answer as "draws nothing":

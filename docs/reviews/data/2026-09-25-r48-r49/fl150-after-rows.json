@@ -1,0 +1,27 @@
+[
+ {
+  "name": "fl150",
+  "pages": 4,
+  "extract_all": [
+   0.363,
+   0.362
+  ],
+  "oracle_all": [
+   0.173,
+   0.171
+  ],
+  "strip": [
+   0.087,
+   0.086
+  ],
+  "strip_wt": [
+   0.086,
+   0.086
+  ],
+  "strip_job": "WidgetTextError: widget-text key names more than one field; key each by its fully qualified name: \"CBChoice1_cb1[0]\" -> ['FL-150[0].Page2[0].List5[0].Li9[0].CBChoice1_cb1[0]', 'FL-150[0].Page2[0].List",
+  "verify_self": [
+   0.713,
+   0.709
+  ]
+ }
+]
