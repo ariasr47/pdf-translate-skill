@@ -26,12 +26,23 @@ python scripts/strip_text.py original.pdf stripped.pdf --widget-text widget_text
 python scripts/prepare_font.py tests/fonts/NotoSansJP-VF.ttf translations.json font-regular.ttf --instance wght=400 --sample 収入・支出申告書 --reference-fonts tests/fonts
 python scripts/prepare_font.py tests/fonts/NotoSansJP-VF.ttf translations.json font-bold.ttf --instance wght=700 --sample 収入・支出申告書 --reference-fonts tests/fonts
 python scripts/pipeline.py rebuild --work . original.pdf out.pdf --fill-text "山田太郎 123" --source-words-from segments.json --translations translations.json --allow "Form Adopted for Mandatory Use,Judicial Council of California,Question 1—Other Jobs,Question 10g,Schedule C,September Family Code" --reference-fonts tests/fonts
-python scripts/field_fonts.py out.pdf font-regular.ttf.instanced.ttf final.pdf
+python scripts/field_fonts.py out.pdf tests/fonts/NotoSansJP-VF.ttf final.pdf
 python scripts/compare.py original.pdf final.pdf comparison.html --labels "English (original)|日本語（翻訳・参考訳）" --lang ja
 ```
 
 Expected: verify exit 0, 266/266 fields, kinsoku 322 lines, han-forms
 PASS, 16 scaled runs all ≥ 0.88, `qa_check` 0 errors.
+
+The field-face step changed on 25 September 2026 (v78, R-50). Until then it
+passed `font-regular.ttf.instanced.ttf`, the full wght-400 instance that
+`prepare_font` left beside its subset. `prepare_font` now instances only the
+job's subset and leaves nothing beside it. `field_fonts` has pinned a
+variable face to its Regular instance since v68, which for Noto Sans JP is
+wght 400.
+
+Two other steps need a current library too. `widget_text.json` is keyed by
+partial field names, which v62 and later refuse (R-03), so it needs its keys
+fully qualified. The 2026-09-17 run was v56.
 
 ## What this job is evidence for
 
