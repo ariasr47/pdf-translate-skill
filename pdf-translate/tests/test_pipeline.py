@@ -4168,6 +4168,18 @@ class VariableFieldFontTests(unittest.TestCase):
                                  if name.startswith('out.pdf')),
                              msg=os.listdir(tmp))
 
+    def test_a_failed_call_leaves_no_temporary_face(self):
+        """The pinned copy is written before the input is opened, so a call
+        that fails on the input must still remove it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            vf = small_variable_face(os.path.join(tmp, 'vf.ttf'))
+            out_dir = os.path.join(tmp, 'out')
+            os.makedirs(out_dir)
+            with self.assertRaises(Exception):
+                field_fonts.run_field_fonts(os.path.join(tmp, 'missing.pdf'),
+                                            vf, os.path.join(out_dir, 'out.pdf'))
+            self.assertEqual(os.listdir(out_dir), [])
+
     def test_a_static_face_is_embedded_as_it_is(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = os.path.join(tmp, 'out.pdf')

@@ -107,17 +107,21 @@ def run_field_fonts(inp, font, out, name='TransFF'):
     """
     tmp = out + '.tmp_withfont.pdf'
     static = out + '.tmp_static.ttf'
-    face, instance = static_face(font, static)
-    if instance:
-        log.info(f'field font is variable: embedded its static instance '
-                 f'{instance}, not the default outlines a viewer would draw')
-    doc = pymupdf.open(inp)
+    # The pinned copy exists from here on, so every exit removes it, including
+    # an input that fails to open.
     try:
-        doc[0].insert_font(fontname='TransFieldFont', fontfile=face)
-        doc.save(tmp)
-    finally:
-        doc.close()
+        face, instance = static_face(font, static)
         if instance:
+            log.info(f'field font is variable: embedded its static instance '
+                     f'{instance}, not the default outlines a viewer would draw')
+        doc = pymupdf.open(inp)
+        try:
+            doc[0].insert_font(fontname='TransFieldFont', fontfile=face)
+            doc.save(tmp)
+        finally:
+            doc.close()
+    finally:
+        if os.path.exists(static):
             _remove_quietly(static)
 
     pdf = pikepdf.open(tmp)
