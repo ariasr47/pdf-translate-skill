@@ -232,6 +232,12 @@ refuses before replacing an existing PDF or report:
 | A face where two authored characters share one glyph | One CMap per glyph cannot preserve both |
 | A source font role that the supplied face does not actually have | Better a typed refusal than a silent wrong role |
 
+A refusal from the source-content check names the occurrence it is about: in
+`refusals['typography']`, `occurrence_id` and `source_text` are those of the
+segment that holds where the offending text starts. A whole-page construct,
+such as `UserUnit`, or offending text that no segment holds, carries the
+`page` with no occurrence.
+
 Possible occlusion and unresolved clipping in the **final** file are REVIEW, not
 FAIL: the file may be correct, but this cannot attest that it is.
 

@@ -1041,6 +1041,19 @@ def _measure_typography(page, segment, target, font_for, inks_for, neighbors, wi
     return _TypographyPlacement(tuple(widths), ratio, (ox, baseline), size, color, tuple(drawn_boxes))
 
 
+def _content_segment(segments, issue):
+    """The occurrence a source-content issue is about: the smallest segment on
+    its page whose box holds where the offending text starts. A whole-page
+    issue, or text no segment holds, names only the page (R-42)."""
+    if issue.at is not None:
+        point = pymupdf.Point(issue.at)
+        holding = [s for s in segments if s['page'] == issue.page and
+                   (pymupdf.Rect(s['bbox']) + (-1, -1, 1, 1)).contains(point)]
+        if holding:
+            return min(holding, key=lambda s: pymupdf.Rect(s['bbox']).get_area())
+    return {'page': issue.page}
+
+
 def _run_typography(stripped, document, out, *, original, progress, cancel, scale_report, resource_root):
     """Preflight every occurrence, then use the existing one-line TextWriter path."""
     data, expected = document.extraction, document.extraction['typography']
@@ -1052,8 +1065,7 @@ def _run_typography(stripped, document, out, *, original, progress, cancel, scal
         refuse('stale-extraction', 'original PDF is required and must match the extraction digest')
     from .typography_content import inspect_content
     for issue in inspect_content(original, source=True).issues:
-        segment = next((s for s in data['segments'] if s['page'] == issue.page), {})
-        refuse('unsupported-typography-construct', issue.detail, segment)
+        refuse('unsupported-typography-construct', issue.detail, _content_segment(data['segments'], issue))
     if data['pages'] != list(range(len(expected['page_geometry']))):
         refuse('unsupported-typography-construct', 'a whole-document build requires every source page')
     if any(w.get('kind') in ('no-text-layer', 'invisible-text') for w in data.get('warnings', [])):
