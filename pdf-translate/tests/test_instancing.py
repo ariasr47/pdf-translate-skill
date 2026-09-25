@@ -82,6 +82,35 @@ class InstancingMemoTests(unittest.TestCase):
             self.assertIn('fvar', font)
         self.assertEqual(_instancing._results, {})
 
+    def test_the_callers_settings_survive_a_reuse_as_they_survive_a_real_call(self):
+        def settings(font):
+            return font.recalcBBoxes, font.recalcTimestamp, getattr(font, 'mark', None)
+
+        def prepared():
+            font = TTFont(self.face)
+            font.recalcBBoxes = font.recalcTimestamp = False
+            font.mark = 'set by the caller'
+            return font
+
+        real = prepared()
+        real_copy = _instancing._REAL(real, {'wght': 700})
+        with TTFont(self.face) as font:
+            instancer.instantiateVariableFont(font, {'wght': 700}, inplace=True)   # the first run
+        for inplace in (True, False):
+            with self.subTest(inplace=inplace):
+                font = prepared()
+                result = instancer.instantiateVariableFont(font, {'wght': 700}, inplace=inplace)
+                self.assertEqual(settings(result), settings(real_copy))
+                self.assertEqual(settings(font), settings(real))
+                font.close()
+        real.close()
+
+    def test_a_font_on_an_open_file_goes_to_the_instancer(self):
+        with TTFont(self.face, lazy=True) as font:
+            instancer.instantiateVariableFont(font, {'wght': 700}, inplace=True)
+            self.assertNotIn('fvar', font)
+        self.assertEqual(_instancing._results, {})
+
     def test_arguments_it_cannot_read_reach_the_instancer_unchanged(self):
         with TTFont(self.face) as font:
             with self.assertRaises(TypeError) as real:

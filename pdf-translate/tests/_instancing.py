@@ -10,11 +10,17 @@ change: prepare_font, han_forms and field_fonts still call the instancer, which
 runs in full the first time an input is seen; a repeat gets a copy of that
 first result.
 
-Only a font that is still its file is reused: every table it has read
-compiles back to the file's bytes, so the table directory's checksums
-identify its content exactly. Anything else, and any axis limit that is not
-a single value, goes straight to the instancer.
+Only a font that is still its file is reused: read into memory, as
+`TTFont(path)` reads it, and every table it has read compiles back to the
+file's bytes, so the table directory's checksums identify its content
+exactly. Anything else, and any axis limit that is not a single value, goes
+straight to the instancer. A reuse replaces only what the font is (its reader,
+tables and glyph order); the caller's own settings on the TTFont, such as
+recalcTimestamp, stay as a real call leaves them. The first call's result
+has been saved once to keep a copy, so its bounding boxes and timestamp are
+already recalculated in memory, as the caller's own save would do.
 """
+import copy as _copy
 import inspect
 import io
 
@@ -25,14 +31,18 @@ _REAL = instancer.instantiateVariableFont
 _SIGNATURE = inspect.signature(_REAL)
 _results = {}
 counts = {'run': 0, 'reused': 0}
+# What a font is. Everything else on a TTFont is its caller's setting.
+_CONTENT = ('reader', 'tables', 'glyphOrder', '_reverseGlyphOrderDict')
 
 
 def _key(varfont, axis_limits, options):
     reader = getattr(varfont, 'reader', None)
-    # A glyph order set in memory, or a table read and changed, would make the
-    # file's checksums describe another font. A table only read, as han_forms
-    # reads fvar, compiles back to the file's own bytes.
-    if reader is None or 'glyphOrder' in vars(varfont):
+    # A reader on an open file belongs to whoever opened it. A glyph order set
+    # in memory, or a table read and changed, would make the file's checksums
+    # describe another font. A table only read, as han_forms reads fvar,
+    # compiles back to the file's own bytes.
+    if (reader is None or not isinstance(getattr(reader, 'file', None), io.BytesIO)
+            or 'glyphOrder' in vars(varfont)):
         return None
     try:
         for tag in list(varfont.tables):
@@ -72,14 +82,23 @@ def instantiate(*args, **kwargs):
         counts['run'] += 1
         return result
     counts['reused'] += 1
-    copy = TTFont(io.BytesIO(data))
-    if not inplace:
-        return copy
-    # In place, as the caller asked: the font it holds becomes the instance.
-    varfont.close()
-    varfont.__dict__.clear()
-    varfont.__dict__.update(copy.__dict__)
-    return varfont
+    instance = TTFont(io.BytesIO(data))
+    if inplace:
+        # The font the caller holds becomes the instance; its settings stay.
+        varfont.reader.close()
+        _take_content(varfont, instance)
+        return varfont
+    # A real call returns a deep copy of the caller's font, settings included.
+    settings = {name: value for name, value in vars(varfont).items() if name not in _CONTENT}
+    vars(instance).update(_copy.deepcopy(settings))
+    return instance
+
+
+def _take_content(target, source):
+    for name in _CONTENT:
+        vars(target).pop(name, None)
+        if name in vars(source):
+            vars(target)[name] = vars(source)[name]
 
 
 def install():
