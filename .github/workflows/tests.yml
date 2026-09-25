@@ -40,11 +40,15 @@ jobs:
       # The shaping tests need real OFL faces with GSUB tables. They are
       # fetched, never committed; a fetch failure must not turn into a
       # silent skip, so the check step is separate and fatal.
-      - name: Cache test fonts
-        uses: actions/cache@v6
+      # The key follows the fetcher: a hit is never re-saved, so a fixed key
+      # kept a font set the fetcher had outgrown and both legs re-downloaded
+      # the rest on every run.
+      - name: Restore test fonts
+        id: fonts
+        uses: actions/cache/restore@v6
         with:
           path: pdf-translate/tests/fonts
-          key: noto-fonts-v3
+          key: noto-fonts-${{ hashFiles('pdf-translate/tools/fetch_test_fonts.py') }}
 
       - name: Fetch test fonts
         run: python tools/fetch_test_fonts.py
@@ -52,18 +56,29 @@ jobs:
       - name: Verify test fonts are present
         run: python tools/fetch_test_fonts.py --check
 
+      # Saved now, not at the end of the job: the suite writes instanced faces
+      # into tests/fonts (han_forms caches -wght400 copies beside their
+      # source), and a cached instance would be reused instead of made.
+      - name: Save test fonts
+        if: steps.fonts.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: pdf-translate/tests/fonts
+          key: ${{ steps.fonts.outputs.cache-primary-key }}
+
+      # Discovered, not listed: a hand-written list left a new module unrun.
       - name: Run the suite
-        run: python -m unittest tests.test_pipeline tests.test_corpus_verdicts tests.test_import_surface tests.test_shaping_probe tests.test_verify_report tests.test_page_parity tests.test_cjk tests.test_han_forms tests.test_cjk_leak tests.test_review tests.test_rebuild_attempt tests.test_retypeset_capture tests.test_results tests.test_consumer_contract tests.test_typography_extract tests.test_typography_mapping tests.test_typography_fonts tests.test_typography_retypeset tests.test_typography_verify tests.test_typography_review tests.test_typography_pipeline tests.test_typography_acceptance -v
+        run: python -m unittest discover -s tests -t . -v
 
       - name: Test canary output selection and scoring
-        run: python -m unittest discover -s ../dev/canary -p test_score.py -v
+        run: python -m unittest discover -s ../dev/canary -v
 
       # A binary git mistakes for text gets rewritten on a Windows checkout:
       # corpus/pale_blank.pdf carries no NUL byte, so it was smudged to CRLF
       # and its xref offsets moved. .gitattributes pins that now, and this
       # runs on the Windows leg, where the smudge is the one that happens.
-      - name: Committed binaries survive the checkout
-        run: python -m unittest discover -s ../dev/repo -p test_binary_integrity.py -v
+      - name: Committed binaries survive the checkout; CI finds every test
+        run: python -m unittest discover -s ../dev/repo -v
 
       - name: Build the eval fixtures
         run: python evals/make_fixtures.py --outdir "${{ runner.temp }}/fixtures"
