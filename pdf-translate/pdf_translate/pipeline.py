@@ -97,8 +97,8 @@ log = logging.getLogger(__name__)
 
 # Everything here emits through the package logger; nothing prints. The
 # handler that carries those lines to stdout lives in `_console.py`, shared by
-# every CLI entry point, because `pipeline.py` calls five library functions
-# directly and a second handler would print every line twice. `console()` is
+# every CLI entry point, because `pipeline.py` runs the other stages
+# in-process and a second handler would print every line twice. `console()` is
 # re-entrant for exactly that reason.
 
 

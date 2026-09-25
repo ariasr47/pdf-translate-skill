@@ -7,13 +7,12 @@ Every stage logs; nothing prints. A CLI entry point wraps its work in
 A consumer importing the library gets silence and a result object, and attaches
 whatever handler its own service uses.
 
-**Re-entrant, and that is not a nicety.** `pipeline.py` calls five library
-functions directly — `strip_text` (in `cmd_init`), `retypeset`
-(`cmd_rebuild`), `render_pages` (`cmd_render`), and `field_fonts` and
-`compare` (`cmd_finish`). Once each of those is a loud wrapper that opens
-`console()` itself, `pipeline.main()`'s handler and the wrapper's would both be
-attached to the same logger and every line would print twice. Nested uses
-share the outermost handler instead.
+**Re-entrant, and that is not a nicety.** `pipeline.py` runs the other
+stages in-process, not as subprocesses: loud functions such as `retypeset` and
+`field_fonts`, and CLI entry points such as `extract_segments.main` and
+`verify.main`. Each of those opens `console()` itself, so `pipeline.main()`'s
+handler and the stage's would both be attached to the same logger and every
+line would print twice. Nested uses share the outermost handler instead.
 
 **CLI entry points only.** This mutates process-global logging state and is not
 thread-safe. A service calls the silent `run_*` twins and attaches its own
