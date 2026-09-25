@@ -54,10 +54,14 @@ reproduced on the v79 tree:
 - **Region-less tags.** For 20 of them (`es`, `ja`, `zh-Hans`, `ko`, `de`,
   `fr`, `ar`, `hi`, `ru`, `it`, `pt`, `vi`, `th`, `he`, `tr`, `pl`, `en`,
   `nl`, `uk`, `id`), the old and new writes give byte-identical files on
-  `corpus/choice_fields.pdf`. The app's 16 tags carry no region.
+  `corpus/choice_fields.pdf`.
+- **The app's 13 tags,** measured by the app's session on v79 against v80
+  on its own call shape: all identical in return code, stdout, the stored
+  `/Lang` and output bytes with the trailer `/ID` masked. That includes
+  `ro`, which the 20 above do not.
 - **Extract's record of the source `/Lang`** still goes through
   `doc.language`. It is on the app's route and outside this request, so it
-  is raised with the app, not changed.
+  is filed as its own proposal, which the product rates low.
 
 **Docs:**
 - `references/retypeset.md`;
