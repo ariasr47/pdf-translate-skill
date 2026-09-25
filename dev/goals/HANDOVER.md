@@ -3,6 +3,34 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 25 September 2026, night: main is v68; R-47 built (v69), not pushed
+
+**Main is v68 at `aa54158`.** Rodrigo merged #36 (R-04, v67, merge
+`9cfcf63`) and #37 (R-27, v68, merge `aa54158`). The app's session did the
+merges on his word and retargeted #37 to `main` first; GitHub confirms both,
+and main's CI on `aa54158` passed.
+
+**`perf/r47-typography-verify-page-rects`** carries R-47 at v69. It sits on
+`7a9d1a5`, which is in `main` with the same tree. It is local and waits for
+Rodrigo's go to push, and its PR targets `main`.
+- Typography verify reads each page's crop and source field rects once, not
+  per glyph.
+- On a filled N-400-sized form the verify's peak drops from 3.0–3.6 GB to
+  about 170 MB, with byte-identical gate results.
+- An independent pass on another model passed, with one minor note, ruled
+  no change.
+- Evidence: `docs/reviews/2026-09-25-r47-typography-verify-page-loads.md`.
+  The measurement probe is `dev/probes/r47_verify_page_loads.py`.
+
+**Filed in passing, not built:** typography verify FAILs correct lines drawn
+in a face whose units-per-em is not 1,000, because MuPDF embeds widths
+rounded down to whole thousandths (the last REQUESTS row). It waits for the
+product.
+
+**Next quick win: R-69 with R-97**, CI discovering its tests and keying the
+font cache on the fetcher. Then R-33, R-40, R-42, R-110, R-100, R-99, and
+the docs items R-79, R-80, R-82 and R-83.
+
 ## Start here — 25 September 2026, evening: #36 open (v67); R-27 built (v68), not pushed
 
 **Main is v66 at `637e291`** (#35, R-05 and R-06). Two things are in

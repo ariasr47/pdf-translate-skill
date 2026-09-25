@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 from fontTools.ttLib import TTFont
 import pymupdf
@@ -188,6 +189,44 @@ class TypographyVerifyTests(unittest.TestCase):
         _, check = self.verify()
         self.assertEqual(check.status, 'FAIL')
 
+    def long_first_line(self, prefix):
+        """Author and draw the first occurrence with `prefix` before its bold NOW."""
+        self.update_mapping(lambda conf: conf['targets'][0]['runs'][0].update(text=prefix))
+        regular = pymupdf.Font(fontfile=latin_font_sets()['sans']['regular'])
+        x = 30 + regular.text_length(prefix, fontsize=12)
+
+        def change(rows):
+            rows[0]['text'] = prefix
+            rows[1]['origin'] = (x, 60)
+        self.tamper(change)
+        return x
+
+    def test_glyph_past_the_page_crop_is_a_failure(self):
+        x = self.long_first_line('Pay this amount in full before the due date shown on the form ')
+        self.assertLess(x, 400 - 1)
+        self.assertGreater(x + 20, 400 + 1, 'fixture: NOW must cross the right edge')
+        _, check = self.verify()
+        self.assertEqual(check.status, 'FAIL', check.to_dict())
+        self.assertIn('Run 1: glyph outline extends outside the page crop.',
+                      [f['text'] for f in check.to_dict()['findings']])
+
+    def test_glyph_over_a_source_field_is_a_failure(self):
+        with pymupdf.open(self.job['original']) as doc:
+            widget = pymupdf.Widget()
+            widget.field_name, widget.field_type = 'answer', pymupdf.PDF_WIDGET_TYPE_TEXT
+            widget.rect = pymupdf.Rect(150, 45, 250, 65)
+            doc[0].add_widget(widget)
+            data = doc.tobytes()
+        self.job['original'].write_bytes(data)
+        self.reextract()
+        self.build()
+        x = self.long_first_line('Pay the whole amount ')
+        self.assertGreater(x, 150, 'fixture: NOW must start inside the field')
+        _, check = self.verify()
+        self.assertEqual(check.status, 'FAIL', check.to_dict())
+        self.assertIn('Run 1: glyph outline overlaps source field answer.',
+                      [f['text'] for f in check.to_dict()['findings']])
+
     def test_equal_style_output_may_coalesce_authored_runs(self):
         with pymupdf.open() as doc:
             page = doc.new_page(width=400, height=240)
@@ -321,6 +360,65 @@ class TypographyVerifyTests(unittest.TestCase):
         self.job['output'].write_bytes(data)
         _, check = self.verify()
         self.assertEqual(check.status, 'FAIL', check.to_dict())
+
+
+class FilledFormPageLoadTests(unittest.TestCase):
+    """R-47: under field_fonts' NeedAppearances, every page load rebuilds the
+    widget appearances and keeps them; one load per glyph took a 14-page form's
+    verify to 4 GB. The check must load pages a fixed number of times."""
+
+    def final_form(self, work, prefix_text):
+        job = make_job(work, prefix_text=prefix_text)
+        with pymupdf.open(job['original']) as doc:
+            widget = pymupdf.Widget()
+            widget.field_name, widget.field_type = 'answer', pymupdf.PDF_WIDGET_TYPE_TEXT
+            widget.rect = pymupdf.Rect(200, 180, 290, 210)
+            widget.field_value = 'User123'
+            widget.text_font = 'Helv'
+            widget.text_fontsize = 12
+            doc[0].add_widget(widget)
+            data = doc.tobytes()
+        job['original'].write_bytes(data)
+        run_strip(str(job['original']), str(job['stripped']))
+        run_extract(str(job['original']), str(work), typography=True)
+        extraction = json.loads(job['segments'].read_text(encoding='utf-8'))
+        job['mapping'].write_text(json.dumps(make_mapping(extraction, latin_font_sets())), encoding='utf-8')
+        run_retypeset(*(str(job[k]) for k in ('stripped', 'segments', 'mapping', 'output')),
+                      original=str(job['original']))
+        final = work / 'final.pdf'
+        run_field_fonts(str(job['output']), latin_font_sets()['sans']['regular'], str(final))
+        return job, final
+
+    def verify_counting_loads(self, job, final):
+        loads = []
+        load_page = pymupdf.Document.load_page
+
+        def counted(doc, *args, **kwargs):
+            if doc.name and Path(doc.name).resolve() == final.resolve():
+                loads.append(args)
+            return load_page(doc, *args, **kwargs)
+
+        with mock.patch.object(pymupdf.Document, 'load_page', counted):
+            verdict = run_verify(str(job['original']), str(final), translations=str(job['mapping']),
+                                 segments=str(job['segments']), typography=True)
+        return next(g for g in verdict.gates if g.name == 'typography'), len(loads)
+
+    def test_page_loads_do_not_grow_with_the_glyphs_checked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            counts = {}
+            for label, prefix in (('short', 'Pay '), ('long', 'Pay the full amount now ')):
+                job, final = self.final_form(Path(tmp) / label, prefix)
+                with pymupdf.open(final) as doc:
+                    self.assertTrue(doc.pdf_catalog() and doc.xref_get_key(
+                        doc.pdf_catalog(), 'AcroForm/NeedAppearances')[1] == 'true')
+                    counts[label] = (sum(len(page.get_text('text').replace(' ', '').replace('\n', ''))
+                                         for page in doc),)
+                check, loads = self.verify_counting_loads(job, final)
+                self.assertEqual(check.status, 'PASS', check.to_dict())
+                counts[label] += (loads,)
+            self.assertGreater(counts['long'][0], counts['short'][0] + 30, counts)
+            self.assertEqual(counts['long'][1], counts['short'][1],
+                             f'(glyphs, page loads) per form: {counts}')
 
 
 if __name__ == '__main__':

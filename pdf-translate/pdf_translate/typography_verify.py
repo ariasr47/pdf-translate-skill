@@ -126,7 +126,14 @@ def inspect_output(original, final, document):
         except (ValueError, RuntimeError):
             return GateResult('typography', 'REVIEW', 'cannot attest: unresolved page and annotation drawing order')
         traces = {index: _characters(drawing[0]) for index, drawing in drawings.items()}
-        source_segments = {s['occurrence_id']: s for s in document.extraction['segments']}
+        # Read once, not per glyph: under NeedAppearances every page load
+        # rebuilds the widget appearances and keeps them (R-47).
+        crops = [output[index].rect + (-TOLERANCE, -TOLERANCE, TOLERANCE, TOLERANCE)
+                 for index in range(output.page_count)]
+        source_fields = {}
+        for field in expected['fields']:
+            source_fields.setdefault(field['page'], []).append((field['name'], pymupdf.Rect(field['rect'])))
+        source_segments ={s['occurrence_id']: s for s in document.extraction['segments']}
         selected, embedded = {}, {}
         for target in document.targets:
             segment = source_segments[target.occurrence_id]
@@ -237,12 +244,11 @@ def inspect_output(original, final, document):
                                 if later_paint_intersects(drawings[target.page][1], span.get('seqno'), box,
                                                           drawings[target.page][2]):
                                     finding(target, f'cannot attest run {run_index}: later page paint may cover glyph outlines', True)
-                                page_rect = output[target.page].rect + (-TOLERANCE, -TOLERANCE, TOLERANCE, TOLERANCE)
-                                if not page_rect.contains(box):
+                                if not crops[target.page].contains(box):
                                     finding(target, f'Run {run_index}: glyph outline extends outside the page crop.')
-                                for field in expected['fields']:
-                                    if field['page'] == target.page and box.intersects(pymupdf.Rect(field['rect'])):
-                                        finding(target, f'Run {run_index}: glyph outline overlaps source field {field["name"]}.')
+                                for name, rect in source_fields.get(target.page, ()):
+                                    if box.intersects(rect):
+                                        finding(target, f'Run {run_index}: glyph outline overlaps source field {name}.')
                         except Exception:
                             finding(target, f'cannot attest run {run_index}: unsupported embedded glyph outlines', True)
                     if wanted is not None:
