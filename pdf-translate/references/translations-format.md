@@ -20,7 +20,8 @@ this file is where your judgment lives.
   },
 
   // BCP-47 tag of the TARGET language. retypeset writes it to /Lang and to
-  // dc:language in XMP; screen readers, hyphenation and search all read it,
+  // dc:language in XMP as spelled, region included (es-MX stays es-MX);
+  // screen readers, hyphenation and search all read it,
   // and without it the output still declares the source language. verify
   // REVIEWs a mapping with no "lang" and FAILs an output whose /Lang does
   // not match this.

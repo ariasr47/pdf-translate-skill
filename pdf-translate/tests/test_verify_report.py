@@ -687,7 +687,7 @@ class VersionLockstepTests(unittest.TestCase):
         self.assertEqual(plugin, f'{skill}.0.0')
         self.assertEqual(pyproject, plugin)
         self.assertEqual(pdf_translate.__version__, skill)
-        self.assertEqual(skill, '79')
+        self.assertEqual(skill, '80')
 
 
 class PackagingMetadataTests(unittest.TestCase):
