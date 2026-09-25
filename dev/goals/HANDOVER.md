@@ -3,6 +3,31 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 25 September 2026, late night: #42–#48 open; R-50 built (v78), not pushed
+
+**Main is v71 at `62e87bf`.** A stack waits, to be merged in order:
+- **#42** to **#46,** as below.
+- **#47,** R-51, tests only.
+- **#48,** R-48 with R-49 at v77.
+- **`perf/r50-subset-before-instancing`,** R-50 at v78, on #48. It is local
+  and waits for Rodrigo's go.
+  - `prepare_font` instances the job's subset, 3× less CPU. It leaves
+    nothing beside its output.
+  - It draws identically, but is not byte-identical (the evidence explains).
+  - It removes R-51's memo, which R-50 made moot.
+  - It carries canary run 4's records: Opus 5.5 beside Opus 5, 5/5 each.
+
+**The assigned review list is done** (priorities 1 to 6). E12 waits on its
+six rulings. Filed rows wait for Rodrigo's order; the product advises the
+`widget_text` overwrite first:
+- #19's capture docs;
+- #42's line-start position;
+- canary run 4's `widget_text` overwrite, `/Lang` region and `document`
+  block.
+
+A canary can pin an older model through a workflow agent
+(`model: 'claude-opus-5'`); the CLI is not logged in on this Mac.
+
 ## Start here — 25 September 2026, night: #42–#47 open; R-48 with R-49 built (v77), not pushed
 
 **Main is v71 at `62e87bf`.** A stack waits, to be merged in order:

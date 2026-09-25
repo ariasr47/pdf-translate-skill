@@ -1,0 +1,773 @@
+[
+ {
+  "name": "legacy-NotoSansJP-VF-400-quiet",
+  "cpu": 1.751,
+  "wall": 1.895,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 136,
+   "subset_bytes": 25764,
+   "instance": "wght=400"
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 25764,
+  "sha256_no_timestamp": "675a3e0f6eb8489aed76b286cb64be65005f6b6908d43a8bf46b58e90a2d44a7"
+ },
+ {
+  "name": "legacy-NotoSansJP-VF-400-judged",
+  "cpu": 1.818,
+  "wall": 1.973,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 136,
+   "subset_bytes": 25764,
+   "instance": "wght=400"
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 25764,
+  "sha256_no_timestamp": "675a3e0f6eb8489aed76b286cb64be65005f6b6908d43a8bf46b58e90a2d44a7"
+ },
+ {
+  "name": "legacy-NotoSansJP-VF-700-quiet",
+  "cpu": 1.716,
+  "wall": 1.866,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 136,
+   "subset_bytes": 26004,
+   "instance": "wght=700"
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 26004,
+  "sha256_no_timestamp": "6fa4d9380ea5aff9f5dc4d961435e530c2e447f25ada33bbcf9ad42d760a1c45"
+ },
+ {
+  "name": "legacy-NotoSansJP-VF-700-judged",
+  "cpu": 1.802,
+  "wall": 1.951,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 136,
+   "subset_bytes": 26004,
+   "instance": "wght=700"
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 26004,
+  "sha256_no_timestamp": "6fa4d9380ea5aff9f5dc4d961435e530c2e447f25ada33bbcf9ad42d760a1c45"
+ },
+ {
+  "name": "legacy-NotoSansSC-VF-400-quiet",
+  "cpu": 3.064,
+  "wall": 3.219,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 133,
+   "subset_bytes": 23160,
+   "instance": "wght=400"
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 23160,
+  "sha256_no_timestamp": "14cb953575d64a4624d70daec8384734c0b40c0f7f5b119a7ee1b743eedca4c2"
+ },
+ {
+  "name": "legacy-NotoSansSC-VF-400-judged",
+  "cpu": 3.073,
+  "wall": 3.228,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 133,
+   "subset_bytes": 23160,
+   "instance": "wght=400"
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 23160,
+  "sha256_no_timestamp": "14cb953575d64a4624d70daec8384734c0b40c0f7f5b119a7ee1b743eedca4c2"
+ },
+ {
+  "name": "legacy-NotoSansSC-VF-700-quiet",
+  "cpu": 3.018,
+  "wall": 3.169,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 133,
+   "subset_bytes": 23268,
+   "instance": "wght=700"
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 23268,
+  "sha256_no_timestamp": "8a963b84bf0a917ac92748da9f3ceeda9336a6cf20c7cd0a4771b48b586a02b4"
+ },
+ {
+  "name": "legacy-NotoSansSC-VF-700-judged",
+  "cpu": 3.071,
+  "wall": 3.225,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 133,
+   "subset_bytes": 23268,
+   "instance": "wght=700"
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 23268,
+  "sha256_no_timestamp": "8a963b84bf0a917ac92748da9f3ceeda9336a6cf20c7cd0a4771b48b586a02b4"
+ },
+ {
+  "name": "legacy-NotoSerifJP-VF-400-quiet",
+  "cpu": 2.389,
+  "wall": 2.559,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 136,
+   "subset_bytes": 35696,
+   "instance": "wght=400"
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 35696,
+  "sha256_no_timestamp": "2d8d4bc6cadae5ab6f1003f3e1df228e6515a3743b08e853cb9e84980d37e960"
+ },
+ {
+  "name": "legacy-NotoSerifJP-VF-400-judged",
+  "cpu": 2.474,
+  "wall": 2.644,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 136,
+   "subset_bytes": 35696,
+   "instance": "wght=400"
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 35696,
+  "sha256_no_timestamp": "2d8d4bc6cadae5ab6f1003f3e1df228e6515a3743b08e853cb9e84980d37e960"
+ },
+ {
+  "name": "legacy-NotoSerifJP-VF-700-quiet",
+  "cpu": 2.405,
+  "wall": 2.577,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 136,
+   "subset_bytes": 35720,
+   "instance": "wght=700"
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 35720,
+  "sha256_no_timestamp": "9565da5531767803d1a5fef84ee9998747f60b5925fa89ba9e50b5452a623a18"
+ },
+ {
+  "name": "legacy-NotoSerifJP-VF-700-judged",
+  "cpu": 3.003,
+  "wall": 5.293,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 136,
+   "subset_bytes": 35720,
+   "instance": "wght=700"
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 35720,
+  "sha256_no_timestamp": "9565da5531767803d1a5fef84ee9998747f60b5925fa89ba9e50b5452a623a18"
+ },
+ {
+  "name": "legacy-NotoSerifSC-VF-400-quiet",
+  "cpu": 4.651,
+  "wall": 6.233,
+  "error": {
+   "type": "FontError",
+   "reason": "no-raster",
+   "text": "the face does not rasterize the sample"
+  },
+  "result": null,
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 31320,
+  "sha256_no_timestamp": "65a33eeb7b5de2f7c2772af25548796937a6766b540e5f7dcae29d4775010e77"
+ },
+ {
+  "name": "legacy-NotoSerifSC-VF-400-judged",
+  "cpu": 4.171,
+  "wall": 4.342,
+  "error": {
+   "type": "FontError",
+   "reason": "no-raster",
+   "text": "the face does not rasterize the sample"
+  },
+  "result": null,
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 31320,
+  "sha256_no_timestamp": "65a33eeb7b5de2f7c2772af25548796937a6766b540e5f7dcae29d4775010e77"
+ },
+ {
+  "name": "legacy-NotoSerifSC-VF-700-quiet",
+  "cpu": 4.162,
+  "wall": 4.33,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 133,
+   "subset_bytes": 31340,
+   "instance": "wght=700"
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 31340,
+  "sha256_no_timestamp": "4993920b7eb100e525062cb79575e98c0c849aaffe71956bd971eb3206d1f3e8"
+ },
+ {
+  "name": "legacy-NotoSerifSC-VF-700-judged",
+  "cpu": 4.272,
+  "wall": 4.555,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 133,
+   "subset_bytes": 31340,
+   "instance": "wght=700"
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 31340,
+  "sha256_no_timestamp": "4993920b7eb100e525062cb79575e98c0c849aaffe71956bd971eb3206d1f3e8"
+ },
+ {
+  "name": "legacy-SC-face-for-ja",
+  "cpu": 3.092,
+  "wall": 3.244,
+  "error": {
+   "type": "FontError",
+   "reason": "wrong-han-convention",
+   "text": "the face draws the other region's Han forms"
+  },
+  "result": null,
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 25592,
+  "sha256_no_timestamp": "59d7d027d75782b0ff20bf834ccea11e96756c7ae7ad24d4d6185468838e1a17"
+ },
+ {
+  "name": "legacy-latin",
+  "cpu": 0.02,
+  "wall": 0.176,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 119,
+   "subset_bytes": 24020,
+   "instance": ""
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 24020,
+  "sha256_no_timestamp": "bb9efb2b44fe93e7453c6ac701455e54d499697739fb6627cfcdc484489cffa6"
+ },
+ {
+  "name": "legacy-arabic",
+  "cpu": 0.013,
+  "wall": 0.14,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 127,
+   "subset_bytes": 16756,
+   "instance": ""
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 16756,
+  "sha256_no_timestamp": "17367dc89f052c78b98421e9658496dbeb277597b679b4f108c61f8da4ddd1a7"
+ },
+ {
+  "name": "legacy-devanagari",
+  "cpu": 0.02,
+  "wall": 0.242,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 133,
+   "subset_bytes": 35620,
+   "instance": ""
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 35620,
+  "sha256_no_timestamp": "ae1791df1c82b36c56603617d5833305fa71ed2a9f0a1d8ebf9a2bbd08e56840"
+ },
+ {
+  "name": "legacy-jp-static",
+  "cpu": 0.093,
+  "wall": 0.301,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold",
+    "bold_italic",
+    "italic",
+    "regular"
+   ],
+   "glyphs_added": 136,
+   "subset_bytes": 25732,
+   "instance": ""
+  },
+  "log": "",
+  "files": [
+   "subset.ttf"
+  ],
+  "bytes": 25732,
+  "sha256_no_timestamp": "1206ea4ee5012495f57e8fb7664b95095ec451c781c14d6897f0ba03df6895cc"
+ },
+ {
+  "name": "typo-sans-JP-regular",
+  "cpu": 1.709,
+  "wall": 1.824,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "regular"
+   ],
+   "glyphs_added": 11,
+   "subset_bytes": 3940,
+   "instance": "wght=400"
+  },
+  "log": "",
+  "files": [
+   "prepared.ttf"
+  ],
+  "bytes": 3940,
+  "sha256_no_timestamp": "71595a0011a44f96d46abee7413a37fd2ad760c88d9a585695980142a89d4b1a"
+ },
+ {
+  "name": "typo-sans-JP-bold",
+  "cpu": 1.716,
+  "wall": 1.851,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold"
+   ],
+   "glyphs_added": 11,
+   "subset_bytes": 3988,
+   "instance": "wght=700"
+  },
+  "log": "",
+  "files": [
+   "prepared.ttf"
+  ],
+  "bytes": 3988,
+  "sha256_no_timestamp": "a94b974f724ee87b2e6f7bf2e689dbf8158cb324821d56d8d891f11f5ed4ea4a"
+ },
+ {
+  "name": "typo-sans-JP-italic",
+  "cpu": 0.001,
+  "wall": 0.001,
+  "error": {
+   "type": "MappingError",
+   "reason": null,
+   "text": "missing sans/regular target face"
+  },
+  "result": null,
+  "log": "",
+  "files": [],
+  "bytes": null,
+  "sha256_no_timestamp": null
+ },
+ {
+  "name": "typo-sans-JP-bold_italic",
+  "cpu": 0.0,
+  "wall": 0.0,
+  "error": {
+   "type": "MappingError",
+   "reason": null,
+   "text": "missing sans/bold target face"
+  },
+  "result": null,
+  "log": "",
+  "files": [],
+  "bytes": null,
+  "sha256_no_timestamp": null
+ },
+ {
+  "name": "typo-sans-SC-regular",
+  "cpu": 2.965,
+  "wall": 3.084,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "regular"
+   ],
+   "glyphs_added": 11,
+   "subset_bytes": 3908,
+   "instance": "wght=400"
+  },
+  "log": "",
+  "files": [
+   "prepared.ttf"
+  ],
+  "bytes": 3908,
+  "sha256_no_timestamp": "ec9c85c9e12555c26f9c91a8ec9c430d6c88f5f7b280efaa5e1152c7552d4002"
+ },
+ {
+  "name": "typo-sans-SC-bold",
+  "cpu": 2.979,
+  "wall": 3.098,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold"
+   ],
+   "glyphs_added": 11,
+   "subset_bytes": 3888,
+   "instance": "wght=700"
+  },
+  "log": "",
+  "files": [
+   "prepared.ttf"
+  ],
+  "bytes": 3888,
+  "sha256_no_timestamp": "121348c2ef90625c4422b3914df63c207e08b99c820536a96a3f76fdf583a8d3"
+ },
+ {
+  "name": "typo-sans-SC-italic",
+  "cpu": 0.001,
+  "wall": 0.001,
+  "error": {
+   "type": "MappingError",
+   "reason": null,
+   "text": "missing sans/regular target face"
+  },
+  "result": null,
+  "log": "",
+  "files": [],
+  "bytes": null,
+  "sha256_no_timestamp": null
+ },
+ {
+  "name": "typo-sans-SC-bold_italic",
+  "cpu": 0.0,
+  "wall": 0.0,
+  "error": {
+   "type": "MappingError",
+   "reason": null,
+   "text": "missing sans/bold target face"
+  },
+  "result": null,
+  "log": "",
+  "files": [],
+  "bytes": null,
+  "sha256_no_timestamp": null
+ },
+ {
+  "name": "typo-serif-JP-regular",
+  "cpu": 2.281,
+  "wall": 2.42,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "regular"
+   ],
+   "glyphs_added": 11,
+   "subset_bytes": 5168,
+   "instance": "wght=400"
+  },
+  "log": "",
+  "files": [
+   "prepared.ttf"
+  ],
+  "bytes": 5168,
+  "sha256_no_timestamp": "ca25c6afd4c62790334f833c7ab74b1d949df37319f9fb44b386854a9cb15a72"
+ },
+ {
+  "name": "typo-serif-JP-bold",
+  "cpu": 2.297,
+  "wall": 2.424,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold"
+   ],
+   "glyphs_added": 11,
+   "subset_bytes": 5148,
+   "instance": "wght=700"
+  },
+  "log": "",
+  "files": [
+   "prepared.ttf"
+  ],
+  "bytes": 5148,
+  "sha256_no_timestamp": "18a935ecc2f4d8f06fc93b1d8ab6179567009ea2d56e359723cc66b6c3476ed1"
+ },
+ {
+  "name": "typo-serif-JP-italic",
+  "cpu": 0.001,
+  "wall": 0.001,
+  "error": {
+   "type": "MappingError",
+   "reason": null,
+   "text": "missing serif/regular target face"
+  },
+  "result": null,
+  "log": "",
+  "files": [],
+  "bytes": null,
+  "sha256_no_timestamp": null
+ },
+ {
+  "name": "typo-serif-JP-bold_italic",
+  "cpu": 0.0,
+  "wall": 0.0,
+  "error": {
+   "type": "MappingError",
+   "reason": null,
+   "text": "missing serif/bold target face"
+  },
+  "result": null,
+  "log": "",
+  "files": [],
+  "bytes": null,
+  "sha256_no_timestamp": null
+ },
+ {
+  "name": "typo-serif-SC-regular",
+  "cpu": 4.183,
+  "wall": 4.356,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "regular"
+   ],
+   "glyphs_added": 11,
+   "subset_bytes": 4952,
+   "instance": "wght=400"
+  },
+  "log": "",
+  "files": [
+   "prepared.ttf"
+  ],
+  "bytes": 4952,
+  "sha256_no_timestamp": "38cb99978aa7d291de514a7e57baac8a2dc723b6d36fbf20ee9604d31b16489c"
+ },
+ {
+  "name": "typo-serif-SC-bold",
+  "cpu": 4.107,
+  "wall": 4.25,
+  "error": null,
+  "result": {
+   "schema": 1,
+   "roles": [
+    "bold"
+   ],
+   "glyphs_added": 11,
+   "subset_bytes": 4932,
+   "instance": "wght=700"
+  },
+  "log": "",
+  "files": [
+   "prepared.ttf"
+  ],
+  "bytes": 4932,
+  "sha256_no_timestamp": "34917d4c086be540afbe28ec7be7e1396e1d8efce1574da959be6edf5e52c014"
+ },
+ {
+  "name": "typo-serif-SC-italic",
+  "cpu": 0.0,
+  "wall": 0.0,
+  "error": {
+   "type": "MappingError",
+   "reason": null,
+   "text": "missing serif/regular target face"
+  },
+  "result": null,
+  "log": "",
+  "files": [],
+  "bytes": null,
+  "sha256_no_timestamp": null
+ },
+ {
+  "name": "typo-serif-SC-bold_italic",
+  "cpu": 0.0,
+  "wall": 0.0,
+  "error": {
+   "type": "MappingError",
+   "reason": null,
+   "text": "missing serif/bold target face"
+  },
+  "result": null,
+  "log": "",
+  "files": [],
+  "bytes": null,
+  "sha256_no_timestamp": null
+ }
+]
