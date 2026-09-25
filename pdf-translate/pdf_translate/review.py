@@ -617,7 +617,8 @@ def run_review(work, ingest=None, notes=None, generate=True):
     notes_text = ''
     notes_path = os.path.join(work, notes or 'NOTES.md')
     if os.path.isfile(notes_path):
-        notes_text = open(notes_path, encoding='utf-8-sig').read()
+        with open(notes_path, encoding='utf-8-sig') as fh:
+            notes_text = fh.read()
 
     segments = None
     seg_path = os.path.join(work, 'segments.json')

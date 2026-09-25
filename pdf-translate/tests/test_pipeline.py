@@ -4196,6 +4196,47 @@ class VariableFieldFontTests(unittest.TestCase):
             self.assertEqual(result.instance, '')
 
 
+class ResourceLeakTests(unittest.TestCase):
+    """R-99: CI printed 45 ResourceWarnings per leg: 43 were a NOTES.md that
+    review opened and never closed, and 2 a lazily loaded face in this suite's
+    own han_forms helper. The two instancing tests pass on v74 too: fontTools
+    reads a face opened by path, not lazily, into memory and closes the file
+    (ttFont.py, 4.64), so those unclosed TTFonts held no handle. They guard
+    the `with` blocks against a later lazy open."""
+
+    def assertClosesWhatItOpens(self, call):
+        import gc
+        import warnings
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always', ResourceWarning)
+            call()
+            gc.collect()
+        self.assertEqual([str(w.message) for w in caught if issubclass(w.category, ResourceWarning)], [])
+
+    def test_review_closes_the_notes_file(self):
+        from pdf_translate.review import run_review
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, 'NOTES.md').write_text('Formal register.\n', encoding='utf-8')
+            self.assertClosesWhatItOpens(lambda: run_review(tmp, generate=False))
+
+    def test_han_forms_closes_the_face_it_instances(self):
+        from pdf_translate import han_forms
+        with tempfile.TemporaryDirectory() as tmp:
+            vf = small_variable_face(os.path.join(tmp, 'vf.ttf'))
+            self.assertClosesWhatItOpens(
+                lambda: han_forms._instance(Path(vf), 400, os.path.join(tmp, 'out.ttf')))
+
+    def test_prepare_font_closes_the_face_it_instances(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            vf = small_variable_face(os.path.join(tmp, 'vf.ttf'))
+            mapping = os.path.join(tmp, 'translations.json')
+            with open(mapping, 'w', encoding='utf-8') as fh:
+                json.dump({'fonts': {'regular': vf}, 'translations': {'Name': '山田太郎'}}, fh,
+                          ensure_ascii=False)
+            self.assertClosesWhatItOpens(lambda: prepare_font.run_prepare_font(
+                vf, mapping, os.path.join(tmp, 'subset.ttf'), instance='wght=400'))
+
+
 class FieldAppearanceKeptTests(unittest.TestCase):
     """R-33: field_fonts swaps only the font in a field's /DA. It used to write
     `/TransFF <size> Tf 0 g`, so 153 navy IRS fields and 7 red USCIS signature

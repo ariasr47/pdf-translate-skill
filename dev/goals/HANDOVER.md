@@ -3,6 +3,21 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 25 September 2026, afternoon: #42, #43 and #44 open; R-99 built (v75), not pushed
+
+**Main is v71 at `62e87bf`.** A stack waits, to be merged in order:
+- **#42,** R-42 at v72.
+- **#43,** R-110 at v73.
+- **#44,** R-100 at v74.
+- **`fix/r99-resource-warnings`,** R-99 at v75, on #44. It is local and
+  waits for Rodrigo's go.
+  - The suite's ResourceWarnings go from 45 to 0.
+  - Evidence: `docs/reviews/2026-09-25-r99-resource-warnings.md`.
+
+**The code quick wins are done after R-99. Next: the docs items R-79,
+R-80, R-82 and R-83.** Then the performance items (R-51, R-48 with R-49,
+R-50), unless E12's rulings arrive first.
+
 ## Start here — 25 September 2026, early afternoon: #42 and #43 open; R-100 built (v74), not pushed
 
 **Main is v71 at `62e87bf`.** A stack waits:

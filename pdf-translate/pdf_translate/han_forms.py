@@ -174,13 +174,13 @@ def _discard(path):
 def _instance(src, weight, out):
     from fontTools.ttLib import TTFont
     from fontTools.varLib import instancer
-    font = TTFont(str(src))
-    axes = {a.axisTag: a for a in font['fvar'].axes} if 'fvar' in font else {}
-    wght = axes.get('wght')
-    if wght is None or not wght.minValue <= weight <= wght.maxValue:
-        raise ValueError(f'{src.name} has no wght axis reaching {weight}')
-    instancer.instantiateVariableFont(font, {'wght': weight}, inplace=True)
-    font.save(out)
+    with TTFont(str(src)) as font:
+        axes = {a.axisTag: a for a in font['fvar'].axes} if 'fvar' in font else {}
+        wght = axes.get('wght')
+        if wght is None or not wght.minValue <= weight <= wght.maxValue:
+            raise ValueError(f'{src.name} has no wght axis reaching {weight}')
+        instancer.instantiateVariableFont(font, {'wght': weight}, inplace=True)
+        font.save(out)
 
 
 def render(font, ch):
