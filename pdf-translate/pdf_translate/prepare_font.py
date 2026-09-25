@@ -38,6 +38,7 @@ import shutil
 import string
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pymupdf
@@ -128,6 +129,36 @@ def job_charset(conf):
     chars.discard('‖')
     chars.update('.…·—–「」（）『』、。・　％＄€£¥')
     return chars
+
+
+def _variable_subset(font_in, chars):
+    """font_in cut down to chars, still variable, as an in-memory TTFont.
+
+    Instancing reads every glyph's variations, so instancing a 20,000-glyph
+    CJK face costs 5 to 13 s where instancing its subset costs a fraction of
+    a second (R-50). This subset keeps everything the instancer and the final
+    subset could use: every layout feature, name record and table, glyph
+    names and the .notdef outline. The final subset then prunes it exactly as
+    it pruned the full instance.
+    """
+    from fontTools import subset
+    options = subset.Options()
+    options.layout_features = ['*']
+    options.name_IDs = ['*']
+    options.name_languages = ['*']
+    options.name_legacy = True
+    options.glyph_names = True
+    options.notdef_outline = True
+    options.legacy_kern = True
+    options.symbol_cmap = True
+    options.legacy_cmap = True
+    options.drop_tables = []
+    options.passthrough_tables = True
+    font = subset.load_font(font_in, options, lazy=False)
+    subsetter = subset.Subsetter(options)
+    subsetter.populate(text=''.join(sorted(chars)))
+    subsetter.subset(font)
+    return font
 
 
 def name_static_instance(font, wght):
@@ -249,48 +280,51 @@ def run_prepare_font(font_in, trf, font_out, instance=None, sample=None,
         # subset built from a target with no probe character lacks 直).
         chars.update(han_forms.HAN_CHARS)
 
-    src = font_in
-    if instance and typography:
-        from fontTools.ttLib import TTFont
-        from fontTools.varLib.instancer import instantiateVariableFont
-        try:
-            tag, value = instance.split('=')
-            with TTFont(font_in) as font:
-                # STAT-driven names/style bits accompany real variation outlines.
-                # This must not become a metadata-only emphasis substitution.
-                instantiateVariableFont(font, {tag: float(value)}, inplace=True,
-                                        updateFontNames=True)
-                src = font_out + '.instanced.ttf'
+    # The instanced source and the charset are working files: nothing is left
+    # beside the output. The instance is of the job's subset, so it could not
+    # serve as a field face anyway; field_fonts takes the variable face
+    # (references/fonts.md).
+    with tempfile.TemporaryDirectory(prefix='prepare_font-') as work:
+        src = font_in
+        if instance and typography:
+            from fontTools.varLib.instancer import instantiateVariableFont
+            try:
+                tag, value = instance.split('=')
+                with _variable_subset(font_in, chars) as font:
+                    # STAT-driven names/style bits accompany real variation outlines.
+                    # This must not become a metadata-only emphasis substitution.
+                    instantiateVariableFont(font, {tag: float(value)}, inplace=True,
+                                            updateFontNames=True)
+                    src = os.path.join(work, 'instanced.ttf')
+                    font.save(src)
+            except (OSError, ValueError, KeyError) as exc:
+                raise FontError(f'cannot instantiate target font: {exc}', face=font_in,
+                                reason='uninstantiated-font') from exc
+        elif instance:
+            tag, val = instance.split('=')
+            from fontTools.varLib.instancer import instantiateVariableFont
+            src = os.path.join(work, 'instanced.ttf')
+            with _variable_subset(font_in, chars) as font:
+                instantiateVariableFont(font, {tag: float(val)}, inplace=True)
+                name_static_instance(font, float(val))
                 font.save(src)
-        except (OSError, ValueError, KeyError) as exc:
-            raise FontError(f'cannot instantiate target font: {exc}', face=font_in,
-                            reason='uninstantiated-font') from exc
-    elif instance:
-        tag, val = instance.split('=')
-        from fontTools import ttLib
-        from fontTools.varLib.instancer import instantiateVariableFont
-        src = font_out + '.instanced.ttf'
-        with ttLib.TTFont(font_in) as font:
-            instantiateVariableFont(font, {tag: float(val)}, inplace=True)
-            name_static_instance(font, float(val))
-            font.save(src)
 
-    if typography:
-        validate_font(src, font_class, font_role, chars)
+        if typography:
+            validate_font(src, font_class, font_role, chars)
 
-    charfile = font_out + '.chars.txt'
-    with open(charfile, 'w', encoding='utf-8') as f:
-        f.write(''.join(sorted(chars)))
-    cmd = find_pyftsubset() + [src, f'--text-file={charfile}',
-                               f'--output-file={font_out}']
-    try:
-        subprocess.run(cmd, check=True)
-    except FileNotFoundError:
-        raise FontError(
-            'pyftsubset not found',
-            console_line=('FAIL: pyftsubset not found. Install fonttools '
-                          '(used as: python -m fontTools.subset) and retry.'),
-            exit_code=1, face=font_in, reason='no-pyftsubset')
+        charfile = os.path.join(work, 'chars.txt')
+        with open(charfile, 'w', encoding='utf-8') as f:
+            f.write(''.join(sorted(chars)))
+        cmd = find_pyftsubset() + [src, f'--text-file={charfile}',
+                                   f'--output-file={font_out}']
+        try:
+            subprocess.run(cmd, check=True)
+        except FileNotFoundError:
+            raise FontError(
+                'pyftsubset not found',
+                console_line=('FAIL: pyftsubset not found. Install fonttools '
+                              '(used as: python -m fontTools.subset) and retry.'),
+                exit_code=1, face=font_in, reason='no-pyftsubset')
 
     if typography:
         validate_font(font_out, font_class, font_role, chars)

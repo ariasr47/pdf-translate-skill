@@ -20,14 +20,17 @@ Google Fonts ships glyf-flavored VARIABLE TTFs — the reliable source:
 - Traditional Chinese: `.../ofl/notosanstc/NotoSansTC%5Bwght%5D.ttf`
 - Korean: `.../ofl/notosanskr/NotoSansKR%5Bwght%5D.ttf`
 
-Instance weights from the variable font (`--instance wght=400`, `wght=700`),
-then subset. Serif alternatives (Noto Serif JP/SC/TC/KR) exist for documents
+Give prepare_font the variable font and the weight (`--instance wght=400`,
+`wght=700`). It cuts the face to the job's characters first and instances
+only that, which takes a fraction of a second where the whole CJK face took
+5 to 13; the subset is the same. Serif alternatives (Noto Serif JP/SC/TC/KR) exist for documents
 whose original is serif. Bold in CJK forms is often better served by the
 700 weight than synthetic bolding.
 
-For field input (field_fonts.py) use the FULL instanced font, not the
-translation subset — users type names with characters outside the document.
-Given a variable face, field_fonts pins it to its Regular instance before
+For field input (field_fonts.py) use the FULL font, not the translation
+subset: users type names with characters outside the document. prepare_font
+leaves no full instance behind, so pass the variable face itself. Given a
+variable face, field_fonts pins it to its Regular instance before
 embedding (the result's `instance` says so, e.g. `wght=400`). Embedded as-is,
 a viewer would draw typed text from the default outlines: Thin for Noto Sans
 JP. Instancing the full JP face takes about 5 s, so a service that fills
