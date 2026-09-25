@@ -71,8 +71,20 @@ order, each as a merge commit:
 **Delivered:** every row above. Each row below records its evidence, and
 the product checked every change on its route (v77 to v81).
 
-**Adoption:** none yet. The app stays on v54. Adopting v81 means the app's
-Python 3.14 migration plus an exact pin.
+**The product confirmed the merges** (25 September, read-only with `gh`):
+- all 11 PRs are MERGED with these merge commits;
+- `main` is `0d58202` at version 81.0.0, with CI green.
+
+It mirrored them in the app's `ROADMAP.md` §2.
+
+**Adoption:** none yet. The app stays on v54. Adoption is the product's to
+schedule, and it has put the decision to Rodrigo on its side. Moving to v81
+needs:
+- the app's Python 3.14 migration;
+- an exact pin;
+- the corrections in its pin-bump plan: the `scale_report` envelope,
+  catching `PdfTranslateError`, `capture_dir=""`, and one library version
+  per job.
 
 **Next:** filed rows wait for Rodrigo's order:
 - the `document` block;
