@@ -15,6 +15,8 @@ Usage:
       to_translate.json, widget_text.json). Run it once bare to get the
       widget_text.json scaffold, author the targets, then run it again with
       --widget-text to apply tooltips, dropdown labels and defaults.
+      Extract never writes a fresh scaffold over a widget_text.json that
+      holds authored text; delete the file to get a new one.
 
   python3 pipeline.py from-cores --work DIR [--force]
       scaffold DIR/translations.json from DIR/to_translate.json cores.

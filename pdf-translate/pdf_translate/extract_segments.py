@@ -102,7 +102,7 @@ from ._pixels import VISIBLE_INK, dark_pixels
 from .results import ExtractResult
 from .strip_text import (
     GEOMETRY_SPACE, invisible_text_pages, page_textdict_without_annots,
-    page_rawdict_without_annots, widget_text_scaffold)
+    page_rawdict_without_annots, widget_text_is_authored, widget_text_scaffold)
 
 MARKER = re.compile(
     r'^\s*(\(?[a-z]\.|\([a-z0-9]{1,3}\)|\d{1,2}\.)\s+'
@@ -550,6 +550,7 @@ def run_extract(src, outdir, *, typography=False, gap=12.0, pages=None):
         segments_path=result.get('segments_path') or '',
         to_translate_path=result.get('to_translate_path') or '',
         widget_text_path=result.get('widget_text_path') or '',
+        widget_text_kept=bool(result.get('widget_text_kept')),
         typography=result.get('typography'),
     )
 
@@ -770,6 +771,10 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None, *, typography=False)
     to_path = os.path.join(outdir, 'to_translate.json')
     widget_path = os.path.join(outdir, 'widget_text.json')
     widget_text = widget_text_scaffold(src)
+    # The author fills widget_text.json in place and passes it back through
+    # `pipeline.py init --widget-text`, which extracts again into the same
+    # directory. A fresh scaffold written over it would lose every target.
+    widget_kept = widget_text_is_authored(widget_path)
     segment_data = {'source': src, 'segments': segments, 'warnings': warnings,
                     'document': document, 'pages': sorted(wanted),
                     'geometry': {'space': GEOMETRY_SPACE,
@@ -778,8 +783,9 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None, *, typography=False)
         segment_data['typography'] = typography_data
         typography_data = typo.bind_extraction(segment_data)
         segment_data['typography'] = typography_data
-    with open(widget_path, 'w', encoding='utf-8') as f:
-        json.dump(widget_text, f, ensure_ascii=False, indent=1)
+    if not widget_kept:
+        with open(widget_path, 'w', encoding='utf-8') as f:
+            json.dump(widget_text, f, ensure_ascii=False, indent=1)
     with open(seg_path, 'w', encoding='utf-8') as f:
         json.dump(segment_data, f, ensure_ascii=False, indent=1)
     cores = [{'text': k, 'count': v} for k, v in uniq.items()]
@@ -801,6 +807,7 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None, *, typography=False)
         'to_translate_path': to_path,
         'widget_text': widget_text,
         'widget_text_path': widget_path,
+        'widget_text_kept': widget_kept,
         **({'typography': typography_data} if typography else {}),
     }
 
@@ -875,7 +882,10 @@ def _main(argv=None):
     nwidget = len(result['widget_text'])
     log.info(f'{nseg} segments, {nuniq} unique strings to translate, '
           f'{nw} warnings -> segments.json / to_translate.json')
-    if nwidget:
+    if result['widget_text_kept']:
+        log.info(f'kept {result["widget_text_path"]}: it holds authored widget '
+              f'text, so no fresh scaffold was written over it (delete it for one)')
+    elif nwidget:
         log.info(f'{nwidget} field(s) carry widget text (tooltips, dropdown '
               f'labels, defaults) -> widget_text.json; author each "target" '
               f'and pass it to strip_text.py --widget-text')

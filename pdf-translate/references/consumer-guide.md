@@ -140,7 +140,7 @@ and the product's ruling R5.
 | `stripped.pdf` | `run_strip` | the source with every page text run deleted |
 | `segments.json` | `run_extract` | geometry, one entry per placeable segment. Every `origin` and `bbox` is in the page's unrotated space, the space `page.get_text` reports. The top-level `geometry` names that space and lists each `/Rotate` page with its `rotation` and unrotated `width` and `height`. To draw over a render of such a page, map through `page.rotation_matrix` |
 | `to_translate.json` | `run_extract` | the unique cores, with counts |
-| `widget_text.json` | `run_extract` | the tooltip / dropdown / default scaffold |
+| `widget_text.json` | `run_extract` | the tooltip / dropdown / default scaffold. A file that already holds authored text is kept, not overwritten, and `ExtractResult.widget_text_kept` is true |
 | `translations.json` | **you** | the mapping. The library never writes it |
 | `font-sub.ttf` | `run_prepare_font` | the subset face |
 | `out.pdf` | `run_retypeset` | the translated document |
