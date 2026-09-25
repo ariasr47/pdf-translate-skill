@@ -497,9 +497,9 @@ def cmd_rebuild(argv):
     # the caller meant as an input, and OUT must not replace it either.
     inputs.extend(arg.split('=', 1)[1] for arg in extra
                   if any(arg.startswith(flag + '=') for flag in value_flags))
-    # R-05: a legacy retypeset is never told the original, so only this
-    # check stops OUT from replacing it; the mapping and segments are
-    # checked again inside retypeset, fonts only there.
+    # R-05: checked here, before anything is written, for every input;
+    # retypeset checks the original, mapping and segments again, and the
+    # fonts only there.
     from .retypeset import _same_path
     if any(_same_path(out, path) for path in inputs):
         log.info(f'rebuild: output path must not overwrite an input: {out}')
@@ -529,7 +529,10 @@ def cmd_rebuild(argv):
             extra += ['--translations', tr]
             if '--segments' not in extra:
                 extra += ['--segments', segs]
-    rc = retypeset(stripped, segs, tr, out, **({'original': orig} if typography else {}))
+    # The original goes to every job: a typography build needs it, and a
+    # legacy one records it in a capture bundle, which without it says
+    # `source_pdf: null` (R-40). Legacy drawing never reads it.
+    rc = retypeset(stripped, segs, tr, out, original=orig)
     if rc != 0:
         log.info(f'elapsed {time.perf_counter()-t0:.2f}s (retypeset failed)')
         return rc

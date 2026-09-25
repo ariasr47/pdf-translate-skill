@@ -116,8 +116,8 @@ on `run_retypeset`/`retypeset`, `--capture-dir DIR` on this script, or the
 `PDF_TRANSLATE_CAPTURE_DIR` environment variable (checked only when neither
 of those is given), and a refusal caused **specifically** by a run scaling
 below `SCALE_MIN` writes a timestamped, self-contained, replayable bundle
-under that directory: a copy of the source PDF (when `original` was given)
-and the stripped PDF, the segments and the authored mapping (with its font
+under that directory: a copy of the source PDF (when `original` was given;
+`pipeline.py rebuild` always gives it) and the stripped PDF, the segments and the authored mapping (with its font
 paths rewritten to the copies bundled alongside it), the structured refusal
 (`exc.to_dict()`, so the command and library version travel with it), the
 affected occurrence's page and geometry, and whether a caller-authored box
