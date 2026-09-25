@@ -32,7 +32,33 @@ Claude sessions do this by name with `SendMessage`; other agents go through
 Rodrigo. Whatever a message settles is written into this file in the same
 session.
 
-## Current coordination status — 25 September 2026, late afternoon
+## Current coordination status — 25 September 2026, evening
+
+**Main is v71 at `62e87bf`.** Six things are in flight, each stacked on
+the one before:
+- **#42,** R-42 at v72;
+- **#43,** R-110 at v73;
+- **#44,** R-100 at v74;
+- **#45,** R-99 at v75;
+- **#46,** the docs items R-79, R-80, R-82 and R-83 at v76;
+- **R-51,** tests only, still v76, on `perf/r51-test-font-instances`. It
+  waits for Rodrigo's go to push.
+
+The app's session merges in order and retargets each to `main` first.
+
+**For a consumer, R-51 changes nothing:** only the test suite changes, and
+the version stays 76.
+
+**Next:** R-48 with R-49, then R-50. E12 goes first if its rulings arrive.
+
+**Adoption:** none yet. The app stays on v54.
+
+**Proposed:** typography verify's units-per-em drift, and `field_fonts`'s
+`/FT` lookup.
+
+**Unchanged:** E12 is blocked on its six rulings, and R-94 is "not yet".
+
+## Coordination status — 25 September 2026, late afternoon (historical snapshot)
 
 **Main is v71 at `62e87bf`.** Five things are in flight, each stacked on
 the one before:
@@ -734,7 +760,7 @@ None of the app's five names is touched. A tripwire on the late pass never fired
 
 Evidence: `docs/reviews/2026-09-25-r99-resource-warnings.md`. Rodrigo approved in this session: R-99 is PR #45, stacked on #44. **R-79, R-80, R-82 and R-83 built** 25 September, v76, branch `docs/r79-r83-docs-quick-wins`, stacked on #45. `references/retypeset.md` lists all nine legacy refusal kinds, where it named two. It shows the enveloped `scale_report.json`, where it showed the pre-v58 bare list. `SKILL.md` counts five identity facts, gives the full-discovery test command (756 test IDs; the old command ran 278), and puts the recon note back on `failure-modes.md`. The evals no longer name `pipeline.py verify`, which exits 2. Comments cite functions, not drifted line numbers. `tests/test_shipped_docs.py` locks each fix against the code, and all 8 of its tests fail on v75. Three independent passes on another model confirmed every claim by running it; their one finding, a miscounted comment, is fixed. Evidence: `docs/reviews/2026-09-25-r79-r83-docs-quick-wins.md`. |
 
-| 2026-09-24 | **Review performance items** (review priority 6). R-51: test CJK faces instanced once, not per test. R-48 with R-49: the pixel and character loops in extract and verify replaced by exact equivalents. R-50: `prepare_font` subsets before instancing. **Acceptance:** the shared bar, and output identical by a render or byte diff. | R-51 is about 79% of Linux CI time; the loops are about half of extract and verify time. | **accepted** — priority 6 (the app's `REQUEST-to-skill-review-2026-09-24`). |
+| 2026-09-24 | **Review performance items** (review priority 6). R-51: test CJK faces instanced once, not per test. R-48 with R-49: the pixel and character loops in extract and verify replaced by exact equivalents. R-50: `prepare_font` subsets before instancing. **Acceptance:** the shared bar, and output identical by a render or byte diff. | R-51 is about 79% of Linux CI time; the loops are about half of extract and verify time. | **accepted** — priority 6 (the app's `REQUEST-to-skill-review-2026-09-24`). Rodrigo approved in this session: the docs items are PR #46, stacked on #45. **R-51 built** 25 September, tests only, so the version stays 76, branch `perf/r51-test-font-instances`, stacked on #46. `tests/_instancing.py` memoizes fontTools' instancer for a test run. `test_han_forms` and `test_cjk_leak` opt in, and still call the real library paths. Between them they built four CJK instances 18 times; now each is built once. Cold, the two modules took 139.7 s before and 64.5 s after. Output is identical: independent passes found 46 fonts byte-identical and 22 PDFs pixel-identical with the memo on and off. They found three defects in the memo, each fixed with a test. `test_typography_fonts` does not opt in: measured, it got slower (125.5 s against 137.0 s). The acceptance probe runs as a subprocess and is frozen evidence; R-50 is the library-side fix for its cost. The CI before-and-after comes from the PR's own run. Evidence: `docs/reviews/2026-09-25-r51-test-font-instances.md`. |
 
 | 2026-09-24 | **Proposal from this library: refuse clip-mode text.** Strip drops text drawn in a clipping render mode (`Tr` 4–7) whole, so graphics that relied on that clip draw unclipped. The proposal was (a) refuse such a page with a named reason, or (b) leave it, documented. | Found while measuring R-01. The 17 wild PDFs and 16 corpus fixtures contain 0 cases. | **declined** — the product chose (b) on 24 September. The app reads refusals from retypeset's printed output by fixed patterns, so a new refusal kind could reach an app path that does not recognise it. Documented in `references/failure-modes.md` §4 and the DECISIONS row of 2026-09-24 on the R-01 branch; to be revisited with app-side support if design-heavy PDFs appear. |
 

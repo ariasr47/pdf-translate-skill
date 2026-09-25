@@ -3,6 +3,25 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 25 September 2026, evening: #42–#46 open; R-51 built (tests only), not pushed
+
+**Main is v71 at `62e87bf`.** A stack waits, to be merged in order:
+- **#42,** R-42 at v72.
+- **#43,** R-110 at v73.
+- **#44,** R-100 at v74.
+- **#45,** R-99 at v75.
+- **#46,** the docs items R-79, R-80, R-82 and R-83 at v76.
+- **`perf/r51-test-font-instances`,** R-51, on #46. Tests only, so still
+  v76. It is local and waits for Rodrigo's go.
+  - `tests/_instancing.py` builds each repeated CJK test instance once per
+    run. `test_han_forms` and `test_cjk_leak` opt in.
+  - Evidence: `docs/reviews/2026-09-25-r51-test-font-instances.md`. Its CI
+    after-column is filled from the PR's first run.
+
+**Next: R-48 with R-49**, then R-50, unless E12's rulings arrive first.
+R-50 (subset before instancing) is also the fix for the acceptance probe's
+instancing, which R-51 could not reach.
+
 ## Start here — 25 September 2026, late afternoon: #42–#45 open; docs items built (v76), not pushed
 
 **Main is v71 at `62e87bf`.** A stack waits, to be merged in order:
