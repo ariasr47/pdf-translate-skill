@@ -384,6 +384,32 @@ class LegacyCaptureTests(unittest.TestCase):
         self.assertEqual(manifest['occurrence']['box_permitted'], box)
         self.assertIn('caller-authored box', manifest['occurrence']['box_permitted_note'])
 
+    def test_rebuild_records_the_source_pdf_of_a_legacy_job(self):
+        """R-40: `rebuild` always has the original in hand, but passed it to
+        retypeset only for typography jobs, so every legacy bundle it wrote
+        said `source_pdf: null`."""
+        from pdf_translate.pipeline import cmd_rebuild
+        job, source_text = make_legacy_job(Path(self.tmp.name) / 'job', self.font)
+        old = os.environ.get(capture.ENV_VAR)
+        os.environ[capture.ENV_VAR] = str(self.captures)
+        try:
+            rc = cmd_rebuild([str(job['original']), str(Path(self.tmp.name) / 'out.pdf'),
+                              '--work', str(job['stripped'].parent)])
+        finally:
+            if old is None:
+                os.environ.pop(capture.ENV_VAR, None)
+            else:
+                os.environ[capture.ENV_VAR] = old
+        self.assertNotEqual(rc, 0, 'the overflowing job must still refuse')
+        cases = list(self.captures.iterdir())
+        self.assertEqual(len(cases), 1, cases)
+        manifest = json.loads((cases[0] / 'manifest.json').read_text(encoding='utf-8'))
+        self.assertEqual(manifest['mapping_format'], 'legacy')
+        self.assertEqual(manifest['occurrence']['key'], source_text)
+        self.assertEqual(manifest['files']['source_pdf'], 'source.pdf')
+        self.assertEqual((cases[0] / 'source.pdf').read_bytes(), job['original'].read_bytes())
+        self.assertEqual(manifest['command']['given']['original'], os.path.abspath(job['original']))
+
     def test_env_var_is_the_opt_in_switch_when_no_argument_is_given(self):
         job, _ = make_legacy_job(Path(self.tmp.name) / 'job', self.font)
         old = os.environ.get(capture.ENV_VAR)

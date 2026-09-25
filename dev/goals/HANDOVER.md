@@ -3,6 +3,22 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 25 September 2026, morning: #40 open (v70); R-40 built (v71), not pushed
+
+**Main is v69 at `b504821`** (#39, R-69 and R-97, CI only). Two things are
+in flight:
+- **#40** is open against `main`, with R-33 at v70.
+- **`fix/r40-capture-source-pdf`** sits on #40, with R-40 at v71. It is
+  local and waits for Rodrigo's go.
+  - `rebuild` gives the original to every job, so a legacy capture bundle
+    records `source_pdf`.
+  - An independent pass: PASS, no findings.
+  - Evidence: `docs/reviews/2026-09-25-r40-capture-source-pdf.md`.
+
+**Next quick win: R-42**, a typography preflight refusal naming the
+offending text. Then R-110, R-100, R-99, and the docs items R-79, R-80, R-82
+and R-83.
+
 ## Start here — 25 September 2026, before dawn: #39 open (CI only); R-33 built (v70), not pushed
 
 **Main is v69 at `19252b7`.** Two things are in flight:

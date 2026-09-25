@@ -236,7 +236,8 @@ fails silently, which is the worst way to fail.
 default. When a refusal is caused specifically by a run scaling below
 `SCALE_MIN` — not any `PlacementError`, only that one — a self-contained,
 replayable bundle is written under a new timestamped subdirectory of
-`capture_dir`: the source PDF (if you passed `original`) and stripped PDF,
+`capture_dir`: the source PDF (if you passed `original`; `pipeline.py
+rebuild` always does) and stripped PDF,
 segments, the authored mapping with its fonts, the structured refusal
 (`exc.to_dict()`), the occurrence's page and position, and its box
 permission if one is on record (`null`, with a note, when it is not — never
