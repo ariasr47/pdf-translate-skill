@@ -3,6 +3,21 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 25 September 2026, early afternoon: #42 and #43 open; R-100 built (v74), not pushed
+
+**Main is v71 at `62e87bf`.** A stack waits:
+- **#42,** R-42 at v72.
+- **#43,** R-110 at v73, on #42.
+- **`chore/r100-dead-code`,** R-100 at v74, on #43. It is local and waits
+  for Rodrigo's go.
+  - Four pieces of dead code are removed.
+  - A tripwire and an adversarial independent pass both confirm nothing
+    removed was live.
+  - Evidence: `docs/reviews/2026-09-25-r100-dead-code.md`.
+
+**Next quick win: R-99**, closing the ResourceWarnings. Then the docs items
+R-79, R-80, R-82 and R-83.
+
 ## Start here — 25 September 2026, midday: #42 open (v72); R-110 built (v73), not pushed
 
 **Main is v71 at `62e87bf`.** Two things are in flight:
