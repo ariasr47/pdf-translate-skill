@@ -3,7 +3,36 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 25 September 2026, after close: #42–#52 open
+## Start here — 25 September 2026, stack merged: main is v81 at `0d58202`
+
+**Nothing is in flight.** #42 to #52 were merged in order on Rodrigo's
+instruction. The table, and how each merge was checked, are in
+`docs/REQUESTS-from-product.md`'s status.
+- **Before merging:** the merge sequence was rehearsed locally, and its
+  tree passed CI's commands (789 tests).
+- **After:** `main`'s tree is identical to the rehearsed one, and CI on
+  `0d58202` is green.
+
+**The review's assigned list is done,** and so is the product's advised
+work (the widget-text overwrite, `/Lang`, verify gate 22). E12 waits on its
+six rulings.
+
+**Next:** filed rows wait for Rodrigo's order:
+- the `document` block;
+- #19's capture docs;
+- #42's line-start position;
+- the source's whole `/Lang`, which the product rates low.
+
+**Housekeeping, for Rodrigo to ask for:**
+- The merged branches still exist on `origin`; the repo does not delete
+  on merge.
+- The local refs `backup-local/r03-before-stack` and
+  `backup-local/r01-before-stack` remain.
+
+A canary can pin an older model through a workflow agent
+(`model: 'claude-opus-5'`); the CLI is not logged in on this Mac.
+
+## Start here — 25 September 2026, after close (historical): #42–#52 open
 
 **Main is v71 at `62e87bf`.** A stack waits, to be merged in order:
 - **#42** to **#50,** as below.
