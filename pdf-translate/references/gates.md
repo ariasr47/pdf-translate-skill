@@ -211,7 +211,9 @@ purpose, and not reported, when:
 - the slot's target equals its source (data returned as itself).
 
 A null target is not a decision, so an unauthored scaffold excuses nothing.
-REVIEW, never FAIL. Silent when no field carries widget text with a letter
+If you authored a different file than the `widget_text.json` beside
+`--translations`, pass it with `--widget-text`: verify cannot see keeps in
+a file it was not given, and reports them as REVIEW. REVIEW, never FAIL. Silent when no field carries widget text with a letter
 in it. PASS names how many strings were checked.
 
 ## As a library
