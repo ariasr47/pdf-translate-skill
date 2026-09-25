@@ -58,6 +58,44 @@ The differences are in how they worked:
   it could bite, noted a second, and made one observation that is not
   reproduced here.
 
+## Beyond the rubric: the translations compared
+
+Rodrigo asked which model won. The rubric ties, so the tiebreak is the
+Spanish itself. The two runs share 15 of 25 strings word for word. The
+evaluator compared the other 10, the merged paragraph, the notice and
+the widget text. The evaluator ran on Opus 5.5, one of the two models
+compared, and was not blind to which run was which.
+
+**Where Opus 5.5 reads better:**
+- **The deadline.** "Return it … by Friday, May 8" is "a más tardar el
+  viernes 8 de mayo" in Opus 5.5 and "antes del viernes 8 de mayo" in
+  Opus 5. *Antes del* reads as "before", so a reader may think Friday
+  itself is too late.
+- **The paper size.** SKILL.md says `8 1/2-by-11-inch` stays. Opus 5.5
+  wrote "papel tamaño carta (8 1/2-by-11-inch)"; Opus 5 wrote "8 1/2 por
+  11 pulgadas".
+- **English habits.** Opus 5 writes the title in English title case,
+  "Permiso para la Excursión Escolar", and "para sus registros" for "for
+  your records". Opus 5.5 writes "Formulario de permiso para la
+  excursión" and "para su archivo".
+- **Consistency.** Both write *hijo(a)* and *maestro(a)*. Opus 5.5 also
+  writes *tutor(a)*; Opus 5 writes *tutor*.
+- **The notice.** Opus 5.5 quotes the English title, «Field Trip
+  Permission Slip», and allowlists it. Opus 5 runs it unquoted into the
+  Spanish sentence, which needs no allowlist but reads less clearly.
+
+**Where Opus 5 reads better:** one sentence's word order, "Se devuelven
+otros tamaños" against "Otros tamaños se devuelven". It took four rounds
+to Opus 5.5's five, measuring widths where Opus 5.5 rendered candidates.
+
+**Neither is wrong on:** "Teléfono diurno" against "Teléfono durante el
+día", "Kindergarten" against "Kínder", "llene" against "complete".
+
+**Verdict: Opus 5.5, narrowly, on the translation.** The rubric still
+scores them equal. The deadline is the one difference that changes what
+a reader does. A blind
+judge on a third model has not been run.
+
 ## What it found
 
 Three proposals are filed in `docs/REQUESTS-from-product.md`, 25 September:
