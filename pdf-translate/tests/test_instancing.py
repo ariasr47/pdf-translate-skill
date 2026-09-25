@@ -61,13 +61,34 @@ class InstancingMemoTests(unittest.TestCase):
                 self.assertEqual(_saved(font), self.real(axes, **options), (axes, options))
         self.assertEqual(len(_instancing._results), 3)
 
-    def test_a_font_already_read_or_a_range_goes_to_the_instancer(self):
+    def test_a_table_only_read_is_still_the_file(self):
+        for _ in range(2):
+            with TTFont(self.face) as font:
+                self.assertIn('wght', [axis.axisTag for axis in font['fvar'].axes])
+                instancer.instantiateVariableFont(font, {'wght': 700}, inplace=True)
+                self.assertEqual(_saved(font), self.real({'wght': 700}))
+        self.assertEqual(len(_instancing._results), 1)
+
+    def test_a_font_changed_in_memory_or_a_range_goes_to_the_instancer(self):
         with TTFont(self.face) as font:
             font['name'].names[0].string = 'changed in memory'
             instancer.instantiateVariableFont(font, {'wght': 700}, inplace=True)
         with TTFont(self.face) as font:
+            font.setGlyphOrder(font.getGlyphOrder())
+            font.tables.clear()
+            instancer.instantiateVariableFont(font, {'wght': 700}, inplace=True)
+        with TTFont(self.face) as font:
             instancer.instantiateVariableFont(font, {'wght': (400, 700)}, inplace=True)
             self.assertIn('fvar', font)
+        self.assertEqual(_instancing._results, {})
+
+    def test_arguments_it_cannot_read_reach_the_instancer_unchanged(self):
+        with TTFont(self.face) as font:
+            with self.assertRaises(TypeError) as real:
+                _instancing._REAL(font)
+            with self.assertRaises(TypeError) as memo:
+                instancer.instantiateVariableFont(font)
+        self.assertEqual(str(memo.exception), str(real.exception))
         self.assertEqual(_instancing._results, {})
 
 

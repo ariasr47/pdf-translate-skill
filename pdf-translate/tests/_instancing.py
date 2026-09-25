@@ -10,9 +10,10 @@ change: prepare_font, han_forms and field_fonts still call the instancer, which
 runs in full the first time an input is seen; a repeat gets a copy of that
 first result.
 
-Only a font fresh from its file is reused: no table decompiled yet, so its
-table directory's checksums identify its content exactly. Anything else, and
-any axis limit that is not a single value, goes straight to the instancer.
+Only a font that is still its file is reused: every table it has read
+compiles back to the file's bytes, so the table directory's checksums
+identify its content exactly. Anything else, and any axis limit that is not
+a single value, goes straight to the instancer.
 """
 import inspect
 import io
@@ -28,7 +29,16 @@ counts = {'run': 0, 'reused': 0}
 
 def _key(varfont, axis_limits, options):
     reader = getattr(varfont, 'reader', None)
-    if reader is None or varfont.tables:
+    # A glyph order set in memory, or a table read and changed, would make the
+    # file's checksums describe another font. A table only read, as han_forms
+    # reads fvar, compiles back to the file's own bytes.
+    if reader is None or 'glyphOrder' in vars(varfont):
+        return None
+    try:
+        for tag in list(varfont.tables):
+            if tag not in reader or varfont.tables[tag].compile(varfont) != reader[tag]:
+                return None
+    except Exception:
         return None
     try:
         limits = tuple(sorted((tag, float(value)) for tag, value in dict(axis_limits).items()))
@@ -40,11 +50,16 @@ def _key(varfont, axis_limits, options):
 
 
 def instantiate(*args, **kwargs):
-    bound = _SIGNATURE.bind(*args, **kwargs)
-    bound.apply_defaults()
-    options = dict(bound.arguments)
-    varfont, axis_limits = options.pop('varfont'), options.pop('axisLimits')
-    inplace = options.pop('inplace')
+    try:
+        bound = _SIGNATURE.bind(*args, **kwargs)
+        bound.apply_defaults()
+        options = dict(bound.arguments)
+        varfont, axis_limits = options.pop('varfont'), options.pop('axisLimits')
+        inplace = options.pop('inplace')
+    except (TypeError, KeyError):
+        # Arguments this cannot read, or an instancer already wrapped by
+        # something else: not reused.
+        return _REAL(*args, **kwargs)
     key = _key(varfont, axis_limits, options)
     if key is None:
         return _REAL(*args, **kwargs)
