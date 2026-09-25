@@ -465,6 +465,8 @@ deleting anything.
 
 | 2026-09-24 | **Proposal from this library: `python -m pdf_translate.retypeset` and `python -m pdf_translate.verify` print their log.** Run that way, both print nothing: `runpy` re-executes the already imported module as `__main__`, whose logger is not under `pdf_translate`. The exit code and the output file are right. | Found by item 3's Rule 1 review. `scripts/*.py` and `pipeline.py` print normally, and the same happens on v63. | **proposed** 24 September. |
 
+| 2026-09-24 | **Proposal from this library: verify refuses an input flag spelled `--flag=value` instead of ignoring it.** Verify reads its options only as `--flag value`. A caller who writes `--source-words-from=segments.json`, `--translations=…` or `--reference-fonts=…` gets a run with that input silently absent: the gates that need it SKIP or run without it. | Found by R-05's review. `pipeline.py rebuild` now protects a file named in either spelling from being overwritten by OUT, but verify itself still ignores the `=` form. | **proposed** 24 September. |
+
 Add new rows at the bottom. Do not delete a row when its status changes —
 update the status column in place so the history of what was asked for
 stays readable.
