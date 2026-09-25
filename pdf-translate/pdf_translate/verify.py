@@ -129,7 +129,7 @@
                   compared, pixel for pixel, with the Noto reference of the
                   language's convention (lang: ja -> Japanese; zh, zh-Hans
                   -> Simplified Chinese) and with the other convention's,
-                  both instanced at the face's weight. Own reference 0.000
+                  both instanced at the face's weight. Own reference <= 0.02
                   and the other >= 0.10 on two of 直 骨 海: PASS; the
                   reverse: FAIL. No lang, no reference for the convention
                   (zh-Hant, ko), a face without the probe glyphs, a family

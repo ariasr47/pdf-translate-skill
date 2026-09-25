@@ -97,8 +97,8 @@ log = logging.getLogger(__name__)
 
 # Everything here emits through the package logger; nothing prints. The
 # handler that carries those lines to stdout lives in `_console.py`, shared by
-# every CLI entry point, because `pipeline.py` calls five library functions
-# directly and a second handler would print every line twice. `console()` is
+# every CLI entry point, because `pipeline.py` runs the other stages
+# in-process and a second handler would print every line twice. `console()` is
 # re-entrant for exactly that reason.
 
 
@@ -555,8 +555,8 @@ def cmd_render(argv):
 
 
 def _finding_line(severity, kind, core, detail):
-    """qa_check.main's column shape (qa_check.py:386), reused verbatim so a
-    reader who knows one command can read the other."""
+    """qa_check.main's column shape, reused verbatim so a reader who knows
+    one command can read the other."""
     return f'{severity:5} {kind:13} {core[:48]!r}: {detail}'
 
 

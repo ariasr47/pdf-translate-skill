@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "75"
+  version: "76"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -394,7 +394,8 @@ lines — are in `references/retypeset.md`. The rules in one line each:
 - It **fails** if any segment lacks a translation (your coverage gate) and
   **fails without saving** if any run scales below 0.7× — shorten the
   translation, or list that core in `allow_scale` if the cell must stay
-  tiny.
+  tiny. Those are two of nine refusals; `references/retypeset.md` lists
+  every one and its fix.
 - Runs between 0.7× and 1.0× are **listed**, not failed: `scaled runs (N)`
   and `scale_report.json` beside the output, which verify reads back.
   Reword them, or name every one in the delivery. The ratio is what the page
@@ -593,7 +594,7 @@ page 1, written into `notices` with the wording from
 `references/compliance.md`. The output is a
 **working copy, not a certified translation**; say so in those words. If a
 certified translation is required, hand over the certification template
-for a qualified human to sign, and do not sign on anyone's behalf. Summarize every judgment call: the four
+for a qualified human to sign, and do not sign on anyone's behalf. Summarize every judgment call: the five
 identity facts (class, issuer, parallel text or `none`/`not searched`,
 identifiers, terms of art), structural changes (XFA removed, `/Perms` deleted, buttons
 replaced), whether the source was encrypted or certified and what the
@@ -614,13 +615,13 @@ optional model first pass are in `references/review.md`.
 ## References
 
 - `references/failure-modes.md` — the fifteen silent failures and their fixes.
+  Read during recon, before touching the file.
 - `references/terminology-failure-modes.md` — the five ways a term of art goes
   wrong while every gate passes.
 - `references/consumer-guide.md` — running one document end to end **from
   Python**, with no CLI: the six calls, what each returns, every file on disk
   and which call wrote it, refusals as typed exceptions, progress and
   cancellation, process isolation for concurrent PDF jobs, and logging.
-  Read during recon, before touching the file.
 - `references/gates.md` — every verify gate: what it reads, what fails, and
   why. Read when a gate fails, or before promising what verify checks.
 - `references/widget-text.md` — captions, tooltips, dropdown labels and
@@ -640,8 +641,8 @@ optional model first pass are in `references/review.md`.
   right-to-left do in this pipeline. Read at step 4, and at recon when the
   target script is not Latin.
 - `references/retypeset.md` — what retypeset does with a run: glyph
-  coverage, `center`/`right`, font roles, metadata, rotated lines, the two
-  ways a build fails. Read when a build fails or a render looks wrong.
+  coverage, `center`/`right`, font roles, metadata, rotated lines, every way
+  a build fails. Read when a build fails or a render looks wrong.
 - `references/review.md` — the reviewer checklist (a required deliverable),
   who the reviser should be, an optional MQM-typology judge prompt and the
   `review.json` schema. Read at step 8.
@@ -649,8 +650,15 @@ optional model first pass are in `references/review.md`.
   notice belongs in the document (decided at step 1), the working-copy
   wording, and the translator's certification template a human signs.
 
-Regression tests (tiny constructed PDFs, no vendor, no FL-150 dependency):
+Regression tests (tiny constructed PDFs, no vendor, no FL-150 dependency),
+from a repository checkout. The first two commands fetch the test fonts and
+check they are present; the last runs every test module:
 
 ```bash
-python3 -m unittest tests.test_pipeline -v
+python3 tools/fetch_test_fonts.py
+python3 tools/fetch_test_fonts.py --check
+python3 -m unittest discover -s tests -t . -v
 ```
+
+Missing fonts can cause skips, so check the summary's skip count as well as
+the exit code.

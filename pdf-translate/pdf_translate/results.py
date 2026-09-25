@@ -12,10 +12,11 @@ verdict. This module is the rest of that family, so the split is one shape
 learned once rather than seven.
 
 Why a split at all, rather than simply silencing the existing functions:
-`tests/test_pipeline.py` holds 177 `redirect_stdout` blocks and 128 of them
-wrap a library function **directly**. Silencing those functions would break
-every one of those assertions and every caller written against today's shape.
-The twin costs two entry points per stage; silencing costs the contract.
+when this module was written (v58), `tests/test_pipeline.py` held 177
+`redirect_stdout` blocks and 128 of them wrapped a library function
+**directly**. Silencing those functions would have broken every one of those
+assertions and every caller written against the loud shape. The twin costs
+two entry points per stage; silencing costs the contract.
 
 The exceptions carry `console_line` and `exit_code`. That is the whole
 mechanism that keeps the eleven CLIs byte-identical while the library grows a
@@ -140,8 +141,8 @@ class _Result:
 
     Frozen, and every collection field is a tuple: a caller must not be able to
     mutate a result the library handed back, and a list field would let them.
-    `to_dict()` carries `schema` and `version`, mirroring `VerifyVerdict`
-    (`verify.py:322`) — including the deferred import, which is what keeps
+    `to_dict()` carries `schema` and `version`, mirroring
+    `VerifyVerdict.to_dict` — including the deferred import, which is what keeps
     `pdf_translate/__init__.py` importable while importing this.
     """
 
