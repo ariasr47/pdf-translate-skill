@@ -102,6 +102,16 @@
                   changing an export breaks /V and everything submitted.
                   Always runs, like field parity. Silent with no choice
                   fields.
+22. widget text   a tooltip (/TU), dropdown display label or text-field
+                  value or default that has a letter in it and reads the
+                  same in the output as in the original is REVIEW: it never
+                  reaches a content stream, so the leak scan cannot see it.
+                  Kept on purpose, and silent, when the widget-text mapping
+                  deletes the field's key, leaves the slot out, or gives a
+                  target equal to its source. The mapping is --widget-text
+                  PATH, else the widget_text.json beside --translations; a
+                  null target is not a decision. Always runs; silent when
+                  no field carries such text.
 16. document meta with --translations: /Lang must match the mapping's
                   "lang", a translated /Title and translated outline titles
                   must actually be in the output, and the output must not
@@ -162,7 +172,8 @@ Usage:
       [--min-ink 0.4] [--source-regex "[A-Za-z]{4,}"] \
       [--source-words-from segments.json] [--allow-extra-prefix tr_] \
       [--translations translations.json] [--segments segments.json] \
-      [--report verify_report.json] [--fail-on-review]
+      [--widget-text widget_text.json] [--report verify_report.json]
+      [--fail-on-review]
 """
 import json
 import logging
@@ -303,7 +314,7 @@ class GateResult:
 # that prints nothing for a job (no fields, no Arabic, no --translations)
 # records nothing either: the verdict mirrors the console, line for line.
 GATE_NAMES = (
-    'field-parity', 'opt-export-parity', 'fill-roundtrip', 'page-parity',
+    'field-parity', 'opt-export-parity', 'widget-text', 'fill-roundtrip', 'page-parity',
     'extractable-text', 'ink-ratio', 'visible-text', 'canonical-text',
     'arabic-letterforms', 'conjunct-shaping', 'kinsoku', 'han-forms',
     'leak-scan', 'leak-cjk', 'leak-running', 'leak-isolated',
@@ -577,6 +588,87 @@ def collect_translation_targets(conf, exclude_cores=None):
             if part.strip():
                 targets.append(part.strip())
     return targets
+
+
+def load_widget_text_mapping(widget_text, translations):
+    """(mapping or None, where it came from or why it was not used).
+
+    `widget_text` is a path or an already-loaded dict; without one, the
+    `widget_text.json` beside `translations` is read, as segments.json is.
+    """
+    if isinstance(widget_text, dict):
+        return widget_text, 'the widget-text mapping passed in'
+    path = widget_text
+    if path is None and translations:
+        beside = os.path.join(os.path.dirname(os.path.abspath(translations)),
+                              'widget_text.json')
+        path = beside if os.path.isfile(beside) else None
+    if path is None:
+        return None, 'no widget-text mapping was read'
+    try:
+        with open(path, encoding='utf-8') as f:
+            data = json.load(f)
+    except (OSError, ValueError) as exc:
+        return None, f'{path} was not read: {exc}'
+    if not isinstance(data, dict):
+        return None, f'{path} is not a JSON object'
+    return data, path
+
+
+def widget_text_left(orig, trans, mapping=None):
+    """(checked, [(field, label, text)]): how many of the original's widget
+    strings have a letter in them, and those the output still shows in the
+    source language without having been kept on purpose.
+
+    A tooltip, a dropdown's display label or a text field's value or
+    default counts when the output's string equals the original's and has
+    a letter in it. The widget-text mapping marks what was kept on purpose:
+    a field whose key was deleted, a slot the entry leaves out, or a target
+    equal to its source (data returned as itself). A null target is not a
+    decision, so it does not excuse anything. Raises WidgetTextError when
+    the mapping's keys cannot be resolved against the original.
+    """
+    import pikepdf
+    from .strip_text import (authored_widget_targets, resolve_widget_text_keys,
+                             widget_text_scaffold)
+    before, after = widget_text_scaffold(orig), widget_text_scaffold(trans)
+    names = None
+    if mapping is not None:
+        with pikepdf.open(orig) as pdf:
+            names = resolve_widget_text_keys(pdf, mapping)
+
+    def has_letter(text):
+        return any(ch.isalpha() for ch in text)
+
+    checked, left = 0, []
+    for field, entry in before.items():
+        texts = [entry[s]['source'] for s in ('tooltip', 'value', 'default') if s in entry]
+        texts += [o['source'] for o in entry.get('options', [])]
+        checked += sum(1 for text in texts if has_letter(text))
+        now = after.get(field)
+        if now is None:
+            continue   # field parity reports a missing field
+        unchanged = []
+        for slot in ('tooltip', 'value', 'default'):
+            if slot in entry and (now.get(slot) or {}).get('source') == entry[slot]['source']:
+                unchanged.append((slot, slot, entry[slot]['source']))
+        shown = {o['export']: o['source'] for o in now.get('options', [])}
+        for option in entry.get('options', []):
+            if shown.get(option['export']) == option['source']:
+                unchanged.append((('option', option['export']),
+                                  f'option {option["export"]}', option['source']))
+        unchanged = [u for u in unchanged if has_letter(u[2])]
+        if not unchanged:
+            continue
+        if names is not None and field not in names:
+            continue   # the key was deleted: left in place on purpose
+        targets = (authored_widget_targets(mapping[names[field]])
+                   if names is not None else None)
+        for slot, label, text in unchanged:
+            if targets is not None and (slot not in targets or targets[slot] == text):
+                continue
+            left.append((field, label, text))
+    return checked, left
 
 
 def document_metadata_misses(odoc, jdoc, conf):
@@ -1669,7 +1761,7 @@ def page_parity(original, translation):
 def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
                     source_regex=None, source_words_from=None, allow_extra_prefix=None,
                     translations=None, segments=None, fail_on_review=False,
-                    reference_fonts=None, typography=False):
+                    reference_fonts=None, typography=False, widget_text=None):
     """Run structural gates. Returns (exit_code, gates). Prints as it goes."""
     from .mapping import FORMAT, load_mapping
     from .results import MappingError
@@ -1770,6 +1862,31 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
         log.info(f'PASS /Opt export parity ({len(oopt)} choice field(s))')
         record('opt-export-parity', 'PASS',
                f'{len(oopt)} choice field(s)')
+
+    # Gate 22: tooltips, dropdown labels and text defaults never reach a
+    # content stream, so the leak scan cannot see them; a strip without
+    # --widget-text ships them in the source language. REVIEW, not FAIL:
+    # a label that is data stays on purpose, and the mapping says which.
+    from .strip_text import WidgetTextError
+    wt_mapping, wt_source = load_widget_text_mapping(widget_text, translations)
+    try:
+        checked, left = widget_text_left(orig, trans, wt_mapping)
+    except WidgetTextError as exc:
+        wt_source = f'the widget-text mapping was not used: {exc}'
+        checked, left = widget_text_left(orig, trans, None)
+    if left:
+        log.info(f'REVIEW widget text left in the source language ({len(left)}):')
+        for field, label, text in left[:10]:
+            log.info(f'   {field}: {label}: {text}')
+        if wt_mapping is None or wt_source.startswith('the widget-text mapping was not used'):
+            log.info(f'   ({wt_source}; a deleted key or a target equal to its '
+                     f'source marks a string kept on purpose: --widget-text PATH)')
+        record('widget-text', 'REVIEW', f'{len(left)} of {checked} string(s); {wt_source}',
+               findings=[Finding(None, field, f'{label}: {text}')
+                         for field, label, text in left])
+    elif checked:
+        log.info(f'PASS widget text ({checked} string(s) translated or kept on purpose)')
+        record('widget-text', 'PASS', f'{checked} string(s)')
 
     if onames:
         ttarget = cbtarget = None
@@ -2229,7 +2346,7 @@ def _execute_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink
 def run_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
                source_regex=None, source_words_from=None, allow_extra_prefix=None,
                translations=None, segments=None, fail_on_review=False,
-               reference_fonts=None, typography=False):
+               reference_fonts=None, typography=False, widget_text=None):
     """Run structural gates. Returns a VerifyVerdict; does not print or exit.
 
     Silent because the gates log and no handler is attached, not because
@@ -2246,7 +2363,8 @@ def run_verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
         source_regex=source_regex, source_words_from=source_words_from,
         allow_extra_prefix=allow_extra_prefix, translations=translations,
         segments=segments, fail_on_review=fail_on_review,
-        reference_fonts=reference_fonts, typography=typography)
+        reference_fonts=reference_fonts, typography=typography,
+        widget_text=widget_text)
     return _verdict(rc, gates, orig, trans, fail_on_review)
 
 
@@ -2262,7 +2380,7 @@ def _verdict(rc, gates, orig, trans, fail_on_review):
 def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
            source_regex=None, source_words_from=None, allow_extra_prefix=None,
            translations=None, segments=None, fail_on_review=False,
-           reference_fonts=None, typography=False):
+           reference_fonts=None, typography=False, widget_text=None):
     """Run structural gates. Returns 0 on pass, 1 on any failure.
 
     The loud shape, unchanged: same signature, same printed bytes, same return
@@ -2275,7 +2393,8 @@ def verify(orig, trans, fill_text='Test value 123', allow=None, min_ink=0.4,
             source_regex=source_regex, source_words_from=source_words_from,
             allow_extra_prefix=allow_extra_prefix, translations=translations,
             segments=segments, fail_on_review=fail_on_review,
-            reference_fonts=reference_fonts, typography=typography)
+            reference_fonts=reference_fonts, typography=typography,
+            widget_text=widget_text)
     return rc
 
 
@@ -2340,7 +2459,8 @@ def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     from ._console import missing_option_value
     missing = missing_option_value(argv, ('--allow', '--report', '--fill-text', '--min-ink', '--source-regex',
-        '--source-words-from', '--allow-extra-prefix', '--translations', '--segments', '--reference-fonts'))
+        '--source-words-from', '--allow-extra-prefix', '--translations', '--segments', '--reference-fonts',
+        '--widget-text'))
     if missing:
         log.info(f'usage: {missing} requires a value')
         return 2
@@ -2363,6 +2483,7 @@ def _main(argv=None):
         fail_on_review='--fail-on-review' in argv,
         reference_fonts=_arg(argv, '--reference-fonts', None),
         typography='--typography' in argv,
+        widget_text=_arg(argv, '--widget-text', None),
     )
     if report:
         write_report(_verdict(rc, gates, orig, trans, '--fail-on-review' in argv), report)

@@ -580,6 +580,39 @@ def widget_text_is_authored(path):
     return not _scaffold_only(data)
 
 
+def authored_widget_targets(entry):
+    """{slot: target or None} for the slots one widget-text entry names.
+
+    Slots are 'tooltip', 'value', 'default' and ('option', export). A null
+    or unreadable target is None; a slot the entry leaves out is absent,
+    which strip reads as "leave the source text in place". Lenient where
+    strip refuses: verify reads a mapping to learn what was kept on
+    purpose, not to apply it.
+    """
+    def one(spec):
+        if isinstance(spec, str):
+            return spec
+        if isinstance(spec, dict) and isinstance(spec.get('target'), str):
+            return spec['target']
+        return None
+
+    out = {}
+    if not isinstance(entry, dict):
+        return out
+    for slot in ('tooltip', 'value', 'default'):
+        if slot in entry:
+            out[slot] = one(entry[slot])
+    options = entry.get('options')
+    if isinstance(options, dict):
+        for export, target in options.items():
+            out[('option', str(export))] = target if isinstance(target, str) else None
+    elif isinstance(options, list):
+        for item in options:
+            if isinstance(item, dict) and 'export' in item:
+                out[('option', str(item['export']))] = one(item)
+    return out
+
+
 def _scaffold_only(node, key=None):
     if isinstance(node, dict):
         return all(_scaffold_only(v, k) for k, v in node.items())

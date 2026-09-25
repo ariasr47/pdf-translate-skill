@@ -3,7 +3,22 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 25 September 2026, close of day: #42–#50 open; the /Lang fix built (v80), not pushed
+## Start here — 25 September 2026, after close: #42–#52 open
+
+**Main is v71 at `62e87bf`.** A stack waits, to be merged in order:
+- **#42** to **#50,** as below.
+- **#51,** the `/Lang` fix at v80. The product checked its 13 tags:
+  identical.
+- **#52,** verify gate 22 at v81, on #51.
+  - Gate 22, `widget-text`, is REVIEW-only: widget text the output still
+    shows as in the original. The mapping (`--widget-text`, or
+    `widget_text.json` beside `--translations`) marks keeps.
+  - Evidence: `docs/reviews/2026-09-25-widget-text-gate.md`.
+
+**Next:** filed rows wait for Rodrigo's order (`docs/REQUESTS-from-product.md`
+status).
+
+## Start here — 25 September 2026, close of day (historical): #42–#50 open; the /Lang fix built (v80), not pushed
 
 **Main is v71 at `62e87bf`.** A stack waits, to be merged in order:
 - **#42** to **#49,** as below. #49 now also carries canary run 4's

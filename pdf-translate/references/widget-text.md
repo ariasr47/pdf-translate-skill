@@ -39,6 +39,13 @@ result. A file whose every target is still null is refreshed, so a work
 directory reused for another PDF gets that PDF's scaffold. Delete the file
 to get a fresh one.
 
+Verify's gate 22 reviews widget text the output still shows as in the
+original. It reads this file beside `--translations` (or `--widget-text`)
+to tell a miss from a keep: a deleted key, a slot left out, or a target
+equal to its source is kept on purpose (`references/gates.md`). Authored a
+different file? Pass that one to verify with `--widget-text`, or its keeps
+show as REVIEW.
+
 **Keys are full field names.**
 - The scaffold names each field by its fully qualified name: every `/T` up
   the `/Parent` chain, joined with dots, such as
