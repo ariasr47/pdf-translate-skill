@@ -1,0 +1,774 @@
+[
+ {
+  "name": "arxiv-babeldoc",
+  "pages": 10,
+  "extract_all": [
+   1.124,
+   1.117
+  ],
+  "extract_1_5": [
+   1.041,
+   1.036
+  ],
+  "oracle_all": [
+   0.939,
+   0.935
+  ],
+  "strip": [
+   0.103,
+   0.102
+  ],
+  "verify_self": [
+   2.688,
+   2.676
+  ]
+ },
+ {
+  "name": "cajc-fl100",
+  "pages": 3,
+  "extract_all": [
+   0.355,
+   0.352
+  ],
+  "oracle_all": [
+   0.255,
+   0.254
+  ],
+  "strip": [
+   0.056,
+   0.056
+  ],
+  "strip_wt": [
+   0.052,
+   0.052
+  ],
+  "verify_self": [
+   0.657,
+   0.654
+  ]
+ },
+ {
+  "name": "cajc-fl300",
+  "pages": 4,
+  "extract_all": [
+   0.627,
+   0.624
+  ],
+  "oracle_all": [
+   0.414,
+   0.412
+  ],
+  "strip": [
+   0.106,
+   0.105
+  ],
+  "strip_wt": [
+   0.101,
+   0.1
+  ],
+  "verify_self": [
+   1.118,
+   1.112
+  ]
+ },
+ {
+  "name": "eu-gdpr",
+  "pages": 88,
+  "extract_all": [
+   8.624,
+   8.564
+  ],
+  "extract_1_5": [
+   6.964,
+   6.939
+  ],
+  "oracle_all": [
+   6.885,
+   6.859
+  ],
+  "strip": [
+   1.008,
+   1.004
+  ],
+  "verify_self": [
+   14.958,
+   14.905
+  ]
+ },
+ {
+  "name": "fda-3500",
+  "pages": 8,
+  "extract_all": [
+   0.967,
+   0.932
+  ],
+  "oracle_all": [
+   0.672,
+   0.669
+  ],
+  "strip": [
+   0.119,
+   0.119
+  ],
+  "strip_wt": [
+   0.121,
+   0.12
+  ],
+  "verify_self": [
+   1.574,
+   1.567
+  ]
+ },
+ {
+  "name": "irs-1040es",
+  "pages": 16,
+  "extract_all": [
+   1.746,
+   1.735
+  ],
+  "extract_1_5": [
+   1.504,
+   1.497
+  ],
+  "oracle_all": [
+   1.369,
+   1.364
+  ],
+  "strip": [
+   0.264,
+   0.263
+  ],
+  "strip_wt": [
+   0.263,
+   0.262
+  ],
+  "verify_self": [
+   3.017,
+   3.005
+  ]
+ },
+ {
+  "name": "irs-i1040gi",
+  "pages": 126,
+  "extract_all": [
+   26.107,
+   25.975
+  ],
+  "extract_1_5": [
+   22.058,
+   21.966
+  ],
+  "oracle_all": [
+   21.516,
+   21.436
+  ],
+  "strip": [
+   11.863,
+   11.816
+  ],
+  "verify_self": [
+   42.772,
+   42.583
+  ]
+ },
+ {
+  "name": "irs-w4",
+  "pages": 5,
+  "extract_all": [
+   0.822,
+   0.818
+  ],
+  "oracle_all": [
+   0.647,
+   0.644
+  ],
+  "strip": [
+   0.243,
+   0.242
+  ],
+  "strip_wt": [
+   0.241,
+   0.24
+  ],
+  "verify_self": [
+   1.327,
+   1.321
+  ]
+ },
+ {
+  "name": "irs-w9",
+  "pages": 6,
+  "extract_all": [
+   0.69,
+   0.688
+  ],
+  "oracle_all": [
+   0.506,
+   0.504
+  ],
+  "strip": [
+   0.06,
+   0.06
+  ],
+  "strip_wt": [
+   0.061,
+   0.06
+  ],
+  "verify_self": [
+   1.313,
+   1.308
+  ]
+ },
+ {
+  "name": "medicare-handbook",
+  "pages": 128,
+  "extract_all": [
+   10.245,
+   10.183
+  ],
+  "extract_1_5": [
+   9.123,
+   9.09
+  ],
+  "oracle_all": [
+   8.906,
+   8.877
+  ],
+  "strip": [
+   1.01,
+   1.002
+  ],
+  "verify_self": [
+   19.62,
+   19.552
+  ]
+ },
+ {
+  "name": "opm-sf15",
+  "pages": 2,
+  "extract_all": [
+   0.356,
+   0.355
+  ],
+  "oracle_all": [
+   0.246,
+   0.245
+  ],
+  "strip": [
+   0.066,
+   0.066
+  ],
+  "strip_wt": [
+   0.064,
+   0.064
+  ],
+  "verify_self": [
+   0.614,
+   0.612
+  ]
+ },
+ {
+  "name": "rpi4-datasheet",
+  "pages": 13,
+  "extract_all": [
+   1.262,
+   1.247
+  ],
+  "extract_1_5": [
+   1.189,
+   1.185
+  ],
+  "oracle_all": [
+   1.153,
+   1.149
+  ],
+  "strip": [
+   0.348,
+   0.347
+  ],
+  "verify_self": [
+   1.982,
+   1.976
+  ]
+ },
+ {
+  "name": "state-ds11",
+  "pages": 6,
+  "extract_all": [
+   5.955,
+   5.929
+  ],
+  "oracle_all": [
+   5.36,
+   5.341
+  ],
+  "strip": [
+   4.665,
+   4.649
+  ],
+  "strip_wt": [
+   4.672,
+   4.656
+  ],
+  "verify_self": [
+   6.956,
+   6.932
+  ]
+ },
+ {
+  "name": "uscis-g28",
+  "pages": 4,
+  "extract_all": [
+   0.424,
+   0.422
+  ],
+  "oracle_all": [
+   0.342,
+   0.341
+  ],
+  "strip": [
+   0.077,
+   0.077
+  ],
+  "strip_wt": [
+   0.075,
+   0.075
+  ],
+  "verify_self": [
+   0.741,
+   0.738
+  ]
+ },
+ {
+  "name": "uscis-i864",
+  "pages": 12,
+  "extract_all": [
+   1.122,
+   1.118
+  ],
+  "extract_1_5": [
+   1.04,
+   1.036
+  ],
+  "oracle_all": [
+   0.953,
+   0.95
+  ],
+  "strip": [
+   0.186,
+   0.185
+  ],
+  "strip_wt": [
+   0.192,
+   0.191
+  ],
+  "verify_self": [
+   1.989,
+   1.981
+  ]
+ },
+ {
+  "name": "uscis-i9",
+  "pages": 4,
+  "extract_all": [
+   0.55,
+   0.547
+  ],
+  "oracle_all": [
+   0.407,
+   0.406
+  ],
+  "strip": [
+   0.104,
+   0.104
+  ],
+  "strip_wt": [
+   0.104,
+   0.104
+  ],
+  "verify_self": [
+   1.003,
+   1.0
+  ]
+ },
+ {
+  "name": "uscis-n400",
+  "pages": 14,
+  "extract_all": [
+   1.53,
+   1.522
+  ],
+  "extract_1_5": [
+   1.383,
+   1.379
+  ],
+  "oracle_all": [
+   1.226,
+   1.221
+  ],
+  "strip": [
+   0.287,
+   0.285
+  ],
+  "strip_wt": [
+   0.28,
+   0.279
+  ],
+  "verify_self": [
+   2.812,
+   2.801
+  ]
+ },
+ {
+  "name": "ar_source",
+  "pages": 1,
+  "extract_all": [
+   0.192,
+   0.189
+  ],
+  "oracle_all": [
+   0.18,
+   0.179
+  ],
+  "strip": [
+   0.122,
+   0.121
+  ],
+  "verify_self": [
+   0.223,
+   0.222
+  ]
+ },
+ {
+  "name": "choice_fields",
+  "pages": 1,
+  "extract_all": [
+   0.057,
+   0.057
+  ],
+  "oracle_all": [
+   0.054,
+   0.054
+  ],
+  "strip": [
+   0.002,
+   0.002
+  ],
+  "strip_wt": [
+   0.002,
+   0.002
+  ],
+  "verify_self": [
+   0.088,
+   0.087
+  ]
+ },
+ {
+  "name": "colored",
+  "pages": 1,
+  "extract_all": [
+   0.066,
+   0.066
+  ],
+  "oracle_all": [
+   0.062,
+   0.062
+  ],
+  "strip": [
+   0.006,
+   0.006
+  ],
+  "verify_self": [
+   0.096,
+   0.095
+  ]
+ },
+ {
+  "name": "dense_table",
+  "pages": 1,
+  "extract_all": [
+   0.071,
+   0.071
+  ],
+  "oracle_all": [
+   0.065,
+   0.065
+  ],
+  "strip": [
+   0.009,
+   0.009
+  ],
+  "verify_self": [
+   0.104,
+   0.104
+  ]
+ },
+ {
+  "name": "encrypted",
+  "pages": 1,
+  "extract_all": [
+   0.161,
+   0.16
+  ],
+  "oracle_all": [
+   0.098,
+   0.097
+  ],
+  "strip": [
+   0.019,
+   0.019
+  ],
+  "verify_self": [
+   0.226,
+   0.226
+  ]
+ },
+ {
+  "name": "expansion",
+  "pages": 1,
+  "extract_all": [
+   0.067,
+   0.066
+  ],
+  "oracle_all": [
+   0.062,
+   0.061
+  ],
+  "strip": [
+   0.006,
+   0.006
+  ],
+  "verify_self": [
+   0.095,
+   0.094
+  ]
+ },
+ {
+  "name": "image_only",
+  "pages": 1,
+  "extract_all": [
+   0.006,
+   0.005
+  ],
+  "oracle_all": [
+   0.004,
+   0.004
+  ],
+  "strip": [
+   0.002,
+   0.002
+  ],
+  "verify_self": [
+   0.027,
+   0.027
+  ]
+ },
+ {
+  "name": "ja_source",
+  "pages": 1,
+  "extract_all": [
+   0.211,
+   0.208
+  ],
+  "oracle_all": [
+   0.204,
+   0.203
+  ],
+  "strip": [
+   0.147,
+   0.146
+  ],
+  "verify_self": [
+   0.237,
+   0.236
+  ]
+ },
+ {
+  "name": "multicolumn",
+  "pages": 1,
+  "extract_all": [
+   0.067,
+   0.067
+  ],
+  "oracle_all": [
+   0.062,
+   0.061
+  ],
+  "strip": [
+   0.006,
+   0.006
+  ],
+  "verify_self": [
+   0.097,
+   0.097
+  ]
+ },
+ {
+  "name": "nested_xobject",
+  "pages": 1,
+  "extract_all": [
+   0.059,
+   0.059
+  ],
+  "oracle_all": [
+   0.055,
+   0.055
+  ],
+  "strip": [
+   0.002,
+   0.002
+  ],
+  "strip_wt": [
+   0.002,
+   0.002
+  ],
+  "verify_self": [
+   0.089,
+   0.088
+  ]
+ },
+ {
+  "name": "ocr_layer",
+  "pages": 1,
+  "extract_all": [
+   0.109,
+   0.107
+  ],
+  "oracle_all": [
+   0.102,
+   0.102
+  ],
+  "strip": [
+   0.018,
+   0.018
+  ],
+  "verify_self": [
+   0.242,
+   0.241
+  ]
+ },
+ {
+  "name": "pale_blank",
+  "pages": 1,
+  "extract_all": [
+   0.017,
+   0.017
+  ],
+  "oracle_all": [
+   0.002,
+   0.002
+  ],
+  "strip": [
+   0.001,
+   0.001
+  ],
+  "verify_self": [
+   0.043,
+   0.043
+  ]
+ },
+ {
+  "name": "rotated",
+  "pages": 1,
+  "extract_all": [
+   0.064,
+   0.064
+  ],
+  "oracle_all": [
+   0.06,
+   0.059
+  ],
+  "strip": [
+   0.006,
+   0.006
+  ],
+  "verify_self": [
+   0.092,
+   0.091
+  ]
+ },
+ {
+  "name": "rotated_text",
+  "pages": 1,
+  "extract_all": [
+   0.023,
+   0.023
+  ],
+  "oracle_all": [
+   0.021,
+   0.021
+  ],
+  "strip": [
+   0.002,
+   0.002
+  ],
+  "verify_self": [
+   0.034,
+   0.034
+  ]
+ },
+ {
+  "name": "rtl_source",
+  "pages": 1,
+  "extract_all": [
+   0.066,
+   0.065
+  ],
+  "oracle_all": [
+   0.062,
+   0.061
+  ],
+  "strip": [
+   0.006,
+   0.006
+  ],
+  "verify_self": [
+   0.096,
+   0.096
+  ]
+ },
+ {
+  "name": "xobject_text",
+  "pages": 1,
+  "extract_all": [
+   0.062,
+   0.062
+  ],
+  "oracle_all": [
+   0.057,
+   0.057
+  ],
+  "strip": [
+   0.003,
+   0.003
+  ],
+  "verify_self": [
+   0.089,
+   0.089
+  ]
+ },
+ {
+  "name": "synth40",
+  "pages": 40,
+  "extract_all": [
+   2.873,
+   2.863
+  ],
+  "extract_1_5": [
+   2.622,
+   2.611
+  ],
+  "oracle_all": [
+   2.553,
+   2.544
+  ],
+  "strip": [
+   0.129,
+   0.128
+  ],
+  "verify_self": [
+   5.166,
+   5.139
+  ]
+ }
+]

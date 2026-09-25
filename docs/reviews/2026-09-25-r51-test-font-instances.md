@@ -99,8 +99,27 @@ together took **139.7 s** before and **64.5 s** after. That is 54% less,
 with one more test. The instancer ran 4 times, once per face and weight,
 where it ran 18.
 
-**CI:** not measured yet. This PR's first CI run gives the after column
-for the table above, and it is added here then.
+**CI, from #47's run `36176593296`.** One run per side is not a fair
+comparison of whole suites. Three runs of unchanged code, #45's and #46's
+two, took 489.6, 432.2 and 806.5 s on Linux, and 964.5, 920.7 and 733.2 s on
+Windows. #47's run took 565.5 s on Linux and 795.8 s on Windows.
+
+So each run is measured against itself: the two opted-in modules as a share
+of the two modules R-51 did not touch, `test_typography_acceptance` and
+`test_typography_fonts`.
+
+| run | Linux: han_forms + cjk_leak | share | Windows: han_forms + cjk_leak | share |
+|---|---:|---:|---:|---:|
+| #45 `36158853052` (before) | 159.3 s | 0.75 | 304.9 s | 0.71 |
+| #46 `36176589803` (before) | 143.1 s | 0.77 | 293.5 s | 0.75 |
+| #46 `36162340857` (before) | 272.3 s | 0.75 | 223.7 s | 0.71 |
+| #47 `36176593296` (after) | 98.7 s | **0.32** | 128.6 s | **0.30** |
+
+The share falls by about 57%, which matches the 54% of the local cold A/B.
+- `test_han_forms` alone fell from 0.62 of the untouched modules to 0.17 on
+  Linux, and from 0.59 to 0.16 on Windows.
+- `test_cjk_leak` rose a little, from about 0.13 to 0.15 on both: it now
+  makes the first copy of each instance.
 
 **CI's commands on macOS, on `4f7f62d`:**
 - **Suite:** 767 tests, which is 756 plus the 11 new ones, with 0

@@ -1,0 +1,7 @@
+files compared: 15; identical 15; different 0; one side only 0
+scoped oracle (pages 1-5) equals the whole-document verdict cut to them: 0/0 []
+
+CPU seconds, before -> after (wall in brackets for the totals)
+| input | pages | extract_all | extract_1_5 | oracle_all | strip | strip_wt | verify_self |
+| fl150 | 4 | 0.58 → 0.36 |  | 0.37 → 0.17 | 0.09 → 0.09 | 0.09 → 0.09 | 1.05 → 0.71 |
+| **total** | | 0.6 → 0.4 | 0.0 → 0.0 | 0.4 → 0.2 | 0.1 → 0.1 | 0.1 → 0.1 | 1.1 → 0.7 |

@@ -32,7 +32,40 @@ Claude sessions do this by name with `SendMessage`; other agents go through
 Rodrigo. Whatever a message settles is written into this file in the same
 session.
 
-## Current coordination status — 25 September 2026, evening
+## Current coordination status — 25 September 2026, night
+
+**Main is v71 at `62e87bf`.** Seven things are in flight, each stacked on
+the one before:
+- **#42,** R-42 at v72;
+- **#43,** R-110 at v73;
+- **#44,** R-100 at v74;
+- **#45,** R-99 at v75;
+- **#46,** the docs items at v76, with the product's GlyphError ask
+  (`7c91b4a`);
+- **#47,** R-51, tests only, still v76;
+- **R-48 with R-49 at v77,** on `perf/r48-r49-pixel-loops`. It waits for
+  Rodrigo's go to push.
+
+The app's session merges in order and retargets each to `main` first.
+
+**For a consumer, v77 changes nothing but speed.**
+- Extract, the invisible-text oracle and verify give identical output,
+  byte for byte, including on the app's call shape.
+- `invisible_text_pages` gains an optional `pages=`.
+- CPU falls 38–46%, and 63% for a 5-page slice of a long document.
+
+**Next:** R-50, unless E12's rulings arrive first. Two product rows filed
+on 25 September wait for Rodrigo's order: #19's capture docs and #42's
+line-start position.
+
+**Adoption:** none yet. The app stays on v54.
+
+**Proposed:** typography verify's units-per-em drift, and `field_fonts`'s
+`/FT` lookup.
+
+**Unchanged:** E12 is blocked on its six rulings, and R-94 is "not yet".
+
+## Coordination status — 25 September 2026, evening (historical snapshot)
 
 **Main is v71 at `62e87bf`.** Six things are in flight, each stacked on
 the one before:
@@ -786,7 +819,7 @@ None of the app's five names is touched. A tripwire on the late pass never fired
 
 Evidence: `docs/reviews/2026-09-25-r99-resource-warnings.md`. Rodrigo approved in this session: R-99 is PR #45, stacked on #44. **R-79, R-80, R-82 and R-83 built** 25 September, v76, branch `docs/r79-r83-docs-quick-wins`, stacked on #45. `references/retypeset.md` lists all nine legacy refusal kinds, where it named two. It shows the enveloped `scale_report.json`, where it showed the pre-v58 bare list. `SKILL.md` counts five identity facts, gives the full-discovery test command (756 test IDs; the old command ran 278), and puts the recon note back on `failure-modes.md`. The evals no longer name `pipeline.py verify`, which exits 2. Comments cite functions, not drifted line numbers. `tests/test_shipped_docs.py` locks each fix against the code, and all 8 of its tests fail on v75. Three independent passes on another model confirmed every claim by running it; their one finding, a miscounted comment, is fixed. Evidence: `docs/reviews/2026-09-25-r79-r83-docs-quick-wins.md`. |
 
-| 2026-09-24 | **Review performance items** (review priority 6). R-51: test CJK faces instanced once, not per test. R-48 with R-49: the pixel and character loops in extract and verify replaced by exact equivalents. R-50: `prepare_font` subsets before instancing. **Acceptance:** the shared bar, and output identical by a render or byte diff. | R-51 is about 79% of Linux CI time; the loops are about half of extract and verify time. | **accepted** — priority 6 (the app's `REQUEST-to-skill-review-2026-09-24`). Rodrigo approved in this session: the docs items are PR #46, stacked on #45. **R-51 built** 25 September, tests only, so the version stays 76, branch `perf/r51-test-font-instances`, stacked on #46. `tests/_instancing.py` memoizes fontTools' instancer for a test run. `test_han_forms` and `test_cjk_leak` opt in, and still call the real library paths. Between them they built four CJK instances 18 times; now each is built once. Cold, the two modules took 139.7 s before and 64.5 s after. Output is identical: independent passes found 46 fonts byte-identical and 22 PDFs pixel-identical with the memo on and off. They found three defects in the memo, each fixed with a test. `test_typography_fonts` does not opt in: measured, it got slower (125.5 s against 137.0 s). The acceptance probe runs as a subprocess and is frozen evidence; R-50 is the library-side fix for its cost. The CI before-and-after comes from the PR's own run. Evidence: `docs/reviews/2026-09-25-r51-test-font-instances.md`. **Product advice on the next item** (the app's session, 25 September; advice for Rodrigo, who decides): R-48 with R-49 next, until E12's rulings arrive. It is the only performance item on the app's route, since it changes `extract_segments` and `strip_text`. R-50 is off that route: the app calls neither `prepare_font` nor `field_fonts`. The app passes the library a subset of the customer's selected pages, at most 40, so R-48's pixel loops matter to it more than R-49's scoping. Nothing here is urgent for the app, which stays on v54 until it moves to Python 3.14 and `run_retypeset`. **Added to R-48 and R-49's acceptance, at the product's request:** the identical-output evidence covers the app's call shape. That means `extract_segments` writing to an outdir, with its outputs compared byte for byte, not only by render. It means `strip_text` with and without a `widget_text` mapping, on a form with widgets (FL-150). It includes one CJK target, and one source with a `/Rotate` page. The app's session is reviewing PRs #9–#46, its last recorded review being #6–#8 on 16 September, and R-51 before it is pushed. Its findings follow. |
+| 2026-09-24 | **Review performance items** (review priority 6). R-51: test CJK faces instanced once, not per test. R-48 with R-49: the pixel and character loops in extract and verify replaced by exact equivalents. R-50: `prepare_font` subsets before instancing. **Acceptance:** the shared bar, and output identical by a render or byte diff. | R-51 is about 79% of Linux CI time; the loops are about half of extract and verify time. | **accepted** — priority 6 (the app's `REQUEST-to-skill-review-2026-09-24`). Rodrigo approved in this session: the docs items are PR #46, stacked on #45. **R-51 built** 25 September, tests only, so the version stays 76, branch `perf/r51-test-font-instances`, stacked on #46. `tests/_instancing.py` memoizes fontTools' instancer for a test run. `test_han_forms` and `test_cjk_leak` opt in, and still call the real library paths. Between them they built four CJK instances 18 times; now each is built once. Cold, the two modules took 139.7 s before and 64.5 s after. Output is identical: independent passes found 46 fonts byte-identical and 22 PDFs pixel-identical with the memo on and off. They found three defects in the memo, each fixed with a test. `test_typography_fonts` does not opt in: measured, it got slower (125.5 s against 137.0 s). The acceptance probe runs as a subprocess and is frozen evidence; R-50 is the library-side fix for its cost. The CI before-and-after comes from the PR's own run. Evidence: `docs/reviews/2026-09-25-r51-test-font-instances.md`. **Product advice on the next item** (the app's session, 25 September; advice for Rodrigo, who decides): R-48 with R-49 next, until E12's rulings arrive. It is the only performance item on the app's route, since it changes `extract_segments` and `strip_text`. R-50 is off that route: the app calls neither `prepare_font` nor `field_fonts`. The app passes the library a subset of the customer's selected pages, at most 40, so R-48's pixel loops matter to it more than R-49's scoping. Nothing here is urgent for the app, which stays on v54 until it moves to Python 3.14 and `run_retypeset`. **Added to R-48 and R-49's acceptance, at the product's request:** the identical-output evidence covers the app's call shape. That means `extract_segments` writing to an outdir, with its outputs compared byte for byte, not only by render. It means `strip_text` with and without a `widget_text` mapping, on a form with widgets (FL-150). It includes one CJK target, and one source with a `/Rotate` page. The app's session is reviewing PRs #9–#46, its last recorded review being #6–#8 on 16 September, and R-51 before it is pushed. Its findings follow. Rodrigo approved in this session: R-51 is PR #47, stacked on #46. #47's CI measured it: `test_han_forms` and `test_cjk_leak` fell from about 0.75 to 0.32 of the untouched modules' time on Linux, and to 0.30 on Windows. **R-48 with R-49 built** 25 September, v77, branch `perf/r48-r49-pixel-loops`, stacked on #47. The pixel and character loops are exact replacements in `pdf_translate/_pixels.py`. The invisible-text oracle judges only extract's `--pages`, against a whole-document strip. Output is identical on every input measured. That covers 311 files of 34 inputs, and the app's call shape: extract to an outdir byte for byte; strip with and without `widget_text` on FL-150; a CJK target's verdict; a `/Rotate` source. It also covers the 17-PDF wild probe, and 132 artifacts from two independent passes; their one minor finding is fixed with a test. CPU: extract 66.3 → 40.4 s, a 5-page slice 46.7 → 17.4 s, verify 111.7 → 68.8 s. Strip is unchanged: stripping only the wanted pages would not be exact. Evidence: `docs/reviews/2026-09-25-r48-r49-pixel-loops.md`. |
 
 | 2026-09-24 | **Proposal from this library: refuse clip-mode text.** Strip drops text drawn in a clipping render mode (`Tr` 4–7) whole, so graphics that relied on that clip draw unclipped. The proposal was (a) refuse such a page with a named reason, or (b) leave it, documented. | Found while measuring R-01. The 17 wild PDFs and 16 corpus fixtures contain 0 cases. | **declined** — the product chose (b) on 24 September. The app reads refusals from retypeset's printed output by fixed patterns, so a new refusal kind could reach an app path that does not recognise it. Documented in `references/failure-modes.md` §4 and the DECISIONS row of 2026-09-24 on the R-01 branch; to be revisited with app-side support if design-heavy PDFs appear. |
 

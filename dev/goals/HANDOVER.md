@@ -3,6 +3,26 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
+## Start here — 25 September 2026, night: #42–#47 open; R-48 with R-49 built (v77), not pushed
+
+**Main is v71 at `62e87bf`.** A stack waits, to be merged in order:
+- **#42,** R-42 at v72.
+- **#43,** R-110 at v73.
+- **#44,** R-100 at v74.
+- **#45,** R-99 at v75.
+- **#46,** the docs items at v76.
+- **#47,** R-51, tests only.
+- **`perf/r48-r49-pixel-loops`,** R-48 with R-49 at v77, on #47. It is
+  local and waits for Rodrigo's go.
+  - Exact pixel counts live in `pdf_translate/_pixels.py`, and the oracle
+    judges only extract's pages.
+  - Identical output; CPU 38–63% lower.
+  - Evidence: `docs/reviews/2026-09-25-r48-r49-pixel-loops.md`. The
+    harness is `dev/probes/r48_r49_bench.py`.
+
+**Next: R-50**, unless E12's rulings arrive first. Two product rows wait
+for Rodrigo's order: #19's capture docs and #42's line-start position.
+
 ## Start here — 25 September 2026, evening: #42–#46 open; R-51 built (tests only), not pushed
 
 **Main is v71 at `62e87bf`.** A stack waits, to be merged in order:
