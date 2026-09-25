@@ -66,7 +66,8 @@ review is advice for Rodrigo, not approval.
 - **R-51:** no reason to hold. Its optional suggestion, keying the memo on
   the file's bytes rather than its declared checksums, is adopted in
   `7274ee2`, locally. `4f7f62d` then closes a file that commit's new test
-  left open.
+  left open. The product then read `7c91b4a`, `7274ee2` and `4f7f62d`
+  without running them, and had no further ask on #46 or R-51.
 - **#42:** it found the recorded position is the start of the text line,
   not of the offending text. Filed as a row below.
 - **#19:** it asks for capture's off switch and contents to be documented.
