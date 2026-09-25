@@ -3,7 +3,7 @@
 Text traces identify glyphs and origins but cannot prove that a clipping path,
 affine shear or later paint left the glyph visible in its original shape.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import math
 
 import pikepdf
@@ -18,6 +18,10 @@ class ContentIssue:
     page: int
     kind: str
     detail: str
+    # Where the first offending text starts, in the extraction's page space
+    # (unrotated, top-left, CropBox-relative); None for a whole-page issue.
+    # Not part of the issue's identity: a page still has one issue per kind.
+    at: tuple = field(default=None, compare=False)
 
 
 @dataclass(frozen=True)
@@ -70,6 +74,19 @@ def later_paint_intersects(paints, sequence, box, annotation_start=None):
                for index, (kind, bounds, *_) in enumerate(paints[sequence + 1:], sequence + 1))
 
 
+def _crop_box(page):
+    """The page's CropBox (else MediaBox) as (x0, y0, x1, y1), or None when it
+    is not four finite numbers. It only places offending text (R-42), so no
+    malformed box may fail a check that never read it before."""
+    try:
+        box = [float(v) for v in page.cropbox]
+    except Exception:  # pikepdf raises several types on a malformed box
+        return None
+    if len(box) != 4 or not all(math.isfinite(v) for v in box):
+        return None
+    return (min(box[0], box[2]), min(box[1], box[3]), max(box[0], box[2]), max(box[1], box[3]))
+
+
 def inspect_content(path, *, source=False):
     """Name unsupported text drawing state; graphics-only state is irrelevant.
 
@@ -77,12 +94,12 @@ def inspect_content(path, *, source=False):
     pretend a bounding rectangle proves containment in an arbitrary clip path.
     """
     issues, drawn_fonts = [], {}
-    def record(page, kind, detail):
-        issue = ContentIssue(page, kind, detail)
+    def record(page, kind, detail, at=None):
+        issue = ContentIssue(page, kind, detail, at)
         if issue not in issues:
             issues.append(issue)
 
-    def walk(stream, resources, initial, page, ancestors=()):
+    def walk(stream, resources, initial, page, ancestors=(), crop=None):
         state, saved = dict(initial), []
         for instruction in pikepdf.parse_content_stream(stream):
             if not isinstance(instruction, pikepdf.ContentStreamInstruction):
@@ -97,9 +114,26 @@ def inspect_content(path, *, source=False):
             elif op == 'cm':
                 state['ctm'] = _compose(state['ctm'], tuple(map(float, values)))
             elif op == 'BT':
-                state['text'] = IDENTITY
+                state['text'] = state['line'] = IDENTITY
+                state['placed'] = True
             elif op == 'Tm':
-                state['text'] = tuple(map(float, values))
+                state['text'] = state['line'] = tuple(map(float, values))
+                state['placed'] = True
+            elif op in ('Td', 'TD', 'T*', "'", '"', 'TL'):
+                # Only to say where offending text starts (R-42). The checks
+                # below read the linear part, which these never change, so a
+                # malformed one leaves the position unknown and nothing else.
+                try:
+                    if op == 'TL':
+                        state['leading'] = float(values[0])
+                    else:
+                        if op == 'TD':
+                            state['leading'] = -float(values[1])
+                        tx, ty = ((float(values[0]), float(values[1])) if op in ('Td', 'TD')
+                                  else (0., -state['leading']))
+                        state['text'] = state['line'] = _compose(state['line'], (1., 0., 0., 1., tx, ty))
+                except (IndexError, TypeError, ValueError):
+                    state['placed'] = False
             elif op == 'Tf':
                 font = resources.get('/Font', {}).get(values[0])
                 if font is None or not font.objgen[0]:
@@ -132,31 +166,33 @@ def inspect_content(path, *, source=False):
                     child = dict(state)
                     child['ctm'] = _compose(state['ctm'], tuple(map(float, obj.get('/Matrix', IDENTITY))))
                     child['clip'] = True  # A Form's BBox imposes an implicit clip.
-                    walk(obj, obj.get('/Resources', resources), child, page, ancestors + (obj.objgen,))
-            elif op in ('Tj', 'TJ', "'", '"'):
+                    walk(obj, obj.get('/Resources', resources), child, page, ancestors + (obj.objgen,), crop)
+            if op in ('Tj', 'TJ', "'", '"'):
                 if state['font'] is None:
                     raise ValueError('text has no selected font resource')
                 drawn_fonts.setdefault(page, set()).add(state['font'])
                 transform = _compose(state['ctm'], state['text'])
-                a, b, c, d, _, _ = transform
+                a, b, c, d, e, f = transform
                 a, b = a * state['horizontal'], b * state['horizontal']
+                at = ((e - crop[0], crop[3] - f) if crop and state['placed'] and
+                      math.isfinite(e) and math.isfinite(f) else None)
                 if (not all(math.isfinite(x) for x in transform) or a <= 0 or d <= 0 or
                         abs(b) > 1e-7 or abs(c) > 1e-7 or abs(a - d) > 1e-7):
-                    record(page, 'transformed-text', 'Text uses shear, rotation or nonuniform scaling.')
+                    record(page, 'transformed-text', 'Text uses shear, rotation or nonuniform scaling.', at)
                 if state['clip'] or state['mode'] >= 4:
-                    record(page, 'clipped-text', 'Text is subject to a clipping path or Form bounds.')
+                    record(page, 'clipped-text', 'Text is subject to a clipping path or Form bounds.', at)
                 if (state['mode'] != 0 or state['fill_alpha'] != 1 or state['stroke_alpha'] != 1 or
                         state['blend'] not in ('/Normal', '/Compatible') or state['mask']):
-                    record(page, 'unsupported-text-paint', 'Text uses stroke, transparency, soft mask or nonstandard blending.')
+                    record(page, 'unsupported-text-paint', 'Text uses stroke, transparency, soft mask or nonstandard blending.', at)
 
     with pikepdf.open(path) as doc:
         for index, page in enumerate(doc.pages):
             if source and page.get('/UserUnit', 1) != 1:
                 record(index, 'unsupported-page-units', 'Nondefault page UserUnit is outside the first typography scope.')
-            initial = {'ctm': IDENTITY, 'text': IDENTITY, 'horizontal': 1., 'mode': 0,
+            initial = {'ctm': IDENTITY, 'text': IDENTITY, 'line': IDENTITY, 'leading': 0., 'placed': True, 'horizontal': 1., 'mode': 0,
                        'clip': False, 'fill_alpha': 1., 'stroke_alpha': 1., 'blend': '/Normal', 'mask': False, 'font': None}
             try:
-                walk(page, page.get('/Resources', {}), initial, index)
+                walk(page, page.get('/Resources', {}), initial, index, crop=_crop_box(page))
             except (pikepdf.PdfError, ValueError, TypeError, KeyError, RuntimeError) as exc:
                 record(index, 'unreadable-content', f'Cannot resolve text drawing state: {type(exc).__name__}.')
     if source:
@@ -168,7 +204,11 @@ def inspect_content(path, *, source=False):
                     record(index, 'unreadable-content', 'Cannot resolve page and annotation drawing order.')
                     continue
                 for span in traces:
-                    if any(later_paint_intersects(paints, span.get('seqno'), pymupdf.Rect(char[3]), annotation_start)
-                           for char in span['chars'] if char[0] > 32):
-                        record(index, 'occluded-text', 'Later page or annotation paint may cover source glyphs.')
+                    covered = next((char for char in span['chars'] if char[0] > 32 and
+                                    later_paint_intersects(paints, span.get('seqno'), pymupdf.Rect(char[3]),
+                                                           annotation_start)), None)
+                    if covered is not None:
+                        middle = pymupdf.Rect(covered[3])
+                        record(index, 'occluded-text', 'Later page or annotation paint may cover source glyphs.',
+                               ((middle.x0 + middle.x1) / 2, (middle.y0 + middle.y1) / 2))
     return ContentInspection(tuple(issues), drawn_fonts)

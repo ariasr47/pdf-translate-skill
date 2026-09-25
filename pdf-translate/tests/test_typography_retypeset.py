@@ -96,6 +96,56 @@ class TypographyRetypesetTests(unittest.TestCase):
         self.assertEqual(result.pages, 2)
         self.assertEqual(progress, [(1, 2), (2, 2)])
 
+    def content_refusal(self, change):
+        self.mutate_pdf('original', change)
+        self.reextract()
+        return self.refuses('unsupported-typography-construct').refusals['typography'][0]
+
+    def test_a_content_refusal_names_the_occurrence_it_is_about(self):
+        """R-42: a source-content refusal named the page's first occurrence,
+        whatever text was actually covered, sheared, clipped or transparent."""
+        covered = self.content_refusal(lambda d: d[0].draw_rect(
+            pymupdf.Rect(28, 106, 120, 124), fill=(1, 1, 1), color=None, overlay=True))
+        self.assertEqual((covered['detail'], covered['page'], covered['occurrence_id']),
+                         ('Later page or annotation paint may cover source glyphs.', 0, 's1'))
+
+    def test_a_sheared_line_is_named_not_the_first_line(self):
+        def shear(doc):
+            doc[0].insert_text((30, 200), 'Slanted words', fontname='helv', fontsize=12,
+                               morph=(pymupdf.Point(30, 200), pymupdf.Matrix(1, 0, -0.3, 1, 0, 0)))
+        sheared = self.content_refusal(shear)
+        extraction = json.loads(self.job['segments'].read_text(encoding='utf-8'))
+        named = next(s for s in extraction['segments'] if s['occurrence_id'] == sheared['occurrence_id'])
+        self.assertEqual((sheared['detail'], named['text']),
+                         ('Text uses shear, rotation or nonuniform scaling.', 'Slanted words'))
+        self.assertEqual(sheared['source_text'], 'Slanted words')
+
+    def test_a_page_level_content_refusal_names_the_page_and_no_occurrence(self):
+        def user_unit(doc):
+            doc.xref_set_key(doc[0].xref, 'UserUnit', '2')
+        page_level = self.content_refusal(user_unit)
+        self.assertEqual((page_level['page'], page_level['occurrence_id'], page_level['source_text']),
+                         (0, None, None))
+
+    def test_a_malformed_crop_box_leaves_the_position_unknown(self):
+        """The crop only places the offending text, so a /CropBox that is not
+        four numbers must not fail the check that v71 passed (R-42's review)."""
+        from pdf_translate.typography_content import inspect_content
+        for box in ('[0 0 100]', '[]', '[0 0 /A 100]'):
+            with self.subTest(box=box):
+                def shear_and_break(doc, box=box):
+                    doc[0].insert_text((30, 200), 'Slanted words', fontname='helv', fontsize=12,
+                                       morph=(pymupdf.Point(30, 200), pymupdf.Matrix(1, 0, -0.3, 1, 0, 0)))
+                    doc.xref_set_key(doc[0].xref, 'CropBox', box)
+                path = self.work / 'broken-crop.pdf'
+                with pymupdf.open(self.job['original']) as doc:
+                    shear_and_break(doc)
+                    path.write_bytes(doc.tobytes())
+                issues = inspect_content(str(path), source=True).issues
+                sheared = [i for i in issues if i.kind == 'transformed-text']
+                self.assertEqual(len(sheared), 1, issues)
+                self.assertIsNone(sheared[0].at)
+
     def test_partial_extraction_cannot_drop_an_unselected_blank_page(self):
         self.mutate_pdf('original', lambda d: d.new_page(width=400, height=240))
         self.reextract(pages='1')
