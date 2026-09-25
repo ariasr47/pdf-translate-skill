@@ -81,7 +81,11 @@ refused item by kind (`references/consumer-guide.md`).
 The checks run in the table's order, and the build stops at the first one
 that refuses. Two groups are checked together, and every item of every kind
 in them is listed at once: `untranslated` with `unauthored_merges`, and
-`overflow` with `glyph_misses` and `rotated_shaped`.
+`overflow` with `glyph_misses` and `rotated_shaped`. In the second group a
+missing glyph decides the exception: the build raises `GlyphError`, which
+is not a `PlacementError`, and its `refusals` still carries every overflow
+and rotated run. Catch `PdfTranslateError` and read `refusals`, or catch
+`GlyphError` first.
 
 | `refusals` kind | exception | what refused | fix |
 |---|---|---|---|
@@ -91,9 +95,9 @@ in them is listed at once: `untranslated` with `unauthored_merges`, and
 | `untranslated` | `MappingError` | a segment's core has no translation | author it |
 | `unauthored_merges` | `MappingError` | a merge's `html` is still `null`, as `propose-merges --accept` leaves it | author the paragraph, or delete the entry |
 | `notices` | `PlacementError` | a notice's text is empty, its page is not in the document, or its box is not four numbers or is empty | fix the notice |
-| `overflow` | `PlacementError` | a run scaled below 0.7× of its source size | shorten it; see below |
+| `overflow` | `PlacementError`, or `GlyphError` with a glyph miss | a run scaled below 0.7× of its source size | shorten it; see below |
 | `glyph_misses` | `GlyphError` | the face that draws a run lacks one of its characters (glyph coverage, above) | use a font that covers the script |
-| `rotated_shaped` | `PlacementError` | a rotated run's target needs shaping (rotated lines, above) | none draws it rotated: `skip` the span, which drops it, and say so in the delivery |
+| `rotated_shaped` | `PlacementError`, or `GlyphError` with a glyph miss | a rotated run's target needs shaping (rotated lines, above) | none draws it rotated: `skip` the span, which drops it, and say so in the delivery |
 
 A missing translation fails loudly: that exit code is your coverage gate,
 and missing text must never ship silently. A run below 0.7× is refused
