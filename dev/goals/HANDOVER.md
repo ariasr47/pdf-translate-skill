@@ -3,7 +3,30 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 25 September 2026, late night: #42–#48 open; R-50 built (v78), not pushed
+## Start here — 25 September 2026, end of day: #42–#49 open; the widget_text fix built (v79), not pushed
+
+**Main is v71 at `62e87bf`.** A stack waits, to be merged in order:
+- **#42** to **#48,** as below.
+- **#49,** R-50 at v78, with canary run 4's records. The local branch is
+  one commit ahead of #49: `ef03a75` adds canary run 4's translation
+  comparison and corrects Opus 5's record. It waits for Rodrigo's go.
+- **`fix/widget-text-init-keeps-authored`,** v79, on `ef03a75`. It is local
+  and waits for Rodrigo's go.
+  - Extract never writes a fresh scaffold over a `widget_text.json` that
+    holds authored text. `ExtractResult.widget_text_kept` says when it
+    kept one.
+  - Evidence: `docs/reviews/2026-09-25-widget-text-kept.md`.
+
+**Canary run 4's verdict:** a tie on the rubric; Opus 5.5 is narrowly
+ahead on the Spanish. The evaluator is on Opus 5.5, was not blind, and
+says so. A blind judge on a third model has not been run.
+
+**Next:** filed rows wait for Rodrigo's order (`docs/REQUESTS-from-product.md`
+status). They are `/Lang` region, the `document` block, a verify gate for
+widget text left in the source language, #19's capture docs and #42's
+line-start position.
+
+## Start here — 25 September 2026, late night (historical): #42–#48 open; R-50 built (v78), not pushed
 
 **Main is v71 at `62e87bf`.** A stack waits, to be merged in order:
 - **#42** to **#46,** as below.
