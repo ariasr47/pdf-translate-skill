@@ -3,8 +3,8 @@
 Contents: how to read this · before you switch · by stage (packaging and
 import; results, refusals and logging; extract; strip and widget text;
 retypeset; prepare_font; field_fonts; verify; review, qa and the CLIs;
-capture) · what moves output bytes · the product's checklist · a known issue
-· later versions.
+capture) · what moves output bytes · the product's checklist · a known issue,
+fixed in v83 · later versions.
 
 This is for a consumer that calls the library from Python —
 `run_extract` / `extract_segments`, `run_strip` / `strip_text`,
@@ -164,7 +164,7 @@ v81: `leak-cjk` (v55), `typography` (v59), `page-parity` (v60) and
 | 55 | Gate 21 `leak-cjk` judges CJK-to-CJK jobs whose mapping `lang` names a Han convention: 6 or more characters the target cannot carry in a line FAIL, 1–5 REVIEW. `leak-scan` becomes SKIP there, and `leak-running` / `leak-isolated` are not recorded. | when: CJK-to-CJK jobs (verdicts only) | Treat a `leak-cjk` FAIL as real; allowlist names with `allow=`. |
 | 56 | Two false FAILs gone: a wrapped spaceless-script target now passes `placement`; hidden pushbuttons (`--hide-buttons`) no longer fail `button-captions` / `caption-width`. | when: those jobs (verdicts only) | — |
 | 60 (guaranteed from 61) | Gate `page-parity`, always on: FAIL on a missing or extra page or a changed box or rotation. `compare()` renders every page and returns 1 when page counts differ; `render_pages()` renders unmatched pages too. | yes: every verdict gains a gate | Check `compare()`'s return value. |
-| 80 | Verify reads the stored `/Lang` whole, not as `doc.language` shortens it. A typography-1 build for a region tag (`en-US`) now passes `metadata`; han-forms with no mapping `lang` reads `zh-Hant-TW` as Traditional (REVIEW, no reference) instead of Simplified. The legacy comparison changed too: see [A known issue](#a-known-issue). | when: region-tagged `/Lang` (verdicts only) | — |
+| 80 | Verify reads the stored `/Lang` whole, not as `doc.language` shortens it. A typography-1 build for a region tag (`en-US`) now passes `metadata`; han-forms with no mapping `lang` reads `zh-Hant-TW` as Traditional (REVIEW, no reference) instead of Simplified. The legacy comparison changed too, in one direction, until v83: see [A known issue, fixed in v83](#a-known-issue-fixed-in-v83). | when: region-tagged `/Lang` (verdicts only) | — |
 | 81 | Gate 22 `widget-text`, REVIEW only: tooltips, dropdown display labels and text-field values and defaults the output still shows as in the original. The widget-text mapping (`widget_text=`, else `widget_text.json` beside `translations`) marks keeps. `verify` / `run_verify` gain `widget_text=None`. | when: forms with widget text (verdicts only) | With `fail_on_review`, pass the authored mapping or translate the strings. |
 
 ### review, qa and the CLIs
@@ -224,16 +224,16 @@ version as checked:
 | `/Lang` written whole | 80 | retypeset; verify |
 | `setuptools>=77` | 73 | Packaging and import |
 
-## A known issue
+## A known issue, fixed in v83
 
-**v80 changed verify's legacy `/Lang` comparison in one direction.** The
-rule is "the mapping's `lang` starts with the stored tag". v80 reads the
-stored tag whole, so a file that stores a longer tag than the mapping
-(`es-US` stored, `es` in the mapping) now FAILs `metadata`, where v79
+**v80 to v82 changed verify's legacy `/Lang` comparison in one direction.**
+The rule was "the mapping's `lang` starts with the stored tag". v80 reads
+the stored tag whole, so a file that stores a longer tag than the mapping
+(`es-US` stored, `es` in the mapping) FAILs `metadata` there, where v79
 passed it; so does a file whose region differs (`fr-FR` stored, `fr-CA` in
 the mapping). A file that stores the mapping's own tag, as every v80+ build
-does, passes. It is filed in `docs/REQUESTS-from-product.md` with a fix to
-follow; the app runs no library verify.
+does, passes. v83 compares the primary subtag instead (below). The app runs
+no library verify.
 
 ## Later versions
 
@@ -241,3 +241,9 @@ follow; the app runs no library verify.
 
 Docs only: adds this note and a test that it has a section for the current
 version. No code, output or console line changes.
+
+### v83 — legacy verify compares `/Lang` by language
+
+| Version | Change | Bytes | What to do |
+|---|---|---|---|
+| 83 | Verify's legacy `metadata` gate passes an output whose stored `/Lang` has the same primary subtag as the mapping's `lang`, without regard to case, in either direction: `es-US` for `es`, `es` for `es-US`, `fr-FR` for `fr-CA`, `zh-Hant` for `zh-Hans` (han-forms judges the script). It FAILs another language (`pt` for `es`) and an empty `/Lang`. For a region (`es-US`, `fr-FR`) this gives v79's verdicts again, without depending on how PyMuPDF shortens a tag. Two verdicts differ from v79's: `zh-Hant` stored against `zh-Hans` now passes (v79 failed it, because PyMuPDF kept script subtags), and v79's accidental prefix match (`e` passing `es`) is gone. Typography-1 stays exact; han-forms still reads the whole tag. | when: legacy verdicts for a stored tag that is not the mapping's own | — |

@@ -189,7 +189,7 @@ from dataclasses import dataclass
 import pymupdf
 
 from ._console import console, _arg
-from ._lang import declared_language
+from ._lang import declared_language, primary_subtag
 from ._pixels import INK_SKIP, VISIBLE_INK, dark_pixels
 from .extract_segments import write_find_say_hits
 from .strip_text import choice_exports, invisible_text_pages
@@ -699,8 +699,11 @@ def document_metadata_misses(odoc, jdoc, conf):
 
     want_lang = (conf.get('lang') or '').strip()
     got_lang = declared_language(jdoc)
+    # Same language, either way round: region and script are not this gate's
+    # to judge (han-forms reads the script). v79 passed `es` against `es-US`
+    # only because PyMuPDF shortened the stored tag.
     if want_lang:
-        if not got_lang or not want_lang.lower().startswith(got_lang.lower()):
+        if not got_lang or primary_subtag(want_lang) != primary_subtag(got_lang):
             misses.append(('lang', f'translations.json asks for '
                                    f'"{want_lang}", output declares '
                                    f'"{got_lang or "nothing"}"'))

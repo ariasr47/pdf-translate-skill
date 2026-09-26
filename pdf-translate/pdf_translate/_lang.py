@@ -36,3 +36,8 @@ def declared_language(doc):
         return (doc.language or '').strip()
     except Exception:
         return ''
+
+
+def primary_subtag(tag):
+    """The language itself, lower-cased: `es` for `es-US`, `zh` for `zh-Hant`."""
+    return (tag or '').strip().split('-')[0].lower()
