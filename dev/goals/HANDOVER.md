@@ -22,8 +22,7 @@ v86.
 2. typography verify's widths and unrotated page;
 3. the ink-ratio reproduction.
 
-The residual neighbour overlap is low priority, and its slot needs
-confirming.
+The residual neighbour overlap is low priority, at the end of the queue.
 
 ## Start here — 26 September 2026 (historical): #54–#58 open; the multi-span box built (v85), not pushed
 
