@@ -1,7 +1,9 @@
 # Item 6 — CLI input spelling and module logging, 26 September 2026
 
 Base: v86, PR #60 at `0b1b362af99da39c4ba4948c209aa0781d36f912`.
-Candidate: v87, `codex/cli-input-logging`. Rodrigo authorized the next
+Candidate: v87, `codex/cli-input-logging`,
+[PR #61](https://github.com/ariasr47/pdf-translate-skill/pull/61).
+Rodrigo authorized the next
 assigned CLI pair; items 7–9 remain separate.
 
 ## Observed defects and repair
@@ -73,8 +75,9 @@ tests.test_import_surface.CliPathTests.test_importing_the_package_does_not_recon
 -v`: **13 tests in 10.827s, OK, exit 0**. It also inspected the parser's
 ordering and confirmed import-time stream behavior is preserved.
 
-Full Linux/Windows CI is pending. Full
-discovery is delegated to GitHub CI because the preserved checkout's
+Full Linux/Windows discovery runs on PR #61; its current head's checks and
+PR description record the hosted results. Full discovery is delegated to
+GitHub CI because the preserved checkout's
 handover records two host crashes during full-suite runs on this machine.
 
 ## Limits

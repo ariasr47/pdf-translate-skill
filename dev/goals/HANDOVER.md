@@ -3,26 +3,29 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 26 September 2026: item 6 CLI pair built as v87; validation in progress
+## Start here — 26 September 2026: item 6 CLI pair submitted as v87 in PR #61
 
 Rodrigo authorized the next assigned item. The CLI pair is implemented on
 `codex/cli-input-logging`, based on PR #60's exact head
 `0b1b362af99da39c4ba4948c209aa0781d36f912`, in the managed worktree
 `C:/Users/rodri/.codex/worktrees/cli-input-logging/pdf-translate-skill`.
-The original dirty B1 checkout at `C:/Dev/pdf-translate-skill` remains evidence.
+It is pushed as [PR #61](https://github.com/ariasr47/pdf-translate-skill/pull/61),
+stacked on #60. The original dirty B1 checkout at `C:/Dev/pdf-translate-skill`
+remains evidence.
 
 Verify rejects its value-taking options spelled `--flag=value` before work,
 with exit 2 and a usage line. Both `python -m` entry points now print their
 result/refusal logs, including Unicode on legacy Windows consoles. No drawing
 code changed. Twelve new regressions are included in 109 passing focused
 tests; the twelve-command CLI parity output matches v86.
-Independent review approved after 13 fresh checks; full Linux/Windows CI is
-pending. Full discovery runs on GitHub because this Windows host previously
-crashed during it.
+Independent review approved after 13 fresh checks. Full Linux/Windows CI
+runs on PR #61; consult its current head's checks and PR description for
+the result. Full discovery runs on GitHub because this Windows host
+previously crashed during it.
 Evidence: `docs/reviews/2026-09-26-cli-input-logging.md`.
 
-Remote main was freshly checked at `aae125c` (v81). PRs #54–#60 remain open
-with passing checks; they have not been merged by this session. The next
+Remote main was freshly checked at `aae125c` (v81). PRs #54–#61 remain open;
+#54–#60 had passing checks. None was merged by this session. The next
 implementation item after this repair is **item 7**, typography verify's
 widths on 2,048-unit faces together with unrotated page measurements.
 
