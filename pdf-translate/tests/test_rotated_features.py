@@ -114,8 +114,8 @@ class RotatedFeatureTests(unittest.TestCase):
 
 class RotatedLeaderTests(unittest.TestCase):
     """Dot leaders are refilled only along a horizontal line. On a rotated
-    line they are dropped, and the text after them, a "$" or a page number,
-    used to be dropped with them. It is content: it is kept, and the dropped
+    line they are dropped, and the currency sign after them (the tail) used
+    to be dropped with them. It is content: it is kept, and the dropped
     leaders are reported in the result, not only on the console."""
 
     def _job(self, rotate):

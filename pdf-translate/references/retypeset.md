@@ -66,9 +66,9 @@ Several features are horizontal ideas:
   markup in its target, and a merge that takes it in. They used to be
   ignored, misplaced, or drawn as literal `<b>` tags. Take each out of the
   mapping.
-- **A rotated line's source dot leaders are dropped,** but the text after
-  them (a `$`, a unit, a page number) is kept, after the label. Each such
-  line is reported as a console `NOTE` and in `RetypesetResult.warnings`
+- **A rotated line's source dot leaders are dropped,** but the tail after
+  them, the currency sign extract records (`$`, `€`, `£` or `¥`), is kept,
+  after the label. Each such line is reported as a console `NOTE` and in `RetypesetResult.warnings`
   as `{"kind": "leaders_dropped", "page", "core"}`, so a caller does not
   have to read the console.
 - **The RTL mirror is skipped** on a rotated run.

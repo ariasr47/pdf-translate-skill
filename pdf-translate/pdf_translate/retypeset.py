@@ -1832,8 +1832,8 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                     id(font_i): 'italic', id(font_bi): 'bold-italic'}))
             if rot and (dots or tail):
                 # Dot leaders are refilled only along a horizontal line. On a
-                # rotated one they are dropped, but the text after them (a
-                # "$", a unit, a page number) is content and is kept.
+                # rotated one they are dropped, but the tail after them (the
+                # currency sign extract records) is content and is kept.
                 if tail:
                     check_glyphs(pno, helv, tail, core, 'Helvetica (tail)')
                     parts.append((' ' + tail, helv))
