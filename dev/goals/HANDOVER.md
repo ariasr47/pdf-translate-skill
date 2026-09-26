@@ -3,7 +3,29 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 26 September 2026: #54–#58 open; the multi-span box built (v85), not pushed
+## Start here — 26 September 2026: #54–#59 open; rotated-run refusal built (v86), not pushed
+
+**Main is v81 at `0d58202`,** tagged `v81.0.0`. #54 to #59 wait to merge in
+order; #59 is the multi-span box (v85).
+
+**Local, waiting for Rodrigo's go to push:** `fix/rotated-run-features`,
+v86.
+- A rotated run is refused by name for horizontal-only features the
+  mapping asks of it (`rotated_features`).
+- Its dot leaders are dropped and its tail kept, and
+  `RetypesetResult.warnings` reports it.
+- Two independent Sonnet passes confirmed it (evidence:
+  `docs/reviews/2026-09-26-rotated-run-features.md`).
+
+**Next, in the product's order:**
+1. the CLI pair;
+2. typography verify's widths and unrotated page;
+3. the ink-ratio reproduction.
+
+The residual neighbour overlap is low priority, and its slot needs
+confirming.
+
+## Start here — 26 September 2026 (historical): #54–#58 open; the multi-span box built (v85), not pushed
 
 **Main is v81 at `0d58202`,** tagged `v81.0.0`. In flight, to merge in
 order:
