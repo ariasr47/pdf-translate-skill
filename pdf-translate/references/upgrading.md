@@ -259,3 +259,9 @@ changes.
 | 84 | The legacy mapping's `document` block (`class`, `issuer`, `parallel_text`, `pair`, `register`), which fills the review prompt's identity, is documented in `references/translations-format.md`; SKILL.md's identity step says to copy it there. A docs test keeps the documented keys equal to the ones the prompt reads. | no | — |
 | 84 | Where a typography-1 content refusal points is described as it is: the start of the text line that holds the offending text (see v72's row). | no | — |
 
+### v85 — a multi-span line keeps its whole box
+
+| Version | Change | Bytes | What to do |
+|---|---|---|---|
+| 85 | A line of several spans that advances with a leftward component (upside down, or at 135 or 225 degrees in PDF space) now gets a segment `bbox` holding every span. Extract used to keep the first span's left edge and drop the rest: an upside-down two-span line measured 62.4 pt wide against 110.7 pt of glyphs. A `+x` line keeps the old code path. A rotated run is still placed from its origin, so it draws the same, but a horizontal neighbour's room is measured against the fuller box, so a long translation beside such a line gets less room and shrinks further. In the verifier's case the overlap fell from 21.4 pt to 1.7 pt; the residual is filed as its own proposal. | when: documents with such lines — their `segments.json`, and the layout of a neighbour on the same row | A typography-1 mapping made for such a document is refused as a stale extraction, because the `extraction_id` covers the box; extract again and re-author it. |
+
