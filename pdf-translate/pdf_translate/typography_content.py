@@ -18,8 +18,11 @@ class ContentIssue:
     page: int
     kind: str
     detail: str
-    # Where the first offending text starts, in the extraction's page space
-    # (unrotated, top-left, CropBox-relative); None for a whole-page issue.
+    # Where the text line that holds the first offending text starts (the
+    # line matrix, not the offending show's own glyph, so on a line with
+    # several occurrences it can fall on an earlier one; for occluded text,
+    # a covered glyph's centre), in the extraction's page space (unrotated,
+    # top-left, CropBox-relative); None for a whole-page issue.
     # Not part of the issue's identity: a page still has one issue per kind.
     at: tuple = field(default=None, compare=False)
 
@@ -120,7 +123,7 @@ def inspect_content(path, *, source=False):
                 state['text'] = state['line'] = tuple(map(float, values))
                 state['placed'] = True
             elif op in ('Td', 'TD', 'T*', "'", '"', 'TL'):
-                # Only to say where offending text starts (R-42). The checks
+                # Only to say where the offending text's line starts (R-42). The checks
                 # below read the linear part, which these never change, so a
                 # malformed one leaves the position unknown and nothing else.
                 try:

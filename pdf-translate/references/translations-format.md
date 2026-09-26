@@ -215,6 +215,34 @@ Authoring order that works well:
    what the source centres — never a caption flush with a rule) and shorten
    whatever failed the 0.7× scale gate (or add those cores to `allow_scale`).
 
+## The `document` block — the review prompt's identity
+
+A legacy mapping may carry the job's identity for the reviewer. Nothing
+that builds or verifies the PDF reads it; `pipeline.py review` (and
+`run_review`) fills the identity slots of `review_prompt.md` from it:
+
+```jsonc
+"document": {
+  "class": "US elementary-school field-trip permission slip",
+  "issuer": "Riverside Elementary School",
+  "parallel_text": null,          // URL or path of a published translation; null: none, or not searched
+  "pair": "en->es-US",            // source->target, as the prompt names the languages
+  "register": "plain-language school-to-parent, formal usted"
+}
+```
+
+- Every key is optional. A missing `class`, `issuer` or `register` is
+  written into the prompt as "(… not stated)"; a missing `pair` as `?`.
+- `parallel_text` `null` or absent reads "does not exist, or was not
+  searched"; a value reads "exists: <value>".
+- After `review --ingest`, the `document` block of `review.json` is used
+  instead, when it has one.
+- Only the legacy format takes it: a `typography-1` mapping refuses unknown
+  keys, so a typography job gives the reviser its identity in `review.json`.
+
+It is the same record as SKILL.md's identity step, in the shape the prompt
+reads. Terms of art and identifiers stay in your notes and the review pairs.
+
 ## The expansion band
 
 Expansion depends on how *short* the string is, not just on the language

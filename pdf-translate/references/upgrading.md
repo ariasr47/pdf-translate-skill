@@ -135,7 +135,7 @@ These are the legacy path unless marked.
 | 66 | A build whose output or scale-report path names one of its inputs (stripped PDF, `segments.json`, the mapping, `original`, a font) raises `MappingError`, `refusals['output_aliases']`, before reading or writing anything. v63 overwrote the mapping. | no | See *Before you switch* 9. |
 | 66 | Text handed to the Story engine is escaped so it lands as written: `&`, `<` and `>` in single-line targets with inline tags (`<b>`, `<i>`, `<strong>`, `<em>`), in notices and in shaped runs. `&copy;` stays `&copy;`; `<u@e.co>` stays. | when: those targets containing `&`, `<` or `>` | See *Before you switch* 10. |
 | 67 | The canonical text layer covers the italic and bold-italic faces too (it covered regular and bold). Italic cuts whose space and NBSP share a glyph reported NBSP for every space. | when: builds that drew a distinct italic or bold-italic face | — |
-| 72 | typography-1: a source-content refusal names the occurrence that holds the offending text (`occurrence_id`, `source_text`, `core`), not the page's first segment; a whole-page construct gives `None` for all three. | no | Expect different, correct values. |
+| 72 | typography-1: a source-content refusal names the occurrence at the start of the text line that holds the offending text (`occurrence_id`, `source_text`, `core`), not the page's first segment; a whole-page construct gives `None` for all three. On a line with several occurrences, when the offending text follows another one, it names the line's first. | no | Expect different values: right for a single-occurrence line. |
 | 74 | The unreachable second `untranslated` refusal is removed; the post-draw refusal always carries `'untranslated': []`. | no | — |
 | 80 | `/Lang` is written exactly as the mapping spells it (`es-US`, `zh-Hant-TW`, even a non-tag such as `Japanese`), not as PyMuPDF's `set_language` shortened it (`es`, `zh`, `jap`). The `metadata: /Lang ->` line reports what the file holds. The 13 region-less tags the product uses are byte-identical. | when: tags with a region, script or variant subtag, or not a tag | Read the catalog `/Lang`, not `doc.language`, to see the whole tag. |
 
@@ -247,3 +247,15 @@ version. No code, output or console line changes.
 | Version | Change | Bytes | What to do |
 |---|---|---|---|
 | 83 | Verify's legacy `metadata` gate passes an output whose stored `/Lang` names the same language as the mapping's `lang`, without regard to case, in either direction. The primary subtags must match; when both tags declare a script, the scripts must match; the region is ignored. So `es-US` passes `es` and back, `fr-FR` passes `fr-CA`, and `zh` passes `zh-Hans`; `zh-Hant` fails `zh-Hans`, `sr-Cyrl` fails `sr-Latn`, `pt` fails `es`, and an empty `/Lang` fails. For a region this gives v79's verdicts again, without depending on how PyMuPDF shortens a tag. Two verdicts differ from v79's, which followed PyMuPDF's truncation: `zh-Hans` stored against `zh` now passes, and `sr-Cyrl` against `sr-Latn` now fails (v79 kept Chinese script subtags and dropped Serbian ones). A stored `e` no longer passes `es`, as it did in v80 to v82. Typography-1 stays exact; han-forms still reads the whole tag. | when: legacy verdicts for a stored tag that is not the mapping's own | — |
+
+### v84 — capture, the `document` block, and R-42's wording
+
+Docs, comments and tests only; no code path, output or console line
+changes.
+
+| Version | Change | Bytes | What to do |
+|---|---|---|---|
+| 84 | The consumer guide states three capture facts, and a test locks the first: `capture_dir=""` is off even with `PDF_TRANSLATE_CAPTURE_DIR` or `PDF_TRANSLATE_CAPTURE_BELOW` set; a bundle holds every source string (`segments.json`) and the form's fields (the stripped PDF) even without `original=`; with `capture_below` and capture on, a successful legacy build near the floor writes a bundle too. All three were already true. | no | Pass `capture_dir=""` if your process must never write documents to disk. |
+| 84 | The legacy mapping's `document` block (`class`, `issuer`, `parallel_text`, `pair`, `register`), which fills the review prompt's identity, is documented in `references/translations-format.md`; SKILL.md's identity step says to copy it there. A docs test keeps the documented keys equal to the ones the prompt reads. | no | — |
+| 84 | Where a typography-1 content refusal points is described as it is: the start of the text line that holds the offending text (see v72's row). | no | — |
+
