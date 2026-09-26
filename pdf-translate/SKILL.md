@@ -394,11 +394,14 @@ lines — are in `references/retypeset.md`. The rules in one line each:
   structure tree is removed — **say in the delivery that the file is no
   longer tagged**.
 - Rotated lines keep their angle; a rotated run whose target needs
-  shaping is **refused** rather than drawn flat.
+  shaping is **refused** rather than drawn flat, and so is a horizontal-only
+  feature the mapping asks of one (`right`, `center`, an override, inline
+  markup, a merge). A rotated line's dot leaders are dropped and the text
+  after them kept, and the result's `warnings` says so.
 - It **fails** if any segment lacks a translation (your coverage gate) and
   **fails without saving** if any run scales below 0.7× — shorten the
   translation, or list that core in `allow_scale` if the cell must stay
-  tiny. Those are two of nine refusals; `references/retypeset.md` lists
+  tiny. Those are two of ten refusals; `references/retypeset.md` lists
   every one and its fix.
 - Runs between 0.7× and 1.0× are **listed**, not failed: `scaled runs (N)`
   and `scale_report.json` beside the output, which verify reads back.

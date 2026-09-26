@@ -55,11 +55,23 @@ tagged**.
 Rotated lines (side labels, margin stamps) keep their angle: the extractor
 records each line's direction and retypeset morphs the run about its own
 origin, so origin, bbox and direction match the source. The width budget
-runs along that direction. Dot leaders, `center` and the RTL mirror are
-horizontal-only ideas and are skipped on a rotated run; a rotated run
-whose target also needs shaping (Arabic, Indic, Thai…) is **refused**,
-because the Story engine places shaped text upright and drawing it flat on
-a rotated label ships confidently wrong text.
+runs along that direction. A rotated run whose target also needs shaping
+(Arabic, Indic, Thai…) is **refused**, because the Story engine places
+shaped text upright and drawing it flat on a rotated label ships
+confidently wrong text.
+
+Several features are horizontal ideas:
+- **Asked of a rotated run by the mapping, each is refused by name**
+  (`rotated_features`). That covers `right`, `center`, an override, inline
+  markup in its target, and a merge that takes it in. They used to be
+  ignored, misplaced, or drawn as literal `<b>` tags. Take each out of the
+  mapping.
+- **A rotated line's source dot leaders are dropped,** but the text after
+  them (a `$`, a unit, a page number) is kept, after the label. Each such
+  line is reported as a console `NOTE` and in `RetypesetResult.warnings`
+  as `{"kind": "leaders_dropped", "page", "core"}`, so a caller does not
+  have to read the console.
+- **The RTL mirror is skipped** on a rotated run.
 
 "Rotated" means rotated in the PDF, not on screen. `segments.json` and
 every drawing call use the page's unrotated space, so text that reads
@@ -73,7 +85,7 @@ refusal.
 
 ## Every way a build fails
 
-A legacy build refuses for nine kinds of reason. A refused build exits 1
+A legacy build refuses for ten kinds of reason. A refused build exits 1
 and saves nothing, not even `scale_report.json`, so the output and report
 from an earlier build stay on disk as they were: read the exit code, not
 whether the file exists. The console prints a `FAIL:` block naming every
@@ -97,6 +109,7 @@ and rotated run. Catch `PdfTranslateError` and read `refusals`, or catch
 | `merges` | `MappingError` | a merge's `lines` are not found on its page in order, or its `box` is not four numbers or is empty | copy the lines from `segments.json`; fix the box |
 | `untranslated` | `MappingError` | a segment's core has no translation | author it |
 | `unauthored_merges` | `MappingError` | a merge's `html` is still `null`, as `propose-merges --accept` leaves it | author the paragraph, or delete the entry |
+| `rotated_features` | `MappingError` | the mapping asks a horizontal-only feature of a rotated run: `right`, `center`, an override, inline markup in its target, or a merge that takes it in. Every item is listed at once, each with its `page`, `core` and `feature` (rotated lines, above) | take the feature out of the mapping |
 | `notices` | `PlacementError` | a notice's text is empty, its page is not in the document, or its box is not four numbers or is empty | fix the notice |
 | `overflow` | `PlacementError`, or `GlyphError` with a glyph miss | a run scaled below 0.7× of its source size | shorten it; see below |
 | `glyph_misses` | `GlyphError` | the face that draws a run lacks one of its characters (glyph coverage, above) | use a font that covers the script |
