@@ -120,14 +120,16 @@ class LegacyLangTests(unittest.TestCase):
             self.assertEqual(seen, ['zh-Hant-TW'])
 
 
-class LegacyPrimarySubtagTests(unittest.TestCase):
-    """The legacy gate compares primary subtags, in either direction.
+class LegacyLanguageTests(unittest.TestCase):
+    """The legacy gate compares the language, and the script when both tags
+    declare one; the region is ignored, in either direction.
 
     v80 read the stored tag whole but kept v79's `startswith` rule, so a
     stored tag longer than the mapping's (`es-US` against `es`) or in
-    another region (`fr-FR` against `fr-CA`) began to FAIL. v79 passed both
-    only because PyMuPDF shortened the stored tag. Region and script are
-    judged elsewhere (han-forms), not here.
+    another region (`fr-FR` against `fr-CA`) began to FAIL, and `e` passed
+    an `es` mapping. v79 passed the regions only because PyMuPDF shortened
+    the stored tag, and passed `sr-Cyrl` against `sr-Latn` for the same
+    reason, while it kept `zh-Hans` and `zh-Hant` whole and failed them.
     """
 
     CASES = [
@@ -135,9 +137,15 @@ class LegacyPrimarySubtagTests(unittest.TestCase):
         ('es', 'es-US', True),
         ('es-US', 'es', True),
         ('fr-CA', 'fr-FR', True),
-        ('zh-Hans', 'zh-Hant', True),
+        ('zh-Hans', 'zh-Hans-CN', True),
+        ('zh-Hans-CN', 'zh-Hans', True),
+        ('zh', 'zh-Hans', True),
+        ('zh-Hans', 'zh', True),
         ('ES', 'es-us', True),
         ('Japanese', 'Japanese', True),
+        ('zh-Hans', 'zh-Hant', False),
+        ('zh-Hans-CN', 'zh-Hant-TW', False),
+        ('sr-Latn', 'sr-Cyrl', False),
         ('es', 'pt', False),
         ('es', 'e', False),
         ('e', 'es', False),

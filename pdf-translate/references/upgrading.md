@@ -231,9 +231,9 @@ The rule was "the mapping's `lang` starts with the stored tag". v80 reads
 the stored tag whole, so a file that stores a longer tag than the mapping
 (`es-US` stored, `es` in the mapping) FAILs `metadata` there, where v79
 passed it; so does a file whose region differs (`fr-FR` stored, `fr-CA` in
-the mapping). A file that stores the mapping's own tag, as every v80+ build
-does, passes. v83 compares the primary subtag instead (below). The app runs
-no library verify.
+the mapping). A stored `e` passes an `es` mapping. A file that stores the
+mapping's own tag, as every v80+ build does, passes. v83 compares language
+and script instead (below). The app runs no library verify.
 
 ## Later versions
 
@@ -246,4 +246,4 @@ version. No code, output or console line changes.
 
 | Version | Change | Bytes | What to do |
 |---|---|---|---|
-| 83 | Verify's legacy `metadata` gate passes an output whose stored `/Lang` has the same primary subtag as the mapping's `lang`, without regard to case, in either direction: `es-US` for `es`, `es` for `es-US`, `fr-FR` for `fr-CA`, `zh-Hant` for `zh-Hans` (han-forms judges the script). It FAILs another language (`pt` for `es`) and an empty `/Lang`. For a region (`es-US`, `fr-FR`) this gives v79's verdicts again, without depending on how PyMuPDF shortens a tag. Two verdicts differ from v79's: `zh-Hant` stored against `zh-Hans` now passes (v79 failed it, because PyMuPDF kept script subtags), and v79's accidental prefix match (`e` passing `es`) is gone. Typography-1 stays exact; han-forms still reads the whole tag. | when: legacy verdicts for a stored tag that is not the mapping's own | — |
+| 83 | Verify's legacy `metadata` gate passes an output whose stored `/Lang` names the same language as the mapping's `lang`, without regard to case, in either direction. The primary subtags must match; when both tags declare a script, the scripts must match; the region is ignored. So `es-US` passes `es` and back, `fr-FR` passes `fr-CA`, and `zh` passes `zh-Hans`; `zh-Hant` fails `zh-Hans`, `sr-Cyrl` fails `sr-Latn`, `pt` fails `es`, and an empty `/Lang` fails. For a region this gives v79's verdicts again, without depending on how PyMuPDF shortens a tag. Two verdicts differ from v79's, which followed PyMuPDF's truncation: `zh-Hans` stored against `zh` now passes, and `sr-Cyrl` against `sr-Latn` now fails (v79 kept Chinese script subtags and dropped Serbian ones). A stored `e` no longer passes `es`, as it did in v80 to v82. Typography-1 stays exact; han-forms still reads the whole tag. | when: legacy verdicts for a stored tag that is not the mapping's own | — |

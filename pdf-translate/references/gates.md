@@ -136,11 +136,16 @@ REVIEW line, not a failure.
 
 `/Lang` is read as the file stores it, not as PyMuPDF's `doc.language`
 shortens it (`zh-Hant-TW` to `zh`). A legacy mapping passes an output whose
-`/Lang` names the same language, compared on the primary subtag without
-regard to case and in either direction: `es-US` for `es`, `es` for
-`es-US`, `fr-FR` for `fr-CA`. Region and script are not this gate's to
-judge. A typography mapping needs the exact tag. Han-forms reads the same
-whole `/Lang` when the mapping has no `lang`.
+`/Lang` names the same language, compared without regard to case and in
+either direction:
+- the primary subtags must match;
+- when both tags declare a script, the scripts must match (`zh-Hans` is
+  not `zh-Hant`, `sr-Latn` is not `sr-Cyrl`); a tag with no script does
+  not conflict with one that has one (`zh` and `zh-Hans`);
+- the region is ignored (`es-US` for `es`, `fr-FR` for `fr-CA`).
+
+A typography mapping needs the exact tag. Han-forms reads the same whole
+`/Lang` when the mapping has no `lang`.
 
 **Shaped marks.** Every target whose script needs shaping (Arabic family,
 Indic, Thai, Lao, Khmer, Myanmar, Tibetan) must appear in an `/ActualText`
