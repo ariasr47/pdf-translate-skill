@@ -3,7 +3,94 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 26 September 2026: #54–#59 open; rotated-run refusal built (v86), not pushed
+## Start here — 26 September 2026: everything pushed; #54–#60 open; moving to a new machine
+
+**Main is v81 at `0d58202`,** tagged `v81.0.0`. #54 to #60 are a stack:
+each PR's base is the one before it, and #54's base is `main`. Nothing
+exists only on the old Mac. Every branch and commit is on `origin`, and
+there are no local-only tags or stashes.
+
+**Merging the stack** (Rodrigo's go first, every time): merge in order with
+a merge commit, pinned by `gh pr merge N --merge --match-head-commit SHA`.
+Then retarget the next PR's base to `main`. The repository deletes no
+branches on merge. Afterwards, check main, record the deliveries in
+`docs/REQUESTS-from-product.md` and tell the product.
+
+### Resume on a fresh machine
+
+1. **Clone it all:**
+   `git clone https://github.com/ariasr47/pdf-translate-skill.git`.
+   Acceptance tests run recorded v54/v56 Git snapshots, so don't make a
+   shallow clone (CI uses `fetch-depth: 0`).
+2. **Toolchain:** Python 3.14 (`requires-python >=3.14`). The old Mac used a
+   uv venv:
+   `cd pdf-translate && uv venv --python 3.14 .venv && uv pip install -r requirements.txt`.
+   The requirements pin PyMuPDF `<1.30`, pikepdf `<11` and fonttools `<5`.
+3. **Test fonts** (OFL, about 100 MB, never committed): run
+   `python tools/fetch_test_fonts.py` from `pdf-translate/`. `--check` exits 1
+   if any face is missing. Run it before the suite: without these faces,
+   tests fall back to whatever the host ships or skip.
+4. **CI's commands**, run from `pdf-translate/`:
+   - `python -W default -m unittest discover -s tests -t . -v`
+   - the same discover on `../dev/canary` and on `../dev/repo`
+   - `python evals/make_fixtures.py --outdir <tmp>`
+
+   Expected on v86: 809 tests with 1 expected failure, the right-to-left
+   pin `test_right_to_left_source_runs_start_where_the_source_did`. macOS
+   also fails
+   `HotLoopTests.test_rebuild_resolves_verify_arguments_from_the_callers_directory`;
+   Linux and Windows CI do not. Check exit codes, not the summary line.
+5. **The version is in five places, in lockstep:**
+   `.claude-plugin/plugin.json`, `pdf-translate/SKILL.md`, `pyproject.toml`,
+   `pdf_translate/__init__.py` and `tests/test_verify_report.py`. Docs-only
+   shipped changes bump it; tests-only and CI-only changes do not. Each
+   version needs a `### vNN` section in `references/upgrading.md`, and a
+   docs test checks it.
+6. **The wild corpus** (`dev/wild/files/`, 17 public PDFs) is gitignored. Its
+   URLs are in `dev/wild/SOURCES.md`.
+7. **Rules:**
+   - `AGENTS.md` is the rule file for every agent; `CLAUDE.md` only imports
+     it.
+   - Rule 1 verification must run on a different model from the one that
+     wrote the change.
+   - Under Rule 4, a non-Claude agent coordinates with the product through
+     Rodrigo.
+
+**Left on the old Mac, and not needed to continue:**
+- `runs/` (1.3 GB): raw outputs of the 24 September E12 measurement, the
+  tech-debt review and the 3 September canary. Their numbers are in
+  `docs/reviews/` and `docs/REVIEW-2026-09-24.md`.
+- The sessions' scratch trees: archive builds and Rule 1 work files. The
+  evidence each one produced is committed under `docs/reviews/`.
+- The right-to-left prototype is parked, as the "RTL Run Placement" page in
+  Rodrigo's claude.ai artifacts.
+
+**Next, in the product's order:**
+1. **Item 6, the CLI pair:**
+   - verify refuses an input flag spelled `--flag=value` instead of
+     ignoring it;
+   - `python -m pdf_translate.retypeset` and `python -m pdf_translate.verify`
+     print their log, and a test runs both with `-m`.
+
+   Reproduce each defect before fixing it.
+2. **Item 7:** typography verify's widths on 2,048-unit faces, together with
+   typography measuring against the unrotated page.
+3. **Item 8:** one attempt to reproduce the ink-ratio observation, time-boxed
+   to about an hour.
+4. **Item 9, last:** the residual neighbour overlap beside a rotated run. It
+   needs a layout pre-pass.
+
+**Still waiting:**
+- R-42's real fix, until typography-1 is next worked on;
+- `field_fonts` inheriting `/FT`, until a real form needs it;
+- rotated runs' full reading-frame layout, until the app's adoption
+  comparison.
+
+Dropped for now: the source's whole `/Lang` in `document.lang`.
+
+Right-to-left runs are out of scope.
+
+## Start here — 26 September 2026 (historical): #54–#59 open; rotated-run refusal built (v86), not pushed
 
 **Main is v81 at `0d58202`,** tagged `v81.0.0`. #54 to #59 wait to merge in
 order; #59 is the multi-span box (v85).
