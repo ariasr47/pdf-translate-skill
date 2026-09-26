@@ -3,7 +3,15 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 25 September 2026, stack merged: main is v81 at `0d58202`
+## Start here — 26 September 2026: product advice on what is left, awaiting Rodrigo
+
+**Main is v81 at `0d58202`,** with the records merged at `aae125c`.
+Nothing is in flight. The product advised on every open item, and the
+order and reasons are in `docs/REQUESTS-from-product.md`'s status. First
+comes a consumer upgrade note from v54 to v81 plus a `v81.0.0` tag,
+because the app adopts v81 within days. Rodrigo decides what starts.
+
+## Start here — 25 September 2026, stack merged (historical): main is v81 at `0d58202`
 
 **Nothing is in flight.** #42 to #52 were merged in order on Rodrigo's
 instruction. The table, and how each merge was checked, are in
