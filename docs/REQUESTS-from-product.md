@@ -32,7 +32,29 @@ Claude sessions do this by name with `SendMessage`; other agents go through
 Rodrigo. Whatever a message settles is written into this file in the same
 session.
 
-## Current coordination status — 26 September 2026, v86 pushed; development moves machines
+## Current coordination status — 26 September 2026, item 6 CLI pair built as v87
+
+**Assigned and built:** Rodrigo said to proceed with item 6 in the new
+Windows session. Owner: this library. Branch `codex/cli-input-logging`,
+based on PR #60 (`0b1b362`). Verify refuses the unsupported equals spelling
+of its value-taking options with exit 2 and actionable usage before work;
+`python -m pdf_translate.retypeset` and `python -m pdf_translate.verify`
+print their result and refusal lines, including Unicode on legacy Windows
+consoles. The app calls functions, so its route
+does not change. Coordination with the product goes through Rodrigo.
+
+**Evidence:** `docs/reviews/2026-09-26-cli-input-logging.md`: both defects
+reproduced before repair; 12 new regressions are in 109 passing focused tests;
+the existing 12-command CLI output and exit codes match v86. Independent
+review approved after 13 fresh checks; full Linux/Windows CI is pending.
+
+**Main and stack:** main is `aae125c`, v81; #54–#60 remain open with passing
+checks. No merge or consumer pin change was performed. After item 6,
+continue the existing order: item 7 (typography widths and unrotated page),
+item 8 (bounded ink-ratio reproduction), item 9 (rotated neighbour overlap).
+E12 and R-94 keep their existing status.
+
+## Coordination status — 26 September 2026, v86 pushed; development moves machines (historical snapshot)
 
 **Main is v81 at `0d58202`** (records at `aae125c`).
 

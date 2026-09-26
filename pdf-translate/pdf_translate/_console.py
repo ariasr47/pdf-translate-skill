@@ -30,6 +30,15 @@ _depth = 0
 _handler = None
 
 
+def configure_cli_streams():
+    """Match the script wrappers' UTF-8 output only when running a CLI."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding='utf-8', errors='replace')
+        except (AttributeError, OSError, ValueError):
+            pass
+
+
 def missing_option_value(argv, options):
     """Name an option whose value is absent, without interpreting positionals."""
     return next((value for index, value in enumerate(argv) if value in options and
