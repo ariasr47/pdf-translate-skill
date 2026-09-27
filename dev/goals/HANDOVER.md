@@ -3,12 +3,15 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 26 September 2026: item 7 typography pair prepared as v88
+## Start here — 26 September 2026: item 7 typography pair submitted as v88 in PR #62
 
 Rodrigo authorized item 7 after the completed CLI repair. Branch
 `codex/typography-width-geometry` starts at PR #61's exact head
 `2c871328ea78f444edb107cf00970ad081df78ec`, reusing the clean managed worktree
 `C:/Users/rodri/.codex/worktrees/cli-input-logging/pdf-translate-skill`.
+It is pushed as [PR #62](https://github.com/ariasr47/pdf-translate-skill/pull/62),
+stacked on #61; consult that PR's current head checks and description for
+the full hosted test result.
 The original dirty B1 checkout at `C:/Dev/pdf-translate-skill` remains evidence.
 
 Typography verify now uses the final PDF's validated `/W` / `/DW` widths,
@@ -21,7 +24,7 @@ on a different model approved after real runs and raster inspection;
 Full Linux/Windows discovery runs on the PR, because this Windows host has
 previously crashed during full discovery.
 
-Remote main was freshly checked at `aae125c` (v81). #54–#61 remain open;
+Remote main was freshly checked at `aae125c` (v81). #54–#62 remain open;
 #61's exact head has all three checks green. No merge or consumer pin change
 was made. The next assigned implementation item after this repair is
 **item 8: one bounded attempt to reproduce the ink-ratio observation**,

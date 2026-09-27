@@ -1,7 +1,8 @@
 # Item 7 — typography widths and unrotated geometry, 26 September 2026
 
 Base: v87, PR #61 at `2c871328ea78f444edb107cf00970ad081df78ec`.
-Candidate: v88, `codex/typography-width-geometry`, stacked on #61.
+Candidate: v88, `codex/typography-width-geometry`,
+[PR #62](https://github.com/ariasr47/pdf-translate-skill/pull/62), stacked on #61.
 Rodrigo authorized this product-assigned pair after item 6. Items 8 and 9
 remain separate; no consumer pin changes or merges are part of this repair.
 
@@ -74,6 +75,7 @@ unless their path starts with `runs/`.
 | Green typography coverage | `python -W default -m unittest tests.test_typography_metrics tests.test_typography_verify tests.test_typography_retypeset -q` | `Ran 69 tests in 52.853s`, `OK` |
 | Pipeline, imports, reports and docs | Previous command plus `tests.test_typography_pipeline tests.test_import_surface tests.test_verify_report tests.test_shipped_docs` | `Ran 163 tests in 81.714s`, `OK` |
 | Final regression module | `python -W default -m unittest tests.test_typography_metrics -v` | `Ran 16 tests in 14.337s`, `OK` |
+| Repository integrity/discovery | From repository root, `python -W default -m unittest discover -s dev/repo -v` | `Ran 6 tests in 1.516s`, `OK` |
 
 Three additional controls subsequently promote the reviewer's width-range
 and duplicate-resource checks into permanent coverage and require unresolved
