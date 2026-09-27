@@ -220,6 +220,7 @@ class RetypesetResult(_Result):
     scaled: tuple = ()
     cancelled: bool = False
     scale_report_path: str = ''
+    warnings: tuple = ()
     typography: dict | None = None
 
 

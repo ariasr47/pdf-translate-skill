@@ -124,7 +124,7 @@ Every result is a frozen dataclass whose `to_dict()` carries `schema` and
 | `run_strip` | `StripResult` | `ok`, `leftover_text`, `xfa_removed`, `certified`, `encrypted`, `dead_buttons` |
 | `run_extract` | `ExtractResult` | `cores`, `segments_path`, `warnings`, `unextractable_pages`, `invisible_text_pages` |
 | `run_prepare_font` | `FontResult` | `output`, `glyphs_added`, `subset_bytes` |
-| `run_retypeset` | `RetypesetResult` | `output`, `cancelled`, `scaled`, `scale_report_path` |
+| `run_retypeset` | `RetypesetResult` | `output`, `cancelled`, `scaled`, `scale_report_path`, `warnings` (a rotated line whose dot leaders were dropped: `{"kind": "leaders_dropped", "page", "core"}`) |
 | `run_verify` | `VerifyVerdict` | `exit_code`, `gates` (each a `GateResult` with `status` and `findings`) |
 | `run_field_fonts` | `FieldFontsResult` | `output`, `fields`, `acroform`, `instance` (the axis values a variable face was pinned to, or `''`) |
 | `run_qa` | `QAVerdict` | `findings`, `exit_code` |

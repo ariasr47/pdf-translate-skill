@@ -62,10 +62,11 @@ document gets the same behavior:
 - rotated lines (side labels, stamps) keep their angle: the run is written
   horizontally and morphed about its own origin by the segment's recorded
   direction, so origin, bbox and line direction match the source run. The
-  width budget runs along that direction. Dot leaders, centering and the
-  RTL mirror stay horizontal-only ideas and are skipped on a rotated run;
-  a rotated run whose target also needs SHAPING is refused rather than
-  drawn flat
+  width budget runs along that direction. The RTL mirror is skipped on a
+  rotated run, its dot leaders are dropped (the tail after them is kept,
+  and the result's warnings say so), and right, center, an override,
+  inline markup or a merge asked of it is refused by name; a rotated run
+  whose target also needs SHAPING is refused rather than drawn flat
 
 Usage:
   python3 retypeset.py STRIPPED.pdf segments.json translations.json OUT.pdf
@@ -1329,6 +1330,9 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
 
     merge_jobs = []
     unauthored_merges = []
+    # Horizontal-only features asked of a run drawn along its own direction:
+    # (page, core, feature). Refused by name before anything is drawn.
+    rotated_features = []
     for m in merges:
         if m.get('html') is None:
             # A merge proposal accepted in bulk but not yet written. Same
@@ -1352,6 +1356,10 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                 refusals={'merges': [{'page': m['page'],
                                       'lines': list(m['lines']),
                                       'matched': li}]})
+        for i in idxs:
+            if is_rotated(*seg_dir(page_segs[i])):
+                rotated_features.append((m['page'], page_segs[i]['core']
+                                         or page_segs[i]['text'].strip(), 'merge'))
         r = pymupdf.Rect(min(page_segs[i]['bbox'][0] for i in idxs),
                          min(page_segs[i]['bbox'][1] for i in idxs),
                          max(page_segs[i]['bbox'][2] for i in idxs),
@@ -1452,6 +1460,39 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                 'unauthored_merges': [{'page': p, 'first_line': f}
                                       for p, f in unauthored_merges],
             })
+
+    # A rotated run is written along its own direction. `right`, `center`,
+    # an override's parts, inline markup and a merge's box are horizontal
+    # ideas: on such a run they were ignored, misplaced or drawn as literal
+    # tags. Each is the author's to take back, so it is refused by name.
+    for pno, segs in by_page.items():
+        for seg in segs:
+            text = seg['text'].strip()
+            if text in skip or not is_rotated(*seg_dir(seg)):
+                continue
+            core = seg['core'] or text
+            if seg['core'] in right:
+                rotated_features.append((pno, core, 'right'))
+            if seg['core'] in center:
+                rotated_features.append((pno, core, 'center'))
+            if override_for(pno, text):
+                rotated_features.append((pno, core, 'override'))
+            jp = T.get(seg['core'])
+            if jp and has_inline_markup(jp):
+                rotated_features.append((pno, core, 'inline markup'))
+    if rotated_features:
+        block = [f'FAIL: {len(rotated_features)} horizontal-only feature(s) asked of '
+                 f'rotated lines, which are drawn along their own direction; take '
+                 f'each out of the mapping:']
+        for p, c, feature in rotated_features[:CONSOLE_LIST]:
+            block.append(f'  p{p}: {feature}: {c[:60]}')
+        block.extend(more_not_shown(rotated_features))
+        block.extend(refusal_tail(rotated_features))
+        raise MappingError(
+            f'{len(rotated_features)} horizontal-only feature(s) on rotated lines',
+            console_line='\n'.join(block), exit_code=1, core=rotated_features[0][1],
+            refusals={'rotated_features': [{'page': p, 'core': c, 'feature': f}
+                                           for p, c, f in rotated_features]})
 
     # Four roles, each falling back to the nearest one the mapping named.
     # A document set in Times Italic used to come back upright Arial: the
@@ -1601,6 +1642,7 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
         return lim + 1.5
 
     rotated_shaped = []
+    leaders_dropped = []
     glyph_misses = []
     seen_glyph_miss = set()
 
@@ -1788,6 +1830,15 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                 check_glyphs(pno, f, t, core, _font_label(f, {
                     id(font_r): 'regular', id(font_b): 'bold',
                     id(font_i): 'italic', id(font_bi): 'bold-italic'}))
+            if rot and (dots or tail):
+                # Dot leaders are refilled only along a horizontal line. On a
+                # rotated one they are dropped, but the tail after them (the
+                # currency sign extract records) is content and is kept.
+                if tail:
+                    check_glyphs(pno, helv, tail, core, 'Helvetica (tail)')
+                    parts.append((' ' + tail, helv))
+                if dots:
+                    leaders_dropped.append((pno, core))
             wsum = sum(part_adv(i, t, f, fs) for i, (t, f) in enumerate(parts))
             rtl_body = is_rtl_text(jp)
             shaped = needs_shaping(jp)
@@ -2183,13 +2234,23 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
     if n:
         log.info(f'canonical text layer: rewrote /ToUnicode on {n} font object(s)')
 
+    if leaders_dropped:
+        log.info(f'NOTE: {len(leaders_dropped)} rotated line(s) drawn without their '
+                 f'dot leaders, which are drawn only on horizontal lines; the text '
+                 f'after them is kept:')
+        for p, c in leaders_dropped[:CONSOLE_LIST]:
+            log.info(f'  p{p}: {c[:60]}')
+        for line in more_not_shown(leaders_dropped):
+            log.info(line)
     log.info(f'saved {out}')
     return RetypesetResult(
         output=out, pages=len(segd.get('pages') or []) or len(by_page),
         placed=len(placed),
         scaled=tuple(sorted(scaled, key=lambda r: (r['page'], r['key']))),
         cancelled=False,
-        scale_report_path=(report or ''))
+        scale_report_path=(report or ''),
+        warnings=tuple({'kind': 'leaders_dropped', 'page': p, 'core': c}
+                       for p, c in leaders_dropped))
 
 
 def main(argv=None):
