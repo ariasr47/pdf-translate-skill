@@ -3,7 +3,30 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 26 September 2026: #54–#56 open; the docs batch built (v84), not pushed
+## Start here — 26 September 2026: #54–#58 open; the multi-span box built (v85), not pushed
+
+**Main is v81 at `0d58202`,** tagged `v81.0.0`. In flight, to merge in
+order:
+- #54, advice records;
+- #55, the upgrade note (v82);
+- #56, the `/Lang` rule (v83);
+- #57, the docs batch (v84);
+- #58, right-to-left ruled out of scope, with the prototype kept.
+
+**Local, waiting for Rodrigo's go to push:** `fix/multi-span-line-box`,
+v85. A segment's box holds every span whichever way its line advances. Two
+independent Sonnet passes confirmed it (evidence:
+`docs/reviews/2026-09-26-multi-span-line-box.md`).
+
+**Next, in the product's order:**
+1. refuse horizontal-only features on rotated runs by name;
+2. the CLI pair;
+3. typography verify's widths and unrotated page;
+4. the ink-ratio reproduction.
+
+A new minor proposal, the residual neighbour overlap, is filed.
+
+## Start here — 26 September 2026 (historical): #54–#56 open; the docs batch built (v84), not pushed
 
 **Main is v81 at `0d58202`,** tagged `v81.0.0`, the repository's first tag.
 A stack waits, to be merged in order:

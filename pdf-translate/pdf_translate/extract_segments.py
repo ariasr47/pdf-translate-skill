@@ -605,7 +605,13 @@ def extract_segments(src, outdir='.', gap=12.0, pages=None, *, typography=False)
                                    or s['bbox'][0] - groups[-1]['bbox'][2] < gap):
                         g = groups[-1]
                         g['text'] += s['text']
-                        g['bbox'] = [g['bbox'][0],
+                        # On a +x line each span starts right of the last, so
+                        # the first span's left edge is the line's. A line
+                        # that advances any other way (upside down, or at
+                        # 135 or 225 degrees) puts later spans to the LEFT,
+                        # and keeping the first span's edge dropped them.
+                        g['bbox'] = [min(g['bbox'][0], s['bbox'][0]) if rotated
+                                     else g['bbox'][0],
                                      min(g['bbox'][1], s['bbox'][1]),
                                      max(g['bbox'][2], s['bbox'][2]),
                                      max(g['bbox'][3], s['bbox'][3])]
