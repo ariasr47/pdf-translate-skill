@@ -3,7 +3,7 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 26 September 2026: upgrade note built (v82), not pushed
+## Start here — 26 September 2026: upgrade note (v82) and /Lang fix (v83) built, not pushed
 
 **Main is v81 at `0d58202`.** In flight:
 - **#54,** the product's advice records.
@@ -11,9 +11,11 @@ Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
   `references/upgrading.md`, with a test that each version adds a section.
 - **A local `v81.0.0` tag at `0d58202`,** the repository's first.
 
-Both wait for Rodrigo's go to push. The work order is in
-`docs/REQUESTS-from-product.md`'s status. Next is the `/Lang` comparison
-fix, reopened because the note's verifier found v80 changed legacy verify.
+- **`fix/lang-legacy-primary-subtag`,** v83, on the note: the legacy `/Lang`
+  gate compares primary subtags, fixing v80's one-direction change.
+
+All three wait for Rodrigo's go to push. The work order is in
+`docs/REQUESTS-from-product.md`'s status. Next is the docs batch.
 
 ## Start here — 26 September 2026 (historical): product advice on what is left, awaiting Rodrigo
 

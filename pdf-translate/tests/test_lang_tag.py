@@ -120,6 +120,68 @@ class LegacyLangTests(unittest.TestCase):
             self.assertEqual(seen, ['zh-Hant-TW'])
 
 
+class LegacyLanguageTests(unittest.TestCase):
+    """The legacy gate compares the language, and the script when both tags
+    declare one; the region is ignored, in either direction.
+
+    v80 read the stored tag whole but kept v79's `startswith` rule, so a
+    stored tag longer than the mapping's (`es-US` against `es`) or in
+    another region (`fr-FR` against `fr-CA`) began to FAIL, and `e` passed
+    an `es` mapping. v79 passed the regions only because PyMuPDF shortened
+    the stored tag, and passed `sr-Cyrl` against `sr-Latn` for the same
+    reason, while it kept `zh-Hans` and `zh-Hant` whole and failed them.
+    """
+
+    CASES = [
+        # (mapping lang, stored /Lang, passes)
+        ('es', 'es-US', True),
+        ('es-US', 'es', True),
+        ('fr-CA', 'fr-FR', True),
+        ('zh-Hans', 'zh-Hans-CN', True),
+        ('zh-Hans-CN', 'zh-Hans', True),
+        ('zh', 'zh-Hans', True),
+        ('zh-Hans', 'zh', True),
+        ('ES', 'es-us', True),
+        ('Japanese', 'Japanese', True),
+        ('zh-Hans', 'zh-Hant', False),
+        ('zh-Hans-CN', 'zh-Hant-TW', False),
+        ('sr-Latn', 'sr-Cyrl', False),
+        ('es', 'pt', False),
+        ('es', 'e', False),
+        ('e', 'es', False),
+        ('es', '', False),
+    ]
+
+    def test_the_rule(self):
+        original = pymupdf.open()
+        original.new_page()
+        for want, stored, passes in self.CASES:
+            with self.subTest(mapping=want, stored=stored):
+                out = pymupdf.open()
+                out.new_page()
+                if stored:
+                    out.xref_set_key(out.pdf_catalog(), 'Lang', pymupdf.get_pdf_str(stored))
+                misses = verify.document_metadata_misses(
+                    original, out, {'lang': want, 'translations': {}})
+                langs = [m for m in misses if m[0] == 'lang']
+                self.assertEqual(not langs, passes, msg=langs)
+                out.close()
+        original.close()
+
+    def test_a_longer_stored_tag_passes_the_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out, _, _ = _build(tmp, 'es-US')
+            tr = os.path.join(tmp, 'es.json')
+            conf = json.loads(Path(tmp, 'translations.json').read_text(encoding='utf-8'))
+            conf['lang'] = 'es'
+            Path(tr).write_text(json.dumps(conf), encoding='utf-8')
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                verify.verify(src, out, translations=tr,
+                              segments=os.path.join(tmp, 'segments.json'))
+            self.assertIn('PASS document metadata', buf.getvalue())
+
+
 class TypographyLangTests(unittest.TestCase):
 
     def _build(self, lang):
