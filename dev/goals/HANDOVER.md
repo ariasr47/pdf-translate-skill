@@ -16,9 +16,11 @@ remains evidence.
 Verify rejects its value-taking options spelled `--flag=value` before work,
 with exit 2 and a usage line. Both `python -m` entry points now print their
 result/refusal logs, including Unicode on legacy Windows consoles. No drawing
-code changed. Twelve new regressions are included in 109 passing focused
-tests; the twelve-command CLI parity output matches v86.
-Independent review approved after 13 fresh checks. Full Linux/Windows CI
+code changed. Twelve CLI regressions and a stale-report transition are
+included in 126 passing focused tests; the twelve-command CLI parity
+output matches v86. An old rebuild test now requires the intended equals
+refusal and no report; its default/separated controls still pass.
+Independent review approved after 13 CLI/import and 9 rebuild checks. Full Linux/Windows CI
 runs on PR #61; consult its current head's checks and PR description for
 the result. Full discovery runs on GitHub because this Windows host
 previously crashed during it.

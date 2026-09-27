@@ -43,6 +43,10 @@ Run `python -m unittest tests.test_cli_input_logging -v` from `pdf-translate/`.
   on refusal; elapsed and gate lines are not duplicated.
 - With `PYTHONUTF8=0` and `PYTHONIOENCODING=cp1252`, missing Japanese targets
   and Japanese output filenames print intact without `UnicodeEncodeError`.
+- `tests.test_rebuild_attempt.DefaultMappingVerificationTests` checks that
+  rebuild forwards the equals refusal (exit 2 and named usage), publishes no
+  verification report and removes a previous PASS report. Default and
+  separated syntax still exercise the mapping-dependent checks.
 
 ## Runs
 
@@ -61,6 +65,7 @@ Raw local logs are under `runs/cli-input-logging-2026-09-26/` at repo root.
 | Compatibility | `python -m unittest tests.test_cli_input_logging tests.test_import_surface tests.test_verify_report tests.test_consumer_contract.OneDocumentThroughEveryStageTests tests.test_typography_pipeline -v` | `Ran 95 tests in 36.647s`, `OK` |
 | Encoding red | `python -m unittest tests.test_cli_input_logging.ModuleConsoleTests.test_verify_module_keeps_unicode_findings_on_a_legacy_console tests.test_cli_input_logging.ModuleConsoleTests.test_retypeset_module_keeps_unicode_paths_on_a_legacy_console -v` | `Ran 2 tests in 1.551s`, `FAILED (failures=2)` |
 | Final focused compatibility | The compatibility command above plus `tests.test_shipped_docs`, after the encoding repair | `Ran 109 tests in 39.229s`, `OK`, including all 12 new regressions |
+| Expanded focused compatibility | Previous command plus `tests.test_rebuild_attempt`, after correcting the obsolete equals expectation and adding the stale-report transition | `Ran 126 tests in 59.130s`, `OK` |
 | Existing CLI parity | From repo root, `python dev/probes/cli_parity_runner.py <fresh-work-directory>` before and after repair; compare captured logs | 12 invocations; normalized output and exit codes identical |
 | Repository checks | From repo root, `python -m unittest discover -s dev/repo -v` | `Ran 6 tests in 1.618s`, `OK` |
 | Canary tests | `python -m unittest discover -s ../dev/canary -v` | `Ran 15 tests in 0.387s`, `OK` |
@@ -80,12 +85,30 @@ PR description record the hosted results. Full discovery is delegated to
 GitHub CI because the preserved checkout's
 handover records two host crashes during full-suite runs on this machine.
 
+The first full run, [36280640596](https://github.com/ariasr47/pdf-translate-skill/actions/runs/36280640596),
+ran **821 tests** on each platform and found one obsolete expectation:
+`test_the_equals_spelling_does_not_switch_the_checks_off` expected the old
+ignored option to fall back to default mapping verification (exit 1), while
+v87 returned its intended exit-2 usage refusal. Linux: 409.839s, one expected
+failure; Windows: 501.105s, one skip and one expected failure. There were no
+other failures. The expectation now explicitly requires refusal and no
+report; a second test starts with a successful PASS report and proves it
+does not survive the refused rebuild. No production behavior was changed
+to resolve this expectation. Independent subprocess probes confirmed the
+default and separated paths still report `empty-targets` FAIL with exit 1.
+The reviewer independently ran `python -B -m unittest
+tests.test_rebuild_attempt.DefaultMappingVerificationTests -v`:
+**9 tests in 4.791s, OK, exit 0**, and approved the test-only correction.
+
 ## Limits
 
 The existing eager-import `runpy` warning may still appear on module stderr;
-changing package import architecture is outside this repair. Other CLIs and
-unknown options retain their existing parsing. Usage errors preserve a
+changing package import architecture is outside this repair. Unknown options
+retain their existing parsing. Standalone verify usage errors preserve a
 prior report, just as missing-value usage errors already did; a prior report
-does not attest the refused invocation. Report/version fields advance to 87,
+does not attest the refused invocation. Rebuild retains its existing order:
+it invalidates reports and renders before calling verify, so this refusal
+leaves no report but may leave a newly built, unverified PDF. Report/version
+fields advance to 87,
 but drawing and library-call semantics are unchanged. The product remains
 on its own separately managed adoption plan.

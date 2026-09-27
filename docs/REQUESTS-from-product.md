@@ -46,9 +46,10 @@ consoles. The app calls functions, so its route
 does not change. Coordination with the product goes through Rodrigo.
 
 **Evidence:** `docs/reviews/2026-09-26-cli-input-logging.md`: both defects
-reproduced before repair; 12 new regressions are in 109 passing focused tests;
+reproduced before repair; 12 CLI regressions and a stale-report transition
+are in 126 passing focused tests;
 the existing 12-command CLI output and exit codes match v86. Independent
-review approved after 13 fresh checks. Full Linux/Windows CI runs on #61;
+review approved after 13 CLI/import and 9 rebuild checks. Full Linux/Windows CI runs on #61;
 its current checks and PR description record the result.
 
 **Main and stack:** main is `aae125c`, v81; #54–#61 remain open, with #61

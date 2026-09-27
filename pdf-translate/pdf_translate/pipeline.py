@@ -526,8 +526,9 @@ def cmd_rebuild(argv):
         # targets, placement, override markers and identifiers are checked on
         # every default run. A caller's own --translations / --segments are
         # honoured as given; the mapping itself is always supplied, and the
-        # default segments come only with the default mapping. Only the exact
-        # tokens verify reads count: `--translations=X` never reached verify.
+        # default segments come only with the default mapping. Only separated
+        # tokens count here. Equals forms are forwarded too, but verify now
+        # refuses them instead of silently ignoring them.
         if '--translations' not in extra:
             extra += ['--translations', tr]
             if '--segments' not in extra:

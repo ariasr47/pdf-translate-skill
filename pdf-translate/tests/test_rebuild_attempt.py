@@ -251,11 +251,24 @@ class DefaultMappingVerificationTests(unittest.TestCase):
         self.assertEqual(rc, 1, out)
         self.assertEqual(gates.get('override-markers'), 'FAIL', gates)
 
-    def test_the_equals_spelling_does_not_switch_the_checks_off(self):
+    def test_the_equals_spelling_refuses_instead_of_ignoring_the_mapping(self):
         work = self.job({'Hello world': 'Hola mundo', 'Another label': ''})
         rc, gates, out = self.rebuild(work, f'--translations={work / "translations.json"}')
-        self.assertEqual(rc, 1, out)
-        self.assertEqual(gates.get('empty-targets'), 'FAIL', gates)
+        self.assertEqual(rc, 2, out)
+        self.assertIn('usage: --translations=VALUE is not supported', out)
+        self.assertIn('use --translations VALUE', out)
+        self.assertIsNone(gates, 'a usage refusal must not publish a fresh verdict')
+        self.assertNotIn('PASS ', out)
+
+    def test_equals_refusal_removes_the_previous_verification_report(self):
+        work = self.job(self.COMPLETE)
+        rc, gates, out = self.rebuild(work)
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(gates.get('placement'), 'PASS', gates)
+        rc, gates, out = self.rebuild(work, f'--translations={work / "translations.json"}')
+        self.assertEqual(rc, 2, out)
+        self.assertIn('use --translations VALUE', out)
+        self.assertIsNone(gates, 'an old PASS must not survive the refused rebuild')
 
     def test_segments_alone_still_gets_the_default_mapping(self):
         work = self.job({'Hello world': 'Hola mundo', 'Another label': ''})
