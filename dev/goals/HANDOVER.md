@@ -3,7 +3,35 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 26 September 2026: everything pushed; #54–#60 open; moving to a new machine
+## Start here — 26 September 2026: item 6 CLI pair submitted as v87 in PR #61
+
+Rodrigo authorized the next assigned item. The CLI pair is implemented on
+`codex/cli-input-logging`, based on PR #60's exact head
+`0b1b362af99da39c4ba4948c209aa0781d36f912`, in the managed worktree
+`C:/Users/rodri/.codex/worktrees/cli-input-logging/pdf-translate-skill`.
+It is pushed as [PR #61](https://github.com/ariasr47/pdf-translate-skill/pull/61),
+stacked on #60. The original dirty B1 checkout at `C:/Dev/pdf-translate-skill`
+remains evidence.
+
+Verify rejects its value-taking options spelled `--flag=value` before work,
+with exit 2 and a usage line. Both `python -m` entry points now print their
+result/refusal logs, including Unicode on legacy Windows consoles. No drawing
+code changed. Twelve CLI regressions and a stale-report transition are
+included in 126 passing focused tests; the twelve-command CLI parity
+output matches v86. An old rebuild test now requires the intended equals
+refusal and no report; its default/separated controls still pass.
+Independent review approved after 13 CLI/import and 9 rebuild checks. Full Linux/Windows CI
+runs on PR #61; consult its current head's checks and PR description for
+the result. Full discovery runs on GitHub because this Windows host
+previously crashed during it.
+Evidence: `docs/reviews/2026-09-26-cli-input-logging.md`.
+
+Remote main was freshly checked at `aae125c` (v81). PRs #54–#61 remain open;
+#54–#60 had passing checks. None was merged by this session. The next
+implementation item after this repair is **item 7**, typography verify's
+widths on 2,048-unit faces together with unrotated page measurements.
+
+## Start here — 26 September 2026 (historical): everything pushed; #54–#60 open; moving to a new machine
 
 **Main is v81 at `0d58202`,** tagged `v81.0.0`. #54 to #60 are a stack:
 each PR's base is the one before it, and #54's base is `main`. Nothing

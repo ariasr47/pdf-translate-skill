@@ -87,7 +87,7 @@ from pathlib import Path, PurePath
 import pymupdf
 
 from . import capture
-from ._console import console, _arg
+from ._console import console, _arg, configure_cli_streams
 from ._lang import write_language
 from .results import (FontError, GlyphError, MappingError, PdfTranslateError,
                       PlacementError, RetypesetResult)
@@ -95,7 +95,8 @@ from .mapping import FORMAT, charset_for, load_mapping, refuse
 from .strip_text import GEOMETRY_SPACE
 from .typography import field_identities, page_geometry, source_digest, validate_font
 
-log = logging.getLogger(__name__)
+# `python -m` runs this module as __main__; keep its log under console().
+log = logging.getLogger('pdf_translate.retypeset')
 
 SCALE_MIN = 0.7
 # A notice the author did not size. Small enough for a footer line, big
@@ -2289,4 +2290,5 @@ def _main(argv=None):
 
 
 if __name__ == '__main__':
+    configure_cli_streams()
     raise SystemExit(main())

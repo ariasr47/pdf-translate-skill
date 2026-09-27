@@ -188,7 +188,7 @@ from dataclasses import dataclass
 
 import pymupdf
 
-from ._console import console, _arg
+from ._console import console, _arg, configure_cli_streams
 from ._lang import declared_language, same_language
 from ._pixels import INK_SKIP, VISIBLE_INK, dark_pixels
 from .extract_segments import write_find_say_hits
@@ -197,7 +197,8 @@ from .strip_text import choice_exports, invisible_text_pages
 # Every gate line goes through here. `verify()` attaches the console handler
 # and the bytes are what `print` wrote; `run_verify()` attaches nothing and is
 # silent without touching the process's stdout.
-log = logging.getLogger(__name__)
+# `python -m` runs this module as __main__; keep its log under console().
+log = logging.getLogger('pdf_translate.verify')
 from . import cjk_tell, han_forms, shaping_probe
 
 # Unicode letter ranges per script (goal 15). A range table, not an ICU
@@ -2462,9 +2463,15 @@ def main(argv=None):
 def _main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     from ._console import missing_option_value
-    missing = missing_option_value(argv, ('--allow', '--report', '--fill-text', '--min-ink', '--source-regex',
+    value_options = ('--allow', '--report', '--fill-text', '--min-ink', '--source-regex',
         '--source-words-from', '--allow-extra-prefix', '--translations', '--segments', '--reference-fonts',
-        '--widget-text'))
+        '--widget-text')
+    for token in argv:
+        name, separator, _ = token.partition('=')
+        if separator and name in value_options:
+            log.info(f'usage: {name}=VALUE is not supported; use {name} VALUE')
+            return 2
+    missing = missing_option_value(argv, value_options)
     if missing:
         log.info(f'usage: {missing} requires a value')
         return 2
@@ -2496,4 +2503,5 @@ def _main(argv=None):
 
 
 if __name__ == '__main__':
+    configure_cli_streams()
     raise SystemExit(main())
