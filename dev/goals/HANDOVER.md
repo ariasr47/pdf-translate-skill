@@ -3,7 +3,42 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 26 September 2026: item 8 ink-ratio attempt closed as not reproduced
+## Start here — 26 September 2026: item 9 rotated-neighbour repair implemented as v89
+
+Rodrigo authorized the next assigned item. Branch
+`codex/rotated-neighbour-layout` starts at PR #63's exact head
+`4d0ba939bf185a2663b53bae13a68cee70a7b7a1`, reusing
+`C:/Users/rodri/.codex/worktrees/cli-input-logging/pdf-translate-skill`.
+The original dirty B1 checkout remains evidence; no product source was read.
+
+Legacy retypeset now plans the rotated runs first and reserves their actual
+drawn glyph bounds when fitting horizontal neighbours. Ordinary left,
+right and center labels avoid the measured obstacle. If it occupies the
+anchor, the build refuses with structured `rotated_neighbours`, even with
+`allow_scale`. Positive room retains the existing scale-floor policy.
+Full rotated reading-frame layout, RTL expansion and a general collision
+engine remain outside this assignment.
+
+Evidence: `docs/reviews/2026-09-26-rotated-neighbour-layout.md`.
+All five saved before/after cases lose their overlaps, with the rotated
+glyphs unchanged. Different-model Rule 1 verification approved after real
+runs, embedded-font checks and raster inspection. The 176 focused
+compatibility/docs checks pass; twelve CLI invocations and ordinary
+horizontal output glyphs/rasters match v88. All five version sources are
+89 / 89.0.0, with a consumer upgrade note. Full Linux/Windows discovery runs
+on this branch's PR; consult its current head checks and description for
+the hosted result. Full discovery stays off this host after earlier crashes.
+
+Fresh remote checks found main at `aae125c` (v81), PR #63 open and ready,
+and all three checks successful at its exact base head. This branch stacks
+on #63; find its PR by `codex/rotated-neighbour-layout` before resuming.
+No merge or consumer pin change. **The current nine-item assigned sequence
+is addressed; next is Rodrigo's review/merge decision or a new product
+request.** Do not start parked work automatically. Item 8 remains closed
+as not reproduced and can reopen on the exact run-4 files/commands or a new
+reproducible pair. Verify git and gh before acting on these recorded states.
+
+## Start here — 26 September 2026 (historical): item 8 ink-ratio attempt closed as not reproduced
 
 Rodrigo authorized the next assigned item. Branch
 `codex/ink-ratio-investigation` starts at PR #62's exact v88 head

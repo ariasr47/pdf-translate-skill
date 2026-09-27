@@ -22,8 +22,10 @@ correctly. Pick a font that covers the target script
 `center` re-centers on the original midpoint; `right` re-anchors on the
 original right edge, and is measured against the room on its **left** —
 from the nearest same-row obstacle back there to the original right edge —
-because that is where a longer translation goes. (A plain or `center` run
-is still measured to the right of its origin.) Use `center` only where the source is centred in its
+because that is where a longer translation goes. A plain or `center` run
+starts with the budget to the right of its origin; a `center` run also
+reserves room on both sides for drawn rotated neighbours (below).
+Use `center` only where the source is centred in its
 own box (a column header, a title): a caption flush with a rule or a field
 is left-anchored, and centring a wider translation moves it off the thing
 it labels — past every gate. `fonts` takes four roles — `regular`, `bold`,
@@ -60,6 +62,20 @@ runs along that direction. A rotated run whose target also needs shaping
 shaped text upright and drawing it flat on a rotated label ships
 confidently wrong text.
 
+Before allocating a horizontal label's room, retypeset fits the page's
+rotated runs and measures their actual drawn glyph bounds. A wider face or
+longer translation can extend past the source box; that new box limits a
+plain label on its right, a `right` label on its left, and a `center` label
+on both sides, with the existing 1.5 pt clearance. A vertical translation
+that reaches into the label's row counts too. The same fitted writer and
+rotation then draw the final run. This does not add general collision
+avoidance for authored merge/override boxes or dot-leader geometry.
+
+If a rotated neighbour occupies the horizontal label's anchor, the build
+refuses with `rotated_neighbours`, even with `allow_scale`: shrinking cannot
+make positive room there. Shorten the neighbour's translation. When there
+is positive room, the normal 0.7× floor and `allow_scale` still apply.
+
 Several features are horizontal ideas:
 - **Asked of a rotated run by the mapping, each is refused by name**
   (`rotated_features`). That covers `right`, `center`, an override, inline
@@ -85,7 +101,7 @@ refusal.
 
 ## Every way a build fails
 
-A legacy build refuses for ten kinds of reason. A refused build exits 1
+A legacy build refuses for eleven kinds of reason. A refused build exits 1
 and saves nothing, not even `scale_report.json`, so the output and report
 from an earlier build stay on disk as they were: read the exit code, not
 whether the file exists. The console prints a `FAIL:` block naming every
@@ -96,7 +112,7 @@ refused item by kind (`references/consumer-guide.md`).
 The checks run in the table's order, and the build stops at the first one
 that refuses. Two groups are checked together, and every item of every kind
 in them is listed at once: `untranslated` with `unauthored_merges`, and
-`overflow` with `glyph_misses` and `rotated_shaped`. In the second group a
+`overflow` with `glyph_misses`, `rotated_shaped` and `rotated_neighbours`. In the second group a
 missing glyph decides the exception: the build raises `GlyphError`, which
 is not a `PlacementError`, and its `refusals` still carries every overflow
 and rotated run. Catch `PdfTranslateError` and read `refusals`, or catch
@@ -114,6 +130,7 @@ and rotated run. Catch `PdfTranslateError` and read `refusals`, or catch
 | `overflow` | `PlacementError`, or `GlyphError` with a glyph miss | a run scaled below 0.7× of its source size | shorten it; see below |
 | `glyph_misses` | `GlyphError` | the face that draws a run lacks one of its characters (glyph coverage, above) | use a font that covers the script |
 | `rotated_shaped` | `PlacementError`, or `GlyphError` with a glyph miss | a rotated run's target needs shaping (rotated lines, above) | none draws it rotated: `skip` the span, which drops it, and say so in the delivery |
+| `rotated_neighbours` | `PlacementError`, or `GlyphError` with a glyph miss | a drawn rotated neighbour leaves no positive room at a horizontal label's anchor; items carry `page`, the blocked `core`, and the rotated `neighbour` core. This key is present only when nonempty | shorten the neighbour translation; `allow_scale` cannot free the anchor |
 
 A missing translation fails loudly: that exit code is your coverage gate,
 and missing text must never ship silently. A run below 0.7× is refused
