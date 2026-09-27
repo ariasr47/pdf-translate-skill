@@ -20,6 +20,7 @@ PACKAGE = SKILL / 'pdf_translate'
 SKILL_MD = SKILL / 'SKILL.md'
 RETYPESET_MD = SKILL / 'references' / 'retypeset.md'
 UPGRADING_MD = SKILL / 'references' / 'upgrading.md'
+FORMAT_MD = SKILL / 'references' / 'translations-format.md'
 
 
 def _read(path):
@@ -92,6 +93,34 @@ class RetypesetReferenceTests(unittest.TestCase):
         self.assertEqual(example['schema'], SCALE_REPORT_SCHEMA)
         # The keys a legacy build gives each run (`consider_ratio` in retypeset).
         self.assertEqual(set(example['runs'][0]), {'page', 'key', 'ratio'})
+
+
+class DocumentBlockTests(unittest.TestCase):
+    """The mapping's `document` block fills the review prompt's identity
+    slots. The format reference documents exactly the keys the prompt reads,
+    so an author can know to write them (canary run 4 found them only by
+    reading review.py)."""
+
+    def test_the_documented_keys_are_the_ones_the_prompt_reads(self):
+        tree = ast.parse(_read(SKILL / 'pdf_translate' / 'review.py'))
+        fn = next(n for n in ast.walk(tree)
+                  if isinstance(n, ast.FunctionDef) and n.name == 'review_prompt_md')
+        read = {c.args[0].value for c in ast.walk(fn)
+                if isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute)
+                and c.func.attr == 'get' and isinstance(c.func.value, ast.Name)
+                and c.func.value.id == 'document' and c.args
+                and isinstance(c.args[0], ast.Constant)}
+        self.assertTrue(read, 'review_prompt_md reads no document key')
+        section = _section(_read(FORMAT_MD),
+                           "The `document` block — the review prompt's identity")
+        block = section.split('```jsonc', 1)[1].split('```', 1)[0]
+        documented = set(re.findall(r'^\s*"(\w+)":', block, re.M)) - {'document'}
+        self.assertEqual(documented, read)
+
+    def test_skill_md_says_where_the_record_goes(self):
+        identity = _read(SKILL_MD).split('**Identity', 1)[1].split('\n\n', 1)[0]
+        self.assertIn('`document` block', identity)
+        self.assertIn('references/translations-format.md', identity)
 
 
 class UpgradeNoteTests(unittest.TestCase):

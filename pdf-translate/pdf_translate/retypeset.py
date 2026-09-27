@@ -1046,8 +1046,9 @@ def _measure_typography(page, segment, target, font_for, inks_for, neighbors, wi
 
 def _content_segment(segments, issue):
     """The occurrence a source-content issue is about: the smallest segment on
-    its page whose box holds where the offending text starts. A whole-page
-    issue, or text no segment holds, names only the page (R-42)."""
+    its page whose box holds `issue.at`, where the text line holding the
+    offending text starts. A whole-page issue, or text no segment holds,
+    names only the page (R-42)."""
     if issue.at is not None:
         point = pymupdf.Point(issue.at)
         holding = [s for s in segments if s['page'] == issue.page and

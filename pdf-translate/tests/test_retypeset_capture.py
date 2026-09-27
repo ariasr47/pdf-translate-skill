@@ -425,6 +425,57 @@ class LegacyCaptureTests(unittest.TestCase):
         self.assertEqual(len(list(self.captures.iterdir())), 1)
 
 
+class EmptyCaptureDirTests(unittest.TestCase):
+    """`capture_dir=""` is an explicit off switch: it wins over both
+    environment variables, on a refused build and on a successful one.
+
+    A service that must never write customer documents to disk passes it,
+    whatever the process environment holds. `resolve_capture_dir` returns
+    the argument whenever it is not None, and every caller tests the result
+    with a plain `if`.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.font = latin_font_sets()['sans']['regular']
+        self.captures = Path(self.tmp.name) / 'captures'
+        saved = {k: os.environ.get(k) for k in (capture.ENV_VAR, capture.BELOW_ENV_VAR)}
+
+        def restore():
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+        self.addCleanup(restore)
+        os.environ[capture.ENV_VAR] = str(self.captures)
+        os.environ[capture.BELOW_ENV_VAR] = '0.99'
+
+    def test_a_refused_build_writes_nothing(self):
+        job, _ = make_legacy_job(Path(self.tmp.name) / 'job', self.font)
+        with self.assertRaises(PlacementError) as caught:
+            run_retypeset(str(job['stripped']), str(job['segments']), str(job['mapping']),
+                          str(job['output']), capture_dir='')
+        self.assertTrue(caught.exception.refusals['overflow'])
+        self.assertFalse(self.captures.exists())
+
+    def test_a_successful_near_floor_build_writes_nothing(self):
+        job, _ = make_modest_job(Path(self.tmp.name) / 'job', self.font)
+        result = run_retypeset(str(job['stripped']), str(job['segments']), str(job['mapping']),
+                               str(job['output']), capture_dir='')
+        self.assertTrue(result.scaled, 'the fixture must shrink, or this passes vacuously')
+        self.assertFalse(self.captures.exists())
+
+    def test_the_environment_alone_would_have_captured(self):
+        # The control: the same job with no argument does capture, so the
+        # two tests above see the empty string, not an idle environment.
+        job, _ = make_modest_job(Path(self.tmp.name) / 'job', self.font)
+        run_retypeset(str(job['stripped']), str(job['segments']), str(job['mapping']),
+                      str(job['output']))
+        self.assertEqual(len(list(self.captures.iterdir())), 1)
+
+
 class BundleReplayTests(unittest.TestCase):
     """A bundle is only worth writing if it still reproduces the job.
 

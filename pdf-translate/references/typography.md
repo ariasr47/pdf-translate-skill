@@ -234,9 +234,12 @@ refuses before replacing an existing PDF or report:
 
 A refusal from the source-content check names the occurrence it is about: in
 `refusals['typography']`, `occurrence_id` and `source_text` are those of the
-segment that holds where the offending text starts. A whole-page construct,
-such as `UserUnit`, or offending text that no segment holds, carries the
-`page` with no occurrence.
+segment that holds the start of the text line where the offending text is.
+On a line that holds several occurrences, when the offending text follows
+another one, that is the line's first occurrence, not the offending one;
+occluded text is located by a covered glyph, exactly. A whole-page
+construct, such as `UserUnit`, or offending text that no segment holds,
+carries the `page` with no occurrence.
 
 Possible occlusion and unresolved clipping in the **final** file are REVIEW, not
 FAIL: the file may be correct, but this cannot attest that it is.

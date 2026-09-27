@@ -173,3 +173,19 @@ its own inputs.
     first two and passes now.
   - The 15 faster wild PDFs give the same 104 issues, with the same
     positions, as before this fix.
+
+## Correction, 26 September 2026
+
+This record says `ContentIssue.at` is "where the first offending text
+starts". It is where the **text line** holding the first offending text
+starts: the line matrix after `Td`, `TD`, `T*`, `'` and `"`, not the
+offending show's own glyph. On a line that holds more than one
+occurrence, when the offending text follows another one, the refusal
+names the line's first occurrence. The product's review of #42 found
+this. Occluded text is located by a covered glyph's centre, which is
+exact.
+
+The code comment, `references/typography.md` and the upgrade note now say
+so. Locating the offending glyph itself waits until typography-1 is next
+worked on, on the product's advice (`docs/REQUESTS-from-product.md`).
+

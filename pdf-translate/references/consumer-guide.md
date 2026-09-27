@@ -247,6 +247,21 @@ permission if one is on record (`null`, with a note, when it is not — never
 guessed). `PDF_TRANSLATE_CAPTURE_DIR` is the same switch for a caller that
 cannot pass the keyword, checked only when `capture_dir` is not given.
 
+Three facts a service needs before it decides:
+- **`capture_dir=""` is off, whatever the environment says.** An explicit
+  argument always wins, and the empty string switches capture off even
+  when `PDF_TRANSLATE_CAPTURE_DIR` or `PDF_TRANSLATE_CAPTURE_BELOW` is
+  set. Pass it if your process must never write documents to disk.
+- **A bundle holds the document's text even without `original=`.** It
+  always has `segments.json`, every source string of the job, and the
+  stripped PDF, which keeps the form's fields and their values, beside
+  the mapping with every target. `original=` adds only the untouched
+  source PDF.
+- **A successful build can write a bundle too.** With `capture_below=`
+  (or `PDF_TRANSLATE_CAPTURE_BELOW`) set and capture on, a legacy build
+  whose runs scaled at or under that ratio writes a `near-floor` bundle,
+  one per job, and still succeeds.
+
 Leave it unset and nothing changes — no directory, no extra file, same
 console output. A problem writing the bundle is logged and swallowed; it
 never changes, masks, or replaces the exception you catch. Details and the

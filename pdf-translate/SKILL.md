@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "83"
+  version: "84"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -130,8 +130,10 @@ in the first was a real, silent, hours-costing failure, and every item in the
 second passed every gate and reached a delivery.
 
 **Identity — write this down before filling any translation.** Session notes
-or `NOTES.md`, not `translations.json` (the scripts do not read it). Five
-facts:
+or `NOTES.md`; for the review prompt, also copy class, issuer and parallel
+text, with the language pair and register, into the legacy mapping's
+`document` block (`references/translations-format.md`). Nothing that builds
+the PDF reads it. Five facts:
 
 1. **Class** — one sentence a librarian could file (court income form,
    hospital consent, tax instructions, product brochure, …).

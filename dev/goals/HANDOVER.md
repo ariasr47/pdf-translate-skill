@@ -3,7 +3,29 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 26 September 2026: upgrade note (v82) and /Lang fix (v83) built, not pushed
+## Start here — 26 September 2026: #54–#56 open; the docs batch built (v84), not pushed
+
+**Main is v81 at `0d58202`,** tagged `v81.0.0`, the repository's first tag.
+A stack waits, to be merged in order:
+- **#54,** the product's advice records.
+- **#55,** the upgrade note (v82), `references/upgrading.md`. A docs test
+  requires a section per version.
+- **#56,** the legacy `/Lang` gate comparing language and script, ignoring
+  region (v83).
+- **`docs/capture-document-r42-wording`,** v84, on #56:
+  - capture's three facts in the consumer guide, with a test for
+    `capture_dir=""`;
+  - the `document` block documented, with a docs guard;
+  - R-42's "start of the text line" wording.
+
+  It waits for Rodrigo's go.
+
+**Next, in the product's order:** right-to-left runs placed one width
+right; a non-+x multi-span line's box; refusing horizontal-only features on
+rotated runs by name; the CLI pair; typography verify's widths and
+unrotated page; one ink-ratio reproduction attempt.
+
+## Start here — 26 September 2026 (historical): upgrade note (v82) and /Lang fix (v83) built, not pushed
 
 **Main is v81 at `0d58202`.** In flight:
 - **#54,** the product's advice records.
