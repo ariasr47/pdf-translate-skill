@@ -13,6 +13,9 @@ typed exception on refusal. The bare names (`verify`, `retypeset`, …) are the
 older shape — they print and return an `int`, and they exist because the CLIs
 and the test suite are built on them. Both are supported. Only one is for you.
 
+Moving an existing pin to a newer version? `references/upgrading.md` lists
+what changed in each version, whether it moves output bytes, and what to do.
+
 ## Before you start
 
 Three things, each documented elsewhere. This guide points; it does not

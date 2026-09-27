@@ -19,6 +19,7 @@ SKILL = Path(__file__).resolve().parents[1]
 PACKAGE = SKILL / 'pdf_translate'
 SKILL_MD = SKILL / 'SKILL.md'
 RETYPESET_MD = SKILL / 'references' / 'retypeset.md'
+UPGRADING_MD = SKILL / 'references' / 'upgrading.md'
 
 
 def _read(path):
@@ -91,6 +92,23 @@ class RetypesetReferenceTests(unittest.TestCase):
         self.assertEqual(example['schema'], SCALE_REPORT_SCHEMA)
         # The keys a legacy build gives each run (`consider_ratio` in retypeset).
         self.assertEqual(set(example['runs'][0]), {'page', 'key', 'ratio'})
+
+
+class UpgradeNoteTests(unittest.TestCase):
+    """The upgrade note is a living document: every version adds its section,
+    so a consumer moving a pin reads what changed up to the version they
+    install."""
+
+    def test_the_current_version_has_a_section(self):
+        version = importlib.import_module('pdf_translate').__version__
+        later = _section(_read(UPGRADING_MD), 'Later versions')
+        self.assertRegex(later, rf'\n### v{re.escape(version)}\b',
+                         f'references/upgrading.md has no "### v{version}" '
+                         f'section under "Later versions"')
+
+    def test_the_consumer_guide_and_skill_md_point_to_it(self):
+        for doc in (SKILL_MD, SKILL / 'references' / 'consumer-guide.md'):
+            self.assertIn('references/upgrading.md', _read(doc), msg=doc.name)
 
 
 class SkillMdTests(unittest.TestCase):

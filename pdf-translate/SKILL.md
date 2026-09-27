@@ -18,7 +18,7 @@ compatibility: >-
   strongly preferred: fonts for the target script (the Noto family) and the
   issuer's own published translation are both looked up online.
 metadata:
-  version: "81"
+  version: "82"
 ---
 
 # pdf-translate: high-fidelity PDF translation
@@ -628,6 +628,10 @@ optional model first pass are in `references/review.md`.
   Python**, with no CLI: the six calls, what each returns, every file on disk
   and which call wrote it, refusals as typed exceptions, progress and
   cancellation, process isolation for concurrent PDF jobs, and logging.
+- `references/upgrading.md` — what a Python consumer sees change from one
+  pinned version to the next, from v54 on: the version each change shipped
+  in, whether it moves output bytes, and what to do. Read before moving a
+  pin.
 - `references/gates.md` — every verify gate: what it reads, what fails, and
   why. Read when a gate fails, or before promising what verify checks.
 - `references/widget-text.md` — captions, tooltips, dropdown labels and

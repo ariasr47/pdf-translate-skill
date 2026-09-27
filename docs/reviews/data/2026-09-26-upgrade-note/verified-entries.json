@@ -1,0 +1,1547 @@
+{
+ "from": "9675c61 (v54)",
+ "to": "0d58202 (v81)",
+ "entries": [
+  {
+   "version": 55,
+   "title": "verify gate 21 `leak-cjk` judges CJK-to-CJK jobs; `leak-scan` becomes SKIP and two gates disappear",
+   "affects": [
+    "verify",
+    "run_verify",
+    "VerifyVerdict.gates",
+    "VerifyVerdict.to_dict / verify_report.json",
+    "GATE_NAMES",
+    "pdf_translate.cjk_tell (new module)"
+   ],
+   "change": "When source and output share the spaceless CJK family, the mapping's `lang` names a Han convention (ja / zh-Hans / zh-Hant), the source's convention can be read, and the pair is JP→SC, JP→TC, SC→JP, SC→TC or TC→SC, verify records a new gate `leak-cjk`. It FAILs when a drawn line holds 6 or more characters the target cannot carry, REVIEWs at 1–5, and PASSes otherwise, with one Finding(page, 'line', text) per line. In that case `leak-scan` is recorded as SKIP ('judged by leak-cjk') where it used to be REVIEW, and `leak-running` and `leak-isolated` are no longer recorded at all; v54 recorded them as PASS/PASS. So verify and run_verify can now return exit_code 1 on CJK-to-CJK jobs that used to be REVIEW only. When the tell cannot apply (no lang, a TC→JP pair, an unclear source), the old REVIEW leak-scan stays and the console gains the line `   (CJK tell not applied: <why>)`. GATE_NAMES gains 'leak-cjk' between 'leak-scan' and 'leak-running'.",
+   "consumer_action": "If you index or snapshot GATE_NAMES or VerifyVerdict.gates, expect 'leak-cjk' and expect leak-running and leak-isolated to be missing on judged CJK-to-CJK jobs. Treat a leak-cjk FAIL as a real exit 1. Pass legitimate proper nouns via allow=.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "No PDF bytes change. VerifyVerdict.to_dict() and the --report JSON change for CJK-to-CJK jobs whose mapping has a Han-convention lang: a new gate, leak-scan becomes SKIP, and two gates are gone. The console gains a line when the tell is not applied.",
+   "evidence": [
+    "5ba2a67, f30eaf9 (pyproject 54.0.0 on the branch; bumped to 55.0.0 by 8bd841e; merged to main by 55e73f5 at 55.0.0)",
+    "pdf-translate/pdf_translate/verify.py:316-324, 1492-1545, 2096-2128, 2144 @0d58202",
+    "pdf-translate/pdf_translate/cjk_tell.py:39 (LINE_FAIL = 6) @0d58202",
+    "docs/DECISIONS.md:44 @0d58202",
+    "docs/reviews/2026-09-16-leak-cjk-gate.md"
+   ]
+  },
+  {
+   "version": 56,
+   "title": "verify drops two kinds of false FAIL: wrapped spaceless-script targets and Hidden pushbuttons",
+   "affects": [
+    "verify",
+    "run_verify",
+    "gate 'placement'",
+    "gate 'button-captions'",
+    "gate 'caption-width'",
+    "verify.missing_translation_targets",
+    "verify.leftover_button_captions (new hidden= kwarg)",
+    "verify.hidden_pushbuttons (new)"
+   ],
+   "change": "(1) With translations= given, the placement gate now checks a target in a spaceless script (CJK, Thai, Khmer and so on) with the wrapping whitespace removed on both sides. A wrapped Japanese merge or notice that FAILed as 'missing' now PASSes. Latin targets still need their spaces. (2) The button-captions and caption-width gates now skip output pushbuttons whose annotation /F has the Hidden bit set, which is how --hide-buttons marks them. Such buttons used to FAIL both gates.",
+   "consumer_action": "None. Verdicts on these jobs flip from FAIL to PASS, so update any golden verdicts that captured the old FAILs.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "No PDF bytes change. Verify verdicts and report JSON change for jobs with wrapped spaceless-script targets or with hidden pushbuttons.",
+   "evidence": [
+    "5e7864f (pyproject 56.0.0), merged by bacc436",
+    "pdf-translate/pdf_translate/verify.py:854-895, 919-950, 1002, 2223 @0d58202",
+    "docs/DECISIONS.md:45 @0d58202"
+   ]
+  },
+  {
+   "version": 56,
+   "title": "retypeset's canonical /ToUnicode also maps single-substitution alternates",
+   "affects": [
+    "retypeset",
+    "run_retypeset (from v58)",
+    "output PDF /ToUnicode CMaps",
+    "retypeset.ligature_gid_map",
+    "retypeset.authored_gid_map"
+   ],
+   "change": "The canonical text-layer map now also maps every GSUB single-substitution alternate that an authored character can reach (locl digits, vert forms, stylistic sets) back to that base character, when the alternate has no cmap entry of its own. canonicalize_text_layer appends the whole map to each placed font's /ToUnicode, so the appended bfchar block grows. This is the fix for `FL-150` reading back as `FL-Ɍɐɋ` under Noto Sans JP's locl digits. I measured it on the 55e73f5 and bacc436 trees. For a Spanish sentence set in NotoSans-Regular, ligature_gid_map went from 5 to 43 entries and authored_gid_map from 33 to 71. For a JP sentence set in NotoSansJP-VF-wght400 they went from 3 to 17 and from 17 to 31.",
+   "consumer_action": "Expect different output-PDF bytes. Text extracted from an alternate glyph that was actually drawn now reads as the authored character. Regenerate byte goldens.",
+   "moves_output_bytes": "yes",
+   "bytes_detail": "Only the /ToUnicode streams of fonts placed by legacy retypeset change, whenever the face has single-substitution lookups reachable from authored characters. Both Noto faces I tested have them, including a plain Latin one. Glyph drawing is not touched: only canonicalize_text_layer's map changes.",
+   "evidence": [
+    "5e7864f (pyproject 56.0.0), merged by bacc436",
+    "pdf-translate/pdf_translate/retypeset.py:597-630, 644-673 @0d58202",
+    "probe: /private/tmp/claude-501/-Users-rodrigoarias-dev-pdf-translate-skill/075bad03-6432-4f4e-ae60-bb69e0654407/scratchpad/upgrade-note-work/r55run/gidmap_probe.py, run on the 55e73f5 and bacc436 trees",
+    "docs/DECISIONS.md:45 @0d58202"
+   ]
+  },
+  {
+   "version": 56,
+   "title": "A merge's reported scale is source-relative, including the 0.98 fit allowance (shipped without a version bump)",
+   "affects": [
+    "retypeset",
+    "run_retypeset",
+    "scale_report.json runs[].ratio",
+    "RetypesetResult.scaled (from v58)",
+    "the 0.7 SCALE_MIN refusal (overflow / PlacementError)",
+    "verify gate 'scaled-runs'"
+   ],
+   "change": "Merges are drawn at round(size*0.98, 1) and then scaled by the Story engine. The ratio recorded and compared against the 0.7 floor used to be the engine's factor alone. It is now that factor times the drawn/source ratio of the fit allowance (0.9778 for a 9 pt source). Every merge therefore appears in the scaled runs at about 0.98 even when the engine did not shrink it, and `verify --translations` REVIEWs scaled-runs for any job with a merge. Reading the code (consider_ratio; I did not run this case): a merge whose engine factor is just above 0.7 (below about 0.716 for a 9 pt source) now falls under SCALE_MIN and is refused as overflow unless allow_scale names it. The drawing is unchanged: DECISIONS measures 8.2069 pt both before and after. Version caveat: c09449d reads 56.0.0 and landed on main at d3db869 without a bump, but main had already been 56.0.0 at bacc436 without it. The first version number that guarantees it is 57.",
+   "consumer_action": "Expect every merge in scale_report and in the scaled-runs REVIEW. If you pin by the 56.0.0 label, pin by commit instead. Add allow_scale for merges that sit just above the floor.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "PDF bytes are unchanged. scale_report.json changes for any job with merges: new entries at about 0.98, and lower ratios. The console digest numbers for merges change.",
+   "evidence": [
+    "c09449d (pyproject 56.0.0), merged by d3db869 (main still 56.0.0)",
+    "pdf-translate/pdf_translate/retypeset.py:146-157, 1310-1322, 1967 @0d58202",
+    "docs/DECISIONS.md:48 @0d58202",
+    "docs/reviews/2026-09-19-b1-recovery-probe.md"
+   ]
+  },
+  {
+   "version": 57,
+   "title": "New review stage (run_review) and a `pipeline.py finish` that requires --work and a resolved review",
+   "affects": [
+    "run_review (new)",
+    "ReviewVerdict (new)",
+    "ReviewFinding (new)",
+    "pipeline.py review (new command)",
+    "pipeline.py finish",
+    "pipeline.py qa --glossary",
+    "review_state.json",
+    "review_pairs.md",
+    "review_prompt.md",
+    "glossary.csv"
+   ],
+   "change": "New silent stage `run_review(work, ingest=None, notes=None, generate=True)`. It returns a frozen ReviewVerdict (to_dict with schema/version; open_findings, counts, blocks_delivery, exit_code, review_line), writes review_pairs.md and review_prompt.md, and appends accepted terminology findings to DIR/glossary.csv. `pipeline.py finish` now requires `--work DIR`; without it the command exits 2, which breaks existing invocations. It also refuses with exit 2, before field_fonts runs, while DIR/review.json is absent or any finding is open; `--no-review` delivers anyway. It writes review_state.json beside FINAL.pdf on every run, refused or not. `pipeline.py qa --glossary NAME` now resolves a bare NAME under --work.",
+   "consumer_action": "If you drive `pipeline.py finish`, pass --work, plus --no-review to keep the v54 behaviour, and expect review_state.json beside FINAL.pdf. From Python, call run_review(work, generate=False) and decide for yourself.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "New files appear only when review, finish or run_review run. review_state.json is written next to FINAL.pdf on every finish.",
+   "evidence": [
+    "7f3baf7, 81e297b (pyproject 56.0.0 on the branch; bumped to 57.0.0 by 8850c4c), merged by 36bcf9f (57.0.0)",
+    "pdf-translate/pdf_translate/review.py:32, 70-114, 116-165, 587 @0d58202",
+    "pdf-translate/pdf_translate/pipeline.py:566, 633-712 @0d58202",
+    "docs/DECISIONS.md:47 @0d58202",
+    "docs/reviews/2026-09-17-terminology-loop.md"
+   ]
+  },
+  {
+   "version": 58,
+   "title": "All output goes through `logging`: loud calls also reach the root logger, the package logger is left at INFO, and compare()/render_pages() stop printing",
+   "affects": [
+    "logger 'pdf_translate' (NullHandler added at import in v57)",
+    "verify",
+    "retypeset",
+    "prepare_font",
+    "field_fonts",
+    "compare",
+    "render_pages",
+    "run_verify",
+    "every run_* twin",
+    "pipeline.scaffold_from_cores / propose_merges / merge_mappings"
+   ],
+   "change": "Every print moved to logging.getLogger('pdf_translate.<module>') at INFO. The loud functions wrap their body in _console.console(), which attaches a StreamHandler to the sys.stdout in effect at entry, so stdout bytes are unchanged. Four things a consumer can observe:\n(a) The same records also propagate to the root logger's handlers.\n(b) console() sets the 'pdf_translate' logger to INFO on first entry and never restores it. After any loud call, the silent run_* twins' INFO records reach the root handlers too.\n(c) compare() and render_pages() called directly no longer print 'wrote …' and 'rendered N page pair(s) …'. Only their CLI main() prints.\n(d) run_verify no longer wraps redirect_stdout, so other threads' stdout is not swallowed while it runs.\nMeasured with logging.basicConfig() (log_probe.py):\n- v54: run_verify sent 0 lines to root; verify() sent 10 lines to stdout and 0 to root; the logger level stayed NOTSET.\n- v58: verify() sent 10 lines to stdout and the same 10 to root; the level became INFO; run_verify then sent 10 lines to root.\n- v81: the same, with 11 lines.\nquiet_probe.py: compare() and render_pages() printed on v54 and printed nothing on v58 or v81.",
+   "consumer_action": "If your service configures root logging, set logging.getLogger('pdf_translate').propagate = False, or give that logger its own level and handler. Read return values instead of the stdout of compare()/render_pages(). Do not parse console text.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "81e297b (v57 NullHandler and a pipeline-only console), 1cbe1ba, 58fd6fc, 11b9d6f (pyproject 57.0.0 on the E3 branch; bumped to 58 by 09343e5), merged by 6eefa7e (58.0.0)",
+    "pdf-translate/pdf_translate/_console.py:50-76 @0d58202",
+    "pdf-translate/pdf_translate/__init__.py:40-47 @0d58202",
+    "pdf-translate/pdf_translate/verify.py:2346-2397 @0d58202",
+    "pdf-translate/pdf_translate/compare.py:25-89, render_pages.py:24-51 @0d58202",
+    "probes: /private/tmp/claude-501/-Users-rodrigoarias-dev-pdf-translate-skill/075bad03-6432-4f4e-ae60-bb69e0654407/scratchpad/upgrade-note-work/r55run/log_probe.py and quiet_probe.py, run on the 9675c61, 6eefa7e and 0d58202 trees, exit 0",
+    "docs/DECISIONS.md:50 @0d58202",
+    "docs/reviews/2026-09-18-consumer-surface.md §4"
+   ]
+  },
+  {
+   "version": 58,
+   "title": "Silent run_* twins that return frozen, schema-versioned results",
+   "affects": [
+    "run_strip",
+    "run_extract",
+    "run_prepare_font",
+    "run_retypeset",
+    "run_field_fonts",
+    "StripResult",
+    "ExtractResult",
+    "FontResult",
+    "RetypesetResult",
+    "FieldFontsResult",
+    "results.SCHEMA"
+   ],
+   "change": "Each twin is silent, returns a frozen dataclass whose collection fields are tuples, and raises a typed exception on refusal. to_dict() returns {'schema': 1, 'version': <__version__ string>, …fields}. `run_extract(src, outdir, *, gap=12.0, pages=None)` requires outdir, unlike extract_segments' '.' default. The bare functions keep their signatures, stdout bytes and return codes; extract_segments and strip_text still return their dicts.",
+   "consumer_action": "Optional migration: call the run_* twins and read the result objects.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "5a6c2af, 58fd6fc, 5626176 (pyproject 57.0.0 on the branch), merged by 6eefa7e (58.0.0)",
+    "pdf-translate/pdf_translate/results.py:139-240 @0d58202",
+    "pdf-translate/pdf_translate/strip_text.py:923; extract_segments.py:524; prepare_font.py:217; retypeset.py:1214; field_fonts.py:145 @0d58202",
+    "docs/DECISIONS.md:50 @0d58202"
+   ]
+  },
+  {
+   "version": 58,
+   "title": "Typed refusals: the PdfTranslateError family, `refusals` data, and retypeset's precedence",
+   "affects": [
+    "PdfTranslateError",
+    "MappingError",
+    "GlyphError",
+    "PlacementError",
+    "FontError",
+    "WidgetTextError",
+    "run_retypeset",
+    "run_prepare_font",
+    "exc.to_dict()"
+   ],
+   "change": "New base class PdfTranslateError(Exception). It carries message, console_line, exit_code (1 by default; 2 for WidgetTextError), refusals (a dict of lists with cores untruncated) and to_dict(): {'schema': 1, 'version', 'error', 'message', 'console_line', 'exit_code', 'refusals'} plus details(). WidgetTextError now subclasses it; in v54 it subclassed Exception directly. strip_text.WidgetTextError re-exports the same class.\nrun_retypeset on a legacy mapping raises in this order:\n- Before drawing: untranslated segments or unauthored merges raise MappingError (refusals 'untranslated' [{page, core}] and 'unauthored_merges' [{page, first_line}]).\n- An unmatched merge or a bad merge box raises MappingError (refusals 'merges').\n- Unplaceable notices raise PlacementError (refusals 'notices' [{index, why}]).\n- After drawing: any glyph miss raises GlyphError (page, char, and face = the role label such as 'regular', not a path). Otherwise overflow or a rotated-shaped run raises PlacementError (page, key, scale; scale is None when only rotated runs refused).\n- The post-draw refusals always carry the keys untranslated, overflow [{page, scale, core}], glyph_misses [{page, role, char, codepoint, name, core}] and rotated_shaped [{page, core}].\nThe v58 code also had an unreachable MappingError branch between GlyphError and PlacementError; cb3a670 (v74) removed it.\nrun_prepare_font raises FontError with reason 'fstype', 'no-pyftsubset', 'no-raster', 'no-conjuncts' or 'wrong-han-convention'. The loud wrappers catch PdfTranslateError, print console_line and return exit_code.",
+   "consumer_action": "Catch PdfTranslateError, or the specific types, around run_*. Branch on the type, exc.refusals and exc.reason, never on console text. `except WidgetTextError` keeps working.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "5a6c2af, 5626176 (pyproject 57.0.0 on the branch), merged by 6eefa7e (58.0.0)",
+    "pdf-translate/pdf_translate/results.py:31-137 @0d58202",
+    "pdf-translate/pdf_translate/retypeset.py:1346-1386, 1437-1453, 1540-1544, 2046-2091 @0d58202",
+    "pdf-translate/pdf_translate/prepare_font.py:257-400 @0d58202",
+    "docs/DECISIONS.md:50 @0d58202",
+    "docs/REQUESTS-from-product.md B1–B5 row (B2/B3 done in v58)"
+   ]
+  },
+  {
+   "version": 58,
+   "title": "run_retypeset gains progress, cancel, scale_report and resource_root; HTML resources resolve against the mapping's directory",
+   "affects": [
+    "run_retypeset",
+    "retypeset (resource default)",
+    "RetypesetResult.cancelled / output=None",
+    "shaping_probe.probe_font (Archive root)"
+   ],
+   "change": "New keywords:\n- progress(done, total): total counts pages plus merge jobs.\n- cancel(): checked at the top of each unit; when it returns true, the call returns RetypesetResult(cancelled=True, output=None) and nothing is saved.\n- scale_report: None writes no report, a path writes the report there, and the default writes it beside out.\n- resource_root: authored merge and notice HTML resolves its resources against this directory, which defaults to the mapping's directory instead of the process cwd.\nThe new default applies to the loud retypeset() as well. Font paths were already absolute, so fonts are unaffected. probe_font now roots its Archive at the font's directory; I ran it with relative and absolute paths on v54, v58 and v81 and got the same PASS every time.",
+   "consumer_action": "Use cancel and progress as needed. If your authored HTML references relative resources, place them beside translations.json or pass resource_root.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "Only merge or notice HTML that references resources by relative path, when the cwd differs from the mapping's directory. I did not reproduce this case.",
+   "evidence": [
+    "39f2edd (pyproject 57.0.0 on the branch), merged by 6eefa7e (58.0.0)",
+    "pdf-translate/pdf_translate/retypeset.py:1214-1255, 1553-1554, 1616-1634, 1941-1945 @0d58202",
+    "pdf-translate/pdf_translate/shaping_probe.py:234 @0d58202",
+    "probe: /private/tmp/claude-501/-Users-rodrigoarias-dev-pdf-translate-skill/075bad03-6432-4f4e-ae60-bb69e0654407/scratchpad/upgrade-note-work/r55run/probe_rel.py, exit 0 on all three trees",
+    "docs/REQUESTS-from-product.md C1/C4/C5 rows"
+   ]
+  },
+  {
+   "version": 58,
+   "title": "scale_report.json becomes an envelope and is written atomically",
+   "affects": [
+    "scale_report.json",
+    "retypeset",
+    "run_retypeset",
+    "retypeset.write_scale_report",
+    "verify.scale_report_for"
+   ],
+   "change": "The top level changes from a bare list to {\"schema\": 1, \"version\": \"<__version__>\", \"runs\": [...]}. The file is written through a temporary file and os.replace, and a failed write removes any stale report at the path. verify.scale_report_for reads both shapes; from v59 it treats a dict whose schema is not the int 1 or 2 as absent, which gives SKIP. A pre-v58 verify reading a v58+ report treats it as absent and SKIPs scaled-runs. Version caveat: the introducing commit fcf023e reads 57.0.0 because the E3 branch bumped later (09343e5). The v57 release, 36bcf9f, does not contain it.",
+   "consumer_action": "Read data['runs']. Accept both shapes when you read reports from mixed versions. Do not verify v58+ outputs with a pre-v58 verify.",
+   "moves_output_bytes": "yes",
+   "bytes_detail": "Every retypeset that writes the report changes its bytes: the envelope, and the version string inside it.",
+   "evidence": [
+    "fcf023e (57.0.0 on the branch), merged by 6eefa7e (58.0.0)",
+    "pdf-translate/pdf_translate/retypeset.py:749-790 @0d58202",
+    "pdf-translate/pdf_translate/verify.py:522-545 @0d58202",
+    "docs/DECISIONS.md:50 @0d58202",
+    "docs/reviews/2026-09-18-consumer-surface.md §6 (Task 5)"
+   ]
+  },
+  {
+   "version": 58,
+   "title": "requires-python goes from >=3.10 to >=3.14 (landed under an unchanged 58.0.0)",
+   "affects": [
+    "packaging: requires-python",
+    "installers on Python 3.10–3.13"
+   ],
+   "change": "pyproject's requires-python changes from \">=3.10\" to \">=3.14\", so pip refuses to install on 3.10 through 3.13. Nothing enforces it at runtime: _requirements.DECLARED_PYTHON only states '3.14+' in the missing-dependency message. Version caveat: b7c0084 reads 58.0.0 and landed at 4a5d200 without a bump. 6eefa7e was also 58.0.0 but still declared >=3.10, so the first version number that guarantees the new floor is 59.",
+   "consumer_action": "Move the consumer to Python 3.14 before adopting any version from 59 on.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "b7c0084 (pyproject 58.0.0), merged by 4a5d200 (58.0.0)",
+    "pdf-translate/pyproject.toml:12 @0d58202",
+    "pdf-translate/pdf_translate/_requirements.py:33 @0d58202",
+    "docs/DECISIONS.md:77 @0d58202"
+   ]
+  },
+  {
+   "version": 59,
+   "title": "Opt-in typography-1 mapping format, announced by MAPPING_FORMATS",
+   "affects": [
+    "MAPPING_FORMATS (new)",
+    "extract_segments / run_extract (typography=)",
+    "prepare_font / run_prepare_font (font_class=, font_role=)",
+    "retypeset / run_retypeset (original=)",
+    "verify / run_verify (typography=)",
+    "GATE_NAMES ('typography' appended)",
+    "ExtractResult.typography",
+    "RetypesetResult.typography",
+    "scale_report.json schema 2",
+    "segments.json / to_translate.json typography keys"
+   ],
+   "change": "New keyword-only parameters, plus `pdf_translate.MAPPING_FORMATS = ('legacy', 'typography-1')`. extract with typography=True writes a 'typography' block into segments.json, adds occurrence_id and style_runs to each segment, and writes format/segments/extraction_id into to_translate.json. A typography-1 mapping makes retypeset require original= and write scale_report schema 2 with a 'typography' record. verify records a 'typography' gate. Typography refusals are MappingError, FontError, GlyphError or PlacementError, with refusals={'typography': [{reason, detail, occurrence_id, run_id, page, source_text}]}. Reason codes in the v59 code: invalid-style-reference, stale-extraction, unsupported-typography-construct, unsafe-typography-geometry, below-scale-floor, unresolved-target-font, unresolved-source-style, missing-font-role, uninstantiated-font, unreadable-font, missing-glyph, wrong-font-class, wrong-font-role, duplicate-occurrence, unknown-occurrence, unsupported-style-alignment. Passing font_class or font_role with a legacy mapping raises FontError('missing-font-role'). Legacy calls are unchanged: to_dict() leaves out 'typography' when it is None.",
+   "consumer_action": "None, unless you adopt typography-1. Test for it with getattr(pdf_translate, 'MAPPING_FORMATS', ()).",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "Only typography-1 jobs are affected. For legacy jobs DECISIONS reports both parity runners byte-identical at v59.",
+   "evidence": [
+    "1a730e2, 3bc3156, 76d3d72, a29a31f, 0075c8f, b289ce2, 95886f6, 444a644 (pyproject 58.0.0 on the branch), merged by d4d85be (59.0.0)",
+    "pdf-translate/pdf_translate/__init__.py:26 @0d58202",
+    "pdf-translate/pdf_translate/extract_segments.py:524, 558; prepare_font.py:193-245; retypeset.py:752-771, 1190-1286; verify.py:323, 1761-1782, 2331; results.py:154, 195, 223 @0d58202",
+    "docs/DECISIONS.md:76 @0d58202",
+    "docs/reviews/2026-09-20-typography-implementation.md"
+   ]
+  },
+  {
+   "version": 59,
+   "title": "Legacy mappings are read by the typography loader: unreadable or foreign mappings become MappingError",
+   "affects": [
+    "run_retypeset",
+    "retypeset",
+    "run_prepare_font",
+    "prepare_font",
+    "verify",
+    "run_verify",
+    "qa_check",
+    "run_qa",
+    "MappingError.refusals"
+   ],
+   "change": "translations.json is now read with load_mapping (utf-8-sig) everywhere, instead of json.load in utf-8. The effects:\n- Unreadable JSON, a missing file, a non-object root, or a 'format' key other than 'typography-1' raises MappingError, not JSONDecodeError or FileNotFoundError. Even for a legacy mapping its refusals are {'typography': [{'reason': 'invalid-style-reference', …}]}.\n- The loud retypeset() and prepare_font() now return 1 and print the detail line, where they used to raise a traceback.\n- verify(), run_verify() and qa_check() raise MappingError.\n- A BOM-prefixed mapping is now accepted.\n- run_prepare_font reads the mapping before its fsType check, so a bad mapping refuses first.\nMeasured with bad_mapping.py: v54 and v58 raised JSONDecodeError, FileNotFoundError and FzErrorSystem for a {\"format\":\"legacy\"} mapping. v59 and v81 raise MappingError with those refusals, and loud retypeset returns rc 1.",
+   "consumer_action": "Catch MappingError (or PdfTranslateError) where you caught JSON or file errors. Do not put a 'format' key in legacy mappings.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "a29a31f, 76d3d72, 0075c8f, b289ce2 (58.0.0 on the branch), merged by d4d85be (59.0.0)",
+    "pdf-translate/pdf_translate/mapping.py:56-63, 85-101, 388-395, 407-417 @0d58202",
+    "pdf-translate/pdf_translate/retypeset.py:1258; prepare_font.py:227, 248; verify.py:1769-1777; qa_check.py:328 @0d58202",
+    "probe: /private/tmp/claude-501/-Users-rodrigoarias-dev-pdf-translate-skill/075bad03-6432-4f4e-ae60-bb69e0654407/scratchpad/upgrade-note-work/r55run/bad_mapping.py, run on the 9675c61, 6eefa7e, d4d85be and 0d58202 trees, exit 0"
+   ]
+  },
+  {
+   "version": 59,
+   "title": "CLIs: a value option given without its value prints a usage line and exits 2",
+   "affects": [
+    "all module main() entry points and scripts/*.py (retypeset, verify, extract_segments, prepare_font, qa_check, pipeline, …)"
+   ],
+   "change": "An option such as --report, --original or --segments given as the last token, or followed by another --option, now logs `usage: <option> requires a value` and returns 2, where it used to raise an IndexError traceback.",
+   "consumer_action": "None for library calls. CLI wrappers see exit 2 instead of a traceback.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "95886f6 (58.0.0 on the branch), merged by d4d85be (59.0.0)",
+    "pdf-translate/pdf_translate/_console.py:33-36 @0d58202"
+   ]
+  },
+  {
+   "version": 59,
+   "title": "A truncated refusal list says how many entries it hid (console_line changes; shipped without a bump)",
+   "affects": [
+    "retypeset stdout",
+    "PdfTranslateError.console_line (MappingError / GlyphError / PlacementError from run_retypeset)",
+    "exc.to_dict()['console_line']"
+   ],
+   "change": "Each refusal list cut at 30 entries now ends with `  … N more not shown`. When anything was cut, the block closes with `  (N hidden in total — a caller using run_retypeset gets every entry in refusals)`. No report file is promised, and a refused build still writes no scale report. refusals are unchanged. Version caveat: 611f56b reads 59.0.0 and landed at 6092cef without a bump, after d4d85be was already 59.0.0. The first version number that guarantees it is 60.",
+   "consumer_action": "Stop counting console lines; use exc.refusals.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "611f56b (pyproject 59.0.0), merged by 6092cef (59.0.0)",
+    "pdf-translate/pdf_translate/retypeset.py:110-137 @0d58202",
+    "docs/DECISIONS.md:83 @0d58202"
+   ]
+  },
+  {
+   "version": 59,
+   "title": "Dependency preflight: `import pdf_translate` raises one ImportError naming every missing package (shipped without a bump)",
+   "affects": [
+    "import pdf_translate",
+    "scripts/*.py"
+   ],
+   "change": "Before importing its stages, the package checks for pymupdf, pikepdf and fontTools with find_spec. If any are absent it raises a plain ImportError whose message names all of them, gives an install line bound to sys.executable, and names the running interpreter. v54 instead raised the ModuleNotFoundError of whichever import failed first. The scripts print the same text to stderr and exit 2. Version caveat: c4591b9 reads 59.0.0 and landed at ef9991b without a bump. The first version number that guarantees it is 60.",
+   "consumer_action": "`except ModuleNotFoundError` around the import no longer catches this; catch ImportError.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "c4591b9 (pyproject 59.0.0), merged by ef9991b (59.0.0)",
+    "pdf-translate/pdf_translate/__init__.py:33-38 @0d58202",
+    "pdf-translate/pdf_translate/_requirements.py:24-85 @0d58202",
+    "pdf-translate/scripts/retypeset.py:23-26 @0d58202",
+    "docs/DECISIONS.md:82 @0d58202"
+   ]
+  },
+  {
+   "version": 60,
+   "title": "Opt-in capture of below-the-floor refusals and near-floor builds (capture_dir, capture_below, two environment variables)",
+   "affects": [
+    "retypeset(capture_dir=, capture_below=)",
+    "run_retypeset(capture_dir=, capture_below=)",
+    "PDF_TRANSLATE_CAPTURE_DIR",
+    "PDF_TRANSLATE_CAPTURE_BELOW",
+    "--capture-dir / --capture-below",
+    "files written under the capture directory"
+   ],
+   "change": "When capture_dir is set, or PDF_TRANSLATE_CAPTURE_DIR when capture_dir is None, a refusal caused by a run scaling below SCALE_MIN writes a replayable bundle to <dir>/<UTC timestamp>-<8 hex>/. Only the legacy 'overflow' list and typography's 'below-scale-floor' reason trigger it. The bundle holds source.pdf (when original is given), stripped.pdf, segments.json, the mapping with copied fonts, and manifest.json with kind 'refusal' and exc.to_dict(). The same exception is then raised. On the legacy path, capture_below (or PDF_TRANSLATE_CAPTURE_BELOW) also captures a successful build with kind 'near-floor', one bundle per core at its worst ratio. Failures to write a bundle are logged at WARNING and swallowed. An explicit non-numeric capture_below raises ValueError at the top of run_retypeset; a malformed environment value is ignored. Capture is off by default.",
+   "consumer_action": "Make sure PDF_TRANSLATE_CAPTURE_DIR is not set in service environments unless you want bundles, which copy source documents to disk. Opt in deliberately.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "Only when capture is enabled: new bundle directories. The PDF, the report and the refusal are unchanged.",
+   "evidence": [
+    "ba97d0e, c7ec0c0 (pyproject 60.0.0), merged by b20fadd (60.0.0)",
+    "pdf-translate/pdf_translate/capture.py:49-137, 140-199, 202-205, 305 @0d58202",
+    "pdf-translate/pdf_translate/retypeset.py:1190-1212, 1256-1286, 2082-2091, 2150-2160 @0d58202",
+    "docs/DECISIONS.md:79, 81 @0d58202"
+   ]
+  },
+  {
+   "version": 60,
+   "title": "A review with errors blocks delivery (A01; shipped without a bump)",
+   "affects": [
+    "ReviewVerdict.blocks_delivery",
+    "ReviewVerdict.review_line",
+    "pipeline.py finish",
+    "review_state.json"
+   ],
+   "change": "blocks_delivery is now true whenever verdict.errors is non-empty; before, it was true only when the review was absent or findings were open. review_line returns 'REVIEW invalid review: …' when there are errors. finish prints the errors, exits 2 and records the failed state in review_state.json. --no-review still delivers, with disclosure. Version caveat: 41bdf99 landed through PR #22 at 178a06f while main stayed 60.0.0, as DECISIONS:127 records. The first version number that guarantees it is 61.",
+   "consumer_action": "If you gate on run_review(...).blocks_delivery, expect True for malformed or invalid review.json.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "review_state.json content changes for invalid reviews.",
+   "evidence": [
+    "41bdf99 (pyproject 60.0.0), merged by 178a06f (60.0.0)",
+    "pdf-translate/pdf_translate/review.py:144-165 @0d58202",
+    "pdf-translate/pdf_translate/pipeline.py:666-672 @0d58202",
+    "docs/DECISIONS.md:85, 127 @0d58202",
+    "docs/reviews/2026-09-22-a01-invalid-review-refusal.md"
+   ]
+  },
+  {
+   "version": 60,
+   "title": "`pipeline.py rebuild` removes earlier verification reports before it starts (A03; shipped without a bump)",
+   "affects": [
+    "pipeline.py rebuild",
+    "DIR/verify_report.json",
+    "--report PATH"
+   ],
+   "change": "Before anything runs, rebuild removes the default DIR/verify_report.json and any --report path, but only if the file is a schema-1 verify report. It refuses with exit 2, deleting nothing, when a report path names an input or output or holds an unrecognised file, and stops if removal fails. A failed rebuild therefore leaves no report behind. An older OUT.pdf may remain. Version caveat: 30c4805 and 2249171 landed at 178a06f under 60.0.0; the first version number that guarantees it is 61.",
+   "consumer_action": "Treat an absent report after rebuild as 'no verification'. Do not point --report at a non-report file.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "Report files are deleted before a rebuild attempt, which can then fail.",
+   "evidence": [
+    "30c4805, 2249171 (pyproject 60.0.0), merged by 178a06f (60.0.0)",
+    "pdf-translate/pdf_translate/pipeline.py:440-470, 475-520 @0d58202",
+    "docs/DECISIONS.md:86, 127 @0d58202",
+    "docs/reviews/2026-09-22-a03-stale-rebuild-report.md"
+   ]
+  },
+  {
+   "version": 60,
+   "title": "Page parity: a new always-on verify gate, and compare()/render_pages() cover every page (A02; shipped without a bump)",
+   "affects": [
+    "verify",
+    "run_verify",
+    "GATE_NAMES ('page-parity' after 'fill-roundtrip')",
+    "VerifyVerdict.gates",
+    "compare (return value)",
+    "render_pages (files and return list)",
+    "pipeline.py render / finish exit codes"
+   ],
+   "change": "verify now records 'page-parity' on every run. It FAILs on a missing or extra page, a media or crop box that differs by more than 0.01 pt, or a changed rotation, with Finding(page, 'missing'|'extra'|'media-box'|'crop-box'|'rotation', text). It prints `PASS page parity: N page(s), same boxes and rotation`, or a FAIL line with up to 10 details. compare() now renders every page of both files, with placeholders and a banner, and returns 1 when the page counts differ; it used to return 0 after showing only the common pages. render_pages() also renders unmatched pages, includes them in its returned list, and logs `FAIL page count`. pipeline render and finish exit 1 on a mismatch. Version caveat: 06f2c35 and d9efd44 landed at fdbcd82 under 60.0.0. REQUESTS-from-product.md counts this as v61 ('For a consumer, v61 changes two things').",
+   "consumer_action": "Check compare()'s return value. Expect one more gate and one more console line in every verdict. Regenerate verdict goldens.",
+   "moves_output_bytes": "yes",
+   "bytes_detail": "Every VerifyVerdict and --report JSON gains the page-parity gate. The comparison HTML and render_pages output change only when page counts differ.",
+   "evidence": [
+    "06f2c35, d9efd44 (pyproject 60.0.0), merged by fdbcd82 (60.0.0)",
+    "pdf-translate/pdf_translate/verify.py:316-317, 1724-1758, 1936-1952 @0d58202",
+    "pdf-translate/pdf_translate/compare.py:25-89; render_pages.py:24-58; pipeline.py:557, 698 @0d58202",
+    "docs/DECISIONS.md:129 @0d58202",
+    "docs/reviews/2026-09-23-a02-page-parity.md"
+   ]
+  },
+  {
+   "version": 61,
+   "title": "A default legacy `pipeline.py rebuild` verifies against its own mapping (A06)",
+   "affects": [
+    "pipeline.py rebuild",
+    "verify_report.json from rebuild"
+   ],
+   "change": "When the caller forwards neither --translations nor --segments, rebuild passes --translations DIR/translations.json --segments DIR/segments.json to verify. So empty-targets, placement, override-markers, identifiers and the other mapping-dependent gates now run. Jobs with empty targets or dropped markers exit 1 where they exited 0. A forwarded --translations is honoured, and a forwarded --segments still gets the default mapping.",
+   "consumer_action": "Expect rebuild exit 1 on mapping defects that v54 passed.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "The rebuild's verify_report.json holds more gates.",
+   "evidence": [
+    "55bb44d (pyproject 60.0.0), bumped to 61.0.0 by fda27e7, merged by e5ff733 (61.0.0)",
+    "pdf-translate/pdf_translate/pipeline.py:531-535 @0d58202",
+    "docs/DECISIONS.md:131 @0d58202",
+    "docs/reviews/2026-09-23-a06-rebuild-mapping-checks.md"
+   ]
+  },
+  {
+   "version": 62,
+   "title": "Widget text is keyed by the fully qualified field name (R-03)",
+   "affects": [
+    "widget_text_scaffold",
+    "extract_segments / run_extract (widget_text.json)",
+    "strip_text / run_strip (widget_text=)",
+    "choice_exports",
+    "verify gate 'opt-export-parity'",
+    "StripResult.rewritten_widget_text / report['rewritten_widget_text'][].name",
+    "WidgetTextError",
+    "strip_text.field_full_name (new)",
+    "strip_text.resolve_widget_text_keys (new)"
+   ],
+   "change": "Scaffold keys are now every /T up the /Parent chain, joined with dots, with one entry per full name; before, only the first widget of each partial /T got an entry. choice_exports keys by full name and gives a repeated widget the key '<name> (widget n)'. How strip resolves each widget_text key:\n- A full name applies to that field only.\n- A partial name, or its base without [n], applies only when it names exactly one field.\n- A partial name that names several fields raises WidgetTextError listing the candidates' full names.\n- Two keys for one field raise WidgetTextError.\n- Distinct widgets that share a full name but differ in the source text being written raise WidgetTextError.\nOnly /Widget annotations take part. The rewritten_widget_text entries name full names. Captions and hide_buttons still use partial names.\nProbe on the R-03 fixture:\n- v61 scaffold keys were ['Name[0]','PDF417BarCode1[0]','Phone[0]','Pick[0]']; v62 produces 8 full-name keys.\n- The v61 scaffold fed to v62 strip raised WidgetTextError 'widget-text key names more than one field…'.\n- The v62 scaffold fed to v62 strip succeeded.\n- On v61, its own scaffold was already refused: Pick[0]'s options were applied to the wrong dropdown.",
+   "consumer_action": "Regenerate widget_text.json with v62+ extract and key entries by full name. Old partial keys work only where they are unique.",
+   "moves_output_bytes": "yes",
+   "bytes_detail": "widget_text.json keys and entry counts change on forms with nested fields (8 of 17 wild forms). Stripped PDFs change where partial names collided: no more cross-field tooltips or values, and barcode values stay per page. Verify /Opt parity finding names change.",
+   "evidence": [
+    "dc87cce (pyproject 62.0.0)",
+    "pdf-translate/pdf_translate/strip_text.py:158-181, 513-540, 624-650, 722-792, 835 @0d58202",
+    "docs/DECISIONS.md:139 @0d58202",
+    "docs/reviews/2026-09-24-r03-widget-text-names.md",
+    "probe: /private/tmp/claude-501/-Users-rodrigoarias-dev-pdf-translate-skill/075bad03-6432-4f4e-ae60-bb69e0654407/scratchpad/upgrade-note-work/r55run/r03_probe.py, run on the e5ff733 (v61) and dc87cce (v62) trees"
+   ]
+  },
+  {
+   "version": 63,
+   "title": "Strip keeps the graphics state set inside text objects (R-01)",
+   "affects": [
+    "strip_text",
+    "run_strip",
+    "strip_text.strip_ops",
+    "stripped PDF content streams",
+    "downstream retypeset output"
+   ],
+   "change": "Inside BT…ET, strip now drops only BT, ET and the text operators of PDF 32000-1 Table 51: Tj TJ ' \" Td TD Tm T* Tc Tw Tz TL Tf Tr Ts. Every other operator stays in place and in order: colour, gs, w, q/Q, cm, BDC/BMC/EMC marked content, and so on. Nesting is tracked by depth. Clip-mode text (Tr 4–7) is still dropped whole, with no refusal (DECISIONS:143). Probe on a constructed page: the rectangle filled after ET was (0,0,0) on v62 and is (229,255,229) on v63. The content changed from b'q\\n20 20 100 60 re\\nf\\nQ\\n' to b'q\\n0.9 1 0.9 rg\\n/Span << /MCID 0 >> BDC\\nEMC\\n20 20 100 60 re\\nf\\nQ\\n'.",
+   "consumer_action": "Expect different stripped and final PDF bytes. Regenerate byte and render goldens.",
+   "moves_output_bytes": "yes",
+   "bytes_detail": "Any text object that carries non-text operators changes the stripped bytes. The inventory found them in 27 of 33 files, mostly marked content: 50,294 occurrences. Visible pixel changes are confined to 18 pages in 5 files. Files without non-text operators inside BT…ET are unchanged.",
+   "evidence": [
+    "89956d3 (pyproject 63.0.0)",
+    "pdf-translate/pdf_translate/strip_text.py:115-143 @0d58202",
+    "docs/DECISIONS.md:141, 143 @0d58202",
+    "docs/reviews/2026-09-24-r01-strip-graphics-state.md",
+    "probe: /private/tmp/claude-501/-Users-rodrigoarias-dev-pdf-translate-skill/075bad03-6432-4f4e-ae60-bb69e0654407/scratchpad/upgrade-note-work/r55run/r01_probe.py, run on the dc87cce and 89956d3 trees, exit 0"
+   ]
+  },
+  {
+   "version": 64,
+   "title": "segments.json and extract geometry move to the page's unrotated space; segments.json gains a top-level `geometry` key",
+   "affects": [
+    "run_extract / extract_segments: ExtractResult.segments (origin, bbox, dir) on /Rotate pages",
+    "ExtractResult.warnings on /Rotate pages",
+    "segments.json (file written by run_extract): new top-level key `geometry`",
+    "pdf_translate.strip_text.page_textdict_without_annots / page_rawdict_without_annots (module-level helpers, not exported from the package)",
+    "pdf_translate.strip_text.GEOMETRY_SPACE (new constant, 'unrotated')"
+   ],
+   "change": "Every run_extract now writes `\"geometry\": {\"space\": \"unrotated\", \"rotated_pages\": {\"<page>\": {\"rotation\", \"width\", \"height\"}}}` into segments.json, on every document (rotated_pages is {} when no page is rotated). On a page with /Rotate 90/180/270, each segment's origin, bbox and dir are now in the unrotated space that page.get_text uses, not the rotated view: measured on corpus/rotated.pdf (/Rotate 90), the first segment 'ROTATED PAGE TEST' went from origin [712.0, 60.0], dir [0.0, 1.0] (v63) to origin [60.0, 80.0], dir [1.0, 0.0] (v81). Warnings computed from geometry (merge-candidate, narrow-column, right-aligned) can now appear on rotated pages where v63 lost them (review). ExtractResult itself has no `geometry` attribute (measured: hasattr false); the key is only in the file. Unrotated pages are untouched (derotation is the identity). The typography extraction_id does not cover `geometry`, so it is unchanged for unrotated documents.",
+   "consumer_action": "Re-run extract for any segments.json made by v63 or earlier on a document with /Rotate pages (retypeset now refuses it; see the stale-extraction entry). A consumer that draws segment geometry over a render of a rotated page must map it through page.rotation_matrix. Any override `x`, merge `box` or notice `box` authored against v63 rotated-space coordinates must be re-measured in the unrotated space (references/translations-format.md 'Coordinates'). A consumer that asserts the exact key set of segments.json must allow `geometry`.",
+   "moves_output_bytes": "yes",
+   "bytes_detail": "segments.json bytes change for every extraction (new `geometry` key). On /Rotate pages, every segment coordinate and direction in segments.json and ExtractResult.segments changes. to_translate.json and widget_text.json are not touched by this change.",
+   "evidence": [
+    "d30ecde (pyproject 64.0.0), merged 154f842 (PR #33)",
+    "pdf-translate/pdf_translate/strip_text.py:263 GEOMETRY_SPACE, :266 _to_unrotated, :319 and :328 @0d58202",
+    "pdf-translate/pdf_translate/extract_segments.py:577-586 rotated_pages, :780-781 geometry key @0d58202",
+    "docs/DECISIONS.md:144 @0d58202",
+    "pdf-translate/references/consumer-guide.md:141 @0d58202",
+    "pdf-translate/references/translations-format.md:169 @0d58202",
+    "docs/reviews/2026-09-24-rotate-pages.md",
+    "measured: scratch probe_rotate.py on corpus/rotated.pdf with git-archive trees of 89956d3 (v63) and 0d58202 (v81), PyMuPDF 1.28.2, Python 3.14.6"
+   ]
+  },
+  {
+   "version": 64,
+   "title": "Legacy retypeset measures width budgets and the RTL mirror against the unrotated page frame; rotated pages now build in place",
+   "affects": [
+    "run_retypeset / retypeset (legacy mapping): output PDF on /Rotate pages",
+    "RetypesetResult.scaled and scale_report.json ratios on /Rotate pages",
+    "pdf_translate.retypeset.direction_limit (now takes a frame, not a page) and new unrotated_frame (module-level, not exported)"
+   ],
+   "change": "On a /Rotate page, right-limit budgets, direction_limit, the shaped override room and every mirror flip use page.rect * page.derotation_matrix instead of the rotated page.rect. With mirror on, a link's rect is mapped back to unrotated space before it is flipped and re-inserted, so links on rotated pages no longer move. Combined with the extract change, a legacy build of a /Rotate page now draws each run at its source: measured on corpus/rotated.pdf, v63 built with no refusal and the output page had 0 characters of text (runs drawn off the page); v81 draws 'ROTATED PAGE TEST' at [60.0, 80.0] with 51 characters on the page. Per the review, at 180 v63 point-reflected every run with retypeset and verify both exiting 0. Landscape pages whose content is counter-rotated remain on the rotated-run path with its horizontal-only limits. The typography-1 path still refuses rotated pages (unchanged).",
+   "consumer_action": "None for unrotated documents. For rotated documents, rebuild outputs made by v17-v63: they were misplaced.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "Only documents with /Rotate pages: run positions, fitted sizes (budgets now use the 612-wide unrotated frame, not the 792-wide rotated view) and, with mirror, link rects. Unrotated pages are identical because the frame equals page.rect.",
+   "evidence": [
+    "d30ecde (pyproject 64.0.0)",
+    "pdf-translate/pdf_translate/retypeset.py:210 unrotated_frame, :2103 mirror link derotation @0d58202",
+    "pdf-translate/references/retypeset.md:64 @0d58202",
+    "pdf-translate/references/failure-modes.md:196-219 (section 13) @0d58202",
+    "docs/reviews/2026-09-24-rotate-pages.md",
+    "measured: probe_rotate.py, v63 out.pdf 0 text chars vs v81 51"
+   ]
+  },
+  {
+   "version": 64,
+   "title": "New refusal: a pre-v64 segments.json on a rotated page (MappingError, refusals['stale_extraction'])",
+   "affects": [
+    "run_retypeset / retypeset (legacy mapping)",
+    "MappingError (new refusals kind 'stale_extraction')",
+    "documented console line 'FAIL: stale extraction: ...'"
+   ],
+   "change": "When segments.json has no `geometry.space == 'unrotated'` and any page that carries segments has /Rotate, run_retypeset raises MappingError with exit_code 1, core None, refusals={'stale_extraction': [{'page': p, 'rotation': r}, ...]} (every page listed) and console_line 'FAIL: stale extraction: segments.json names no geometry space and N rotated page(s) carry segments (p0 /Rotate 90); it was extracted before v64 in the rotated space: run extract again.' The console line names at most 30 pages and then ends ', …' (362e95e, same v64). Measured: v81 given v63's segments.json for corpus/rotated.pdf raised exactly this. A marker-less segments.json on a document with no rotated pages still builds. Precedence: it is raised right after segments.json is loaded (after the output-alias check added in v66) and before every per-run refusal (untranslated cores, merges, notices, GlyphError, PlacementError). Its items carry no 'core' key. failure-modes.md says this line is stable and consumers may match it, an explicit exception to the 'do not parse the console' guidance.",
+   "consumer_action": "Catch MappingError and check for 'stale_extraction' in exc.refusals; re-run extract. Code that iterates exc.refusals and reads item['core'] must tolerate items without it.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "d30ecde (pyproject 64.0.0); 362e95e (pyproject 64.0.0) adds the ', …' cut marker",
+    "pdf-translate/pdf_translate/retypeset.py:854-889 _refuse_stale_geometry, :1292 call site @0d58202",
+    "pdf-translate/references/failure-modes.md:209-216 @0d58202",
+    "pdf-translate/tests/test_pipeline.py:2244 and :2259 @0d58202",
+    "docs/DECISIONS.md:144 @0d58202",
+    "measured: probe_rotate.py with v63 segments.json on v81 -> MappingError exit 1, refusals {'stale_extraction': [{'page': 0, 'rotation': 90}]}"
+   ]
+  },
+  {
+   "version": 65,
+   "title": "No 4 pt floor on legacy shrink-to-fit: small print is drawn at the size that fits, and the 0.7x gate sees that ratio",
+   "affects": [
+    "run_retypeset / retypeset (legacy): output PDF",
+    "PlacementError (new refusals for runs that used to pass)",
+    "RetypesetResult.scaled",
+    "scale_report.json ratios and entries"
+   ],
+   "change": "At all four legacy shrink sites (plain run, leader label, RTL leader label, override part) the fitted size is fs * room / width with no minimum (a room of 1 pt or less counts as 1 pt), never above the source size. Before, every shrink was lifted to max(4.0, ...). Consequences: (a) a source of 5.71 pt or less that needed shrinking drew past its room at 4 pt and reported the lifted ratio (a 5 pt run needing 0.54x reported 0.8x and passed); it now reports the true ratio and raises PlacementError (refusals['overflow']) below 0.7x unless listed in allow_scale; (b) a source under 4 pt was drawn larger than the source and left out of the scale report; it is now drawn smaller and appears in scaled/scale_report.json. Measured on v81: fitted_size(5, 100, 54) = 2.7 where the v63 formula gives 4.0; fitted_size(3, 100, 50) = 1.5 where v63 gives 4.0. Review: IRS 1040-ES 'CAUTION' (5.25 pt) moved from a reported 0.7619 (pass) to 0.6642 (refused). An override part with empty text and max_width <= 0 no longer raises ZeroDivisionError (review).",
+   "consumer_action": "Expect new PlacementError refusals on forms with small print whose translation is longer; add those cores to allow_scale if a sub-4 pt size is acceptable. Treat scale-report ratios for sub-4 pt runs as changed.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "Only runs whose fitted size would have been lifted to 4.0 pt: they are now drawn smaller. Review: on 10 wild PDFs, 33 runs changed, all from exactly 4 pt to smaller; renders differ on 13 of 272 pages in 7 files; no run got larger. A normal-size page whose shrinks stay above 4 pt is sha256-identical.",
+   "evidence": [
+    "2f7e108 (pyproject 65.0.0), merged a9fd0a9 (PR #34)",
+    "pdf-translate/pdf_translate/retypeset.py:195 fitted_size @0d58202",
+    "docs/DECISIONS.md:145 @0d58202",
+    "pdf-translate/references/retypeset.md:128-135 @0d58202",
+    "pdf-translate/references/failure-modes.md:250 (section 15) @0d58202",
+    "pdf-translate/tests/test_pipeline.py:7101 SmallPrintClampTests @0d58202",
+    "docs/reviews/2026-09-24-r02-small-print.md",
+    "measured: fitted_size calls on the 0d58202 tree"
+   ]
+  },
+  {
+   "version": 66,
+   "title": "New refusal: a legacy build whose output or scale-report path names one of its inputs (MappingError, refusals['output_aliases'])",
+   "affects": [
+    "run_retypeset / retypeset (legacy mapping)",
+    "MappingError (new refusals kind 'output_aliases')",
+    "console lines 'FAIL: N path(s) of this build would overwrite one of its inputs...'"
+   ],
+   "change": "Before reading segments.json or writing anything, a legacy build resolves its fonts and raises MappingError (exit_code 1, core None) when `out` or the scale-report path (default: scale_report.json next to out; skipped when scale_report=None) names the stripped PDF, segments.json, the mapping, `original`, or any resolved font, or when out and the report are the same path. refusals={'output_aliases': [{'writes': 'output'|'scale report', 'path': ..., 'input': 'stripped PDF'|'segments'|'mapping'|'original PDF'|'<role> font'|'scale report'}]}. Measured: v63 run_retypeset(stripped, segs, tr, tr) returned normally and replaced translations.json with PDF bytes ('%PDF-1.7'); v81 raises MappingError with refusals {'output_aliases': [{'writes': 'output', 'path': ..., 'input': 'mapping'}]} and leaves the mapping byte-identical. v63 raised a bare ValueError when out named stripped.pdf (review). Precedence: this check runs after load_mapping and before segments.json is read, so it now wins over a segments.json read error, the stale-extraction refusal and every per-run refusal. Typography-1 already refused this as 'invalid-style-reference' (unchanged). Items carry no 'core' key.",
+   "consumer_action": "Never pass an output path equal to an input; catch MappingError with 'output_aliases'. Code that reads item['core'] from every refusals item must tolerate this kind.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "f5cf474 (pyproject 66.0.0), merged 637e291 (PR #35)",
+    "pdf-translate/pdf_translate/retypeset.py:805 _legacy_fonts, :824-851 _refuse_output_aliases, :1284-1292 call order @0d58202",
+    "pdf-translate/references/consumer-guide.md:218-226 @0d58202",
+    "docs/DECISIONS.md:146 @0d58202",
+    "pdf-translate/tests/test_pipeline.py:6980 OutputAliasTests @0d58202",
+    "docs/reviews/2026-09-24-r05-output-alias.md",
+    "measured: probe_rotate.py alias case on 89956d3 vs 0d58202 trees"
+   ]
+  },
+  {
+   "version": 66,
+   "title": "pipeline.py rebuild refuses (exit 2) an OUT that names the original or any input, including --flag=value inputs",
+   "affects": [
+    "pipeline.py rebuild (CLI; pdf_translate.pipeline.cmd_rebuild)",
+    "console line 'rebuild: output path must not overwrite an input: <out>'"
+   ],
+   "change": "rebuild now returns exit 2 before writing anything when OUT is the original PDF, a work-directory input (stripped.pdf, segments.json, translations.json) or a file passed to --translations, --segments, --original, --source-words-from or --reference-fonts, in either `--flag path` or `--flag=path` spelling (f17faac, same v66). Before, `rebuild ... orig.pdf orig.pdf` overwrote the original with the translation, verified it against itself and exited 0 (DECISIONS row). Not a library function; affects consumers that shell out to the CLI.",
+   "consumer_action": "CLI callers: handle exit 2; do not reuse an input path as OUT.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "f5cf474 and f17faac (pyproject 66.0.0), merged 637e291",
+    "pdf-translate/pdf_translate/pipeline.py:496-509 @0d58202",
+    "pdf-translate/references/consumer-guide.md:224-226 @0d58202",
+    "docs/DECISIONS.md:146 @0d58202"
+   ]
+  },
+  {
+   "version": 66,
+   "title": "Text handed to the Story engine is escaped so it lands as written (& < > in inline-markup lines, shaped runs and notices)",
+   "affects": [
+    "run_retypeset / retypeset (legacy): output PDF drawing and text layer",
+    "translations.json single-line targets containing <b>/<i>/<strong>/<em>",
+    "notices text",
+    "shaped-script runs (Arabic, Indic, Thai...)"
+   ],
+   "change": "New story_text() escapes `&` twice and `<`/`>` once (MuPDF 1.28.2's Story engine decodes character references twice); inline_markup_html() keeps only the four inline tags as markup. Before: a single-line target that also carried an inline tag went to insert_htmlbox raw, so `<usuario@ejemplo.com>` vanished, `&copy;` became © and `<span>` was swallowed; shaped runs and notices were escaped once, so an entity-like sequence such as `&copy;` still drew ©. Measured: legacy build of target 'Lea <b>el</b> aviso &copy; <u@e.co> ya' gives text layer 'Lea el aviso © ya' on v63 and 'Lea el aviso &copy; <u@e.co> ya' on v81. A merge's `html` is authored HTML and is not escaped (unchanged). Escaping now uses quote=False; quotes were already drawn correctly.",
+   "consumer_action": "If a mapping relied on HTML entities (e.g. `&copy;`, `&nbsp;`) or raw tags other than b/i/strong/em in single-line targets, notices or shaped runs, write the literal character instead; merges are unaffected.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "Only targets drawn through the Story engine that contain `<`, `>` or `&`: single-line targets with inline tags, shaped runs and notices whose text contains an entity-like `&...;` sequence. Plain TextWriter runs and merges are unchanged.",
+   "evidence": [
+    "bf9165c (pyproject 66.0.0; no bump in the commit, the branch was already 66), merged 637e291 (PR #35)",
+    "pdf-translate/pdf_translate/retypeset.py:386 story_text, :398 inline_markup_html, :314, :1769, :1990 @0d58202",
+    "docs/DECISIONS.md:147 @0d58202",
+    "pdf-translate/references/translations-format.md:42-46 @0d58202",
+    "pdf-translate/tests/test_pipeline.py:3111 @0d58202",
+    "docs/reviews/2026-09-24-r06-story-escaping.md",
+    "measured: probe_misc.py R-06 case on 89956d3 vs 0d58202 trees"
+   ]
+  },
+  {
+   "version": 67,
+   "title": "Legacy canonical text layer (/ToUnicode rewrite) covers italic and bold-italic faces",
+   "affects": [
+    "run_retypeset / retypeset (legacy): output PDF /ToUnicode of italic and bold-italic font objects; text layer and verify results"
+   ],
+   "change": "The post-save /ToUnicode rewrite now runs over [regular, bold, italic, bold_italic] (deduplicated, with the same fallbacks the drawing uses) instead of [regular, bold]. An italic or bold-italic cut whose space and NBSP share a glyph (Arial, Times, Georgia, Verdana, Courier New; 46 of 196 local faces) used to report NBSP for every space, and verify failed the output as non-canonical with missing targets. Measured with Noto Sans roles and target 'Lea <i>el aviso</i> ya': v63 logs 'rewrote /ToUnicode on 1 font object(s)' and the Noto Sans Italic ToUnicode is 11,807 bytes with 6 bfchar blocks; v81 logs 2 objects, 12,141 bytes, 7 blocks.",
+   "consumer_action": "None; italic jobs that failed verify on the text layer should now pass.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "Any legacy build that drew with a distinct italic or bold-italic face: that face's /ToUnicode stream gains an appended bfchar block. Builds with no distinct italic roles are unchanged.",
+   "evidence": [
+    "2ab3fcb (pyproject 67.0.0), merged 9cfcf63 (PR #36)",
+    "pdf-translate/pdf_translate/retypeset.py:1458-1461 role fallbacks, :2180 fontfiles @0d58202",
+    "docs/DECISIONS.md:148 @0d58202",
+    "pdf-translate/references/failure-modes.md:236-240 @0d58202",
+    "pdf-translate/tests/test_pipeline.py:8388 RoleFaceCanonicalTests @0d58202",
+    "docs/reviews/2026-09-24-r04-role-faces.md",
+    "measured: scratch probe_r04.py on 89956d3 vs 0d58202 trees"
+   ]
+  },
+  {
+   "version": 68,
+   "title": "field_fonts embeds a variable face as its Regular instance; FieldFontsResult gains `instance`",
+   "affects": [
+    "run_field_fonts / field_fonts",
+    "FieldFontsResult.instance (new field; also in to_dict())",
+    "output PDF embedded font",
+    "temporary file <out>.tmp_static.ttf",
+    "console line 'field font is variable: embedded its static instance ...'"
+   ],
+   "change": "A face with an fvar table is pinned to its 'Regular' named instance (or the axis defaults with wght 400, clamped to the axis range), renamed with prepare_font's name_static_instance, and that static copy is embedded. FieldFontsResult.instance names the pins (e.g. 'wght=400'), '' for a static face; it is set on the no-AcroForm copy-through result too. A static copy is written to out + '.tmp_static.ttf' and removed on every exit, including a failing input (4545782, same v68). Measured with tests/fonts/NotoSansJP-VF.ttf: v63 output 5,904,492 bytes, no `instance` field; v81 output 3,365,405 bytes, instance 'wght=400'. Viewers previously drew typed text from the default outlines (Thin for Noto Sans JP). Costs about 5 s per call for the full JP face (DECISIONS; not re-measured).",
+   "consumer_action": "Read result.instance if needed; code that compares FieldFontsResult.to_dict() keys must allow 'instance'. Services filling many forms may pass a pre-made static face to avoid the instancing cost.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "Only when the field font is variable: the embedded font program and its name change (and the PDF shrinks). Static faces embed as before.",
+   "evidence": [
+    "9ba9875 (pyproject 68.0.0); 4545782 (68.0.0); merged aa54158 (PR #37)",
+    "pdf-translate/pdf_translate/field_fonts.py:85 static_face, :151-167, :177, :243 @0d58202",
+    "pdf-translate/pdf_translate/results.py:227-235 FieldFontsResult @0d58202",
+    "pdf-translate/pdf_translate/prepare_font.py:164 name_static_instance @0d58202",
+    "docs/DECISIONS.md:149 @0d58202",
+    "pdf-translate/references/consumer-guide.md:126, pdf-translate/references/fonts.md:33 @0d58202",
+    "pdf-translate/tests/test_pipeline.py:4128 VariableFieldFontTests @0d58202",
+    "docs/reviews/2026-09-25-r27-field-font-instance.md",
+    "measured: probe_misc.py on 89956d3 vs 0d58202 trees"
+   ]
+  },
+  {
+   "version": 68,
+   "title": "field_fonts now opens the font with fontTools first: a .ttc collection raises, and font errors change type and precede input errors (undocumented)",
+   "affects": [
+    "run_field_fonts / field_fonts: exceptions raised"
+   ],
+   "change": "static_face() calls fontTools.ttLib.TTFont(font) before the input PDF is opened. Measured on git-archive trees: a TrueType Collection (.ttc built from NotoSans Regular+Bold) is accepted by v63 and v67 (2ab3fcb) (fields 1) and raises fontTools.ttLib.TTLibFileIsCollectionError ('specify a font number between 0 and 1') from v68 (9ba9875), v72 and v81. A missing font path raised pymupdf.mupdf.FzErrorSystem on v63/v67 and raises builtins.FileNotFoundError from v68. Neither is a PdfTranslateError, so the loud field_fonts() wrapper (which catches only PdfTranslateError) lets them propagate as tracebacks. Because the font is read first, a bad font is now reported before a bad input PDF. No DECISIONS row or doc mentions this.",
+   "consumer_action": "Pass a single-face .ttf/.otf, not a .ttc; catch fontTools and FileNotFoundError from run_field_fonts, or validate the font path first. Consider proposing a typed refusal in docs/REQUESTS-from-product.md.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "9ba9875 (pyproject 68.0.0)",
+    "pdf-translate/pdf_translate/field_fonts.py:85-115 static_face (ttLib.TTFont(font)), :128-141 loud wrapper catches only PdfTranslateError @0d58202",
+    "measured: scratch probe_ff_edge.py on trees 89956d3, 2ab3fcb, 9ba9875, d4b0c24, 0d58202"
+   ]
+  },
+  {
+   "version": 69,
+   "title": "Typography verify reads page crops and field rects once (performance only)",
+   "affects": [
+    "run_verify / verify typography gate (typography-1 builds)"
+   ],
+   "change": "inspect_output reads each output page's crop and builds each page's source-field rects once before the per-glyph loop instead of per glyph. Under /NeedAppearances (after field_fonts) each page load rebuilt widget appearances, so memory grew with glyphs x widgets. Review: N-400-sized form 37,618 -> 533 page loads, 3,054 -> 177 MB peak RSS, 26.39 -> 11.76 s; gate results byte-identical (same digests) on both trees.",
+   "consumer_action": "none",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "118bb75 (pyproject 69.0.0), merged 19252b7 (PR #38)",
+    "pdf-translate/pdf_translate/typography_verify.py:129-136 @0d58202",
+    "docs/DECISIONS.md:150 @0d58202",
+    "pdf-translate/tests/test_typography_verify.py:365 FilledFormPageLoadTests @0d58202",
+    "docs/reviews/2026-09-25-r47-typography-verify-page-loads.md (not re-measured here)"
+   ]
+  },
+  {
+   "version": 70,
+   "title": "field_fonts keeps each field's /DA size, colour and other operators; inherits /DA from parents; swaps every Tf",
+   "affects": [
+    "run_field_fonts / field_fonts: output PDF field /DA and /AcroForm /DA",
+    "pdf_translate.field_fonts.field_da / inherited_da (new module-level helpers)"
+   ],
+   "change": "Each text/choice field's /DA was replaced wholesale with '/TransFF <size> Tf 0 g', where size came from a regex that only matched a /DA starting with the font. Now only the font name before every Tf is swapped (434674b, same v70); size, colour and all other operators stay; with no Tf the font is prepended at size 0; with no fill colour ' 0 g' is appended. A widget without its own /DA gets its parent's (then the form's), following direct parents too. The /AcroForm /DA is now field_da(form's /DA) instead of a fixed '/TransFF 0 Tf 0 g'. Measured: source '0 0 1 rg /Helv 10 Tf' became '/TransFF 0 Tf 0 g' on v63 (blue and size lost) and '0 0 1 rg /TransFF 10 Tf' on v81; '/Helv 12 Tf 0 g' -> '/TransFF 12 Tf 0 g' and a missing /DA -> '/TransFF 0 Tf 0 g' as before. Review: on wild forms 153 navy IRS fields and 7 red USCIS fields had typed in black, and 2 I-9 fields auto-sized.",
+   "consumer_action": "None, unless the consumer relied on field_fonts forcing every field to black; FieldFontsResult.fields counts are unchanged in meaning. Known limit, unchanged: a field whose /FT is set only on a grandparent is still skipped (proposal, REQUESTS-from-product.md:984).",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "Field /DA strings change on forms whose /DA sets a colour, sets its colour before the font, has several Tf, carries other operators, or is inherited; /AcroForm /DA changes when the form had its own non-trivial /DA. A plain '/Helv N Tf 0 g' or missing /DA gives the same bytes as before.",
+   "evidence": [
+    "7a61a15 (pyproject 70.0.0); 434674b (70.0.0); merged 314e1f6 (PR #40)",
+    "pdf-translate/pdf_translate/field_fonts.py:49 field_da, :68 inherited_da, :222 AcroForm /DA @0d58202",
+    "docs/DECISIONS.md:152 @0d58202",
+    "pdf-translate/references/fonts.md:38-41 @0d58202",
+    "pdf-translate/tests/test_pipeline.py:4240 FieldAppearanceKeptTests @0d58202",
+    "docs/reviews/2026-09-25-r33-field-appearance.md",
+    "measured: probe_misc.py and field_da calls on 89956d3 vs 0d58202 trees"
+   ]
+  },
+  {
+   "version": 71,
+   "title": "pipeline.py rebuild passes the original PDF to every retypeset, so legacy capture bundles carry the source PDF",
+   "affects": [
+    "pipeline.py rebuild (CLI)",
+    "capture bundle written under capture_dir / PDF_TRANSLATE_CAPTURE_DIR during a legacy rebuild (source.pdf, manifest files.source_pdf)"
+   ],
+   "change": "rebuild called retypeset(..., original=orig) only for typography jobs, so a below-the-floor capture during a legacy rebuild recorded source_pdf: null and had no source copy. It now always passes original. Legacy drawing never reads it (commit: output byte-identical apart from MuPDF's save-time /ID). Side effect: retypeset's own output-alias check now also sees the original during a legacy rebuild (rebuild already refused that case with exit 2). Direct run_retypeset callers are unaffected; they already chose whether to pass original=.",
+   "consumer_action": "None for library callers; CLI users of rebuild with capture on get a source.pdf in each bundle.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "Capture bundles written during a legacy rebuild now include the source PDF and a non-null source_pdf. The built PDF is unchanged apart from /ID (per commit message; not re-measured).",
+   "evidence": [
+    "6d1d19a (pyproject 71.0.0), merged 62e87bf (PR #41)",
+    "pdf-translate/pdf_translate/pipeline.py:535-538 @0d58202",
+    "pdf-translate/pdf_translate/capture.py:254-256 @0d58202",
+    "pdf-translate/references/consumer-guide.md:239-240, pdf-translate/references/retypeset.md:159-160 @0d58202",
+    "pdf-translate/tests/test_retypeset_capture.py:387 @0d58202",
+    "docs/reviews/2026-09-25-r40-capture-source-pdf.md"
+   ]
+  },
+  {
+   "version": 72,
+   "title": "A typography-1 source-content refusal names the occurrence that holds the offending text, not the page's first segment",
+   "affects": [
+    "run_retypeset (typography-1 mapping): MappingError.core",
+    "MappingError.refusals['typography'][0] fields occurrence_id, source_text, page (reason 'unsupported-typography-construct')"
+   ],
+   "change": "Before, the refusal attached the first segment on the issue's page whatever text was at fault (235 of 366 wild content issues named another line), or {} when the page had no segments (page None). Now inspect_content records where the first offending text starts (text-line matrix tracked through Td, TD, T*, TL, ' and \"; a covered glyph's centre for occluded text), and retypeset names the smallest segment whose box, widened by 1 pt, contains it: occurrence_id, source_text and MappingError.core are that segment's. A whole-page issue (UserUnit, unreadable content) or text no segment holds now gives occurrence_id None, source_text None, core None and page set to the issue's page. The reason, detail and which issue refuses first are unchanged, and typography verify's findings are unchanged because the position is not part of an issue's identity. The d4b0c24 code crashed on a /CropBox of fewer than four numbers; 85eb0d7 (also 72.0.0, merged in the same PR b0ed899 before release) makes such a box leave the position unknown. Known limit: on a line with several occurrences the line-matrix start can name the wrong one (proposal, REQUESTS-from-product.md:988).",
+   "consumer_action": "If code keyed on the typography refusal's occurrence_id/source_text/core, expect different (correct) values, and None for whole-page constructs.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "d4b0c24 (pyproject 72.0.0); 85eb0d7 (72.0.0); merged b0ed899 (PR #42)",
+    "pdf-translate/pdf_translate/retypeset.py:1047-1057 _content_segment, :1070-1071 @0d58202",
+    "pdf-translate/pdf_translate/typography_content.py:24 ContentIssue.at, :77 _crop_box @0d58202",
+    "pdf-translate/pdf_translate/mapping.py:56-63 refuse() @0d58202",
+    "docs/DECISIONS.md:153 @0d58202",
+    "pdf-translate/references/typography.md:235-239 @0d58202",
+    "pdf-translate/tests/test_typography_retypeset.py:104, :123, :130 @0d58202",
+    "not run here: no typography-1 build was executed"
+   ]
+  },
+  {
+   "version": 72,
+   "title": "A malformed /CropBox no longer crashes typography content inspection (a fix that shipped under the unchanged 72.0.0 label)",
+   "affects": [
+    "pdf_translate.typography_content.inspect_content",
+    "run_retypeset / retypeset (typography-1 preflight)",
+    "run_verify / verify with typography (typography verify)",
+    "ContentIssue.at"
+   ],
+   "change": "At d4b0c24, the first tree labelled 72.0.0, the new R-42 crop read took four numbers from /CropBox and caught no IndexError. A box with fewer than four numbers therefore raised IndexError out of inspect_content, which crashed the typography retypeset preflight and typography verify. 85eb0d7 adds _crop_box: anything that is not four finite numbers (for example [0 0 100], [] or [0 0 /A 100]) gives crop=None, and the offending text's position (ContentIssue.at) is left unknown. The crash existed only in the d4b0c24 tree. v54 never read the box, so a consumer moving from v54 to v81 sees no net change. Note that the version string 72.0.0 covers two different trees.",
+   "consumer_action": "none for a v54 to v81 upgrade. Do not pin 72.0.0 expecting a single tree.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "85eb0d7 (pyproject 72.0.0; parent d4b0c24 also 72.0.0)",
+    "0d58202:pdf-translate/pdf_translate/typography_content.py:77-88 (_crop_box), :195 (crop=_crop_box(page))",
+    "docs/reviews/2026-09-25-r42-content-refusal-names-text.md:164-175"
+   ]
+  },
+  {
+   "version": 73,
+   "title": "Packaging: SPDX licence expression, license-files, and the build now requires setuptools>=77",
+   "affects": [
+    "pdf-translate/pyproject.toml [build-system].requires",
+    "[project].license / license-files",
+    "wheel METADATA"
+   ],
+   "change": "The build requirement goes from setuptools>=61 to setuptools>=77. license = {text = \"MIT\"} becomes license = \"MIT\" plus license-files = [\"LICENSE\"] (PEP 639). The wheel METADATA now carries License-Expression: MIT instead of License: MIT. The bundled LICENSE is byte-identical, and the wheel still holds the same 29 files and the sdist the same 56. requires-python (>=3.14) and the runtime dependencies (pymupdf>=1.24,<1.30; pikepdf>=8.0,<11; fonttools>=4.40,<5) do not change in this range.",
+   "consumer_action": "A build from source (for example a uv git source) needs setuptools>=77 in its build environment. Isolated builds fetch it automatically. With --no-build-isolation or build constraints, install setuptools>=77 first. Anything that reads the License metadata field must read License-Expression instead.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "Library outputs do not change. Only the built wheel's METADATA and RECORD change, plus __init__.py for the version.",
+   "evidence": [
+    "d23a202 (pyproject 72.0.0 -> 73.0.0)",
+    "0d58202:pdf-translate/pyproject.toml:2,10,11,12,14-18",
+    "docs/reviews/2026-09-25-r110-spdx-licence.md:15-23,54-66,85-97"
+   ]
+  },
+  {
+   "version": 73,
+   "title": "The library version string changes at every bump, 72 through 81, and is written into every machine-readable output",
+   "affects": [
+    "pdf_translate.__version__",
+    "VerifyVerdict.to_dict()['version'] / verify_report.json",
+    "_Result.to_dict()['version'] (StripResult, ExtractResult, FontResult, RetypesetResult, FieldFontsResult)",
+    "PdfTranslateError.to_dict()['version']",
+    "scale_report.json 'version'",
+    "ReviewVerdict.to_dict()['version']",
+    "capture bundle 'library_version'"
+   ],
+   "change": "__version__ goes from '72' to '73', then '74' and so on up to '81', one bump per shipped change in this range. Every to_dict() and every JSON file that carries 'version' records the new string.",
+   "consumer_action": "Goldens that compare verify_report.json, scale_report.json or to_dict() output must mask or update 'version'.",
+   "moves_output_bytes": "yes",
+   "bytes_detail": "The 'version' field of verify_report.json, scale_report.json, every to_dict() and capture bundles changes at every version. PDF bytes are unaffected by this.",
+   "evidence": [
+    "0d58202:pdf-translate/pdf_translate/__init__.py:13",
+    "0d58202:pdf-translate/pdf_translate/results.py:62-63,151-152",
+    "0d58202:pdf-translate/pdf_translate/retypeset.py:768-769",
+    "0d58202:pdf-translate/pdf_translate/verify.py:341-342",
+    "0d58202:pdf-translate/pdf_translate/capture.py:290",
+    "0d58202:pdf-translate/pdf_translate/review.py:173-174"
+   ]
+  },
+  {
+   "version": 74,
+   "title": "verify.load_segments_for is removed",
+   "affects": [
+    "pdf_translate.verify.load_segments_for"
+   ],
+   "change": "The module-level function verify.load_segments_for(translations_path, segments_path=None) no longer exists, so calling it raises AttributeError. It was not in pdf_translate.__all__, and __all__ still has 39 names on both v72 and v81. load_segments_file(translations_path, segments_path=None) remains.",
+   "consumer_action": "If you called it, use verify.load_segments_file(...) and take ['segments'] from a dict result. That is exactly what the removed wrapper did.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "cb3a670 (pyproject 73.0.0 -> 74.0.0)",
+    "0d58202:pdf-translate/pdf_translate/verify.py:1089 (load_segments_file kept)",
+    "docs/reviews/2026-09-25-r100-dead-code.md:43-47,114-116",
+    "probe: scratchpad/upgrade-note-work/probe_api.py -> v72 'has load_segments_for True', v81 'False'"
+   ]
+  },
+  {
+   "version": 74,
+   "title": "Legacy retypeset's unreachable second 'untranslated' refusal is removed. The drawing-group refusal always carries 'untranslated': []",
+   "affects": [
+    "run_retypeset / retypeset (legacy path)",
+    "PlacementError.refusals / GlyphError.refusals['untranslated']"
+   ],
+   "change": "A missing translation is still refused by the earlier MappingError pass, with refusals key 'untranslated'. The late copy inside the drawing loop could never fire, and it has been removed along with its console block and its MappingError raise. The overflow/glyph/rotated refusal keeps the 'untranslated' key, always as an empty list, so every refusal from that site has the same keys. The private _run_typography loses its unused resource_root parameter. The run_retypeset signature is unchanged (probe). Evidence that nothing observable changed: a tripwire never fired across the full suite; 11 adversarial legacy jobs gave identical exceptions, refusals, exit codes and outputs; and a successful legacy PDF was byte-identical.",
+   "consumer_action": "none",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "cb3a670 (74.0.0)",
+    "0d58202:pdf-translate/pdf_translate/retypeset.py:2051-2054 ('untranslated': [] with comment), :1060 (_run_typography signature), :1478 (_same_path)",
+    "docs/reviews/2026-09-25-r100-dead-code.md:14-41,58-61,89-112"
+   ]
+  },
+  {
+   "version": 75,
+   "title": "run_review closes NOTES.md (no ResourceWarning); han_forms and prepare_font close the TTFont they instance",
+   "affects": [
+    "pdf_translate.run_review",
+    "pdf_translate.han_forms._instance",
+    "run_prepare_font (instance path)"
+   ],
+   "change": "run_review used to read NOTES.md with a bare open().read(), which emitted 'ResourceWarning: unclosed file' once per review of a job that has notes. It now reads the file in a with-block. han_forms._instance and prepare_font's --instance path also open their TTFont in a with-block, but those held no file handle before (fontTools reads a face opened by path into memory), so nothing observable changes there. The suite's ResourceWarning count went from 45 to 0.",
+   "consumer_action": "none. A consumer running with ResourceWarning as an error no longer trips on run_review.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "5fcc191 (pyproject 74.0.0 -> 75.0.0)",
+    "0d58202:pdf-translate/pdf_translate/review.py:620",
+    "0d58202:pdf-translate/pdf_translate/han_forms.py:177",
+    "docs/reviews/2026-09-25-r99-resource-warnings.md:15-41,64-66"
+   ]
+  },
+  {
+   "version": 76,
+   "title": "Docs only: the nine legacy refusal kinds, their exceptions and precedence, and the scale_report envelope are documented. No code path and no console line changes",
+   "affects": [
+    "pdf-translate/references/retypeset.md",
+    "SKILL.md",
+    "module comments in _console.py, pipeline.py, results.py and verify.py"
+   ],
+   "change": "No behaviour change. references/retypeset.md now lists every legacy refusal kind: output_aliases, stale_extraction, merges, untranslated, unauthored_merges, notices, overflow, glyph_misses and rotated_shaped. For each it gives the exception, and it states that the checks run in order and stop at the first refusal. 7c91b4a, committed under the same 76.0.0 label without a bump, corrects the table. When a glyph miss occurs in the overflow/glyph/rotated group, the build raises GlyphError, which is not a PlacementError, and its refusals still carry every overflow and rotated run. The guidance is to catch GlyphError first or catch PdfTranslateError. The doc also shows scale_report.json in its enveloped shape (v58+) and says a refused build leaves an earlier build's output in place. The review evidence records 'No code path changes, and no console line changes.'",
+   "consumer_action": "none. Read references/retypeset.md for the catch order.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "",
+   "evidence": [
+    "ceffdf3 (pyproject 75.0.0 -> 76.0.0); 0d22d9b and 7c91b4a (both 76.0.0, comments/docs only)",
+    "0d58202:pdf-translate/pdf_translate/results.py:97 (GlyphError), :113 (PlacementError), both subclass PdfTranslateError",
+    "0d58202:pdf-translate/pdf_translate/retypeset.py:2067-2090",
+    "docs/reviews/2026-09-25-r79-r83-docs-quick-wins.md:8-11,18-22,103-117"
+   ]
+  },
+  {
+   "version": 77,
+   "title": "The invisible-text oracle judges only the pages asked for (a new pages= parameter), and pixel counts move to C. Outputs are byte-identical and faster",
+   "affects": [
+    "pdf_translate.strip_text.invisible_text_pages(src, pages=None)",
+    "run_extract / extract_segments (pages=)",
+    "run_verify / verify (ink, visible-text)",
+    "run_prepare_font (render check)",
+    "shaping_probe.scripts_in",
+    "pdf_translate._pixels (new private module)"
+   ],
+   "change": "invisible_text_pages gains an optional pages= parameter, any iterable of 0-based page indexes. 64c5d30, still 77.0.0, fixes a one-shot generator being used up. Extract passes its wanted pages. The strip the oracle compares against is still of the whole document. Before v77, extract already filtered the oracle's results to the wanted pages, so its verdicts are unchanged. Dark-pixel and changed-pixel counting moves to _pixels.dark_pixels and changed_channels, which give exactly the old counts. The changed-pixel count stops early once a page can no longer be flagged, and only flagged pages report a fraction. The constants VISIBLE_INK (50) and INK_SKIP (20) are still importable from verify, extract_segments and strip_text (probe). Verify stays whole-document. CPU time dropped 38-63%: extract of pages 1-5 by 63%, verify by 38%.",
+   "consumer_action": "none. You may pass pages= to invisible_text_pages directly.",
+   "moves_output_bytes": "no",
+   "bytes_detail": "Evidence: 311 output files from 34 inputs were byte-identical after normalising path prefixes and the trailer /ID. So were FL-150's 15 files, a CJK delivery's verdict and the 17-PDF wild probe. Independent passes checked 132 more artifacts, including the loud console output of extract_segments.main and verify.main.",
+   "evidence": [
+    "8949a16 (pyproject 76.0.0 -> 77.0.0); 64c5d30 (77.0.0)",
+    "0d58202:pdf-translate/pdf_translate/strip_text.py:380,396,421",
+    "0d58202:pdf-translate/pdf_translate/extract_segments.py:744",
+    "0d58202:pdf-translate/pdf_translate/_pixels.py:11-17,23,37",
+    "0d58202:pdf-translate/pdf_translate/prepare_font.py:346",
+    "docs/reviews/2026-09-25-r48-r49-pixel-loops.md:18-20,39-42,89-111,118-124,160-189",
+    "probe: scratchpad/upgrade-note-work/probe_api.py -> invisible_text_pages sig '(src)' on v72, '(src, pages=None)' on v81"
+   ]
+  },
+  {
+   "version": 78,
+   "title": "prepare_font instances the job's subset: no side files next to the output, and the instanced subset's summary fields and GPOS encoding differ",
+   "affects": [
+    "run_prepare_font / prepare_font",
+    "FontResult.subset_bytes",
+    "<font_out>.chars.txt (no longer written)",
+    "<font_out>.instanced.ttf (no longer written)",
+    "the prepared font's head/hhea/vhea/OS/2/GPOS bytes (when instance= is given)"
+   ],
+   "change": "Before v78, every call wrote <out>.chars.txt next to the output, and a call with instance= also wrote <out>.instanced.ttf, which was a whole-face instance. From v78 both working files go to a tempfile.TemporaryDirectory('prepare_font-...') and nothing is left next to the output. With instance=, the variable face is first cut in memory to the job's characters (_variable_subset keeps every feature, name record, table, glyph names and .notdef), and that subset is instanced. The final pyftsubset step is unchanged. The result draws the same: glyph order, glyf, hmtx, vmtx, cmap, name, post, line and style metrics, and GPOS positioning are identical, as are renders and six end-to-end CJK deliveries. It is not byte-identical, though. head's xMin/yMin/xMax/yMax, hhea's and vhea's extremes and OS/2.xAvgCharWidth are now computed over the job's glyphs, and GPOS is encoded more compactly (21 of 25 cases; a serif JP subset is 264 bytes smaller). FontResult.subset_bytes can therefore shrink, and the console's KB figure can change (41 to 40 in one case). My probe (NotoSansJP-VF, instance='wght=400') gave these results. v72 left out.ttf.chars.txt and out.ttf.instanced.ttf; v81 left neither. head bbox went from (-1002,-1048,2928,1808) to (-991,-1050,2930,1810), xAvgCharWidth from 982 to 801, and CPU from 5.3 s to 1.7 s. subset_bytes was 22040 on both. Errors and verdicts were identical in all 37 evidence cases.",
+   "consumer_action": "Stop reading <out>.instanced.ttf or <out>.chars.txt. For a field face, pass the variable face to field_fonts, which instances it. Regenerate any font goldens built with instance=. prepare_font now needs a writable temp directory (TMPDIR).",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "Only the prepared subset of a call with instance=: head bbox, hhea/vhea extremes, OS/2.xAvgCharWidth and the GPOS encoding. The evidence reports byte differences in every instanced case, and the non-instancing controls unchanged. PDFs built with the font are identical in content streams, glyph IDs and positions, and 200-dpi renders.",
+   "evidence": [
+    "4272a79 (pyproject 77.0.0 -> 78.0.0)",
+    "0d58202:pdf-translate/pdf_translate/prepare_font.py:134-161 (_variable_subset), :287 (TemporaryDirectory), :298,:306 (instanced.ttf in work dir), :315 (chars.txt in work dir), :404-407 (FontResult)",
+    "docs/reviews/2026-09-25-r50-subset-before-instancing.md:14-42,44-91,93-105,126-139",
+    "docs/DECISIONS.md row 2026-09-25 'prepare_font cuts a variable face to the job's characters'",
+    "probe: scratchpad/upgrade-note-work/probe_font.py (v72 vs v81 output above)"
+   ]
+  },
+  {
+   "version": 79,
+   "title": "Extract keeps an authored widget_text.json, and ExtractResult gains widget_text_kept",
+   "affects": [
+    "run_extract / extract_segments",
+    "ExtractResult.widget_text_kept (new field)",
+    "ExtractResult.to_dict()",
+    "extract_segments() return dict key 'widget_text_kept'",
+    "<outdir>/widget_text.json",
+    "strip_text.widget_text_is_authored (new)",
+    "pipeline.py usage text"
+   ],
+   "change": "Before v79, extract always rewrote <outdir>/widget_text.json with a fresh scaffold, which erased targets an author had filled in place. Now, if the file holds any string a scaffold does not write, extract leaves it untouched. That means a non-null target, a string shorthand, or a file that is not JSON; the file is judged by strip_text.widget_text_is_authored. The result then carries widget_text_kept=True. A missing file, or one whose every target is null, is still refreshed. ExtractResult gains widget_text_kept: bool = False, placed between widget_text_path and typography, so to_dict() always has the new key and positional construction shifts. The loud extract_segments() dict gains 'widget_text_kept'. result.widget_text is still this PDF's fresh scaffold, and widget_text_path is still set. The console prints 'kept <path>: it holds authored widget text, so no fresh scaffold was written over it (delete it for one)' instead of the 'N field(s) carry widget text ...' line. pipeline.py's usage text (printed from __doc__) gains two lines. My probe on corpus/choice_fields.pdf: after authoring one target and re-extracting, v72 overwrote the file (the target was lost) and v81 kept it byte-identical with widget_text_kept=True.",
+   "consumer_action": "Read ExtractResult.widget_text_kept if you rely on extract to refresh widget_text.json. Delete an authored file to get a fresh scaffold. Update to_dict() goldens for the new key.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "widget_text.json is not rewritten when it holds authored text. ExtractResult.to_dict() gains 'widget_text_kept' on every call. An all-null scaffold is still written byte-for-byte as before.",
+   "evidence": [
+    "f0a171c (pyproject 78.0.0 -> 79.0.0)",
+    "0d58202:pdf-translate/pdf_translate/results.py:194",
+    "0d58202:pdf-translate/pdf_translate/extract_segments.py:553,777,786-788,810,885-888",
+    "0d58202:pdf-translate/pdf_translate/strip_text.py:565-580,616",
+    "0d58202:pdf-translate/pdf_translate/pipeline.py:18-19 (usage)",
+    "docs/reviews/2026-09-25-widget-text-kept.md:30-55",
+    "probe: scratchpad/upgrade-note-work/probe_behaviour.py -> v72 'kept file bytes: False', v81 'True | widget_text_kept: True'; probe_api.py -> to_dict keys"
+   ]
+  },
+  {
+   "version": 80,
+   "title": "retypeset writes /Lang as the whole language tag",
+   "affects": [
+    "run_retypeset / retypeset (legacy and typography-1 paths; apply_document_metadata)",
+    "output PDF catalog /Lang",
+    "console line 'metadata: /Lang -> X'",
+    "pdf_translate._lang (new private module)"
+   ],
+   "change": "Retypeset used to call PyMuPDF's set_language, which truncates many tags. It now writes the catalog /Lang itself, exactly as the mapping spells it. My probe on PyMuPDF 1.28.2: es-US was stored as 'es' and now as 'es-US'; pt-BR as 'pt', now 'pt-BR'; zh-Hant-TW as 'zh', now 'zh-Hant-TW'; the non-tag 'Japanese' as 'jap', now 'Japanese'. zh-Hans and ja were already stored whole. The report behind the console line is now the value read back from the file. It used to echo the mapping even when the file held a truncated tag, and XMP dc:language already had the whole tag. Extract's record of the source /Lang (segments.json document.lang) still uses doc.language and is still truncated. That was filed as a proposal and is not changed.",
+   "consumer_action": "Regenerate PDF goldens for mappings whose lang has a region, script or variant subtag, or is not a well-formed tag. Any reader of /Lang that uses PyMuPDF's doc.language still sees the truncated form; read the catalog key to get the whole tag.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "The output PDF's /Lang string changes for tags PyMuPDF truncated: es-US, es-419, pt-BR, en-GB, zh-Hant-TW, sr-Latn-RS, de-CH-1996, and display names such as Japanese. For region-less tags, output is byte-identical: 20 were measured, and the product checked its 13 tags, including ro.",
+   "evidence": [
+    "98b7091 (pyproject 79.0.0 -> 80.0.0)",
+    "0d58202:pdf-translate/pdf_translate/_lang.py:15-19 (write_language), :21-38 (declared_language)",
+    "0d58202:pdf-translate/pdf_translate/retypeset.py:90,493-497 (write_language), :1167 (typography path), :2109-2117 (console line)",
+    "0d58202:pdf-translate/pdf_translate/extract_segments.py:328 (source lang still doc.language)",
+    "docs/reviews/2026-09-25-lang-keeps-region.md:9-24,50-64",
+    "docs/DECISIONS.md row 2026-09-25 '/Lang is written and read as the whole tag'",
+    "probe: scratchpad/upgrade-note-work/probe_lang.py (stored values above)"
+   ]
+  },
+  {
+   "version": 80,
+   "title": "verify reads /Lang whole: the metadata and han-forms verdicts can change",
+   "affects": [
+    "run_verify / verify: gate 'metadata' (legacy and typography-1)",
+    "gate 'han-forms'",
+    "verify.document_metadata_misses",
+    "VerifyVerdict findings text"
+   ],
+   "change": "Verify now reads the stored /Lang string through declared_language instead of doc.language. (1) typography-1 metadata: the comparison is exact, so a v80+ build for a region tag (en-US) now PASSes, where every region tag used to FAIL ('expected en-US; output declares en'). A pre-v80 typography output that stored a truncated tag still FAILs. (2) Legacy metadata: the prefix rule is unchanged, so an old output storing 'es' still passes an 'es-US' mapping. But an output that stores a whole tag with a different region now FAILs where it used to pass. My probe: a legacy mapping of 'fr-CA' against a stored 'fr-FR' passes on v72 and on v81 gives ('lang', 'translations.json asks for \"fr-CA\", output declares \"fr-FR\"'). Messages now name the whole tag. (3) han-forms with no mapping lang takes its convention from the output tag. zh-Hant-TW (and zh-TW, zh-HK) was read as 'zh' and judged Simplified. It now maps to TC, which has no reference, so the gate gives REVIEW instead of judging it against Simplified.",
+   "consumer_action": "Expect metadata PASS for region-tagged typography builds. Expect a metadata FAIL if a delivered /Lang's region disagrees with the mapping. Expect han-forms REVIEW, not a Simplified judgement, for Traditional Chinese outputs verified without a mapping lang.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "verify_report.json gate statuses and finding text move in the cases above. PDFs are not written by verify.",
+   "evidence": [
+    "98b7091 (80.0.0)",
+    "0d58202:pdf-translate/pdf_translate/verify.py:684-685 (typography exact), :700-705 (legacy prefix), :2070 (han-forms output_lang), :2267-2276 (metadata FAIL record)",
+    "0d58202:pdf-translate/pdf_translate/han_forms.py:84-98 (convention_for_lang)",
+    "docs/reviews/2026-09-25-lang-keeps-region.md:26-33,50-53,71-84",
+    "probe: scratchpad/upgrade-note-work/probe_langgate.py (v72 all pass; v81 fr-CA vs fr-FR fails)"
+   ]
+  },
+  {
+   "version": 81,
+   "title": "verify gate 22 'widget-text' (REVIEW only) and a new widget_text= parameter",
+   "affects": [
+    "run_verify(..., widget_text=None)",
+    "verify(..., widget_text=None)",
+    "verify.GATE_NAMES (new 'widget-text' at index 2)",
+    "VerifyVerdict.gates / to_dict() / verify_report.json",
+    "VerifyVerdict.exit_code / ok with fail_on_review",
+    "verify.load_widget_text_mapping, verify.widget_text_left, strip_text.authored_widget_targets (new)",
+    "CLI verify.py --widget-text; pipeline.py rebuild protects --widget-text"
+   ],
+   "change": "verify and run_verify take widget_text=None, which accepts a path or an already-loaded dict. Without it, verify reads the widget_text.json next to translations, if one exists. The new gate always runs, right after opt-export-parity, so GATE_NAMES grows from 27 to 28 names and every later gate moves one place. For each field, the gate compares the output's tooltip (/TU), dropdown display labels, and text /V and /DV with the original's, by full field name and by export value. An unchanged string that contains a letter is REVIEW: one Finding(None, <full field name>, 'tooltip: ...' / 'value: ...' / 'default: ...' / 'option EXPORT: ...'). Strings count as kept on purpose, and stay silent, when the mapping deletes the field's key, leaves the slot out, or gives a target equal to its source. A null target excuses nothing. The gate PASSes with a count when nothing is left, records nothing when no field carries lettered widget text, and never FAILs. If the mapping's keys cannot be resolved (WidgetTextError), the gate runs without the mapping and says why in its message. It does not raise. With fail_on_review=True, any REVIEW gate sets exit_code 1, so an unkept, unchanged widget string now makes verdict.ok False. New console lines: 'REVIEW widget text left in the source language (N):' followed by up to 10 entries, or 'PASS widget text (N string(s) translated or kept on purpose)'. My probe: run_verify(choice_fields.pdf, same file) records ('widget-text', 'REVIEW') between opt-export-parity and fill-roundtrip on v81. v72 has no such gate.",
+   "consumer_action": "If you verify with fail_on_review, pass widget_text= (the authored mapping), translate the widget strings, or mark keeps in the mapping. Update code that indexes gates or GATE_NAMES by position, and regenerate verify_report.json goldens for forms.",
+   "moves_output_bytes": "conditional",
+   "bytes_detail": "verify_report.json and VerifyVerdict.to_dict() gain a 'widget-text' gate whenever the original has widget text with a letter in it. exit_code can flip to 1 under fail_on_review. No PDF bytes change.",
+   "evidence": [
+    "9e05085 (pyproject 80.0.0 -> 81.0.0); 2b993a0 (81.0.0, docs)",
+    "0d58202:pdf-translate/pdf_translate/verify.py:317 (GATE_NAMES), :593-615 (load_widget_text_mapping), :618-671 (widget_text_left), :1866-1889 (gate), :2338-2342 (fail_on_review), :2346-2349 and :2380-2383 (signatures)",
+    "0d58202:pdf-translate/pdf_translate/strip_text.py:583-613 (authored_widget_targets)",
+    "0d58202:pdf-translate/pdf_translate/pipeline.py:495-496",
+    "docs/reviews/2026-09-25-widget-text-gate.md:17-44",
+    "docs/DECISIONS.md row 2026-09-25 'Verify gate 22'",
+    "probe: scratchpad/upgrade-note-work/probe_api.py (signatures, GATE_NAMES 27 -> 28) and probe_behaviour.py (gate recorded)"
+   ]
+  }
+ ],
+ "verifier": {
+  "verdicts": [
+   {
+    "index": 0,
+    "status": "corrected",
+    "correction": "Behaviour and version (55) are right. One evidence detail is wrong: f30eaf9 reads 55.0.0, not 54.0.0. Only 5ba2a67 reads 54.0.0. The branch was bumped by 8bd841e before f30eaf9, and the merge 55e73f5 is 55.0.0.",
+    "evidence": "A loop of `git show $c:pdf-translate/pyproject.toml` gave 5ba2a67 54.0.0, 8bd841e 55.0.0 (parent 54), f30eaf9 55.0.0 and 55e73f5 55.0.0. In 0d58202, verify.py:2096-2128 records leak-cjk, then leak-scan SKIP 'judged by leak-cjk', and records leak-running/leak-isolated only `if not tell_ran`. cjk_tell.py:36 has STRONG_PAIRS {JP-SC, JP-TC, SC-JP, SC-TC, TC-SC} and :39 has LINE_FAIL = 6. 9675c61 verify.py:1772/1783 always records leak-running PASS and leak-isolated PASS. My sigs.py probe shows GATE_NAMES with 'leak-cjk' between 'leak-scan' and 'leak-running'."
+   },
+   {
+    "index": 1,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "`git show 5e7864f -- verify.py` adds _has_spaceless_script plus the _WRAP_WS rejoin in missing_translation_targets, and hidden_pushbuttons()/_annot_hidden (the /F bit 2). leftover_button_captions gains hidden=. My names.py diff shows leftover_button_captions(orig_caps, out_caps, out_text, skip=None) on v54 and (…, skip=None, hidden=None) on v81. pyproject is 56.0.0 at 5e7864f (parent 55)."
+   },
+   {
+    "index": 2,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "I reran r55run/gidmap_probe.py. On v54: NotoSans ligature 5 / authored 33, JP 3 / 17. On v56 and v81: 43/71 and 17/31. `git show 5e7864f -- retypeset.py` adds the single-substitution `sub.mapping` branch to _ligatures. In my own end-to-end legacy build (verifier/rt_e2e.py, colored.pdf), the Noto Sans /ToUnicode grew from 13746 to 14040 bytes between v54 and v81."
+   },
+   {
+    "index": 3,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "`git show c09449d` adds merge_css_size and calls consider_ratio(pno, merge_key, scale * fit_ratio). The message says 'Rendering is untouched' and 'No version bump'. First-parent history reads bacc436 56, a5629fb 56, d3db869 56, 9e0718d 56, 36bcf9f 57. In 0d58202, retypeset.py:1310-1322 consider_ratio appends every ratio < 1.0. 0.7/0.9778 = 0.716."
+   },
+   {
+    "index": 4,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "In 36bcf9f pipeline.py:498 (cmd_finish), `if work is None: ... return 2` comes before the review check, and without --work it returns 2 even with --no-review. It calls run_review(work, ingest='review.json', generate=False) and _write_review_state on every path. My sigs.py gives run_review(work, ingest=None, notes=None, generate=True). ReviewVerdict in 0d58202 review.py:116-180 has open_findings, counts, blocks_delivery, exit_code, review_line and to_dict with schema/version."
+   },
+   {
+    "index": 5,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "I reran r55run/log_probe.py. v54: run_verify gave 0 root lines; verify() gave 10 stdout lines and 0 root lines; the pkg level stayed NOTSET. v81: verify() gave 11 stdout and 11 root lines; pkg level 20 INFO; afterwards run_verify gave 11 root lines. _console.py:50-76 in 0d58202 calls pkg.setLevel(logging.INFO) and never restores it. 9675c61 verify.py:1960 wraps run_verify in redirect_stdout(io.StringIO()). compare.py and render_pages.py in 0d58202 use log.info where 9675c61 used print."
+   },
+   {
+    "index": 6,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "At 6eefa7e, extract_segments.py:526 is `def run_extract(src, outdir, *, gap=12.0, pages=None)`. At 0d58202 it is `(src, outdir, *, typography=False, gap=12.0, pages=None)`: gap and pages are keyword-only, unlike extract_segments. In results.py:139-160 @0d58202, _Result.to_dict builds {'schema': SCHEMA(1), 'version': __version__, …}, turns tuples into lists and drops typography when it is None."
+   },
+   {
+    "index": 7,
+    "status": "corrected",
+    "correction": "The pre-draw precedence is misordered. The merge checks run first. In the merge loop, an unmatched merge ('a declared merge does not match the page') or a merge box that is not four numbers or is empty/inverted raises MappingError with refusals {'merges': [...]}. Only after that loop does the untranslated/unauthored check raise MappingError, with refusals 'untranslated' and 'unauthored_merges'; merges whose html is null are skipped by the merge loop and reported there. Unplaceable notices then raise PlacementError, and GlyphError/PlacementError come after drawing. In v58 there is also an unreachable MappingError between GlyphError and PlacementError, removed in v74. From v59 a mapping that fails to load refuses before all of these. From v64/v66, stale_extraction and output_aliases (both MappingError) also precede the merge checks: output_aliases first, then stale_extraction. references/retypeset.md:95-103 @0d58202 documents this order. The rest of the entry (fields, to_dict, WidgetTextError subclassing, FontError reasons) is correct.",
+    "evidence": "`git show 6eefa7e:pdf-translate/pdf_translate/retypeset.py | grep -n 'raise MappingError…'` gives the merges raises at :813/:837/:846, untranslated at :909, notices PlacementError at :1010, GlyphError at :1552, MappingError at :1556 and PlacementError at :1560. In 0d58202 (verifier/rt81.py) the order is _refuse_output_aliases :1285, _refuse_stale_geometry :1292, merges :1345-1383, untranslated :1444, notices :1539, GlyphError :2072, PlacementError :2080. The FontError reasons fstype/no-pyftsubset/no-raster/no-conjuncts/wrong-han-convention are at 6eefa7e prepare_font.py:178-313. The sigs.py MRO shows v54 WidgetTextError(Exception) and v81 WidgetTextError(PdfTranslateError)."
+   },
+   {
+    "index": 8,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "9675c61 retypeset.py:838 has `arch = pymupdf.Archive('.')`. 0d58202 retypeset.py:1553 has `arch = pymupdf.Archive(resource_root or …)`. The run_retypeset docstring (:1235-1255) says progress totals 'pages plus merge jobs' and cancel returns RetypesetResult(cancelled=True, output=None). The loud retypeset calls run_retypeset without resource_root, so it gets the mapping-directory default. I did not reproduce the relative-resource case."
+   },
+   {
+    "index": 9,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "9675c61 retypeset.py:1355-1359 writes a bare sorted list with json.dump. 0d58202 retypeset.py:749-790 has write_scale_report with an envelope, mkstemp plus os.replace, and removal of a stale report on failure. My e2e run (verifier/rtcmp.py) found scale_report.json '[]' on v54 and '{\"schema\": 1, \"version\": \"81\", \"runs\": []}' on v81. The 9675c61 scale_report_for returns None for a dict, so a pre-v58 verify SKIPs; 0d58202 verify.py:521-545 accepts both shapes. fcf023e is 57.0.0 and is not an ancestor of 36bcf9f."
+   },
+   {
+    "index": 10,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "requires-python: 6eefa7e '>=3.10'; b7c0084 '>=3.14'; 4a5d200 '>=3.14'. `git merge-base --is-ancestor b7c0084 6eefa7e` gives not-in. All are 58.0.0; d4d85be (59) has >=3.14. _requirements.py:33 @0d58202 has DECLARED_PYTHON = '3.14+' and the comment 'Stated, never enforced here'."
+   },
+   {
+    "index": 11,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "sigs.py on v81 gives extract_segments(…, *, typography=False), prepare_font/run_prepare_font(…, *, font_class=None, font_role=None), retypeset(…, *, original=None, …) and run_verify(…, typography=False, widget_text=None). GATE_NAMES ends with 'typography'. prepare_font.py:243-244 @0d58202 raises FontError reason 'missing-font-role' for class/role with a legacy mapping. results.py _Result.to_dict skips typography when None. 1a730e2 reads 58.0.0 and 444a644/d4d85be read 59.0.0. Not listed but same feature: qa_check/run_qa also accept typography-1 (see the missing entry)."
+   },
+   {
+    "index": 12,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "I reran r55run/bad_mapping.py. v54 raised JSONDecodeError (malformed), FzErrorSystem (a {format:legacy} mapping gets past loading) and FileNotFoundError, all as raw exceptions from loud retypeset. v81 raised MappingError with refusals {'typography': [{'reason': 'invalid-style-reference', …}]} for all three, and loud retypeset returned rc 1. mapping.py:388-395 @0d58202 uses read_text(encoding='utf-8-sig')."
+   },
+   {
+    "index": 13,
+    "status": "corrected",
+    "correction": "Not all CLIs. Only six entry points call missing_option_value and print `usage: <option> requires a value` with exit 2: extract_segments, pipeline, prepare_font, qa_check, retypeset and verify. strip_text, field_fonts, compare, render_pages and bilingual do not; for example, field_fonts.main still indexes argv directly. The check also treats a following token that starts with '--' as a missing value.",
+    "evidence": "`git grep -n 'missing_option_value' 0d58202 -- pdf-translate/pdf_translate` hits only extract_segments.py:867, pipeline.py:735, prepare_font.py:412, qa_check.py:406, retypeset.py:2205 and verify.py:2460. `git log -S missing_option_value` gives 95886f6 (58.0.0 on the branch, merged in d4d85be 59) and 3a030b6."
+   },
+   {
+    "index": 14,
+    "status": "corrected",
+    "correction": "Correct for the untranslated, unauthored_merges, overflow, glyph_misses and rotated_shaped lists. The notices refusal list is still cut at 30 with no '… N more not shown' marker and no tail line (retypeset.py:1536 @0d58202, `for i, why in bad_notices[:30]`). The stale-extraction line uses its own ', …' marker (v64). The version caveat (611f56b unbumped under 59; 60 is the first number that guarantees it) is right.",
+    "evidence": "`grep -n '[:30]\\|[:CONSOLE_LIST]\\|more_not_shown(' rt81.py` gives more_not_shown at :1436, :1441, :2023, :2039 and :2047, but none after :1536 (notices). `git merge-base --is-ancestor 611f56b d4d85be` gives not-in, and first-parent order is d4d85be, 6092cef, ef9991b, b20fadd (60)."
+   },
+   {
+    "index": 15,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "`git diff 9675c61 0d58202 -- pdf-translate/scripts/retypeset.py` adds _pre.guard_cli(). _requirements.py:78-85 @0d58202 prints to stderr and raises SystemExit(2). __init__.py raises ImportError(requirements_message(...)). c4591b9 and ef9991b are 59.0.0, and ef9991b sits between 6092cef (59) and b20fadd (60) on first-parent."
+   },
+   {
+    "index": 16,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "capture.py:49-137 @0d58202 has ENV_VAR 'PDF_TRANSLATE_CAPTURE_DIR' and BELOW_ENV_VAR 'PDF_TRANSLATE_CAPTURE_BELOW'. resolve_capture_below does float(capture_below) with no try (so ValueError), and ignores an environment value that does not parse. is_below_floor counts only 'overflow' or reason 'below-scale-floor'. Near-floor capture needs both a resolved dir and a threshold (retypeset.py:2152). `git grep environ 0d58202` shows these as the only environment reads; there are none in 9675c61. ba97d0e and c7ec0c0 are 60.0.0."
+   },
+   {
+    "index": 17,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "36bcf9f review.py:133-135 has blocks_delivery = (not present) or open_findings. 0d58202 review.py has bool(self.errors) or …. `git merge-base --is-ancestor 41bdf99 b20fadd` gives not-in; it is in 178a06f (60.0.0), and the next bump is e5ff733 (61)."
+   },
+   {
+    "index": 18,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "0d58202 pipeline.py:440-470 has _prepare_rebuild_reports: it refuses protected paths, accepts only schema==1 dicts with gates/original/output/exit_code, and removes them before retypeset. 9675c61 cmd_rebuild has no such step. 30c4805 and 2249171 are 60.0.0 and landed at 178a06f."
+   },
+   {
+    "index": 19,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "My vcmp.py ran run_verify(orig, stripped) over 16 corpus PDFs on v54 and v81. Every file gained ('page-parity', 'PASS'), and choice_fields also gained ('widget-text', 'REVIEW'); exit codes were unchanged. compare.py @0d58202 returns 1 after 'FAIL page count' (:87-89), where 9675c61 always returned 0. render_pages.py:48-51 and pipeline cmd_render return 1 on a mismatch."
+   },
+   {
+    "index": 20,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "In 0d58202 pipeline.py cmd_rebuild's legacy branch, `if '--translations' not in extra: extra += ['--translations', tr]; if '--segments' not in extra: extra += ['--segments', segs]`. 9675c61 cmd_rebuild forwarded only the caller's extra. 55bb44d is 60.0.0, fda27e7 is 61.0.0 and e5ff733 is 61.0.0."
+   },
+   {
+    "index": 21,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "I reran r03_probe.py (verifier/). The v54 scaffold keys are ['Name[0]', 'PDF417BarCode1[0]', 'Phone[0]', 'Pick[0]'] and the v81 scaffold has 8 full-name keys. The v54 scaffold fed to v81 strip_text raised WidgetTextError 'widget-text key names more than one field…'. The v81 scaffold into v81 strip succeeded. The v54 scaffold into v54 strip raised WidgetTextError 'Pick[0]: options [a1, a2] are not export values'. strip_text.py:722-792 @0d58202 has resolve_widget_text_keys and _refuse_divergent_widgets."
+   },
+   {
+    "index": 22,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "I reran r01_probe.py. v54 and v62 filled (0,0,0) with content b'q\\n20 20 100 60 re\\nf\\nQ\\n'. v63 and v81 filled (229,255,229) with the rg and BDC/EMC kept. My corpus comparison (verifier/pdfcmp.py) found stripped content streams changed in 11 of 16 corpus PDFs between v54 and v81, e.g. colored 119->131 bytes and rotated_text 59->108."
+   },
+   {
+    "index": 23,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "verifier/extract_cmp.py plus cmp.py over the 16 corpus PDFs, v54 vs v81. segments.json differs only by geometry {'space': 'unrotated', 'rotated_pages': {}} on 15 files. On rotated.pdf, origin [712.0, 60.0] became [60.0, 80.0] and dir [0,1] became [1,0], and warnings went from [] to a merge-candidate. to_translate.json and widget_text.json were identical, and stdout was identical."
+   },
+   {
+    "index": 24,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "`git show d30ecde` explains why: extract read rotated space while retypeset used unrotated space. retypeset.py:210 unrotated_frame @0d58202. names.py diff: direction_limit(page, …) on v54 becomes direction_limit(frame, …) on v81. I did not rerun probe_rotate's build; the output-text numbers rest on the researcher's probe."
+   },
+   {
+    "index": 25,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "retypeset.py:854-889 @0d58202 raises MappingError with refusals {'stale_extraction': [{'page', 'rotation'}]} (no 'core'), called at :1292 after _refuse_output_aliases :1285. failure-modes.md:209-216 @0d58202 calls the line 'stable … which consumers may match'."
+   },
+   {
+    "index": 26,
+    "status": "corrected",
+    "correction": "Correct except 'never above the source size': that holds only when the run is at least 1 pt wide. fitted_size clamps room to 1 pt, so a run narrower than 1 pt whose room is smaller still is drawn larger than its source. fitted_size(10, 0.5, 0.2) returns 20.0. This is a degenerate case.",
+    "evidence": "On the v81 tree, `python -c 'from pdf_translate.retypeset import fitted_size as f; print(f(5,100,54), f(3,100,50), f(10,0.5,0.2))'` gives 2.7 1.5 20.0. 9675c61 retypeset.py:971, 1119, 1131 and 1148 each use max(4.0, …). 2f7e108 is 65.0.0."
+   },
+   {
+    "index": 27,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "retypeset.py:1283-1292 @0d58202 runs _legacy_fonts, then _refuse_output_aliases with (stripped, segments, mapping, original, fonts) plus the scale report, then _load_json(segf). This follows the load_mapping at :1258. f5cf474 is 66.0.0."
+   },
+   {
+    "index": 28,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "0d58202 pipeline.py cmd_rebuild builds inputs from orig, stripped, segs, tr plus `--flag value` and `--flag=value` for the value_flags tuple, and logs 'rebuild: output path must not overwrite an input' then returns 2. 9675c61 cmd_rebuild has no check. f5cf474 and f17faac are 66.0.0."
+   },
+   {
+    "index": 29,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "retypeset.py:386-410 @0d58202: story_text = html.escape(quote=False).replace('&amp;', '&amp;amp;'), and inline_markup_html keeps only the INLINE_TAGS matches. Callers are at :314, :1769 and :1990-1994. bf9165c and its parent are 66.0.0, merged in 637e291. Caveat I could not test: the double escape relies on MuPDF 1.28.2 decoding twice, while pyproject still allows pymupdf>=1.24,<1.30."
+   },
+   {
+    "index": 30,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "2ab3fcb is 67.0.0 (parent 66). Its commit title is 'canonicalize every role face's text layer'. I did not rerun probe_r04."
+   },
+   {
+    "index": 31,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "field_fonts.py @0d58202: static_face pins the 'Regular' named instance or clamps wght to 400 and returns ','.join(f'{tag}={value:g}'). run_field_fonts sets instance on both results, and static is removed in finally. results.py FieldFontsResult has instance: str = ''. 9ba9875 and 4545782 are 68.0.0."
+   },
+   {
+    "index": 32,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "I reran with verifier/ff54.py on choice_fields.pdf. On v54, loud field_fonts with pair.ttc returned rc 0 ('rewrote /DA on 3 … field objects'), and nope.ttf raised pymupdf.mupdf.FzErrorSystem. On v81, run_field_fonts and loud field_fonts raise fontTools.ttLib.TTLibFileIsCollectionError and builtins.FileNotFoundError. field_fonts.py @0d58202 catches only PdfTranslateError."
+   },
+   {
+    "index": 33,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "118bb75 is 69.0.0 and touches typography_verify.py only for the page-load work. typography-1 is itself new since v59, so a v54 consumer sees no net change. The numbers come from the review file and were not re-measured."
+   },
+   {
+    "index": 34,
+    "status": "corrected",
+    "correction": "Mostly right, but 'a missing /DA gives the same bytes as before' holds only when neither an ancestor nor the form carries a /DA. In v54, a widget without its own /DA always got '/TransFF 0 Tf 0 g' (size 0, auto). In v81 it inherits the nearest parent's or the /AcroForm /DA, including its size and colour. For example, with an AcroForm /DA of '/Helv 12 Tf 0 g', a /DA-less widget becomes '/TransFF 12 Tf 0 g'. /AcroForm /DA itself changes whenever the form's /DA carries a size other than 0 or any colour or other operators, not only when it is 'non-trivial'.",
+    "evidence": "9675c61 field_fonts.py:76-85: fix_da reads obj.get('/DA'), defaults to size '0', and writes f'/{name} {size} Tf 0 g'; af.DA is always '/TransFF 0 Tf 0 g'. 0d58202 field_fonts.py: fix_da = field_da(inherited_da(obj, form_da), name), where inherited_da walks /Parent and then acroform_da, and af.DA = field_da(form_da, name). 7a61a15 and 434674b are 70.0.0."
+   },
+   {
+    "index": 35,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "In 0d58202 pipeline.py cmd_rebuild, `rc = retypeset(stripped, segs, tr, out, original=orig)` is unconditional, with the R-40 comment. 6d1d19a is 71.0.0."
+   },
+   {
+    "index": 36,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "d4b0c24 and 85eb0d7 are 72.0.0 and merged together in b0ed899 (`git log b0ed899^1..b0ed899^2` lists a07a455, 85eb0d7, d4b0c24). mapping.py:56-63 refuse() uses segment.get('text') as core. Not executed; this rests on code reading. typography-1 is new since v59, so for a v54 consumer this changes values inside a feature that is itself new."
+   },
+   {
+    "index": 37,
+    "status": "corrected",
+    "correction": "This is not a consumer-visible change and should be dropped from the note. d4b0c24 (the crash) and 85eb0d7 (the fix) are both branch commits merged together in b0ed899, the main v72. No main commit and no release ever carried the crash. 'The version string 72.0.0 covers two different trees' is true only of unreleased branch commits, not of anything a consumer pins from main.",
+    "evidence": "`git log --format='%h %s' b0ed899^1..b0ed899^2` gives a07a455, 85eb0d7, d4b0c24. First-parent history shows 62e87bf 71.0.0 followed by b0ed899 72.0.0, with no main commit at d4b0c24."
+   },
+   {
+    "index": 38,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "`git diff 9675c61 0d58202 -- pdf-translate/pyproject.toml pdf-translate/requirements.txt` shows setuptools>=61 becoming >=77, license {text='MIT'} becoming 'MIT' plus license-files ['LICENSE'], and requires-python >=3.10 becoming >=3.14. requirements.txt and the dependency pins are unchanged. d23a202 is 73.0.0 (parent 72)."
+   },
+   {
+    "index": 39,
+    "status": "corrected",
+    "correction": "Version 55, whole range. __version__ goes from '54' to '81', changing at every bump from v55 on, not only from 72. VerifyVerdict.to_dict()/verify_report.json already carried 'version' at v54, so every verify report changes at every bump. The 'version' field is new in v58 for results, PdfTranslateError.to_dict and scale_report.json; ReviewVerdict (v57) and capture bundles (v60) carry it from the start.",
+    "evidence": "9675c61 verify.py VerifyVerdict.to_dict already returns {'schema': 1, 'version': __version__, …}. `git diff 9675c61 0d58202 -- __init__.py` shows __version__ '54' becoming '81'. In my rtcmp.py e2e run the v81 scale_report has '\"version\": \"81\"' and the v54 report is a bare []."
+   },
+   {
+    "index": 40,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "load_segments_for is in 9675c61 verify.py:907, 6eefa7e and d4b0c24, and absent at cb3a670 and 0d58202. `git log -S 'def load_segments_for'` gives cb3a670 (74.0.0). My names.py diff reports 'REMOVED verify load_segments_for' as the only public removal across the 12 stage modules (the strip_text.WidgetTextError hit is a re-export whose __module__ moved to results)."
+   },
+   {
+    "index": 41,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "retypeset.py:2051-2054 @0d58202 has 'untranslated': [] with a comment. 6eefa7e retypeset.py:1534 carried `missing` and had the MappingError branch at :1556. cb3a670 is 74.0.0."
+   },
+   {
+    "index": 42,
+    "status": "corrected",
+    "correction": "There is no net change for a v54-to-v81 consumer. review.py and run_review do not exist in v54 (added in v57), so the NOTES.md ResourceWarning existed only in v57-v74. The han_forms and prepare_font changes are, by the entry's own account, not observable. Drop this entry, or fold it into the v57 review entry.",
+    "evidence": "`git show 9675c61:pdf-translate/pdf_translate/__init__.py` has no run_review import, and 0d58202 __init__.py imports it from .review. The `git diff 9675c61 0d58202` stat lists review.py as a new 676-line file. The han_forms.py diff only wraps TTFont in a with-block."
+   },
+   {
+    "index": 43,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "`git show ceffdf3/0d22d9b/7c91b4a -- pdf-translate/pdf_translate` shows non-comment lines changing only in docstrings and __version__. references/retypeset.md:93-103 @0d58202 is the refusal table in order: output_aliases, stale_extraction, merges, untranslated, unauthored_merges, notices, overflow, glyph_misses, rotated_shaped."
+   },
+   {
+    "index": 44,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "9675c61 extract_segments.py:664 is `invisible = [(p, f) for p, f in invisible_text_pages(src) if p in wanted]`. 0d58202 :744 is invisible_text_pages(src, pages=wanted). In names.py, the invisible_text_pages signature goes from (src) to (src, pages=None). My corpus extract comparison showed identical warnings and invisible_text_pages on the non-rotated files. 8949a16 is 77.0.0."
+   },
+   {
+    "index": 45,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "9675c61 prepare_font.py:197/200 write font_out + '.instanced.ttf'/'.chars.txt' with no removal (grep finds no remove/unlink). 0d58202 prepare_font.py wraps both in tempfile.TemporaryDirectory(prefix='prepare_font-') and instances _variable_subset(font_in, chars). 4272a79 is 78.0.0. I did not rerun the byte comparison."
+   },
+   {
+    "index": 46,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "In my corpus run with extract_cmp.py, v81 extract_segments() returned the key 'widget_text_kept' and v54 did not. results.py @0d58202 places ExtractResult widget_text_kept: bool = False before typography. extract_segments.py:777-788 @0d58202 skips the write when widget_text_is_authored. f0a171c is 79.0.0."
+   },
+   {
+    "index": 47,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "In my e2e legacy build (verifier/rt_e2e.py plus rtcmp.py) with mapping lang 'es-US', output /Lang was 'es' on v54 and 'es-US' on v81 for 3 corpus files. _lang.py @0d58202 write_language uses xref_set_key(catalog, 'Lang'). extract_segments.py:328 still reads doc.language. 98b7091 is 80.0.0."
+   },
+   {
+    "index": 48,
+    "status": "corrected",
+    "correction": "Broader than described for legacy mappings. The rule is want_lang.lower().startswith(got_lang.lower()), and got_lang is now the whole stored tag. So any stored tag longer than the mapping's lang FAILs, not only a different region. A legacy mapping 'es' verified against an output that stores 'es-US' now FAILs, where v54 read 'es' and passed. The typography exact-match and han-forms parts are right.",
+    "evidence": "verify.py:699-705 @0d58202: `got_lang = declared_language(jdoc)` and `if not got_lang or not want_lang.lower().startswith(got_lang.lower())` records a lang miss. declared_language (_lang.py:21-38) returns the catalog string as stored."
+   },
+   {
+    "index": 49,
+    "status": "confirmed",
+    "correction": "",
+    "evidence": "sigs.py gives verify/run_verify(…, widget_text=None) and GATE_NAMES with 'widget-text' at index 2 (28 names; 24 on v54). In vcmp.py, choice_fields gained ('widget-text', 'REVIEW') and the exit code was unchanged at 1. verify.py:593-615 and :1866-1889 @0d58202 hold the gate code, and :2338-2342 is the fail_on_review flip. 9e05085 is 81.0.0."
+   }
+  ],
+  "missing": [
+   {
+    "version": 59,
+    "title": "qa_check / run_qa read typography-1 mappings and return findings with occurrence context",
+    "affects": [
+     "qa_check",
+     "run_qa",
+     "QAVerdict.findings",
+     "qa_check.check_pair(plain=)",
+     "qa_check.glossary_findings(plain=)",
+     "pipeline.scaffold_from_cores"
+    ],
+    "change": "qa_check now loads the mapping with load_mapping. For a typography-1 mapping it returns _typography_findings: each finding dict gains occurrence_id, page and source_runs, document-metadata findings carry where='document-metadata', and the sort order is severity, kind, core, occurrence_id. For legacy mappings the finding shape is unchanged. check_pair and glossary_findings gained a keyword-only plain=False. pipeline.scaffold_from_cores reads to_translate.json through load_mapping_data: malformed JSON is logged and returns 2 where v54 raised JSONDecodeError, and it writes a typography template for a typography to_translate.json.",
+    "consumer_action": "None for legacy mappings. If you adopt typography-1, expect the extra keys in QAVerdict findings. Catch MappingError, or check return code 2, from scaffold_from_cores instead of JSONDecodeError.",
+    "moves_output_bytes": "conditional",
+    "bytes_detail": "Only typography-1 QA findings, --json QA output, and translations.json scaffolds made from a typography to_translate.json.",
+    "evidence": [
+     "b289ce2 (pyproject 58.0.0 on the branch; in d4d85be 59.0.0; not in 4a5d200)",
+     "0d58202:pdf-translate/pdf_translate/qa_check.py:305-330",
+     "0d58202:pdf-translate/pdf_translate/pipeline.py:157-181",
+     "git diff 9675c61 0d58202 -- pdf-translate/pdf_translate/qa_check.py"
+    ]
+   }
+  ],
+  "checklist": [
+   {
+    "item": "1. requires-python >=3.14",
+    "version": 58,
+    "verdict": "Confirmed with a caveat. It entered under the 58.0.0 label (b7c0084, merged at 4a5d200 without a bump), while 6eefa7e, also 58.0.0, still declares >=3.10. 59 is the first version number that guarantees the floor. It is not enforced at runtime.",
+    "evidence": "git show {6eefa7e,b7c0084,4a5d200,d4d85be}:pdf-translate/pyproject.toml gives >=3.10, >=3.14, >=3.14, >=3.14. `git merge-base --is-ancestor b7c0084 6eefa7e` gives false. _requirements.py:33 @0d58202 is DECLARED_PYTHON '3.14+' with the comment 'never enforced'."
+   },
+   {
+    "item": "2. scale_report.json becomes an envelope (product says v58)",
+    "version": 58,
+    "verdict": "Confirmed: v58. It shipped in 6eefa7e. fcf023e reads 57.0.0 but is not in the v57 release, 36bcf9f.",
+    "evidence": "My e2e retypeset (verifier/rtcmp.py) wrote '[]' on v54 and {\"schema\":1,\"version\":\"81\",\"runs\":[]} on v81. retypeset.py:749-790 and verify.py:521-545 @0d58202."
+   },
+   {
+    "item": "3. run_retypeset, PlacementError and GlyphError precedence, and the refusals shape",
+    "version": 58,
+    "verdict": "Version confirmed (v58), but the researchers' precedence needs correcting. Before drawing, the merge checks (unmatched merge, bad merge box; MappingError 'merges') come BEFORE the untranslated/unauthored MappingError, and unplaceable notices (PlacementError) come after both. After drawing, GlyphError beats PlacementError, and the refusals always carry untranslated, overflow, glyph_misses and rotated_shaped. In v81, output_aliases (v66) and then stale_extraction (v64), both MappingError, run before the merge checks. A mapping that fails to load (v59) refuses first of all.",
+    "evidence": "6eefa7e retypeset.py raises merges at :813/:837/:846, untranslated at :909, notices at :1010, then Glyph :1552, Mapping :1556, Placement :1560. 0d58202 order is :1285, :1292, :1345-1383, :1444, :1539, :2072, :2080. references/retypeset.md:93-103 @0d58202."
+   },
+   {
+    "item": "4. the console is not an API",
+    "version": 58,
+    "verdict": "Confirmed: v58. consumer-guide.md was added by 3661ec5 (57.0.0 on the E3 branch) and shipped in 6eefa7e. One documented exception: the stale-extraction FAIL line (v64) is declared stable in failure-modes.md.",
+    "evidence": "consumer-guide.md:229 @0d58202 reads 'Do not parse the console'. `git log -S 'Do not parse the console'` gives 3661ec5. The file is absent at 9675c61. failure-modes.md:211-216 @0d58202 describes a 'stable line, which consumers may match'."
+   },
+   {
+    "item": "5. capture environment variables and capture_dir",
+    "version": 60,
+    "verdict": "Confirmed: v60 (ba97d0e and c7ec0c0 at 60.0.0; b20fadd is the first main commit at 60). It is off by default. An explicit argument wins over the environment. A non-numeric explicit capture_below raises ValueError; a malformed environment value is ignored.",
+    "evidence": "capture.py:49-119 @0d58202. retypeset.py:1256-1257 and :2152-2157. `git grep environ` finds capture.py as the only environment reader, and there are none in 9675c61."
+   },
+   {
+    "item": "6. widget-text keys become fully qualified names; a cross-version scaffold raises WidgetTextError (product says v62)",
+    "version": 62,
+    "verdict": "Confirmed: v62 (dc87cce), with the researchers' qualification. A partial key raises only when it names several fields, when two keys resolve to one field, or when widgets sharing a full name differ in source text. A partial key that names exactly one field still applies.",
+    "evidence": "I reproduced it: a v54 widget_text_scaffold (4 partial keys) fed to v81 strip_text raised WidgetTextError 'widget-text key names more than one field…', and the v81 scaffold (8 full names) succeeded (verifier/r03_probe.py). strip_text.py:722-792 @0d58202."
+   },
+   {
+    "item": "7. strip keeps graphics state, which moves output bytes (product says v63)",
+    "version": 63,
+    "verdict": "Confirmed: v63 (89956d3). Output bytes move for any text object that carries non-text operators.",
+    "evidence": "r01_probe: v62 fill (0,0,0), v63 and v81 (229,255,229). My corpus run found stripped content streams changed in 11 of 16 corpus PDFs, v54 vs v81, and the final retypeset content streams changed by the same byte deltas."
+   },
+   {
+    "item": "8. rotated geometry and the stale-extraction refusal (product says v64)",
+    "version": 64,
+    "verdict": "Confirmed: v64 (d30ecde and 362e95e, both 64.0.0, merged in 154f842).",
+    "evidence": "My corpus extract comparison: geometry key on all 16 files. On rotated.pdf, origin [712,60] became [60,80] and a merge-candidate warning appeared. retypeset.py:854-889 and :1292 @0d58202."
+   },
+   {
+    "item": "9. Story escaping of & < > (product says v66)",
+    "version": 66,
+    "verdict": "Confirmed: v66. bf9165c reads 66.0.0 on a branch already bumped by f5cf474, and merged in 637e291.",
+    "evidence": "retypeset.py:386-410 @0d58202 (story_text, inline_markup_html). `git log 637e291^1..637e291^2` lists bf9165c."
+   },
+   {
+    "item": "10. ToUnicode for role faces (product says v67)",
+    "version": 67,
+    "verdict": "Confirmed: v67 (2ab3fcb, 67.0.0, parent 66).",
+    "evidence": "The pyproject loop gives 2ab3fcb 67.0.0 with parent 66.0.0, and merge 9cfcf63 is 67.0.0."
+   },
+   {
+    "item": "11. extract judges only the pages asked for (product says v77)",
+    "version": 77,
+    "verdict": "Confirmed: v77 (8949a16). Performance only: extract already filtered the oracle's results to the wanted pages at v54.",
+    "evidence": "9675c61 extract_segments.py:664 filters `if p in wanted`. 0d58202 :744 passes pages=wanted. invisible_text_pages goes from (src) to (src, pages=None)."
+   },
+   {
+    "item": "12. widget_text_kept (product says v79)",
+    "version": 79,
+    "verdict": "Confirmed: v79 (f0a171c).",
+    "evidence": "The v81 extract_segments() dict has widget_text_kept and v54's does not (verifier/extract_cmp.py). results.py ExtractResult @0d58202."
+   },
+   {
+    "item": "13. /Lang written whole (product says v80)",
+    "version": 80,
+    "verdict": "Confirmed: v80 (98b7091). On the verify side, the legacy prefix rule now fails any stored tag longer than the mapping's lang, not only a different region.",
+    "evidence": "My e2e run with mapping lang es-US stored /Lang 'es' on v54 and 'es-US' on v81. verify.py:699-705 @0d58202."
+   },
+   {
+    "item": "14. setuptools >=77 (product says v73)",
+    "version": 73,
+    "verdict": "Confirmed: v73 (d23a202). The other packaging changes in range are requires-python (v58/59) and the SPDX licence fields (v73). requirements.txt and the runtime pins are unchanged.",
+    "evidence": "`git diff 9675c61 0d58202 -- pdf-translate/pyproject.toml pdf-translate/requirements.txt`."
+   }
+  ]
+ },
+ "researchers_skipped": [
+  "Version method: for every entry, `version` is the pyproject version at the commit where the change entered main (the merge's first-parent side). Branch commits sometimes carry an older number: E3 commits read 57.0.0 and shipped as 58; typography commits read 58.0.0 and shipped as 59. Several changes landed with no bump and share a version label with an earlier state: c09449d under 56.0.0; b7c0084 under 58.0.0; 611f56b and c4591b9 under 59.0.0; 41bdf99, 30c4805 and the A02 commits under 60.0.0. Each such entry says so.",
+  "Docs-only commits (DECISIONS, REQUESTS, handover, plans, design canvases, the review doc f37f9b6, the request records 111ef3a and 7a05005), CI-only commits (a5629fb, b39079f, f7326cf, and the CI half of b7c0084), test-only commits (47eed20, 53fd7f5, c4484b7, 85d731b, 7eeccf2, cf78555), dev probes and baselines (0eadd80, ecde609, b0ce514, 3860c66) and the canary b17624c: none of them change the shipped package.",
+  "The refactor and performance commits merged in PR #22 (299bc16, 3a030b6, bf05027, f5fe241, 2249171's refactor part, 041447e, a2e47fb, 90b0c33, c828dd6). I read their diffs and claim no observable change. Equivalence rests on docs/reviews/2026-09-22-simplify-review.md and the related review files; I did not re-verify it.",
+  "typography-1 internals: I did not enumerate every refusal message, the full segments.json 'typography' block schema, or the scale_report schema-2 'typography' record field by field. The reason codes were collected by grep over the d4d85be tree.",
+  "review.py internals: the resolution migration rules, the review.json schema and the glossary.csv format are not enumerated.",
+  "The v58 resource_root default change was not reproduced for authored HTML that references relative resources. Only probe_font's Archive change was tested, and it showed no change.",
+  "Under logging, a UnicodeEncodeError on a non-UTF-8 console is handled by logging's handleError rather than raised by print. I noted this in the code but did not verify it and do not claim it.",
+  "Checklist items 8–14 are outside this range. Their versions come from pyproject at the introducing commits; their contents were only spot-checked.",
+  "I did not run the library test suite. The only runs are the scratch probes cited in the entries, against git-archived trees in the scratchpad (trees-r55/*), with the Python 3.14.6 venv at scratchpad/upgrade-note-work/venv314.",
+  "e64ad59 (v63, in range by commit but same version as the 89956d3 boundary): docs only, a DECISIONS row and failure-modes section 4 on clip-mode text. No behaviour change, so no entry.",
+  "Merge commits bcb32f3 (#29, v61 docs review) and e5be31d (#30, v62 R-03) are listed in the range, but their content is an ancestor of 89956d3. Not treated as in-range changes; R-03 is covered only in checklist item 6.",
+  "fb85c05, 5053700, d1f8a30, 8131093 (R-69/R-97): CI workflow and dev/repo tests only. Not shipped in the package and not consumer-visible.",
+  "Docs-only commits (4af638f, 8c1f4ca, 4fd6b64, 4cf1054, 470850d, cbc8ba4, 2192d90, 2ff7746, 39ec389, 43ec91c, 7a9d1a5, 7e04250, e7e2492, 645edb6, beb4c06) and dev/probes/r47_verify_page_loads.py: read for evidence only.",
+  "Test-suite changes (tests/*) are not consumer API and were not run. I did not run the repo's test suite at any version.",
+  "R-42 (v72): not executed. No typography-1 build was run; the entry rests on the code, DECISIONS.md:153, the commit message and the named tests.",
+  "R-47 (v69): the performance numbers come from the review file and were not re-measured.",
+  "R-27 (v68): the ~5 s instancing cost was not measured. The size change (5,904,492 -> 3,365,405 bytes) was measured.",
+  "R-04 (v67): I confirmed the italic /ToUnicode rewrite with Noto Sans Italic. I did not reproduce the NBSP-for-space symptom with an Arial/Times-style italic.",
+  "R-40 (v71): the claim that the legacy build is byte-identical apart from /ID was not re-measured, and I did not run a capture bundle.",
+  "v64 extract warnings reappearing on rotated pages (merge-candidate, narrow-column, right-aligned) come from the review. I measured only segment origin, dir and bbox.",
+  "Commits after d4b0c24 that also carry 72.0.0 (85eb0d7, a07a455, merge b0ed899) belong to the next range. 85eb0d7 is cited only because it fixes a CropBox crash in R-42's code before v72 reached main.",
+  "Possible edge case I did not confirm: R-42's Td/TD tracking makes the text matrix's translation part enter the isfinite check in typography_content. A Td whose sum overflows to inf could flag 'transformed-text' where v71 did not. I did not construct such a file.",
+  "Checklist items 1-7 and 11-14 are outside my range. I read enough to confirm each version (pyproject at the introducing commit and the main merge), but did not audit their full behaviour.",
+  "Test-only commits (R-51 memo and its removal): aade52b, 2392e5d, b08f4d6, 1d2a8e1, 7274ee2, 4f7f62d, 484b46b. git show --stat shows only pdf-translate/tests/ (and a DECISIONS row), so there is no library change and no version bump.",
+  "Canary-only commits: 796c332 and ef03a75 (dev/canary/runs only).",
+  "Records and evidence-only commits, read for evidence but carrying no code: a07a455, 8a92574, 371c2a9, 955bddc, e72e8f1, 1c767ee, 0359d92, 2a55f5b, a05efbe, f273380, 4793f38, cd680e6, 2b86296, c148b73, cc9595e, eb14a4c, 696decb, 2b993a0, f06ba1b.",
+  "Not run by me: the test suite at any commit. The 311-file byte comparison (R-48/R-49), the 37-case prepare_font A/B and GPOS equality (R-50), and the 20-tag byte-identity for /Lang are taken from the docs/reviews evidence files, not reproduced.",
+  "prepare_font without instance=: I read the code and the evidence's four non-instancing controls saying the subset is unchanged, but did not byte-compare it myself.",
+  "Gate 22's exit-code flip under fail_on_review is established by code reading (verify.py:2338-2342). My probe verified the original against itself, which exits 1 on both trees for other reasons, so it did not isolate the flip.",
+  "v80 on the typography-1 retypeset path is covered by code reading (retypeset.py:1167 calls apply_document_metadata) and the review's test 5. I did not build a typography job.",
+  "Out-of-range checklist items (1-10): I confirmed the introducing commit and version (pyproject at that commit and on main's first-parent history) and the v81 code location, but did not run those behaviours.",
+  "plugin.json and SKILL.md version bumps in each commit: skill packaging, not visible to a Python consumer, and not itemised.",
+  "Probes ran in scratchpad/upgrade-note-work/ on Python 3.14.6, pymupdf 1.28.2, pikepdf 10.13.0.post1 and fontTools 4.66.0 from the offline uv cache, against git-archive copies of d4b0c24 (v72) and 0d58202 (v81). They did not run against v54."
+ ],
+ "note": "Entries are in the verifier's numbering (research ranges v55-63, v64-72, v73-81). Probe paths point at a scratch directory that is not kept."
+}
