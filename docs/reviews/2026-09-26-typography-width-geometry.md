@@ -34,8 +34,9 @@ From `pdf-translate/`, run
   programs' `unitsPerEm`, including uniform shrink, same-face coalescing and
   subsetting. Exact fractional PDF widths also pass.
 - The verifier reads `/W` array and range forms plus `/DW`, and compares each
-  used width with the selected TrueType program's exact advance or its integer
-  floor. A 2/1000-em alteration returns a named PDF-width FAIL even though its
+  used width with the selected TrueType program's exact advance, its integer
+  floor, or the floor after MuPDF's floating-point normalization. A 2/1000-em
+  alteration returns a named PDF-width FAIL even though its
   0.024 pt position change is below the unchanged 0.05 pt tolerance. Extra
   character spacing and a real 0.2 pt shifted style boundary still fail.
 - Equal font-program bytes require equivalent PDF width tables before
@@ -79,7 +80,8 @@ unless their path starts with `runs/`.
 
 Three additional controls subsequently promote the reviewer's width-range
 and duplicate-resource checks into permanent coverage and require unresolved
-CID mapping evidence to remain REVIEW. The final regression module has 16 tests.
+CID mapping evidence to remain REVIEW. A subsequent CI boundary regression
+brings the final module to 17 tests (below).
 
 ## Independent Rule 1 verification
 
@@ -105,7 +107,42 @@ It also wrote and ran these independent probes from repository root:
   identical embedded bytes with conflicting resource widths REVIEW;
   range-form widths PASS; an actual 0.2 pt style-boundary shift FAIL.
 
-Full Linux/Windows discovery runs on the PR. Its current head's checks and
+## Full-suite finding and repair
+
+The first full run, [36287520695](https://github.com/ariasr47/pdf-translate-skill/actions/runs/36287520695),
+ran 838 tests on both platforms: Linux 340.968s, Windows 419.592s. Both had
+exactly one failure in the existing saved typography acceptance probe:
+`latin-roles` failed for NotoSans-Bold `s`; the other five saved cases passed.
+The pre-existing expected failure remained; Windows also retained its skip.
+
+The actual selected and embedded face has hmtx 502 / 1000, but MuPDF returns
+`0.5019999742507935`; flooring that normalized value times 1000 produces
+the observed `/W 501`. Comparing only against exact integer font arithmetic
+was too strict. The verifier now also accepts that measured renderer floor,
+while retaining exact/mathematical-floor controls and the fixed position
+tolerance. It does not accept arbitrary nearby widths.
+
+`python -W default -m unittest tests.test_typography_metrics.TypographyWidthTests.test_integer_font_units_can_round_below_a_pdf_width_boundary -v`
+failed before this correction: **1 test in 7.614s, FAIL**, naming U+0073's
+PDF width. This small regression uses the existing 1,000-unit OFL faces.
+The original saved `latin-roles` probe is also retained locally for replay
+and independent raster review.
+
+After correction,
+`python -W default -m unittest tests.test_typography_metrics tests.test_typography_verify tests.test_typography_retypeset -q`
+returned **73 tests in 35.595s, OK**. The separate reviewer inspected the
+additional renderer-floor branch and independently ran
+`python -m unittest tests.test_typography_metrics tests.test_typography_verify -v`:
+**46 tests in 33.446s, OK, exit 0**. It approved again with no findings.
+Both its saved previously failing `latin-roles` PDF and a fresh run of the
+existing `build_case(..., 'latin-roles')` probe now PASS all eight occurrences.
+It asserted all eight actual font resources were embedded, independently
+measured the 502-to-501 boundary, and inspected the fresh raster: complete,
+correctly styled lines without clipping or overlap. Its width-corruption,
+duplicate-resource, range-width and displacement probes retained their
+intended FAIL/REVIEW/PASS/FAIL results.
+
+Full Linux/Windows discovery reruns on the PR. Its current head's checks and
 description record the hosted result. The local handover records two host
 crashes during full-suite runs, so only focused suites run on this machine.
 

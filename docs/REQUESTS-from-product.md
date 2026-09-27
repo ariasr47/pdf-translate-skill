@@ -47,8 +47,12 @@ builds retain their refusal; the app's legacy route is unchanged.
 **Evidence:** `docs/reviews/2026-09-26-typography-width-geometry.md`.
 Both defects reproduced before repair. Different-model Rule 1 verification
 ran real font/position/corruption checks and inspected a rendered fixture;
-163 focused compatibility tests passed; the final 16-test regression module
-also passed independently. Full Linux/Windows checks run on #62; its current
+163 focused compatibility tests passed. The first full CI run found an
+additional MuPDF float-normalization boundary (hmtx 502/1000 embeds `/W 501`).
+The repair now accepts that measured renderer floor too; the regression
+module has 17 tests, 73 focused typography tests pass, and renewed
+independent verification passed 46 tests plus the saved eight-style fixture.
+Full Linux/Windows checks rerun on #62; its current
 head's checks and description record the result. All five version sources
 now agree at 88 / 88.0.0, and the consumer
 upgrade note has a v88 section.

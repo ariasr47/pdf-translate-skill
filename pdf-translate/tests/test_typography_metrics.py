@@ -104,6 +104,18 @@ class TypographyWidthTests(unittest.TestCase):
         self.job['output'].write_bytes(data)
         self.check('PASS')
 
+    def test_integer_font_units_can_round_below_a_pdf_width_boundary(self):
+        def use_original_units(data):
+            data['font_sets'] = latin_font_sets()
+            for target in data['targets']:
+                target['runs'][1]['text'] = 'Datos del pago'
+        self.change_mapping(use_original_units)
+        self.build()
+        # NotoSans-Bold's s has hmtx 502 / 1000, but MuPDF reads
+        # 0.5019999742507935 and embeds PDF width 501. The saved all-role
+        # acceptance probe exposed this boundary beyond the 2048-unit case.
+        self.check('PASS')
+
     def exact_widths(self):
         def exact_widths(doc):
             for resource in doc.pages[0].Resources.Font.values():

@@ -21,6 +21,12 @@ rotated typography builds retain their refusal. Independent Rule 1 review
 on a different model approved after real runs and raster inspection;
 163 focused compatibility tests passed. Evidence and observable acceptance:
 `docs/reviews/2026-09-26-typography-width-geometry.md`.
+The first full CI run found an additional rounding boundary in the existing
+eight-style Latin fixture: MuPDF normalizes 502/1000 to a float just below
+0.502 and embeds width 501. The corrected verifier accepts this measured
+renderer floor as well as the exact/mathematical-floor widths. A new test
+reproduced it; 73 focused tests and renewed independent 46-test verification
+pass, including the saved and freshly rebuilt eight-style fixture.
 Full Linux/Windows discovery runs on the PR, because this Windows host has
 previously crashed during full discovery.
 

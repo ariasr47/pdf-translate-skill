@@ -331,7 +331,11 @@ def inspect_output(original, final, document):
                                     advance = wanted.font['hmtx'].metrics[wanted.order[wanted_gid]][0]
                                     exact = advance * 1000 / wanted.units
                                     floored = advance * 1000 // wanted.units
-                                    if width != floored and not math.isclose(width, exact, rel_tol=0, abs_tol=0.00001):
+                                    # MuPDF normalizes to a float before truncating:
+                                    # hmtx 502/1000 can become 0.501999974 -> /W 501.
+                                    renderer_floor = math.floor(wanted.drawer.glyph_advance(ord(text)) * 1000)
+                                    if (width not in (floored, renderer_floor) and
+                                            not math.isclose(width, exact, rel_tol=0, abs_tol=0.00001)):
                                         finding(target, f'Run {run_index}: PDF glyph width differs from the selected advance '
                                                         f'for U+{ord(text):04X}.')
                                     pdf_advance = width / 1000
