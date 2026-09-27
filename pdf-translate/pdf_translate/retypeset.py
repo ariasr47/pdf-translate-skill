@@ -890,22 +890,68 @@ def _refuse_stale_geometry(segd, stripped):
                                        for p, r in stale]})
 
 
-def _right_limit(page_rect, seg, segs, widgets):
-    """The existing horizontal budget, shared without changing legacy arithmetic."""
-    x0 = seg['origin'][0]
+def _row_obstacles(seg, segs, drawn_boxes=None, *, left=False):
+    """Same-row obstacles; measured rotated boxes use the growth anchor.
+
+    A longer rotated run can enter this source box or arrive from a row
+    above it. Classifying its *source* as left/right would lose that
+    obstacle. Unmeasured neighbours keep the existing source-side rule.
+    """
+    drawn_boxes = drawn_boxes or {}
     y0, y1 = seg['bbox'][1], seg['bbox'][3]
-    lim = page_rect.width - 32
     for other in segs:
         if other is seg:
             continue
-        if other['bbox'][0] > seg['bbox'][2] - 1 and not (
-                other['bbox'][3] < y0 + 1 or other['bbox'][1] > y1 - 1):
-            lim = min(lim, other['bbox'][0])
+        box = drawn_boxes.get(id(other), other['bbox'])
+        if id(other) in drawn_boxes:
+            ahead = box[0] < seg['bbox'][2] if left else box[2] > seg['origin'][0]
+            same_row = box[3] > y0 and box[1] < y1
+        else:
+            ahead = (box[2] < seg['bbox'][0] + 1 if left
+                     else box[0] > seg['bbox'][2] - 1)
+            same_row = not (box[3] < y0 + 1 or box[1] > y1 - 1)
+        if ahead and same_row:
+            yield other, box
+
+
+def _right_limit(page_rect, seg, segs, widgets, drawn_boxes=None):
+    """The horizontal budget; ordinary neighbours retain their arithmetic."""
+    x0 = seg['origin'][0]
+    y0, y1 = seg['bbox'][1], seg['bbox'][3]
+    lim = page_rect.width - 32
+    for _, box in _row_obstacles(seg, segs, drawn_boxes):
+        lim = min(lim, box[0])
     for rect in widgets:
         if rect.x0 > x0 + 1 and not (rect.y1 < y0 + 1 or rect.y0 > y1 - 1):
             if rect.x0 > seg['bbox'][2] - 2:
                 lim = min(lim, rect.x0)
     return lim - 1.5
+
+
+def _rotated_text_box(page, writer, morph):
+    """Bounds of the fitted run as actually drawn, in unrotated page space.
+
+    TextWriter.text_rect includes the font's global overhang, which can
+    reserve tens of points never occupied by this text. Draw the already
+    prepared writer on a temporary page instead; the final page reuses the
+    same writer and morph. No PDF file or raster is needed.
+    """
+    frame = unrotated_frame(page)
+    with pymupdf.open() as measured:
+        probe = measured.new_page(width=frame.width, height=frame.height)
+        probe.set_rotation(page.rotation)
+        writer.write_text(probe, morph=morph)
+        boxes = [pymupdf.Rect(char['bbox'])
+                 for block in probe.get_text('rawdict', clip=pymupdf.INFINITE_RECT())['blocks']
+                 for line in block.get('lines', [])
+                 for span in line['spans'] for char in span['chars']
+                 if char['c'].strip()]
+    if not boxes:
+        return None
+    result = boxes[0]
+    for box in boxes[1:]:
+        result |= box
+    return result
 
 
 def _typography_failure(reason, detail, segment=None, run_id=None, error=MappingError, **attributes):
@@ -1617,10 +1663,31 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
            "b i, b em, i b, em b, strong i, strong em "
            "{font-family: trbi; font-weight: normal; font-style: normal;}")
 
-    def right_limit(pno, seg, segs):
-        return _right_limit(frames[pno], seg, segs, widg.get(pno, []))
+    drawn_rotated_boxes = {}
+    blocked_rotated_neighbours = []
 
-    def left_limit(pno, seg, segs):
+    def note_blocked_neighbour(pno, seg, other):
+        item = (pno, seg['core'], other['core'])
+        if item not in blocked_rotated_neighbours:
+            blocked_rotated_neighbours.append(item)
+
+    def record_blocked_neighbours(pno, seg, segs, *, left=False):
+        anchor = seg['bbox'][2] if left else seg['origin'][0]
+        for other, box in _row_obstacles(seg, segs, drawn_rotated_boxes, left=left):
+            if id(other) not in drawn_rotated_boxes:
+                continue
+            no_room = box[2] + 1.5 >= anchor if left else box[0] - 1.5 <= anchor
+            if no_room:
+                note_blocked_neighbour(pno, seg, other)
+
+    def right_limit(pno, seg, segs):
+        limit = _right_limit(frames[pno], seg, segs, widg.get(pno, []),
+                             drawn_rotated_boxes)
+        if limit <= seg['origin'][0]:
+            record_blocked_neighbours(pno, seg, segs)
+        return limit
+
+    def left_limit(pno, seg, segs, *, measured=True):
         """How far back a RIGHT-anchored run may grow (row 28).
 
         A `right` core keeps the source's right edge and grows leftward, so
@@ -1630,18 +1697,40 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
         """
         y0, y1 = seg['bbox'][1], seg['bbox'][3]
         lim = 32.0
-        for o in segs:
-            if o is seg:
-                continue
-            if o['bbox'][2] < seg['bbox'][0] + 1 and not (
-                    o['bbox'][3] < y0 + 1 or o['bbox'][1] > y1 - 1):
-                lim = max(lim, o['bbox'][2])
+        for _, box in _row_obstacles(seg, segs,
+                                     drawn_rotated_boxes if measured else None, left=True):
+            lim = max(lim, box[2])
         for wr in widg.get(pno, []):
             if wr.x1 < seg['bbox'][2] - 1 and not (
                     wr.y1 < y0 + 1 or wr.y0 > y1 - 1):
                 if wr.x1 < seg['bbox'][0] + 2:
                     lim = max(lim, wr.x1)
-        return lim + 1.5
+        limit = lim + 1.5
+        if measured and limit >= seg['bbox'][2]:
+            record_blocked_neighbours(pno, seg, segs, left=True)
+        return limit
+
+    def centered_room(pno, seg, segs, room):
+        """Constrain both halves about the existing center, for rotated ink."""
+        cx = (seg['bbox'][0] + seg['bbox'][2]) / 2
+        y0, y1 = seg['bbox'][1], seg['bbox'][3]
+        for other in segs:
+            box = drawn_rotated_boxes.get(id(other))
+            if box is None or box[3] <= y0 or box[1] >= y1:
+                continue
+            if box[0] >= cx:
+                # The existing center path clamps its left edge at ox-200.
+                # Both that placement and exact centering must fit.
+                available = min(2 * (box[0] - 1.5 - cx),
+                                box[0] - 1.5 - (seg['origin'][0] - 200))
+            elif box[2] <= cx:
+                available = 2 * (cx - box[2] - 1.5)
+            else:
+                available = 0.0
+            room = min(room, available)
+            if available <= 0:
+                note_blocked_neighbour(pno, seg, other)
+        return room
 
     rotated_shaped = []
     leaders_dropped = []
@@ -1701,8 +1790,11 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                 rtw.append((xx, py), t, font=f, fontsize=fsz,
                            right_to_left=rtl)
                 xx += adv
-            rot_jobs.append((rtw, cint, rotation_morph(px, py, dx, dy),
-                             logical if rtl else ''))
+            morph = rotation_morph(px, py, dx, dy)
+            box = _rotated_text_box(page, rtw, morph)
+            if box is not None:
+                drawn_rotated_boxes[id(seg)] = box
+            rot_jobs.append((rtw, cint, morph, logical if rtl else ''))
 
         def W(cint):
             if cint not in writers:
@@ -1714,7 +1806,11 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                     ((cint >> 8) & 255) / 255.0,
                     (cint & 255) / 255.0)
 
-        for seg in segs:
+        # Plan every rotated run before allocating horizontal room. Stable
+        # ordering preserves each group's order, and an all-horizontal page
+        # follows its existing path unchanged. The actual drawing still
+        # happens below, after all runs have been planned.
+        for seg in sorted(segs, key=lambda s: not is_rotated(*seg_dir(s))):
             tw = W(int(seg.get('color', 0)))
             text = seg['text'].strip()
             if text in skip:
@@ -1913,6 +2009,13 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                 continue
             if rot:
                 maxw = direction_limit(frame, seg, dx, dy)
+            elif core in center:
+                # Keep legacy page/widget/source budgets, then reserve the
+                # measured rotated neighbours on either side of the center.
+                maxw = (seg['bbox'][2] - left_limit(pno, seg, segs, measured=False)
+                        if core in right else
+                        _right_limit(frame, seg, segs, widg.get(pno, [])) - ox)
+                maxw = centered_room(pno, seg, segs, maxw)
             elif core in right:
                 # Measured against the room it will occupy, not the room to
                 # the right of an origin it is not going to keep (row 28).
@@ -2099,8 +2202,16 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
         for p, c in rotated_shaped[:30]:
             block.append(f'  p{p}: {c}')
         block.extend(more_not_shown(rotated_shaped))
-    block.extend(refusal_tail(overflow, glyph_misses, rotated_shaped))
-    if overflow or rotated_shaped or glyph_misses:
+    if blocked_rotated_neighbours:
+        block.append(f'FAIL: {len(blocked_rotated_neighbours)} horizontal run(s) '
+                     'have no room beside a drawn rotated neighbour; shorten '
+                     'the neighbour translation (allow_scale cannot free the anchor):')
+        for p, core, neighbour in blocked_rotated_neighbours[:CONSOLE_LIST]:
+            block.append(f'  p{p} {core}: rotated neighbour {neighbour}')
+        block.extend(more_not_shown(blocked_rotated_neighbours))
+    block.extend(refusal_tail(overflow, glyph_misses, rotated_shaped,
+                              blocked_rotated_neighbours))
+    if overflow or rotated_shaped or glyph_misses or blocked_rotated_neighbours:
         doc.close()
         refusals = {
             # Always empty here: an untranslated core refused before drawing.
@@ -2116,6 +2227,10 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
             'rotated_shaped': [{'page': p, 'core': c}
                                for p, c in rotated_shaped],
         }
+        if blocked_rotated_neighbours:
+            refusals['rotated_neighbours'] = [
+                {'page': p, 'core': c, 'neighbour': n}
+                for p, c, n in blocked_rotated_neighbours]
         summary = ', '.join(
             f'{len(v)} {k.replace("_", " ")}' for k, v in refusals.items() if v)
         # Precedence names the exception; `refusals` carries every kind. A
@@ -2127,10 +2242,13 @@ def run_retypeset(stripped, segf, trf, out, *, progress=None, cancel=None,
                              exit_code=1, page=pno, char=ch, face=label,
                              refusals=refusals)
         first = (overflow[0] if overflow else None)
+        unscaled = (rotated_shaped[0] if rotated_shaped
+                    else blocked_rotated_neighbours[0][:2] if blocked_rotated_neighbours
+                    else None)
         placement_exc = PlacementError(
             summary, console_line='\n'.join(block), exit_code=1,
-            page=(first[0] if first else rotated_shaped[0][0]),
-            key=(first[2] if first else rotated_shaped[0][1]),
+            page=(first[0] if first else unscaled[0]),
+            key=(first[2] if first else unscaled[1]),
             scale=(first[1] if first else None), refusals=refusals)
         # Only `overflow` is "a run scaled below the floor" — a rotated run
         # that needs shaping refuses for an unrelated reason and is not B1

@@ -38,8 +38,7 @@ def _section(text, heading):
 
 
 class _RefusalKinds(ast.NodeVisitor):
-    """Every string key of a `refusals` dict literal in a module, outside the
-    functions named in `skip`."""
+    """String keys assigned to `refusals`, outside functions named in `skip`."""
 
     def __init__(self, skip):
         self.skip, self.kinds = skip, set()
@@ -61,6 +60,13 @@ class _RefusalKinds(ast.NodeVisitor):
     def visit_Assign(self, node):
         if any(isinstance(t, ast.Name) and t.id == 'refusals' for t in node.targets):
             self._take(node.value)
+        for target in node.targets:
+            if (isinstance(target, ast.Subscript)
+                    and isinstance(target.value, ast.Name)
+                    and target.value.id == 'refusals'
+                    and isinstance(target.slice, ast.Constant)
+                    and isinstance(target.slice.value, str)):
+                self.kinds.add(target.slice.value)
         self.generic_visit(node)
 
 

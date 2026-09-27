@@ -32,7 +32,35 @@ Claude sessions do this by name with `SendMessage`; other agents go through
 Rodrigo. Whatever a message settles is written into this file in the same
 session.
 
-## Current coordination status — 26 September 2026, item 8 ink-ratio attempt closed as not reproduced
+## Current coordination status — 26 September 2026, item 9 rotated-neighbour repair implemented as v89
+
+**Assigned and built:** Rodrigo said to continue with the next item.
+Owner: this library. Branch `codex/rotated-neighbour-layout`, based on
+PR #63's exact head `4d0ba93`. Legacy retypeset measures the fitted rotated
+runs before allocating horizontal room. Left, right and center labels
+reserve the drawn neighbour rather than only its source box. An occupied
+anchor refuses with `rotated_neighbours = [{page, core, neighbour}]`, even
+when the blocked core is in `allow_scale`; positive room keeps the existing
+floor policy and glyph misses retain their exception precedence.
+
+**Evidence:** `docs/reviews/2026-09-26-rotated-neighbour-layout.md`.
+Five saved v88 overlapping cases now have no intersections, and their
+rotated glyph geometry is identical. Independent different-model Rule 1
+verification approved after tests and visual/font inspection; 176 focused
+compatibility/docs checks pass. Twelve CLI commands and ordinary horizontal
+PDF glyphs/rasters match v88. Version is 89 / 89.0.0; the upgrade note
+describes changed layouts and the additive refusal category. Full hosted
+Linux/Windows results belong to this branch's PR and its current head.
+
+**Disposition:** item 9 addresses the final item in the assigned sequence.
+Main remains `aae125c` (v81), #54–#63 are unmerged, and #63's exact head has
+all checks green. This repair stacks on #63. No merge or consumer pin
+change. Next action is Rodrigo's review/merge decision or a new product
+assignment; parked items remain parked. Product coordination goes through
+Rodrigo. Item 8 can reopen on its original files or another reproducible
+pair; it is still recorded as not reproduced.
+
+## Coordination status — 26 September 2026, item 8 ink-ratio attempt closed as not reproduced (historical)
 
 **Assigned and investigated:** Rodrigo said to continue with the next item.
 Owner: this library. Branch `codex/ink-ratio-investigation`, based on
