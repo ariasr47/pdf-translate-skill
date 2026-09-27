@@ -3,7 +3,44 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 26 September 2026: item 9 rotated-neighbour repair implemented as v89
+## Start here — 26 September 2026: #54–#64 merged; v89 delivered to main
+
+Rodrigo explicitly approved merging the completed stack, verifying main
+and updating the delivery records. All eleven PRs were merged in ascending
+order, retargeting each successor to `main`. Each merge used
+`--merge --match-head-commit SHA` after a fresh check of its three successful
+CI checks. The merged file tree matched the exact tested head for every PR.
+No conflict resolution or runtime changes were needed during integration.
+
+**v89's final integration commit is
+`56b1865662105260f7c465f5aebe6f987ebf6f69`** ([#64](https://github.com/ariasr47/pdf-translate-skill/pull/64)).
+Its complete file tree is identical to the verified #64 head `839a7d6`.
+GitHub then reported **no open PRs**. All branches remain available.
+This follow-up changes only the development handover, decisions and product
+delivery record; the package and five version sources stay 89 / 89.0.0.
+
+The tested #64 head passed 850 tests on each hosted platform, plus the
+canary, repository, fixture and manifest checks. Main's push workflow runs
+again for the delivery record. Consult main's current head checks and
+#64's description for the final hosted outcome; full discovery stays off
+this Windows host after its earlier crashes. The exact delivered PR heads
+and merge commits are in `docs/REQUESTS-from-product.md`.
+
+**Next is the product's adoption comparison, through Rodrigo.** Give it
+the verified main commit and `pdf-translate/references/upgrading.md`; the
+consumer chooses and tests its pin. No consumer pin, release tag or package
+publication was changed here. The nine-item assigned library sequence is
+addressed. Await a new product request before starting more implementation.
+Item 8 remains not reproduced; reopen only on the original run-4 inputs or
+a new reproducible pair. RTL source work remains parked.
+
+The managed worktree remains at
+`C:/Users/rodri/.codex/worktrees/cli-input-logging/pdf-translate-skill`, now
+on `codex/v89-delivery-record`. The original dirty B1 checkout and ignored
+verification artifacts remain in place. Re-verify git and gh before acting
+on this recorded state.
+
+## Start here — 26 September 2026 (historical): item 9 rotated-neighbour repair implemented as v89
 
 Rodrigo authorized the next assigned item. Branch
 `codex/rotated-neighbour-layout` starts at PR #63's exact head

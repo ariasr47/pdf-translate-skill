@@ -32,7 +32,55 @@ Claude sessions do this by name with `SendMessage`; other agents go through
 Rodrigo. Whatever a message settles is written into this file in the same
 session.
 
-## Current coordination status — 26 September 2026, item 9 rotated-neighbour repair implemented as v89
+## Current coordination status — 26 September 2026, v89 delivered; #54–#64 merged
+
+**Rodrigo approved integration.** Owner: this library. All eleven PRs were
+merged in ascending order, each successor retargeted to `main`, with a merge
+commit pinned to the exact reviewed head. All three checks were successful
+at each head before merging. For every PR, the merge commit's file-tree
+hash equals its tested head's hash. The final runtime integration commit is
+**`56b1865662105260f7c465f5aebe6f987ebf6f69`**, version **89 / 89.0.0**.
+GitHub reported no open PRs after #64 merged. No branches were deleted.
+
+| PR | Delivered work | Tested head | Merge on main |
+|---|---|---|---|
+| [#54](https://github.com/ariasr47/pdf-translate-skill/pull/54) | Product advice and assigned sequence | `07b879c` | [`b3224cc`](https://github.com/ariasr47/pdf-translate-skill/commit/b3224cc7fea89075e594fd6a48298a37e6aa6f66) |
+| [#55](https://github.com/ariasr47/pdf-translate-skill/pull/55) | Consumer upgrade note (v82) | `5d4f6f3` | [`8ea29e5`](https://github.com/ariasr47/pdf-translate-skill/commit/8ea29e5f583d1af1d93377fb88fd16789bf1f467) |
+| [#56](https://github.com/ariasr47/pdf-translate-skill/pull/56) | Legacy language/script comparison (v83) | `d18d5ef` | [`01d895f`](https://github.com/ariasr47/pdf-translate-skill/commit/01d895fe2a3aabb117c6872da9075b090d3cd030) |
+| [#57](https://github.com/ariasr47/pdf-translate-skill/pull/57) | Capture, document identity and wording docs (v84) | `3eff552` | [`cbb3a31`](https://github.com/ariasr47/pdf-translate-skill/commit/cbb3a3140862a656cdaa7298792eac9cbe15a666) |
+| [#58](https://github.com/ariasr47/pdf-translate-skill/pull/58) | RTL source work parked | `4594b6a` | [`7dfc2da`](https://github.com/ariasr47/pdf-translate-skill/commit/7dfc2daf678f07473f05809ebffdfc7395435535) |
+| [#59](https://github.com/ariasr47/pdf-translate-skill/pull/59) | Multi-span rotated source boxes (v85) | `84412ec` | [`8afa4ac`](https://github.com/ariasr47/pdf-translate-skill/commit/8afa4ac2c57d6ff703bfe826901db381bba1bd18) |
+| [#60](https://github.com/ariasr47/pdf-translate-skill/pull/60) | Rotated feature refusals and tail preservation (v86) | `0b1b362` | [`be9c8a1`](https://github.com/ariasr47/pdf-translate-skill/commit/be9c8a1a3c7e066459b07ef3789e6a3564cbb793) |
+| [#61](https://github.com/ariasr47/pdf-translate-skill/pull/61) | CLI input spelling and module logging (v87) | `2c87132` | [`b80b37b`](https://github.com/ariasr47/pdf-translate-skill/commit/b80b37b58f496600f570997974a60c183fd3617b) |
+| [#62](https://github.com/ariasr47/pdf-translate-skill/pull/62) | Typography widths and unrotated geometry (v88) | `9b36b1f` | [`606deac`](https://github.com/ariasr47/pdf-translate-skill/commit/606deac87582674bfd7ccc3dcd8ff8db56463931) |
+| [#63](https://github.com/ariasr47/pdf-translate-skill/pull/63) | Ink-ratio attempt closed as not reproduced | `4d0ba93` | [`54ad361`](https://github.com/ariasr47/pdf-translate-skill/commit/54ad361cabc58cb253079f6e3d984f38917420e1) |
+| [#64](https://github.com/ariasr47/pdf-translate-skill/pull/64) | Drawn rotated-neighbour budgets (v89) | `839a7d6` | [`56b1865`](https://github.com/ariasr47/pdf-translate-skill/commit/56b1865662105260f7c465f5aebe6f987ebf6f69) |
+
+**Validation:** #64's exact head `839a7d6` passed Linux's 850 tests in
+376.864s and Windows' 850 tests in 509.532s; the existing RTL expected
+failure remains, as does Windows' existing skip. Both platforms also passed
+15 canary tests, 6 repository tests and eval-fixture generation. Plugin
+validation and all version sources passed. The final integration commit
+has the same complete file tree. This delivery-record follow-up changes
+only development docs and leaves the shipped package unchanged. A local
+import resolved to the managed checkout at version 89, and the 14 shipped-doc,
+version-lockstep and packaging checks passed in 0.434s. Consult #64's
+description and main's current checks for the final hosted outcome before
+adoption. Local evidence:
+`runs/stack-integration-2026-09-26/merges.json`.
+
+**Product handoff, through Rodrigo:** v89 is available on main. The exact
+verified main commit and [consumer upgrade note](../pdf-translate/references/upgrading.md)
+are the inputs for the product's adoption comparison. The consumer's pin
+has not been changed by this library session. Library CI and synthetic
+fixtures do not replace the product's own document comparison.
+
+**Next assignment:** none. The nine-item sequence is addressed. Item 8 is
+still closed as not reproduced, and may reopen on its original inputs or
+a new reproducible pair. RTL source work and other parked proposals remain
+parked. Any new implementation starts with a product request.
+
+## Coordination status — 26 September 2026, item 9 rotated-neighbour repair implemented as v89 (historical)
 
 **Assigned and built:** Rodrigo said to continue with the next item.
 Owner: this library. Branch `codex/rotated-neighbour-layout`, based on
