@@ -1,0 +1,2072 @@
+{
+  "scope": "Item 8 bounded reproduction attempt; original 2026-09-25 run4 files unavailable. Not an exact replay.",
+  "code_versions": {
+    "v77": "4793f38",
+    "v88": "9b36b1f2d185acd4f55fed08d607a4e755f176ab"
+  },
+  "runtime": {
+    "python": "3.14.0",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "pymupdf": "1.28.2",
+    "mupdf": "1.28.2",
+    "pikepdf": "10.13.0.post1"
+  },
+  "default_render": "RGB, no alpha, annotations included; verify dpi=72; first channel <100",
+  "fill_samples_in_order": [
+    "Test value 123",
+    "José Muñoz García",
+    "WWWW WWWW WWWW WWWW 123456789",
+    "Test value 123"
+  ],
+  "case_count": 16,
+  "verify_runs": 128,
+  "inconsistencies": [],
+  "cases": [
+    {
+      "name": "v77-cli-delivery",
+      "raw_report": "runs/ink-ratio-investigation-2026-09-26/v77-cli-delivery/report.json",
+      "raw_report_sha256": "ab83ef49f2282382f9a37cb948684d22fc4eb3d46973126377fe8634f9389fee",
+      "inputs": {
+        "original": {
+          "sha256": "1c9e4e6e9f62b43e0ba68efa9302ab98b158ae7a62c27b737c6adc0f70b6d746",
+          "need_appearances": false,
+          "widgets": 0,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            311
+          ]
+        },
+        "out": {
+          "sha256": "954fea3df9967cfc4d61fa97c91c27285eeffa42b1a1b1adec53487fa3985b7f",
+          "need_appearances": false,
+          "widgets": 0,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            298
+          ]
+        },
+        "final": {
+          "sha256": "cdd16848d6a5053eb25504ef2db5e99819f9201a0baade9709807f2f86517371",
+          "need_appearances": false,
+          "widgets": 0,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            298
+          ]
+        }
+      },
+      "out_vs_final": [
+        {
+          "page": 1,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 719,
+          "final_dark": 719
+        },
+        {
+          "page": 1,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 891,
+          "final_dark": 891
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 298,
+          "final_dark": 298
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 298,
+          "final_dark": 298
+        }
+      ],
+      "verify_runs": 8,
+      "all_ink_findings_match_fresh_rasters": true,
+      "all_actual_ink_counts_match_fresh": true,
+      "fill_roundtrip_statuses": [
+        "SKIP"
+      ],
+      "reported_ratios": {
+        "out": [
+          "PASS ink ratio 0.96"
+        ],
+        "final": [
+          "PASS ink ratio 0.96"
+        ]
+      }
+    },
+    {
+      "name": "v77-fill-positive-control",
+      "raw_report": "runs/ink-ratio-investigation-2026-09-26/v77-fill-positive-control/report.json",
+      "raw_report_sha256": "a96b0e015fef4d639c8a6d72ecef894546a0a8764ceb47c72cb41916affa2ce5",
+      "inputs": {
+        "original": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "out": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "final": {
+          "sha256": "62486d094b8bdab3696caa6c737b7897aae0d2b02ab06cede6104ddf7e730d1e",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3837,
+            3749
+          ]
+        }
+      },
+      "out_vs_final": [
+        {
+          "page": 1,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": false,
+          "changed_pixels": 887,
+          "out_dark": 11256,
+          "final_dark": 11648
+        },
+        {
+          "page": 1,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": false,
+          "changed_pixels": 1021,
+          "out_dark": 12545,
+          "final_dark": 13015
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3579,
+          "final_dark": 3579
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": false,
+          "changed_pixels": 483,
+          "out_dark": 3666,
+          "final_dark": 3837
+        },
+        {
+          "page": 2,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 9959,
+          "final_dark": 9959
+        },
+        {
+          "page": 2,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11973,
+          "final_dark": 11973
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        }
+      ],
+      "verify_runs": 8,
+      "all_ink_findings_match_fresh_rasters": true,
+      "all_actual_ink_counts_match_fresh": true,
+      "fill_roundtrip_statuses": [
+        "PASS"
+      ],
+      "reported_ratios": {
+        "out": [
+          "PASS ink ratio 1.00",
+          "PASS ink ratio 1.00"
+        ],
+        "final": [
+          "PASS ink ratio 1.05",
+          "PASS ink ratio 1.00"
+        ]
+      }
+    },
+    {
+      "name": "v77-filled-preserved",
+      "raw_report": "runs/ink-ratio-investigation-2026-09-26/v77-filled-preserved/report.json",
+      "raw_report_sha256": "710662505d0f9ba226e31b2b4478ec6c87c7251a4bb6e3c1347e3b2d66169f89",
+      "inputs": {
+        "original": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "out": {
+          "sha256": "62486d094b8bdab3696caa6c737b7897aae0d2b02ab06cede6104ddf7e730d1e",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3837,
+            3749
+          ]
+        },
+        "final": {
+          "sha256": "8f064e27697ac18d6cec4bb195a94bb61c2b1089d62ddbf02d7e8f0ee0c3ce13",
+          "need_appearances": true,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3837,
+            3749
+          ]
+        }
+      },
+      "out_vs_final": [
+        {
+          "page": 1,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11648,
+          "final_dark": 11648
+        },
+        {
+          "page": 1,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 13015,
+          "final_dark": 13015
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3579,
+          "final_dark": 3579
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3837,
+          "final_dark": 3837
+        },
+        {
+          "page": 2,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 9959,
+          "final_dark": 9959
+        },
+        {
+          "page": 2,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11973,
+          "final_dark": 11973
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        }
+      ],
+      "verify_runs": 8,
+      "all_ink_findings_match_fresh_rasters": true,
+      "all_actual_ink_counts_match_fresh": true,
+      "fill_roundtrip_statuses": [
+        "PASS"
+      ],
+      "reported_ratios": {
+        "out": [
+          "PASS ink ratio 1.05",
+          "PASS ink ratio 1.00"
+        ],
+        "final": [
+          "PASS ink ratio 1.05",
+          "PASS ink ratio 1.00"
+        ]
+      }
+    },
+    {
+      "name": "v77-filled-regenerate",
+      "raw_report": "runs/ink-ratio-investigation-2026-09-26/v77-filled-regenerate/report.json",
+      "raw_report_sha256": "a5f187debaee9b5c95eac6927b40082041ed75e81fe75723c29e3c90a2619fad",
+      "inputs": {
+        "original": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "out": {
+          "sha256": "8f064e27697ac18d6cec4bb195a94bb61c2b1089d62ddbf02d7e8f0ee0c3ce13",
+          "need_appearances": true,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3837,
+            3749
+          ]
+        },
+        "final": {
+          "sha256": "394f8f093d1d270ef16894997a8ad2a55ab62204cf8a97705573d7f98d4d4fb1",
+          "need_appearances": true,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3837,
+            3749
+          ]
+        }
+      },
+      "out_vs_final": [
+        {
+          "page": 1,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11648,
+          "final_dark": 11648
+        },
+        {
+          "page": 1,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 13015,
+          "final_dark": 13015
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3579,
+          "final_dark": 3579
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3837,
+          "final_dark": 3837
+        },
+        {
+          "page": 2,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 9959,
+          "final_dark": 9959
+        },
+        {
+          "page": 2,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11973,
+          "final_dark": 11973
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        }
+      ],
+      "verify_runs": 8,
+      "all_ink_findings_match_fresh_rasters": true,
+      "all_actual_ink_counts_match_fresh": true,
+      "fill_roundtrip_statuses": [
+        "PASS"
+      ],
+      "reported_ratios": {
+        "out": [
+          "PASS ink ratio 1.05",
+          "PASS ink ratio 1.00"
+        ],
+        "final": [
+          "PASS ink ratio 1.05",
+          "PASS ink ratio 1.00"
+        ]
+      }
+    },
+    {
+      "name": "v77-generated",
+      "raw_report": "runs/ink-ratio-investigation-2026-09-26/v77-generated/report.json",
+      "raw_report_sha256": "769d94ea846a4f7b22f67f8d1bb0a2eb4464a73e160fb16fe4b964ea968c6a7a",
+      "inputs": {
+        "original": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "out": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "final": {
+          "sha256": "0fd1225c3408885f4493ee642cc971335e6b17182b80ff2f74cf09c10b16cac6",
+          "need_appearances": true,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        }
+      },
+      "out_vs_final": [
+        {
+          "page": 1,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11256,
+          "final_dark": 11256
+        },
+        {
+          "page": 1,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 12545,
+          "final_dark": 12545
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3579,
+          "final_dark": 3579
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3666,
+          "final_dark": 3666
+        },
+        {
+          "page": 2,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 9959,
+          "final_dark": 9959
+        },
+        {
+          "page": 2,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11973,
+          "final_dark": 11973
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        }
+      ],
+      "verify_runs": 8,
+      "all_ink_findings_match_fresh_rasters": true,
+      "all_actual_ink_counts_match_fresh": true,
+      "fill_roundtrip_statuses": [
+        "PASS"
+      ],
+      "reported_ratios": {
+        "out": [
+          "PASS ink ratio 1.00",
+          "PASS ink ratio 1.00"
+        ],
+        "final": [
+          "PASS ink ratio 1.00",
+          "PASS ink ratio 1.00"
+        ]
+      }
+    },
+    {
+      "name": "v77-regenerate",
+      "raw_report": "runs/ink-ratio-investigation-2026-09-26/v77-regenerate/report.json",
+      "raw_report_sha256": "a9d0c7cd571fb6408bd8e9d77e539d824b04d5e4408ee4bea2e6c816802033b7",
+      "inputs": {
+        "original": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "out": {
+          "sha256": "0fd1225c3408885f4493ee642cc971335e6b17182b80ff2f74cf09c10b16cac6",
+          "need_appearances": true,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "final": {
+          "sha256": "29719aadab4bfe17d46b5acacac3fa4ef4b65d98f4436258364e9dee8e7f4de7",
+          "need_appearances": true,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        }
+      },
+      "out_vs_final": [
+        {
+          "page": 1,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11256,
+          "final_dark": 11256
+        },
+        {
+          "page": 1,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 12545,
+          "final_dark": 12545
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3579,
+          "final_dark": 3579
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3666,
+          "final_dark": 3666
+        },
+        {
+          "page": 2,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 9959,
+          "final_dark": 9959
+        },
+        {
+          "page": 2,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11973,
+          "final_dark": 11973
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        }
+      ],
+      "verify_runs": 8,
+      "all_ink_findings_match_fresh_rasters": true,
+      "all_actual_ink_counts_match_fresh": true,
+      "fill_roundtrip_statuses": [
+        "PASS"
+      ],
+      "reported_ratios": {
+        "out": [
+          "PASS ink ratio 1.00",
+          "PASS ink ratio 1.00"
+        ],
+        "final": [
+          "PASS ink ratio 1.00",
+          "PASS ink ratio 1.00"
+        ]
+      }
+    },
+    {
+      "name": "v77-sept5-delivery",
+      "raw_report": "runs/ink-ratio-investigation-2026-09-26/v77-sept5-delivery/report.json",
+      "raw_report_sha256": "18a3c90cd930d6db336c63f27af8244e9065327c2753bf6a9a2f24028df1b7a9",
+      "inputs": {
+        "original": {
+          "sha256": "a27ad9cc35ce826205648a68107cbd07dc26332faf9c76c0a4b899fc4126f77d",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "out": {
+          "sha256": "aa03a26669e3e290b7964e99bea31f2bb79c406a2d1361c7c110a0a5e4d23643",
+          "need_appearances": true,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            4532,
+            4191
+          ]
+        },
+        "final": {
+          "sha256": "b789308356226a986068cdc8e61e3407f15a5137c3204d2aa70cf0bd565ec9f4",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            4588,
+            4191
+          ]
+        }
+      },
+      "out_vs_final": [
+        {
+          "page": 1,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": false,
+          "changed_pixels": 687,
+          "out_dark": 14452,
+          "final_dark": 14613
+        },
+        {
+          "page": 1,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": false,
+          "changed_pixels": 769,
+          "out_dark": 16489,
+          "final_dark": 16632
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 4420,
+          "final_dark": 4420
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": false,
+          "changed_pixels": 349,
+          "out_dark": 4532,
+          "final_dark": 4588
+        },
+        {
+          "page": 2,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 10870,
+          "final_dark": 10870
+        },
+        {
+          "page": 2,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 13022,
+          "final_dark": 13022
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 4191,
+          "final_dark": 4191
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 4191,
+          "final_dark": 4191
+        }
+      ],
+      "verify_runs": 8,
+      "all_ink_findings_match_fresh_rasters": true,
+      "all_actual_ink_counts_match_fresh": true,
+      "fill_roundtrip_statuses": [
+        "PASS"
+      ],
+      "reported_ratios": {
+        "out": [
+          "PASS ink ratio 1.24",
+          "PASS ink ratio 1.12"
+        ],
+        "final": [
+          "PASS ink ratio 1.25",
+          "PASS ink ratio 1.12"
+        ]
+      }
+    },
+    {
+      "name": "v88-cli-delivery",
+      "raw_report": "runs/ink-ratio-investigation-2026-09-26/v88-cli-delivery/report.json",
+      "raw_report_sha256": "699125b65ce215fde0af5ee2575da0c289e8ea859bd2fee39f98049b5933eef7",
+      "inputs": {
+        "original": {
+          "sha256": "1c9e4e6e9f62b43e0ba68efa9302ab98b158ae7a62c27b737c6adc0f70b6d746",
+          "need_appearances": false,
+          "widgets": 0,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            311
+          ]
+        },
+        "out": {
+          "sha256": "954fea3df9967cfc4d61fa97c91c27285eeffa42b1a1b1adec53487fa3985b7f",
+          "need_appearances": false,
+          "widgets": 0,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            298
+          ]
+        },
+        "final": {
+          "sha256": "cdd16848d6a5053eb25504ef2db5e99819f9201a0baade9709807f2f86517371",
+          "need_appearances": false,
+          "widgets": 0,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            298
+          ]
+        }
+      },
+      "out_vs_final": [
+        {
+          "page": 1,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 719,
+          "final_dark": 719
+        },
+        {
+          "page": 1,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 891,
+          "final_dark": 891
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 298,
+          "final_dark": 298
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 298,
+          "final_dark": 298
+        }
+      ],
+      "verify_runs": 8,
+      "all_ink_findings_match_fresh_rasters": true,
+      "all_actual_ink_counts_match_fresh": true,
+      "fill_roundtrip_statuses": [
+        "SKIP"
+      ],
+      "reported_ratios": {
+        "out": [
+          "PASS ink ratio 0.96"
+        ],
+        "final": [
+          "PASS ink ratio 0.96"
+        ]
+      }
+    },
+    {
+      "name": "v88-fill-positive-control",
+      "raw_report": "runs/ink-ratio-investigation-2026-09-26/v88-fill-positive-control/report.json",
+      "raw_report_sha256": "e3363fd84393ea5d5bfe1af697478dea92252a07c89e874ee6db6ff5eb1fc88f",
+      "inputs": {
+        "original": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "out": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "final": {
+          "sha256": "62486d094b8bdab3696caa6c737b7897aae0d2b02ab06cede6104ddf7e730d1e",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3837,
+            3749
+          ]
+        }
+      },
+      "out_vs_final": [
+        {
+          "page": 1,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": false,
+          "changed_pixels": 887,
+          "out_dark": 11256,
+          "final_dark": 11648
+        },
+        {
+          "page": 1,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": false,
+          "changed_pixels": 1021,
+          "out_dark": 12545,
+          "final_dark": 13015
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3579,
+          "final_dark": 3579
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": false,
+          "changed_pixels": 483,
+          "out_dark": 3666,
+          "final_dark": 3837
+        },
+        {
+          "page": 2,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 9959,
+          "final_dark": 9959
+        },
+        {
+          "page": 2,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11973,
+          "final_dark": 11973
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        }
+      ],
+      "verify_runs": 8,
+      "all_ink_findings_match_fresh_rasters": true,
+      "all_actual_ink_counts_match_fresh": true,
+      "fill_roundtrip_statuses": [
+        "PASS"
+      ],
+      "reported_ratios": {
+        "out": [
+          "PASS ink ratio 1.00",
+          "PASS ink ratio 1.00"
+        ],
+        "final": [
+          "PASS ink ratio 1.05",
+          "PASS ink ratio 1.00"
+        ]
+      }
+    },
+    {
+      "name": "v88-filled-preserved",
+      "raw_report": "runs/ink-ratio-investigation-2026-09-26/v88-filled-preserved/report.json",
+      "raw_report_sha256": "daad4e38351ca9964463aaacb8cb051916c05ee0ad11747e4bc922589df74cc5",
+      "inputs": {
+        "original": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "out": {
+          "sha256": "62486d094b8bdab3696caa6c737b7897aae0d2b02ab06cede6104ddf7e730d1e",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3837,
+            3749
+          ]
+        },
+        "final": {
+          "sha256": "8f064e27697ac18d6cec4bb195a94bb61c2b1089d62ddbf02d7e8f0ee0c3ce13",
+          "need_appearances": true,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3837,
+            3749
+          ]
+        }
+      },
+      "out_vs_final": [
+        {
+          "page": 1,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11648,
+          "final_dark": 11648
+        },
+        {
+          "page": 1,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 13015,
+          "final_dark": 13015
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3579,
+          "final_dark": 3579
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3837,
+          "final_dark": 3837
+        },
+        {
+          "page": 2,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 9959,
+          "final_dark": 9959
+        },
+        {
+          "page": 2,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11973,
+          "final_dark": 11973
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        }
+      ],
+      "verify_runs": 8,
+      "all_ink_findings_match_fresh_rasters": true,
+      "all_actual_ink_counts_match_fresh": true,
+      "fill_roundtrip_statuses": [
+        "PASS"
+      ],
+      "reported_ratios": {
+        "out": [
+          "PASS ink ratio 1.05",
+          "PASS ink ratio 1.00"
+        ],
+        "final": [
+          "PASS ink ratio 1.05",
+          "PASS ink ratio 1.00"
+        ]
+      }
+    },
+    {
+      "name": "v88-filled-regenerate",
+      "raw_report": "runs/ink-ratio-investigation-2026-09-26/v88-filled-regenerate/report.json",
+      "raw_report_sha256": "9627ce14c9fc3763f8cffa5523b76150012f3b576d2f95f5e13dfe715fa1715a",
+      "inputs": {
+        "original": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "out": {
+          "sha256": "8f064e27697ac18d6cec4bb195a94bb61c2b1089d62ddbf02d7e8f0ee0c3ce13",
+          "need_appearances": true,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3837,
+            3749
+          ]
+        },
+        "final": {
+          "sha256": "394f8f093d1d270ef16894997a8ad2a55ab62204cf8a97705573d7f98d4d4fb1",
+          "need_appearances": true,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3837,
+            3749
+          ]
+        }
+      },
+      "out_vs_final": [
+        {
+          "page": 1,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11648,
+          "final_dark": 11648
+        },
+        {
+          "page": 1,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 13015,
+          "final_dark": 13015
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3579,
+          "final_dark": 3579
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3837,
+          "final_dark": 3837
+        },
+        {
+          "page": 2,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 9959,
+          "final_dark": 9959
+        },
+        {
+          "page": 2,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11973,
+          "final_dark": 11973
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        }
+      ],
+      "verify_runs": 8,
+      "all_ink_findings_match_fresh_rasters": true,
+      "all_actual_ink_counts_match_fresh": true,
+      "fill_roundtrip_statuses": [
+        "PASS"
+      ],
+      "reported_ratios": {
+        "out": [
+          "PASS ink ratio 1.05",
+          "PASS ink ratio 1.00"
+        ],
+        "final": [
+          "PASS ink ratio 1.05",
+          "PASS ink ratio 1.00"
+        ]
+      }
+    },
+    {
+      "name": "v88-generated",
+      "raw_report": "runs/ink-ratio-investigation-2026-09-26/v88-generated/report.json",
+      "raw_report_sha256": "b6c82ab3ce2d8a5463b9b18b6ff0b555bde4915f30a7e6044faa5795a0abca75",
+      "inputs": {
+        "original": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "out": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "final": {
+          "sha256": "0fd1225c3408885f4493ee642cc971335e6b17182b80ff2f74cf09c10b16cac6",
+          "need_appearances": true,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        }
+      },
+      "out_vs_final": [
+        {
+          "page": 1,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11256,
+          "final_dark": 11256
+        },
+        {
+          "page": 1,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 12545,
+          "final_dark": 12545
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3579,
+          "final_dark": 3579
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3666,
+          "final_dark": 3666
+        },
+        {
+          "page": 2,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 9959,
+          "final_dark": 9959
+        },
+        {
+          "page": 2,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11973,
+          "final_dark": 11973
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        }
+      ],
+      "verify_runs": 8,
+      "all_ink_findings_match_fresh_rasters": true,
+      "all_actual_ink_counts_match_fresh": true,
+      "fill_roundtrip_statuses": [
+        "PASS"
+      ],
+      "reported_ratios": {
+        "out": [
+          "PASS ink ratio 1.00",
+          "PASS ink ratio 1.00"
+        ],
+        "final": [
+          "PASS ink ratio 1.00",
+          "PASS ink ratio 1.00"
+        ]
+      }
+    },
+    {
+      "name": "v88-no-need-appearances",
+      "raw_report": "runs/ink-ratio-investigation-2026-09-26/v88-no-need-appearances/report.json",
+      "raw_report_sha256": "6cac7cc32bb2f926dfbd56297c02521bfebaca3117d1ab7774799cbfcab02d22",
+      "inputs": {
+        "original": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "out": {
+          "sha256": "0fd1225c3408885f4493ee642cc971335e6b17182b80ff2f74cf09c10b16cac6",
+          "need_appearances": true,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "final": {
+          "sha256": "b054b829b19cbea5418ff1a65a9433edbf425594f8ecb1352e4b60e9beae5bbe",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        }
+      },
+      "out_vs_final": [
+        {
+          "page": 1,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11256,
+          "final_dark": 11256
+        },
+        {
+          "page": 1,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 12545,
+          "final_dark": 12545
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3579,
+          "final_dark": 3579
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3666,
+          "final_dark": 3666
+        },
+        {
+          "page": 2,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 9959,
+          "final_dark": 9959
+        },
+        {
+          "page": 2,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11973,
+          "final_dark": 11973
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        }
+      ],
+      "verify_runs": 8,
+      "all_ink_findings_match_fresh_rasters": true,
+      "all_actual_ink_counts_match_fresh": true,
+      "fill_roundtrip_statuses": [
+        "PASS"
+      ],
+      "reported_ratios": {
+        "out": [
+          "PASS ink ratio 1.00",
+          "PASS ink ratio 1.00"
+        ],
+        "final": [
+          "PASS ink ratio 1.00",
+          "PASS ink ratio 1.00"
+        ]
+      }
+    },
+    {
+      "name": "v88-regenerate",
+      "raw_report": "runs/ink-ratio-investigation-2026-09-26/v88-regenerate/report.json",
+      "raw_report_sha256": "b809f84c84ed3798620fac1b19068fd8ab32e538256a52f033d228ccc3391ec4",
+      "inputs": {
+        "original": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "out": {
+          "sha256": "0fd1225c3408885f4493ee642cc971335e6b17182b80ff2f74cf09c10b16cac6",
+          "need_appearances": true,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "final": {
+          "sha256": "29719aadab4bfe17d46b5acacac3fa4ef4b65d98f4436258364e9dee8e7f4de7",
+          "need_appearances": true,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        }
+      },
+      "out_vs_final": [
+        {
+          "page": 1,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11256,
+          "final_dark": 11256
+        },
+        {
+          "page": 1,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 12545,
+          "final_dark": 12545
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3579,
+          "final_dark": 3579
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3666,
+          "final_dark": 3666
+        },
+        {
+          "page": 2,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 9959,
+          "final_dark": 9959
+        },
+        {
+          "page": 2,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11973,
+          "final_dark": 11973
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        }
+      ],
+      "verify_runs": 8,
+      "all_ink_findings_match_fresh_rasters": true,
+      "all_actual_ink_counts_match_fresh": true,
+      "fill_roundtrip_statuses": [
+        "PASS"
+      ],
+      "reported_ratios": {
+        "out": [
+          "PASS ink ratio 1.00",
+          "PASS ink ratio 1.00"
+        ],
+        "final": [
+          "PASS ink ratio 1.00",
+          "PASS ink ratio 1.00"
+        ]
+      }
+    },
+    {
+      "name": "v88-same-bytes",
+      "raw_report": "runs/ink-ratio-investigation-2026-09-26/v88-same-bytes/report.json",
+      "raw_report_sha256": "fd4bb4047cd9b6ebd337dd9fc841a6ac4e76d5e21ff57831c29014972453295d",
+      "inputs": {
+        "original": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "out": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "final": {
+          "sha256": "2b458a0fa388e7f9ad8b85900a837026d097709c235b30851518ed9a93a78aae",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        }
+      },
+      "out_vs_final": [
+        {
+          "page": 1,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11256,
+          "final_dark": 11256
+        },
+        {
+          "page": 1,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 12545,
+          "final_dark": 12545
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3579,
+          "final_dark": 3579
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3666,
+          "final_dark": 3666
+        },
+        {
+          "page": 2,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 9959,
+          "final_dark": 9959
+        },
+        {
+          "page": 2,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 11973,
+          "final_dark": 11973
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 3749,
+          "final_dark": 3749
+        }
+      ],
+      "verify_runs": 8,
+      "all_ink_findings_match_fresh_rasters": true,
+      "all_actual_ink_counts_match_fresh": true,
+      "fill_roundtrip_statuses": [
+        "PASS"
+      ],
+      "reported_ratios": {
+        "out": [
+          "PASS ink ratio 1.00",
+          "PASS ink ratio 1.00"
+        ],
+        "final": [
+          "PASS ink ratio 1.00",
+          "PASS ink ratio 1.00"
+        ]
+      }
+    },
+    {
+      "name": "v88-sept5-delivery",
+      "raw_report": "runs/ink-ratio-investigation-2026-09-26/v88-sept5-delivery/report.json",
+      "raw_report_sha256": "d751a779512e4f1fc4fc8ddbd9d7d167405781a2ac1c064eebc8a5e33b3432c9",
+      "inputs": {
+        "original": {
+          "sha256": "a27ad9cc35ce826205648a68107cbd07dc26332faf9c76c0a4b899fc4126f77d",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            3666,
+            3749
+          ]
+        },
+        "out": {
+          "sha256": "aa03a26669e3e290b7964e99bea31f2bb79c406a2d1361c7c110a0a5e4d23643",
+          "need_appearances": true,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            4532,
+            4191
+          ]
+        },
+        "final": {
+          "sha256": "b789308356226a986068cdc8e61e3407f15a5137c3204d2aa70cf0bd565ec9f4",
+          "need_appearances": false,
+          "widgets": 13,
+          "file_unchanged": true,
+          "all_read_orders_identical": true,
+          "all_repeat_rasters_identical": true,
+          "dark_72": [
+            4588,
+            4191
+          ]
+        }
+      },
+      "out_vs_final": [
+        {
+          "page": 1,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": false,
+          "changed_pixels": 687,
+          "out_dark": 14452,
+          "final_dark": 14613
+        },
+        {
+          "page": 1,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": false,
+          "changed_pixels": 769,
+          "out_dark": 16489,
+          "final_dark": 16632
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 4420,
+          "final_dark": 4420
+        },
+        {
+          "page": 1,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": false,
+          "changed_pixels": 349,
+          "out_dark": 4532,
+          "final_dark": 4588
+        },
+        {
+          "page": 2,
+          "mode": "110-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 10870,
+          "final_dark": 10870
+        },
+        {
+          "page": 2,
+          "mode": "120-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 13022,
+          "final_dark": 13022
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-False",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 4191,
+          "final_dark": 4191
+        },
+        {
+          "page": 2,
+          "mode": "72-annots-True",
+          "same_size": true,
+          "samples_identical": true,
+          "changed_pixels": 0,
+          "out_dark": 4191,
+          "final_dark": 4191
+        }
+      ],
+      "verify_runs": 8,
+      "all_ink_findings_match_fresh_rasters": true,
+      "all_actual_ink_counts_match_fresh": true,
+      "fill_roundtrip_statuses": [
+        "PASS"
+      ],
+      "reported_ratios": {
+        "out": [
+          "PASS ink ratio 1.24",
+          "PASS ink ratio 1.12"
+        ],
+        "final": [
+          "PASS ink ratio 1.25",
+          "PASS ink ratio 1.12"
+        ]
+      }
+    }
+  ]
+}

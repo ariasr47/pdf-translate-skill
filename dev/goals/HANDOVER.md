@@ -3,7 +3,34 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 26 September 2026: item 7 typography pair submitted as v88 in PR #62
+## Start here — 26 September 2026: item 8 ink-ratio attempt closed as not reproduced
+
+Rodrigo authorized the next assigned item. Branch
+`codex/ink-ratio-investigation` starts at PR #62's exact v88 head
+`9b36b1f2d185acd4f55fed08d607a4e755f176ab`, reusing the managed worktree
+`C:/Users/rodri/.codex/worktrees/cli-input-logging/pdf-translate-skill`.
+The original dirty B1 checkout remains evidence. Its September 5 library
+canary was read only; no product source was read.
+
+**Item 8 is closed as not reproduced in the bounded attempt.** Exact
+September 25 run-4 files were unavailable. v77 and v88 code on the present
+Windows renderer agree across 16 cases / 128 instrumented verify calls;
+32 independent different-model calls also agree. Equal pixels yield equal
+counts. Saved widget changes alter pixels and ratios together. The original
+observation remains recorded, with no cause assigned and no runtime fix.
+Probe, input hashes, counts, commands and limitations:
+`docs/reviews/2026-09-26-ink-ratio-investigation.md`.
+Only development/evidence records changed; version stays 88.
+
+Remote main was freshly checked at `aae125c` (v81); #54–#62 remain open,
+and PR #62's exact head passed all three checks (839 tests on each hosted
+platform). This evidence branch is based on #62; look up its current PR
+and head checks by branch before resuming. No merge or consumer pin change.
+**Next assigned work: item 9, the rotated-neighbour layout pre-pass.**
+Reopen item 8 if the exact run-4 files/commands or a new reproducible pair
+become available. Verify git and gh before acting on these recorded states.
+
+## Start here — 26 September 2026 (historical): item 7 typography pair submitted as v88 in PR #62
 
 Rodrigo authorized item 7 after the completed CLI repair. Branch
 `codex/typography-width-geometry` starts at PR #61's exact head
