@@ -32,7 +32,29 @@ Claude sessions do this by name with `SendMessage`; other agents go through
 Rodrigo. Whatever a message settles is written into this file in the same
 session.
 
-## Current coordination status — 26 September 2026, item 6 CLI pair submitted as v87
+## Current coordination status — 26 September 2026, item 7 typography pair prepared as v88
+
+**Assigned and built:** Rodrigo said to proceed with item 7 after item 6.
+Owner: this library. Branch `codex/typography-width-geometry`, based on
+PR #61's exact v87 head `2c87132`. Typography verify reads and validates
+the final PDF's `/W` / `/DW` advances, accepting correct 2,048-unit fonts
+without a growing position tolerance. Both typography measurements and
+glyph/crop checks now use the unrotated frame. Public rotated typography
+builds retain their refusal; the app's legacy route is unchanged.
+
+**Evidence:** `docs/reviews/2026-09-26-typography-width-geometry.md`.
+Both defects reproduced before repair. Different-model Rule 1 verification
+ran real font/position/corruption checks and inspected a rendered fixture;
+163 focused compatibility tests passed. Full Linux/Windows checks run on
+the PR. All five version sources now agree at 88 / 88.0.0, and the consumer
+upgrade note has a v88 section.
+
+**Main and next work:** main remains `aae125c`, v81; the existing #54–#61
+stack is unmerged and #61 is green. No consumer pin change. Item 8 remains
+the bounded ink-ratio reproduction, then item 9's rotated-neighbour overlap.
+Coordination with the product goes through Rodrigo.
+
+## Coordination status — 26 September 2026, item 6 CLI pair submitted as v87 (historical)
 
 **Assigned and built:** Rodrigo said to proceed with item 6 in the new
 Windows session. Owner: this library. Branch `codex/cli-input-logging`,

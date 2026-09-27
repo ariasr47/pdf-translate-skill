@@ -999,6 +999,7 @@ class _TypographyPlacement:
 
 def _measure_typography(page, segment, target, font_for, inks_for, neighbors, widgets, strokes, allow_scale):
     (ox, baseline), size, color = _source_typography_supported(segment)
+    frame = unrotated_frame(page)
     widths, boxes, x = [], [], 0.0
     for run in target.runs:
         key = (run.font_class, run.font_role)
@@ -1014,9 +1015,9 @@ def _measure_typography(page, segment, target, font_for, inks_for, neighbors, wi
         _typography_failure('unsafe-typography-geometry', 'occurrence has no measurable visible glyphs', segment)
     left, top = min(b[0] for b in boxes), min(b[1] for b in boxes)
     right, bottom = max(b[2] for b in boxes), max(b[3] for b in boxes)
-    available = _right_limit(page.rect, segment, neighbors, widgets) - ox
+    available = _right_limit(frame, segment, neighbors, widgets) - ox
     ratio = min(1.0, available / max(sum(widths), right))
-    left_edge = page.rect.x0
+    left_edge = frame.x0
     source_box = pymupdf.Rect(segment['bbox'])
     for rect in [pymupdf.Rect(s['bbox']) for s in neighbors if s is not segment] + list(widgets):
         if rect.x1 <= source_box.x0 and rect.y0 < source_box.y1 and rect.y1 > source_box.y0:
@@ -1024,9 +1025,9 @@ def _measure_typography(page, segment, target, font_for, inks_for, neighbors, wi
     if left < 0:
         ratio = min(ratio, (ox - left_edge) / -left)
     if top < 0:
-        ratio = min(ratio, (baseline - page.rect.y0) / -top)
+        ratio = min(ratio, (baseline - frame.y0) / -top)
     if bottom > 0:
-        ratio = min(ratio, (page.rect.y1 - baseline) / bottom)
+        ratio = min(ratio, (frame.y1 - baseline) / bottom)
     if not math.isfinite(ratio) or ratio <= 0:
         _typography_failure('unsafe-typography-geometry', 'glyphs cannot fit at the source baseline',
                             segment, error=PlacementError, page=segment['page'], key=target.occurrence_id)

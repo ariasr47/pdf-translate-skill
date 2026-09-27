@@ -1,5 +1,6 @@
 """Read actual final glyphs and font programs; a build report is never evidence."""
 from contextlib import ExitStack
+from decimal import Decimal
 import io
 import math
 from pathlib import Path
@@ -7,9 +8,11 @@ from pathlib import Path
 from fontTools.ttLib import TTFont
 from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.recordingPen import DecomposingRecordingPen
+import pikepdf
 import pymupdf
 
 from .mapping import refuse, role_name
+from .retypeset import unrotated_frame
 from .typography import (_program_observation, _unsubset, field_identities,
                          observe_fonts, page_geometry, source_digest)
 from .verify import Finding, GateResult
@@ -50,6 +53,69 @@ class _Face:
                 ink = (x0 / self.units, -y1 / self.units, x1 / self.units, -y0 / self.units)
             self.cache[gid] = ((normalize(pen.value), round(advance, 7)), ink)
         return self.cache[gid]
+
+
+class _PdfWidths:
+    """Horizontal PDF widths indexed by glyph ID, when CID == GID is proven.
+
+    TextWriter uses Identity-H CIDFontType2 fonts. Other encodings/mappings
+    need character-code evidence that texttrace does not provide; never guess.
+    Keep widths separate from program identity: identical embedded bytes can
+    have different /W tables. Both legal /W forms and the /DW default apply.
+    """
+    def __init__(self, resource):
+        if (resource.get('/Subtype') != pikepdf.Name.Type0 or
+                resource.get('/Encoding') != pikepdf.Name('/Identity-H')):
+            raise ValueError('unsupported font encoding')
+        descendants = resource.DescendantFonts
+        if len(descendants) != 1:
+            raise ValueError('ambiguous descendant font')
+        font = descendants[0]
+        if (font.get('/Subtype') != pikepdf.Name('/CIDFontType2') or
+                font.get('/CIDToGIDMap', pikepdf.Name.Identity) != pikepdf.Name.Identity):
+            raise ValueError('unsupported glyph mapping')
+
+        def number(value):
+            if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
+                raise ValueError('invalid PDF width')
+            result = float(value)
+            if not math.isfinite(result) or result < 0:
+                raise ValueError('invalid PDF width')
+            return result
+
+        def cid(value):
+            if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= 65535:
+                raise ValueError('invalid CID')
+            return value
+
+        self.default = number(font.get('/DW', 1000))
+        self.widths = {}
+        entries = font.get('/W', pikepdf.Array())
+        if not isinstance(entries, pikepdf.Array):
+            raise ValueError('invalid PDF widths')
+        index = 0
+        while index < len(entries):
+            first = cid(entries[index])
+            values = entries[index + 1]
+            if isinstance(values, pikepdf.Array):
+                last = cid(first + len(values) - 1)
+                widths = [number(value) for value in values]
+                index += 2
+            else:
+                last = cid(values)
+                if last < first:
+                    raise ValueError('reversed CID range')
+                widths = [number(entries[index + 2])] * (last - first + 1)
+                index += 3
+            for glyph, width in zip(range(first, last + 1), widths):
+                if glyph in self.widths:
+                    raise ValueError('overlapping CID widths')
+                self.widths[glyph] = width
+        self.signature = (self.default, tuple(sorted((gid, width) for gid, width in self.widths.items()
+                                                     if width != self.default)))
+
+    def get(self, gid):
+        return self.widths.get(gid, self.default)
 
 
 def _rgb(span):
@@ -111,6 +177,7 @@ def inspect_output(original, final, document):
     with ExitStack() as stack:
         source = stack.enter_context(pymupdf.open(original))
         output = stack.enter_context(pymupdf.open(final))
+        pdf = stack.enter_context(pikepdf.open(final))
         if page_geometry(source) != expected['page_geometry']:
             refuse('stale-extraction', 'source page geometry differs from the bound extraction')
         if document.extraction['pages'] != list(range(source.page_count)):
@@ -128,13 +195,22 @@ def inspect_output(original, final, document):
         traces = {index: _characters(drawing[0]) for index, drawing in drawings.items()}
         # Read once, not per glyph: under NeedAppearances every page load
         # rebuilds the widget appearances and keeps them (R-47).
-        crops = [output[index].rect + (-TOLERANCE, -TOLERANCE, TOLERANCE, TOLERANCE)
+        crops = [unrotated_frame(output[index]) + (-TOLERANCE, -TOLERANCE, TOLERANCE, TOLERANCE)
                  for index in range(output.page_count)]
         source_fields = {}
         for field in expected['fields']:
             source_fields.setdefault(field['page'], []).append((field['name'], pymupdf.Rect(field['rect'])))
         source_segments ={s['occurrence_id']: s for s in document.extraction['segments']}
-        selected, embedded = {}, {}
+        selected, embedded, pdf_widths, width_ids, width_groups = {}, {}, {}, {}, {}
+        for font_id, observed in observations['fonts'].items():
+            try:
+                pdf_widths[font_id] = _PdfWidths(pdf.get_object(observed['xref'], 0))
+            except (AttributeError, IndexError, KeyError, TypeError, ValueError, pikepdf.PdfError):
+                pdf_widths[font_id] = None
+            table = pdf_widths[font_id]
+            # Hash a potentially large /W table once per resource, not per glyph.
+            signature = table.signature if table is not None else font_id
+            width_ids[font_id] = width_groups.setdefault(signature, len(width_groups))
         for target in document.targets:
             segment = source_segments[target.occurrence_id]
             first = segment['style_runs'][0]
@@ -172,6 +248,7 @@ def inspect_output(original, final, document):
                     finding(target, f'Below-floor scale {scale:.4f} has no occurrence-specific permission.')
             wanted_color = tuple(((first['color'] >> shift) & 255) / 255 for shift in (16, 8, 0))
             cursor, char_index, drawn = ox, 0, []
+            exact_cursor, previous_span = ox, None
             for run_index, run in enumerate(target.runs):
                 key = (run.font_class, run.font_role)
                 if key not in selected:
@@ -190,6 +267,12 @@ def inspect_output(original, final, document):
                     char = chars[char_index]
                     char_index += 1
                     span = char['span']
+                    # A new drawn span has an explicitly placed origin. Adjacent
+                    # authored runs in the same face may coalesce: only an actual
+                    # span boundary resets the accumulated PDF-width rounding.
+                    if char['id'][0] != previous_span:
+                        cursor = exact_cursor
+                        previous_span = char['id'][0]
                     if (tuple(span['dir']) != (1, 0) or span.get('wmode', 0) != 0 or
                             abs(span['size'] - size) > TOLERANCE or
                             abs(char['origin'][0] - cursor) > TOLERANCE):
@@ -205,15 +288,22 @@ def inspect_output(original, final, document):
                                 if observations['fonts'][font_id]['xref'] in content.drawn_fonts.get(target.page, set()) and
                                 _unsubset(span['font']) in
                                 {_unsubset(name) for name in observations['fonts'][font_id]['aliases']}]
-                    # Field-font embedding may add another resource for identical
-                    # bytes. The actual glyph ID has the same meaning in each.
-                    font_ids = list({observations['fonts'][f]['sha256'] or f: f for f in font_ids}.values())
+                    # Field-font embedding may duplicate a resource, but equal
+                    # program bytes alone do not prove equal PDF spacing.
+                    font_ids = list({(observations['fonts'][f]['sha256'] or f,
+                                      width_ids[f]): f
+                                     for f in font_ids}.values())
                     actual = None
+                    width_table = None
+                    pdf_advance = None
                     if len(font_ids) != 1:
                         finding(target, f'cannot attest run {run_index}: output font resource is ambiguous', True)
                     else:
                         font_id = font_ids[0]
                         obs = observations['fonts'][font_id]
+                        width_table = pdf_widths[font_id]
+                        if width_table is None:
+                            finding(target, f'cannot attest run {run_index}: unsupported PDF glyph widths', True)
                         if font_id not in embedded:
                             try:
                                 program = output.extract_font(obs['xref'])[3]
@@ -236,6 +326,15 @@ def inspect_output(original, final, document):
                                 wanted_gid = wanted.drawer.has_glyph(ord(text), fallback=False)
                                 if not wanted_gid or actual_shape != wanted.glyph(wanted_gid)[0]:
                                     finding(target, f'Run {run_index}: selected glyph outlines/advance differ for U+{ord(text):04X}.')
+                                if wanted_gid and width_table is not None:
+                                    width = width_table.get(char['gid'])
+                                    advance = wanted.font['hmtx'].metrics[wanted.order[wanted_gid]][0]
+                                    exact = advance * 1000 / wanted.units
+                                    floored = advance * 1000 // wanted.units
+                                    if width != floored and not math.isclose(width, exact, rel_tol=0, abs_tol=0.00001):
+                                        finding(target, f'Run {run_index}: PDF glyph width differs from the selected advance '
+                                                        f'for U+{ord(text):04X}.')
+                                    pdf_advance = width / 1000
                             if ink is not None:
                                 x, y = char['origin']
                                 box = pymupdf.Rect(x + ink[0] * span['size'], y + ink[1] * span['size'],
@@ -252,7 +351,9 @@ def inspect_output(original, final, document):
                         except Exception:
                             finding(target, f'cannot attest run {run_index}: unsupported embedded glyph outlines', True)
                     if wanted is not None:
-                        cursor += wanted.drawer.glyph_advance(ord(text)) * size
+                        advance = wanted.drawer.glyph_advance(ord(text))
+                        exact_cursor += advance * size
+                        cursor += (pdf_advance if pdf_advance is not None else advance) * size
             if drawn:
                 bounds = pymupdf.Rect(min(b.x0 for b in drawn), min(b.y0 for b in drawn),
                                       max(b.x1 for b in drawn), max(b.y1 for b in drawn))

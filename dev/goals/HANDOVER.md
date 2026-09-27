@@ -3,7 +3,32 @@
 Paste this file (or: “read `dev/goals/HANDOVER.md` and continue”) into a
 **new** agent session that has no memory of prior work.
 
-## Start here — 26 September 2026: item 6 CLI pair submitted as v87 in PR #61
+## Start here — 26 September 2026: item 7 typography pair prepared as v88
+
+Rodrigo authorized item 7 after the completed CLI repair. Branch
+`codex/typography-width-geometry` starts at PR #61's exact head
+`2c871328ea78f444edb107cf00970ad081df78ec`, reusing the clean managed worktree
+`C:/Users/rodri/.codex/worktrees/cli-input-logging/pdf-translate-skill`.
+The original dirty B1 checkout at `C:/Dev/pdf-translate-skill` remains evidence.
+
+Typography verify now uses the final PDF's validated `/W` / `/DW` widths,
+so correct 2,048-unit fonts pass without increasing the position tolerance.
+Internal measurements and final crop checks use unrotated geometry. Public
+rotated typography builds retain their refusal. Independent Rule 1 review
+on a different model approved after real runs and raster inspection;
+163 focused compatibility tests passed. Evidence and observable acceptance:
+`docs/reviews/2026-09-26-typography-width-geometry.md`.
+Full Linux/Windows discovery runs on the PR, because this Windows host has
+previously crashed during full discovery.
+
+Remote main was freshly checked at `aae125c` (v81). #54–#61 remain open;
+#61's exact head has all three checks green. No merge or consumer pin change
+was made. The next assigned implementation item after this repair is
+**item 8: one bounded attempt to reproduce the ink-ratio observation**,
+then item 9's rotated-neighbour layout pre-pass. Verify git and gh before
+acting on these recorded states.
+
+## Start here — 26 September 2026 (historical): item 6 CLI pair submitted as v87 in PR #61
 
 Rodrigo authorized the next assigned item. The CLI pair is implemented on
 `codex/cli-input-logging`, based on PR #60's exact head
